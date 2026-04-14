@@ -1,7 +1,22 @@
 /**
  * Cloudflare Worker — NE Racing Proxy
- * Proxies horse racing data from The Racing API (https://api.theracingapi.com/v1)
- * and normalises responses into a consistent JSON shape for the frontend.
+ *
+ * Serves horse racing data to the NE Racing companion app.
+ * Supports two data source modes, selected by the DATA_SOURCE env var:
+ *
+ *   DATA_SOURCE = "free" (default)
+ *   ────────────────────────────────────────────────────────────────────
+ *   • Entries  — Static JSON files hosted on GitHub Pages
+ *                https://jhwiv.github.io/ne-racing/data/entries-{TRACK}-{DATE}.json
+ *   • Scratches — Live XML feed from Equibase (free, no auth required)
+ *                 https://www.equibase.com/premium/eqbLateChangeXMLDownload.cfm
+ *   • Odds     — Not available; returns graceful empty response
+ *   • Results  — Not available; returns graceful empty response
+ *
+ *   DATA_SOURCE = "theracingapi"  (requires API_KEY secret)
+ *   ────────────────────────────────────────────────────────────────────
+ *   • All four endpoints served via The Racing API (https://api.theracingapi.com/v1)
+ *   • Full odds, results, and racecard data available
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * wrangler.toml example
@@ -12,12 +27,12 @@
  * compatibility_date = "2024-09-23"
  *
  * [vars]
- * DATA_SOURCE    = "theracingapi"
- * DEFAULT_TRACK  = "SAR"
+ * DATA_SOURCE    = "free"          # or "theracingapi"
+ * DEFAULT_TRACK  = "AQU"
  * ALLOWED_ORIGIN = "*"
  *
  * # Secrets — set via CLI, never committed to source control:
- * #   wrangler secret put API_KEY
+ * #   wrangler secret put API_KEY   (only required for DATA_SOURCE=theracingapi)
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Endpoints exposed by this Worker
@@ -33,9 +48,9 @@
  */
 
 // ─── Track code → venue name mapping ────────────────────────────────────────
-// The Racing API identifies courses by their `course` field (a human-readable
-// venue name).  We map Equibase abbreviations to those names so we can filter
-// the upstream response to only the requested track.
+// Maps Equibase track abbreviations to human-readable venue names.
+// Used for both filtering The Racing API responses and labelling free-source
+// responses.
 const TRACK_TO_VENUE = {
   AQU: "Aqueduct",
   BEL: "Aqueduct",    // Belmont at Big A runs at Aqueduct (Big A)
@@ -52,15 +67,29 @@ const TRACK_TO_VENUE = {
 };
 
 // ─── Cache TTL constants (seconds) ──────────────────────────────────────────
+// Free sources:
+//   entries  — 5 minutes (static files change only once per day)
+//   scratches — 60 seconds (Equibase updates throughout the morning)
+// The Racing API sources:
+//   odds/results — 60 s (live data)
 const CACHE_TTL = {
-  entries:  120,
-  scratches:  60,
-  odds:       60,
-  results:  120,
+  entries:   300,   // 5 min for free static files
+  scratches:  60,   // 60 s for Equibase live feed
+  odds:        60,
+  results:   120,
 };
 
-// ─── Upstream API base URL ───────────────────────────────────────────────────
-const UPSTREAM_BASE = "https://api.theracingapi.com/v1";
+// ─── Upstream base URL (The Racing API) ─────────────────────────────────────
+const THERACINGAPI_BASE = "https://api.theracingapi.com/v1";
+
+// ─── Static entries base URL (GitHub Pages) ─────────────────────────────────
+// File name pattern: entries-{TRACK}-{DATE}.json
+// e.g. entries-AQU-2026-04-16.json
+const STATIC_ENTRIES_BASE = "https://jhwiv.github.io/ne-racing/data";
+
+// ─── Equibase late-changes XML feed URL ─────────────────────────────────────
+const EQUIBASE_SCRATCHES_URL =
+  "https://www.equibase.com/premium/eqbLateChangeXMLDownload.cfm";
 
 // ─── CORS headers helper ─────────────────────────────────────────────────────
 /**
@@ -107,7 +136,7 @@ function jsonError(message, status = 500, origin = "*") {
 // ─── Cloudflare Cache API helpers ────────────────────────────────────────────
 /**
  * Attempts to read a cached response for the given cache key URL.
- * Returns null on a miss.
+ * Returns null on a cache miss.
  */
 async function readCache(cacheKey) {
   const cache = caches.default;
@@ -120,20 +149,19 @@ async function readCache(cacheKey) {
  */
 async function writeCache(cacheKey, response) {
   const cache = caches.default;
-  // cache.put() expects the response to still be unconsumed, so we clone first.
   await cache.put(cacheKey, response.clone());
 }
 
-// ─── Upstream fetch helper ───────────────────────────────────────────────────
+// ─── Upstream fetch helper (The Racing API) ──────────────────────────────────
 /**
- * Fetches `path` from The Racing API with the provided API key.
- * Returns the parsed JSON body on success, or throws on error.
+ * Fetches `path` from The Racing API with the provided Bearer token.
+ * Returns parsed JSON on success; throws on HTTP error.
  *
  * @param {string} path    — e.g. "/racecards/standard?date=2026-04-14"
  * @param {string} apiKey  — Bearer token
  */
 async function fetchUpstream(path, apiKey) {
-  const url = `${UPSTREAM_BASE}${path}`;
+  const url = `${THERACINGAPI_BASE}${path}`;
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -199,7 +227,7 @@ function bestFractional(oddsArray) {
 // ─── Utility: format currency ─────────────────────────────────────────────────
 function formatPurse(prize) {
   if (!prize) return "N/A";
-  // Already formatted (e.g. "£4,606") — return as-is
+  // Already formatted (e.g. "$40,000") — return as-is
   return String(prize).trim();
 }
 
@@ -254,6 +282,355 @@ function formatDistance(distanceF, distanceRaw) {
   return `${miles} Mile${miles > 1 ? "s" : ""} ${rem} Furlongs`;
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// FREE SOURCE: ENTRIES (GitHub Pages static JSON)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fetches the static entries JSON file from GitHub Pages and transforms it
+ * into the normalised /api/entries response shape.
+ *
+ * Static file URL: https://jhwiv.github.io/ne-racing/data/entries-{TRACK}-{DATE}.json
+ *
+ * Input schema (static file):
+ *   { track, date, races: [{ race_number, post_time, purse, race_type,
+ *     conditions, distance, surface, entries: [{ pp, name, jockey, trainer,
+ *     weight, scratched }] }] }
+ *
+ * Output schema (normalised):
+ *   { track, date, venue, lastUpdated, races: [{ raceNumber, postTime,
+ *     raceType, raceClass, distance, surface, going, purse,
+ *     entries: [{ pp, horseName, ml, jockey, trainer, status }] }] }
+ *
+ * @param {string} track — Equibase track code (e.g. "AQU")
+ * @param {string} date  — YYYY-MM-DD
+ * @param {string} venue — Human-readable venue name (e.g. "Aqueduct")
+ */
+async function fetchFreeEntries(track, date, venue) {
+  const fileUrl = `${STATIC_ENTRIES_BASE}/entries-${track}-${date}.json`;
+
+  const res = await fetch(fileUrl, {
+    headers: {
+      Accept: "application/json",
+      // GitHub Pages serves static files; no auth needed
+    },
+    // Bypass Cloudflare's own cache for this outbound fetch so we control TTL
+    cf: { cacheTtl: CACHE_TTL.entries },
+  });
+
+  if (res.status === 404) {
+    throw new NotFoundError(
+      `No entries file found for ${track} on ${date}. ` +
+      `Entries are updated daily on race days.`
+    );
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch static entries from GitHub Pages: ` +
+      `${res.status} ${res.statusText} for ${fileUrl}`
+    );
+  }
+
+  const data = await res.json();
+  return transformStaticEntries(data, track, venue, date);
+}
+
+/**
+ * Transforms a static entries JSON object into the normalised shape.
+ *
+ * @param {object} data  — Parsed static JSON (entries-{TRACK}-{DATE}.json)
+ * @param {string} track — Equibase track code
+ * @param {string} venue — Human-readable venue name
+ * @param {string} date  — YYYY-MM-DD
+ */
+function transformStaticEntries(data, track, venue, date) {
+  const races = (data.races || []).map((race) => {
+    const entries = (race.entries || []).map((entry) => ({
+      pp:        entry.pp,
+      horseName: entry.name || "Unknown",
+      ml:        "N/A",   // Morning line not in static file; populated by Equibase/manual
+      jockey:    entry.jockey || "N/A",
+      trainer:   entry.trainer || "N/A",
+      // Honour the scratched flag in the static file
+      status: entry.scratched ? "SCRATCHED" : "RUNNER",
+    }));
+
+    return {
+      raceNumber: race.race_number,
+      postTime:   race.post_time || "N/A",
+      raceType:   race.race_type || "N/A",
+      raceClass:  null,                    // not in static schema
+      distance:   race.distance || "N/A",
+      surface:    race.surface || "N/A",
+      going:      null,                    // not in static schema
+      purse:      formatPurse(race.purse),
+      conditions: race.conditions || null, // extra field; harmless to include
+      entries,
+    };
+  });
+
+  return {
+    track,
+    date:        data.date || date,
+    venue,
+    lastUpdated: new Date().toISOString(),
+    source:      "github-pages-static",
+    races,
+  };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// FREE SOURCE: SCRATCHES (Equibase XML late-changes feed)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fetches the Equibase late-changes XML feed and extracts scratches for the
+ * requested track and date.
+ *
+ * The feed URL has no required parameters — it returns the current day's
+ * scratch list for all tracks.  We filter to the requested track.
+ *
+ * NOTE: Equibase requires a browser-like User-Agent header; without it the
+ * feed returns an empty or error response.
+ *
+ * XML structure (simplified):
+ *   <late_changes>
+ *     <race_date>04/16/2026</race_date>
+ *     <track track_name="AQUEDUCT" id="AQU" country="USA">
+ *       <race race_number="3">
+ *         <start_changes>
+ *           <horse horse_name="Bold Runner" program_number="5">
+ *             <change>
+ *               <change_description>Scratched</change_description>
+ *               <date_changed>2026-04-16 09:30:00.0</date_changed>
+ *             </change>
+ *           </horse>
+ *         </start_changes>
+ *       </race>
+ *     </track>
+ *   </late_changes>
+ *
+ * @param {string} track — Equibase track code (e.g. "AQU")
+ * @param {string} date  — YYYY-MM-DD  (used to validate feed date)
+ * @param {string} venue — Human-readable venue name
+ */
+async function fetchFreeScratches(track, date, venue) {
+  const res = await fetch(EQUIBASE_SCRATCHES_URL, {
+    headers: {
+      // Equibase requires a real-ish User-Agent to return data
+      "User-Agent": "Mozilla/5.0 (compatible; RacingCompanion/1.0)",
+      Accept: "text/xml, application/xml, */*",
+    },
+    cf: { cacheTtl: CACHE_TTL.scratches },
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Equibase scratches feed returned ${res.status} ${res.statusText}`
+    );
+  }
+
+  const xml = await res.text();
+  return parseEquibaseScratches(xml, track, date, venue);
+}
+
+/**
+ * Parses the Equibase late-changes XML using regex.
+ *
+ * Cloudflare Workers don't include DOMParser, so we use regex against the
+ * well-known flat/predictable structure of the Equibase feed.
+ *
+ * Strategy:
+ *   1. Extract the <track id="AQU"> block for the requested track.
+ *   2. Within that block, iterate over <race race_number="N"> elements.
+ *   3. Within each race, iterate over <horse> elements.
+ *   4. For each horse, extract change_description and date_changed.
+ *
+ * @param {string} xml   — Raw XML text from Equibase
+ * @param {string} track — Equibase track code (e.g. "AQU")
+ * @param {string} date  — YYYY-MM-DD
+ * @param {string} venue — Human-readable venue name
+ */
+function parseEquibaseScratches(xml, track, date, venue) {
+  const scratches = [];
+
+  // ── 1. Find the <track> block matching our track code ────────────────────
+  // The id attribute may be lower or upper case; match case-insensitively.
+  // We look for: <track ... id="AQU" ...> ... </track>
+  const trackBlockRe = new RegExp(
+    `<track[^>]+id="${track}"[^>]*>([\\s\\S]*?)</track>`,
+    "i"
+  );
+  const trackMatch = xml.match(trackBlockRe);
+
+  if (!trackMatch) {
+    // Track not present in today's feed — no scratches
+    return {
+      track,
+      date,
+      venue,
+      lastUpdated: new Date().toISOString(),
+      source: "equibase-live",
+      feedDate: extractFeedDate(xml),
+      scratches: [],
+    };
+  }
+
+  const trackBlock = trackMatch[1];
+
+  // ── 2. Iterate over <race race_number="N"> blocks ────────────────────────
+  const raceBlockRe = /<race\s+race_number="(\d+)"[^>]*>([\s\S]*?)<\/race>/gi;
+  let raceMatch;
+
+  while ((raceMatch = raceBlockRe.exec(trackBlock)) !== null) {
+    const raceNumber = parseInt(raceMatch[1], 10);
+    const raceBlock  = raceMatch[2];
+
+    // ── 3. Iterate over <horse> elements in this race ─────────────────────
+    const horseRe = /<horse\s+horse_name="([^"]*)"(?:\s+program_number="([^"]*)")?[^>]*>([\s\S]*?)<\/horse>/gi;
+    let horseMatch;
+
+    while ((horseMatch = horseRe.exec(raceBlock)) !== null) {
+      const horseName     = unescapeXml(horseMatch[1]);
+      const programNumber = horseMatch[2] ? parseInt(horseMatch[2], 10) : null;
+      const horseBlock    = horseMatch[3];
+
+      // ── 4. Extract change details from each <change> block ───────────────
+      // A horse may have multiple changes; we capture all of them.
+      const changeRe = /<change>([\s\S]*?)<\/change>/gi;
+      let changeMatch;
+
+      while ((changeMatch = changeRe.exec(horseBlock)) !== null) {
+        const changeBlock = changeMatch[1];
+
+        const descMatch = changeBlock.match(
+          /<change_description>([^<]*)<\/change_description>/i
+        );
+        const dateMatch = changeBlock.match(
+          /<date_changed>([^<]*)<\/date_changed>/i
+        );
+
+        const description = descMatch ? unescapeXml(descMatch[1].trim()) : "Change";
+        const changedAt   = dateMatch ? dateMatch[1].trim() : new Date().toISOString();
+
+        // Normalise the Equibase timestamp "2026-04-16 09:30:00.0" → ISO
+        const timestamp = normaliseEquibaseTimestamp(changedAt);
+
+        scratches.push({
+          raceNumber,
+          pp:        programNumber,
+          horseName,
+          reason:    description,
+          timestamp,
+        });
+      }
+    }
+  }
+
+  return {
+    track,
+    date,
+    venue,
+    lastUpdated: new Date().toISOString(),
+    source:      "equibase-live",
+    feedDate:    extractFeedDate(xml),
+    scratches,
+  };
+}
+
+/**
+ * Extracts the <race_date> value from the Equibase XML.
+ * Returns the raw string (e.g. "04/16/2026") or null if not found.
+ */
+function extractFeedDate(xml) {
+  const m = xml.match(/<race_date>([^<]*)<\/race_date>/i);
+  return m ? m[1].trim() : null;
+}
+
+/**
+ * Converts "2026-04-16 09:30:00.0" → "2026-04-16T09:30:00.000Z"
+ * Falls back to the original string if it can't be parsed.
+ */
+function normaliseEquibaseTimestamp(raw) {
+  if (!raw) return new Date().toISOString();
+  // Replace space separator and strip fractional seconds suffix
+  const cleaned = raw.replace(" ", "T").replace(/\.\d+$/, "") + "Z";
+  const d = new Date(cleaned);
+  return isNaN(d.getTime()) ? raw : d.toISOString();
+}
+
+/**
+ * Unescapes basic XML entities in attribute values / text content.
+ */
+function unescapeXml(str) {
+  if (!str) return str;
+  return str
+    .replace(/&amp;/g,  "&")
+    .replace(/&lt;/g,   "<")
+    .replace(/&gt;/g,   ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// FREE SOURCE: ODDS — not available; graceful stub
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Returns a graceful "unavailable" response for live odds in free mode.
+ * The frontend should detect source === "unavailable" and show an appropriate
+ * message in the UI.
+ *
+ * @param {string} track      — Equibase track code
+ * @param {string} date       — YYYY-MM-DD
+ * @param {string} venue      — Human-readable venue name
+ * @param {number} raceNumber — Race number (1-based)
+ */
+function buildFreeOddsResponse(track, date, venue, raceNumber) {
+  return {
+    track,
+    date,
+    venue,
+    raceNumber,
+    lastUpdated: new Date().toISOString(),
+    source:  "unavailable",
+    message: "Live odds require a The Racing API subscription. " +
+             "Configure DATA_SOURCE=theracingapi and set API_KEY in Settings.",
+    odds: [],
+  };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// FREE SOURCE: RESULTS — not available; graceful stub
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Returns a graceful "unavailable" response for results in free mode.
+ *
+ * @param {string} track — Equibase track code
+ * @param {string} date  — YYYY-MM-DD
+ * @param {string} venue — Human-readable venue name
+ */
+function buildFreeResultsResponse(track, date, venue) {
+  return {
+    track,
+    date,
+    venue,
+    lastUpdated: new Date().toISOString(),
+    source:  "unavailable",
+    message: "Race results require a The Racing API subscription. " +
+             "Configure DATA_SOURCE=theracingapi and set API_KEY in Settings.",
+    races: [],
+  };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// THE RACING API: Normalisation helpers
+// ═════════════════════════════════════════════════════════════════════════════
+// These functions are used when DATA_SOURCE=theracingapi. They are kept
+// intact from the original worker so it's easy to switch back.
+
 // ─── Normalisation: racecards → entries response ──────────────────────────────
 /**
  * Filters a list of racecards to those matching the requested venue, then
@@ -268,13 +645,11 @@ function formatDistance(distanceF, distanceRaw) {
  * @param {string}   date        — YYYY-MM-DD
  */
 function normaliseEntries(racecards, track, venue, date) {
-  // Filter to the requested venue (case-insensitive partial match for safety)
   const venueLC = venue.toLowerCase();
   const matching = racecards.filter(
     (rc) => rc.course && rc.course.toLowerCase().includes(venueLC)
   );
 
-  // Sort by post time / race number
   matching.sort((a, b) => {
     const tA = a.off_dt || a.off_time || "";
     const tB = b.off_dt || b.off_time || "";
@@ -288,21 +663,20 @@ function normaliseEntries(racecards, track, venue, date) {
       ml: bestFractional(r.odds) || (r.sp ? String(r.sp).replace("/", "-") : "N/A"),
       jockey: r.jockey || "N/A",
       trainer: r.trainer || "N/A",
-      // Mark scratched runners: The Racing API uses `scratched` flag or non_runners text
       status: r.scratched ? "SCRATCHED" : "RUNNER",
     }));
 
     return {
       raceNumber: idx + 1,
-      raceId: rc.race_id || null,
-      postTime: formatPostTime(rc.off_dt, rc.off_time),
-      raceType: rc.race_name || rc.type || "N/A",
-      raceClass: rc.race_class || null,
-      distance: formatDistance(rc.distance_f, rc.distance),
-      surface: rc.surface || "N/A",
-      going: rc.going || null,
-      purse: formatPurse(rc.prize),
-      entries: runners,
+      raceId:     rc.race_id || null,
+      postTime:   formatPostTime(rc.off_dt, rc.off_time),
+      raceType:   rc.race_name || rc.type || "N/A",
+      raceClass:  rc.race_class || null,
+      distance:   formatDistance(rc.distance_f, rc.distance),
+      surface:    rc.surface || "N/A",
+      going:      rc.going || null,
+      purse:      formatPurse(rc.prize),
+      entries:    runners,
     };
   });
 
@@ -311,6 +685,7 @@ function normaliseEntries(racecards, track, venue, date) {
     date,
     venue,
     lastUpdated: new Date().toISOString(),
+    source: "theracingapi",
     races,
   };
 }
@@ -347,9 +722,9 @@ function normaliseScratches(racecards, track, venue, date) {
       if (r.scratched) {
         scratches.push({
           raceNumber,
-          pp: parseInt(r.number || r.draw || 0, 10),
+          pp:        parseInt(r.number || r.draw || 0, 10),
           horseName: r.horse || "Unknown",
-          reason: r.scratched_reason || "Scratched",
+          reason:    r.scratched_reason || "Scratched",
           timestamp: r.scratched_at || new Date().toISOString(),
         });
       }
@@ -362,13 +737,12 @@ function normaliseScratches(racecards, track, venue, date) {
         .map((s) => s.trim())
         .filter(Boolean);
       parts.forEach((entry) => {
-        // Extract reason from parentheses, e.g. "Bold Ruler (Veterinarian)"
         const match = entry.match(/^(.+?)\s*(?:\((.+?)\))?$/);
         const horseName = match ? match[1].trim() : entry;
-        const reason = match && match[2] ? match[2].trim() : "Non-Runner";
+        const reason    = match && match[2] ? match[2].trim() : "Non-Runner";
         scratches.push({
           raceNumber,
-          pp: null,           // pp not always available from non_runners string
+          pp:        null,
           horseName,
           reason,
           timestamp: new Date().toISOString(),
@@ -382,6 +756,7 @@ function normaliseScratches(racecards, track, venue, date) {
     date,
     venue,
     lastUpdated: new Date().toISOString(),
+    source: "theracingapi",
     scratches,
   };
 }
@@ -389,9 +764,7 @@ function normaliseScratches(racecards, track, venue, date) {
 // ─── Normalisation: racecard race → odds response ────────────────────────────
 /**
  * Builds the /api/odds response for a specific race number.
- * We pull odds directly from the racecard runners' `odds` arrays since
- * the dedicated odds endpoint requires per-horse IDs which we'd need a
- * second round-trip to resolve.
+ * Odds are embedded in the standard racecard runners' `odds` arrays.
  */
 function normaliseOdds(racecards, track, venue, date, raceNumber) {
   const venueLC = venue.toLowerCase();
@@ -415,34 +788,28 @@ function normaliseOdds(racecards, track, venue, date, raceNumber) {
       venue,
       raceNumber,
       lastUpdated: new Date().toISOString(),
-      odds: [],
+      odds:  [],
       error: `Race ${raceNumber} not found at ${venue} on ${date}`,
     };
   }
 
   const odds = (rc.runners || []).map((r) => {
-    // `odds` is an array of { bookmaker, fractional, decimal, updated }
-    // We pick the first available odds entry for a single "live" figure,
-    // and expose the full set for clients that want multi-book data.
-    const liveOdds = bestFractional(r.odds) || (r.sp ? String(r.sp).replace("/", "-") : "N/A");
-
-    // `pool` is not directly available from the standard racecard; we surface
-    // the decimal odds as a proxy for relative market confidence.
-    const firstOdds = r.odds && r.odds[0];
-    const pool = firstOdds && firstOdds.decimal
+    const liveOdds   = bestFractional(r.odds) || (r.sp ? String(r.sp).replace("/", "-") : "N/A");
+    const firstOdds  = r.odds && r.odds[0];
+    const pool       = firstOdds && firstOdds.decimal
       ? Math.round(10000 / parseFloat(firstOdds.decimal))
       : null;
 
     return {
-      pp: parseInt(r.number || r.draw || 0, 10),
+      pp:        parseInt(r.number || r.draw || 0, 10),
       horseName: r.horse || "Unknown",
       liveOdds,
       pool,
-      allOdds: (r.odds || []).map((o) => ({
+      allOdds:   (r.odds || []).map((o) => ({
         bookmaker: o.bookmaker,
         fractional: o.fractional ? String(o.fractional).replace("/", "-") : null,
-        decimal: o.decimal ? parseFloat(o.decimal) : null,
-        updated: o.updated || null,
+        decimal:    o.decimal ? parseFloat(o.decimal) : null,
+        updated:    o.updated || null,
       })),
     };
   });
@@ -453,6 +820,7 @@ function normaliseOdds(racecards, track, venue, date, raceNumber) {
     venue,
     raceNumber,
     lastUpdated: new Date().toISOString(),
+    source: "theracingapi",
     odds,
   };
 }
@@ -460,16 +828,9 @@ function normaliseOdds(racecards, track, venue, date, raceNumber) {
 // ─── Normalisation: results → results response ───────────────────────────────
 /**
  * Converts upstream results into the /api/results shape.
- *
- * Payout fields from The Racing API:
- *   tote_win, tote_pl (space-separated place payouts), tote_ex (exacta),
- *   tote_trifecta, tote_tricast, tote_csf
- *
- * We parse these into floats where possible.
  */
 function parsePayoutAmount(raw) {
   if (!raw) return null;
-  // Strip currency symbols and parse the first number found
   const stripped = String(raw).replace(/[£€$,]/g, "").trim();
   const num = parseFloat(stripped);
   return isNaN(num) ? null : num;
@@ -477,7 +838,6 @@ function parsePayoutAmount(raw) {
 
 /**
  * `tote_pl` is a space-separated string like "€2.30 €5.80 €4.20"
- * (win place show for each finishing position).
  * We return the first value as `place` and second as `show`.
  */
 function parsePlacePayouts(totePl) {
@@ -488,7 +848,7 @@ function parsePlacePayouts(totePl) {
     .filter((n) => n !== null);
   return {
     place: parts[0] ?? null,
-    show: parts[1] ?? null,
+    show:  parts[1] ?? null,
   };
 }
 
@@ -505,7 +865,6 @@ function normaliseResults(results, track, venue, date) {
   });
 
   const races = matching.map((rc, idx) => {
-    // Sort runners by finishing position
     const runners = (rc.runners || []).slice().sort((a, b) => {
       const posA = parseInt(a.position, 10) || 9999;
       const posB = parseInt(b.position, 10) || 9999;
@@ -513,24 +872,23 @@ function normaliseResults(results, track, venue, date) {
     });
 
     const finishOrder = runners.map((r) => ({
-      position: parseInt(r.position, 10) || null,
-      pp: parseInt(r.number || r.draw || 0, 10),
+      position:  parseInt(r.position, 10) || null,
+      pp:        parseInt(r.number || r.draw || 0, 10),
       horseName: r.horse || "Unknown",
-      jockey: r.jockey || "N/A",
-      trainer: r.trainer || "N/A",
-      // `sp` is the starting price (fractional), `bsp` is Betfair SP (decimal)
-      liveOdds: r.sp ? String(r.sp).replace("/", "-") : decimalToFractional(r.bsp),
-      btn: r.btn || null,       // beaten lengths
-      comment: r.comment || null,
+      jockey:    r.jockey || "N/A",
+      trainer:   r.trainer || "N/A",
+      liveOdds:  r.sp ? String(r.sp).replace("/", "-") : decimalToFractional(r.bsp),
+      btn:       r.btn || null,
+      comment:   r.comment || null,
     }));
 
     const { place, show } = parsePlacePayouts(rc.tote_pl);
 
     return {
       raceNumber: idx + 1,
-      raceId: rc.race_id || null,
-      raceName: rc.race_name || null,
-      official: !!rc.winning_time_detail, // a proxy: if time is recorded, race is official
+      raceId:     rc.race_id || null,
+      raceName:   rc.race_name || null,
+      official:   !!rc.winning_time_detail,
       finishOrder,
       payouts: {
         win:      parsePayoutAmount(rc.tote_win),
@@ -550,61 +908,108 @@ function normaliseResults(results, track, venue, date) {
     date,
     venue,
     lastUpdated: new Date().toISOString(),
+    source: "theracingapi",
     races,
   };
 }
 
-// ─── Route handlers ───────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// Custom error class for 404 / "file not found" situations
+// ═════════════════════════════════════════════════════════════════════════════
+class NotFoundError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Route handlers
+// ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * GET /api/entries?track=AQU&date=2026-04-14
+ * Determines whether to use the free source stack or The Racing API.
+ * Returns true when DATA_SOURCE === "theracingapi" AND API_KEY is set.
  *
- * Fetches the full card (all races, all horses) from the racecards endpoint,
- * filters to the requested track, and returns the normalised entries shape.
+ * @param {object} env — Worker env bindings
+ */
+function usePaidSource(env) {
+  return (
+    (env.DATA_SOURCE || "").toLowerCase() === "theracingapi" &&
+    !!env.API_KEY
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/entries?track=AQU&date=2026-04-16
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Free mode:  Fetches static JSON from GitHub Pages and transforms it.
+ * Paid mode:  Fetches from The Racing API /racecards/standard endpoint.
+ *
+ * The response shape is identical in both modes.
  */
 async function handleEntries(request, env, origin) {
   const { searchParams } = new URL(request.url);
-  const track = (searchParams.get("track") || env.DEFAULT_TRACK || "SAR").toUpperCase();
+  const track = (searchParams.get("track") || env.DEFAULT_TRACK || "AQU").toUpperCase();
   const date  = searchParams.get("date") || new Date().toISOString().slice(0, 10);
   const venue = TRACK_TO_VENUE[track];
 
   if (!venue) {
-    return jsonError(`Unknown track code: ${track}. Supported: ${Object.keys(TRACK_TO_VENUE).join(", ")}`, 400, origin);
+    return jsonError(
+      `Unknown track code: ${track}. Supported: ${Object.keys(TRACK_TO_VENUE).join(", ")}`,
+      400,
+      origin
+    );
   }
 
-  // Build a deterministic cache key
   const cacheKey = new Request(`https://ne-racing-cache/entries/${track}/${date}`);
-
   const cached = await readCache(cacheKey);
   if (cached) return cached;
 
   try {
-    // /racecards/standard includes odds; /racecards/basic does not.
-    // We use /standard for richest data (requires Standard plan or higher).
-    const data = await fetchUpstream(
-      `/racecards/standard?date=${date}&region=USA`,
-      env.API_KEY
-    );
+    let body;
 
-    const body = normaliseEntries(data.racecards || [], track, venue, date);
+    if (usePaidSource(env)) {
+      // ── The Racing API path ───────────────────────────────────────────────
+      const data = await fetchUpstream(
+        `/racecards/standard?date=${date}&region=USA`,
+        env.API_KEY
+      );
+      body = normaliseEntries(data.racecards || [], track, venue, date);
+    } else {
+      // ── Free / GitHub Pages path ──────────────────────────────────────────
+      body = await fetchFreeEntries(track, date, venue);
+    }
+
     const response = jsonOk(body, origin, CACHE_TTL.entries);
     await writeCache(cacheKey, response);
     return response;
+
   } catch (err) {
+    if (err instanceof NotFoundError) {
+      return jsonError(err.message, 404, origin);
+    }
     return jsonError(`Entries fetch failed: ${err.message}`, 503, origin);
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/scratches?track=AQU&date=2026-04-16
+// ─────────────────────────────────────────────────────────────────────────────
 /**
- * GET /api/scratches?track=AQU&date=2026-04-14
+ * Free mode:  Fetches and parses the Equibase late-changes XML feed.
+ * Paid mode:  Derives scratches from The Racing API racecard data.
  *
- * Derives scratches from the same racecards endpoint.
- * The Racing API embeds non-runner information in the racecard payload;
- * there is no separate scratches-only endpoint.
+ * The response shape is identical in both modes.
+ *
+ * Note: The Equibase feed only contains the *current* day's changes.
+ * Requesting scratches for a past date in free mode will likely return an
+ * empty list (the feed has rolled over to the current day).
  */
 async function handleScratches(request, env, origin) {
   const { searchParams } = new URL(request.url);
-  const track = (searchParams.get("track") || env.DEFAULT_TRACK || "SAR").toUpperCase();
+  const track = (searchParams.get("track") || env.DEFAULT_TRACK || "AQU").toUpperCase();
   const date  = searchParams.get("date") || new Date().toISOString().slice(0, 10);
   const venue = TRACK_TO_VENUE[track];
 
@@ -612,36 +1017,47 @@ async function handleScratches(request, env, origin) {
     return jsonError(`Unknown track code: ${track}`, 400, origin);
   }
 
+  // Scratches are live — use a short-lived cache key
   const cacheKey = new Request(`https://ne-racing-cache/scratches/${track}/${date}`);
   const cached = await readCache(cacheKey);
   if (cached) return cached;
 
   try {
-    const data = await fetchUpstream(
-      `/racecards/standard?date=${date}&region=USA`,
-      env.API_KEY
-    );
+    let body;
 
-    const body = normaliseScratches(data.racecards || [], track, venue, date);
+    if (usePaidSource(env)) {
+      // ── The Racing API path ───────────────────────────────────────────────
+      const data = await fetchUpstream(
+        `/racecards/standard?date=${date}&region=USA`,
+        env.API_KEY
+      );
+      body = normaliseScratches(data.racecards || [], track, venue, date);
+    } else {
+      // ── Free / Equibase XML path ──────────────────────────────────────────
+      body = await fetchFreeScratches(track, date, venue);
+    }
+
     const response = jsonOk(body, origin, CACHE_TTL.scratches);
     await writeCache(cacheKey, response);
     return response;
+
   } catch (err) {
     return jsonError(`Scratches fetch failed: ${err.message}`, 503, origin);
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/odds?track=AQU&date=2026-04-16&race=5
+// ─────────────────────────────────────────────────────────────────────────────
 /**
- * GET /api/odds?track=AQU&date=2026-04-14&race=5
+ * Free mode:  Returns a graceful "unavailable" response.
+ * Paid mode:  Fetches odds from The Racing API racecard data.
  *
- * Returns live tote/bookmaker odds for a specific race.
- * Odds are embedded in the standard racecard runners; we extract them here.
- *
- * The `race` query parameter is 1-based (race 1, race 2, …).
+ * The `race` parameter is 1-based (race 1, race 2, …).
  */
 async function handleOdds(request, env, origin) {
   const { searchParams } = new URL(request.url);
-  const track      = (searchParams.get("track") || env.DEFAULT_TRACK || "SAR").toUpperCase();
+  const track      = (searchParams.get("track") || env.DEFAULT_TRACK || "AQU").toUpperCase();
   const date       = searchParams.get("date") || new Date().toISOString().slice(0, 10);
   const raceNumber = parseInt(searchParams.get("race") || "1", 10);
   const venue      = TRACK_TO_VENUE[track];
@@ -653,6 +1069,13 @@ async function handleOdds(request, env, origin) {
     return jsonError("Invalid race number. Must be a positive integer.", 400, origin);
   }
 
+  // Free mode: return the stub immediately; no caching needed for a static stub
+  if (!usePaidSource(env)) {
+    const body = buildFreeOddsResponse(track, date, venue, raceNumber);
+    return jsonOk(body, origin, 0);
+  }
+
+  // Paid mode: fetch from The Racing API
   const cacheKey = new Request(`https://ne-racing-cache/odds/${track}/${date}/${raceNumber}`);
   const cached = await readCache(cacheKey);
   if (cached) return cached;
@@ -662,25 +1085,26 @@ async function handleOdds(request, env, origin) {
       `/racecards/standard?date=${date}&region=USA`,
       env.API_KEY
     );
-
     const body = normaliseOdds(data.racecards || [], track, venue, date, raceNumber);
     const response = jsonOk(body, origin, CACHE_TTL.odds);
     await writeCache(cacheKey, response);
     return response;
+
   } catch (err) {
     return jsonError(`Odds fetch failed: ${err.message}`, 503, origin);
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/results?track=AQU&date=2026-04-16
+// ─────────────────────────────────────────────────────────────────────────────
 /**
- * GET /api/results?track=AQU&date=2026-04-14
- *
- * Returns results and payouts for all completed races at the track.
- * Uses the /results endpoint (requires Standard plan or higher).
+ * Free mode:  Returns a graceful "unavailable" response.
+ * Paid mode:  Fetches results from The Racing API /results endpoint.
  */
 async function handleResults(request, env, origin) {
   const { searchParams } = new URL(request.url);
-  const track = (searchParams.get("track") || env.DEFAULT_TRACK || "SAR").toUpperCase();
+  const track = (searchParams.get("track") || env.DEFAULT_TRACK || "AQU").toUpperCase();
   const date  = searchParams.get("date") || new Date().toISOString().slice(0, 10);
   const venue = TRACK_TO_VENUE[track];
 
@@ -688,43 +1112,56 @@ async function handleResults(request, env, origin) {
     return jsonError(`Unknown track code: ${track}`, 400, origin);
   }
 
+  // Free mode: return the stub immediately
+  if (!usePaidSource(env)) {
+    const body = buildFreeResultsResponse(track, date, venue);
+    return jsonOk(body, origin, 0);
+  }
+
+  // Paid mode: fetch from The Racing API
   const cacheKey = new Request(`https://ne-racing-cache/results/${track}/${date}`);
   const cached = await readCache(cacheKey);
   if (cached) return cached;
 
   try {
-    // The results endpoint accepts start_date / end_date query params.
-    // We query a single day by setting both to the same date.
+    // The results endpoint accepts start_date / end_date.
+    // Query a single day by setting both to the same date.
     const data = await fetchUpstream(
       `/results?start_date=${date}&end_date=${date}&region=USA`,
       env.API_KEY
     );
-
     const body = normaliseResults(data.results || [], track, venue, date);
     const response = jsonOk(body, origin, CACHE_TTL.results);
     await writeCache(cacheKey, response);
     return response;
+
   } catch (err) {
     return jsonError(`Results fetch failed: ${err.message}`, 503, origin);
   }
 }
 
-// ─── Main fetch handler ───────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// Main fetch handler (Worker entry point)
+// ═════════════════════════════════════════════════════════════════════════════
 export default {
   /**
-   * The Cloudflare Worker entry point.
+   * Cloudflare Worker entry point.
    *
    * Environment variables (set via wrangler.toml [vars] or `wrangler secret put`):
-   *   API_KEY        — The Racing API Bearer token (secret)
-   *   DATA_SOURCE    — "theracingapi" (reserved for future source switching)
-   *   DEFAULT_TRACK  — Fallback track code when ?track= is omitted (default: "SAR")
+   *   DATA_SOURCE    — "free" (default) | "theracingapi"
+   *   API_KEY        — The Racing API Bearer token (secret; only needed for theracingapi)
+   *   DEFAULT_TRACK  — Fallback track code when ?track= is omitted (default: "AQU")
    *   ALLOWED_ORIGIN — Value for Access-Control-Allow-Origin (default: "*")
+   *
+   * Switching sources:
+   *   Free (GitHub Pages + Equibase):  DATA_SOURCE=free  (or unset)
+   *   The Racing API (paid):           DATA_SOURCE=theracingapi  +  API_KEY=<token>
    */
   async fetch(request, env, ctx) {
     const origin = env.ALLOWED_ORIGIN || "*";
     const url    = new URL(request.url);
 
-    // ── CORS preflight ──────────────────────────────────────────────────────
+    // ── CORS preflight ────────────────────────────────────────────────────
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -732,21 +1169,24 @@ export default {
       });
     }
 
-    // ── Only GET is supported for data endpoints ────────────────────────────
+    // ── Only GET is supported for data endpoints ──────────────────────────
     if (request.method !== "GET") {
       return jsonError("Method not allowed. Use GET.", 405, origin);
     }
 
-    // ── Guard: API key must be present ──────────────────────────────────────
-    if (!env.API_KEY) {
+    // ── Guard: require API_KEY only when DATA_SOURCE=theracingapi ─────────
+    const dataSource = (env.DATA_SOURCE || "free").toLowerCase();
+    if (dataSource === "theracingapi" && !env.API_KEY) {
       return jsonError(
-        "Worker misconfiguration: API_KEY environment variable is not set.",
+        "Worker misconfiguration: DATA_SOURCE is set to 'theracingapi' " +
+        "but API_KEY environment variable is not set. " +
+        "Either set API_KEY (wrangler secret put API_KEY) or set DATA_SOURCE=free.",
         500,
         origin
       );
     }
 
-    // ── Route dispatch ──────────────────────────────────────────────────────
+    // ── Route dispatch ────────────────────────────────────────────────────
     const { pathname } = url;
 
     switch (pathname) {
@@ -762,15 +1202,23 @@ export default {
       case "/api/results":
         return handleResults(request, env, origin);
 
-      // ── Health check / root ─────────────────────────────────────────────
+      // ── Health check / root ───────────────────────────────────────────
       case "/":
       case "/health":
         return jsonOk(
           {
-            service: "ne-racing-proxy",
-            status: "ok",
-            source: env.DATA_SOURCE || "theracingapi",
-            defaultTrack: env.DEFAULT_TRACK || "SAR",
+            service:      "ne-racing-proxy",
+            status:       "ok",
+            dataSource,
+            activeSources: {
+              entries:  dataSource === "theracingapi" ? "theracingapi"   : "github-pages-static",
+              scratches: dataSource === "theracingapi" ? "theracingapi"  : "equibase-live",
+              odds:     dataSource === "theracingapi" ? "theracingapi"   : "unavailable",
+              results:  dataSource === "theracingapi" ? "theracingapi"   : "unavailable",
+            },
+            defaultTrack: env.DEFAULT_TRACK || "AQU",
+            staticEntriesPattern: `${STATIC_ENTRIES_BASE}/entries-{TRACK}-{DATE}.json`,
+            scratchesFeed:        EQUIBASE_SCRATCHES_URL,
             endpoints: [
               "/api/entries?track=AQU&date=YYYY-MM-DD",
               "/api/scratches?track=AQU&date=YYYY-MM-DD",

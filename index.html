@@ -3730,15 +3730,33 @@ function confirmReset() {
 /* =============================================================
    LIVE DATA POLLING
    ============================================================= */
-function startLivePolling() {
+const STATIC_ENTRIES_BASE = 'https://jhwiv.github.io/ne-racing/data';
+
+function getEntriesUrl(code, date) {
   const store = getStore();
   const workerUrl = store && store.settings.workerUrl;
-  if (!workerUrl) { showLiveUnavailable(); return; }
+  if (workerUrl) return `${workerUrl}/api/entries?track=${code}&date=${date}`;
+  // Fallback: static JSON from GitHub Pages
+  return `${STATIC_ENTRIES_BASE}/entries-${code}-${date}.json`;
+}
 
+function getScratchesUrl(code, date) {
+  const store = getStore();
+  const workerUrl = store && store.settings.workerUrl;
+  if (workerUrl) return `${workerUrl}/api/scratches?track=${code}&date=${date}`;
+  return null; // No free scratches without Worker (CORS blocks Equibase from browser)
+}
+
+function startLivePolling() {
   stopLivePolling();
   fetchLiveEntries();
-  livePollingInterval = setInterval(fetchLiveEntries, 3 * 60 * 1000);
-  scratchPollingInterval = setInterval(fetchLiveScratches, 60 * 1000);
+  livePollingInterval = setInterval(fetchLiveEntries, 5 * 60 * 1000);
+  // Scratches only if Worker URL is configured
+  const store = getStore();
+  if (store && store.settings.workerUrl) {
+    scratchPollingInterval = setInterval(fetchLiveScratches, 60 * 1000);
+    fetchLiveScratches();
+  }
 }
 
 function stopLivePolling() {
@@ -3751,62 +3769,125 @@ function showLiveUnavailable() {
   if (banner) banner.classList.remove('hidden');
 }
 
+function hideLiveUnavailable() {
+  const banner = el('live-unavailable-banner');
+  if (banner) banner.classList.add('hidden');
+}
+
+/** Transform static JSON entries into the app's internal race format */
+function transformStaticEntries(json) {
+  if (!json || !json.races) return [];
+  return json.races.map(r => ({
+    id: generateId(),
+    num: r.race_number,
+    postTime: r.post_time || 'TBD',
+    type: r.race_type || 'N/A',
+    conditions: r.conditions || '',
+    distance: r.distance || 'N/A',
+    surface: r.surface || 'N/A',
+    purse: r.purse || 'N/A',
+    horses: (r.entries || []).map(e => ({
+      pp: e.pp,
+      name: e.name || e.horseName || 'Unknown',
+      jockey: e.jockey || 'N/A',
+      trainer: e.trainer || 'N/A',
+      weight: e.weight || '',
+      ml: e.ml || 'N/A',
+      liveOdds: null,
+      scratched: e.scratched || false,
+      speed: '', classRating: '', pace: '', tjPct: ''
+    })),
+    updated: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+  }));
+}
+
+/** Transform Worker API entries (normalised format) into the app's internal race format */
+function transformWorkerEntries(json) {
+  if (!json || !json.races) return [];
+  return json.races.map(r => ({
+    id: generateId(),
+    num: r.raceNumber,
+    postTime: r.postTime || 'TBD',
+    type: r.raceType || 'N/A',
+    conditions: r.raceClass || '',
+    distance: r.distance || 'N/A',
+    surface: r.surface || 'N/A',
+    purse: r.purse || 'N/A',
+    horses: (r.entries || []).map(e => ({
+      pp: e.pp,
+      name: e.horseName || 'Unknown',
+      jockey: e.jockey || 'N/A',
+      trainer: e.trainer || 'N/A',
+      weight: '',
+      ml: e.ml || 'N/A',
+      liveOdds: e.liveOdds || null,
+      scratched: e.status === 'SCRATCHED',
+      speed: '', classRating: '', pace: '', tjPct: ''
+    })),
+    updated: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+  }));
+}
+
 async function fetchLiveEntries() {
-  const store = getStore();
-  const workerUrl = store && store.settings.workerUrl;
-  if (!workerUrl) { showLiveUnavailable(); return; }
   const code = getActiveTrack();
   const today = getTodayStr();
+  const url = getEntriesUrl(code, today);
   try {
-    const res = await fetch(`${workerUrl}/api/entries?track=${code}&date=${today}`);
+    const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const races = await res.json();
+    const json = await res.json();
+    // Determine source format and transform
+    const store = getStore();
+    const hasWorker = store && store.settings.workerUrl;
+    const races = hasWorker ? transformWorkerEntries(json) : transformStaticEntries(json);
+    if (!races.length) { showLiveUnavailable(); return; }
+    hideLiveUnavailable();
     const data = getTrackData();
-    // Merge API races — don't overwrite manual entries
-    if (Array.isArray(races)) {
-      races.forEach(apiRace => {
-        const existing = (data.races||[]).find(r => r.num === apiRace.num);
-        if (!existing) {
-          data.races = data.races || [];
-          data.races.push({ ...apiRace, id: generateId(), updated: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) });
-        } else {
-          // Merge live odds
-          if (apiRace.horses) {
-            apiRace.horses.forEach(apiH => {
-              const existingH = existing.horses && existing.horses.find(h => h.pp === apiH.pp || h.name === apiH.name);
-              if (existingH && apiH.liveOdds) existingH.liveOdds = apiH.liveOdds;
-            });
-          }
-          existing.updated = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    // Merge: don't overwrite if user has manual edits on same race
+    races.forEach(apiRace => {
+      const existing = (data.races||[]).find(r => r.num === apiRace.num);
+      if (!existing) {
+        data.races = data.races || [];
+        data.races.push(apiRace);
+      } else {
+        // Merge live odds if available
+        if (apiRace.horses) {
+          apiRace.horses.forEach(apiH => {
+            const existingH = existing.horses && existing.horses.find(h => h.pp === apiH.pp || h.name === apiH.name);
+            if (existingH && apiH.liveOdds) existingH.liveOdds = apiH.liveOdds;
+          });
         }
-      });
-      saveTrackData(data);
-      updateSyncTime();
-      renderTodayTab();
-    }
+        existing.updated = apiRace.updated;
+      }
+    });
+    saveTrackData(data);
+    updateSyncTime();
+    renderTodayTab();
   } catch(e) {
+    console.log('Entries fetch:', e.message);
     showLiveUnavailable();
-    stopLivePolling();
   }
 }
 
 async function fetchLiveScratches() {
-  const store = getStore();
-  const workerUrl = store && store.settings.workerUrl;
-  if (!workerUrl) return;
   const code = getActiveTrack();
   const today = getTodayStr();
+  const url = getScratchesUrl(code, today);
+  if (!url) return; // No scratches source available
   try {
-    const res = await fetch(`${workerUrl}/api/scratches?track=${code}&date=${today}`);
+    const res = await fetch(url);
     if (!res.ok) return;
-    const scratches = await res.json();
-    if (!Array.isArray(scratches)) return;
+    const json = await res.json();
+    const scratches = json.scratches || (Array.isArray(json) ? json : []);
+    if (!scratches.length) return;
     const data = getTrackData();
     let newScratches = 0;
     scratches.forEach(s => {
-      const race = (data.races||[]).find(r => r.num === s.raceNum);
+      const raceNum = s.raceNumber || s.raceNum;
+      const race = (data.races||[]).find(r => r.num === raceNum);
       if (!race) return;
-      const horse = (race.horses||[]).find(h => h.pp === s.pp || h.name === s.name);
+      const horseName = s.horseName || s.name;
+      const horse = (race.horses||[]).find(h => h.pp === s.pp || h.name === horseName);
       if (horse && !horse.scratched) {
         horse.scratched = true;
         const reason = s.reason ? ' (' + s.reason + ')' : '';
@@ -3822,7 +3903,7 @@ async function fetchLiveScratches() {
 async function fetchLiveResults() {
   const store = getStore();
   const workerUrl = store && store.settings.workerUrl;
-  if (!workerUrl) { showToast('Set a Worker URL in Settings to use live results', 'danger', 4000); return; }
+  if (!workerUrl) { showToast('Live results require a Worker URL (or The Racing API). Check Settings.', 'danger', 4000); return; }
   const code = getActiveTrack();
   const today = getTodayStr();
   try {
