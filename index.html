@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1B4332">
-<meta name="description" content="Northeast Racing Companion 2026 — Personal horse racing handicapping tool.">
-<title>NE Racing Companion 2026</title>
+<meta name="description" content="Saratoga Racing Companion 2026 — Personal horse racing handicapping tool for Saratoga Springs.">
+<title>Saratoga Racing Companion 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
@@ -340,6 +340,13 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 /* Track section headers in welcome */
 .track-section-header { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.45); margin: 0.75rem 0 0.35rem; padding: 0 0.25rem; }
+
+/* SAR / AQU two-button toggle */
+.sar-aqu-toggle { display: flex; gap: 0; border: 1.5px solid rgba(255,255,255,0.2); border-radius: var(--radius-md); overflow: hidden; }
+.sar-aqu-btn { flex: 1; padding: 0.6rem 0.75rem; font-size: 0.85rem; font-weight: 600; font-family: var(--font-mono); letter-spacing: 0.03em; color: rgba(255,255,255,0.6); cursor: pointer; background: transparent; transition: all 0.15s; text-align: center; border: none; }
+.sar-aqu-btn.selected { background: var(--color-gold); color: var(--color-white); }
+.sar-aqu-btn:hover:not(.selected) { background: rgba(255,255,255,0.08); }
+.sar-aqu-drawer { padding: 0.25rem 0; }
 
 /* =========================================================
    HEADER
@@ -808,7 +815,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   <div class="welcome-inner">
     <div class="welcome-logo">
       <!-- Horseshoe logo SVG -->
-      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Northeast Racing Companion">
+      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Saratoga Racing Companion">
         <circle cx="40" cy="40" r="38" fill="rgba(255,255,255,0.07)" stroke="rgba(201,168,76,0.4)" stroke-width="1.5"/>
         <path d="M20 52 C20 30 27 20 40 20 C53 20 60 30 60 52" stroke="#C9A84C" stroke-width="4" stroke-linecap="round" fill="none"/>
         <path d="M20 52 L20 56 Q20 60 24 60 L28 60 Q32 60 32 56 L32 52" fill="#C9A84C"/>
@@ -816,8 +823,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         <circle cx="40" cy="38" r="5" fill="rgba(201,168,76,0.3)" stroke="#C9A84C" stroke-width="1.5"/>
       </svg>
     </div>
-    <h1 class="welcome-title">Northeast Racing<br>Companion 2026</h1>
-    <p class="welcome-subtitle">Your personal handicapping &amp; bet tracking tool for NYRA and Northeast tracks</p>
+    <h1 class="welcome-title">Saratoga Racing<br>Companion 2026</h1>
+    <p class="welcome-subtitle">Your personal handicapping &amp; bet tracking tool for the summer meet at Saratoga Springs</p>
 
     <!-- Step 1: Bankroll -->
     <div class="welcome-step">
@@ -832,8 +839,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     <!-- Step 2: Track -->
     <div class="welcome-step">
       <div class="welcome-step-label">Step 2</div>
-      <h3>Select Your Primary Track</h3>
-      <div id="welcome-track-grid" class="track-grid"></div>
+      <h3>Select Track</h3>
+      <div class="sar-aqu-toggle">
+        <button class="sar-aqu-btn selected" id="welcome-sar-btn" onclick="selectWelcomeTrack('SAR', this)">SAR &mdash; Saratoga</button>
+        <button class="sar-aqu-btn" id="welcome-aqu-btn" onclick="selectWelcomeTrack('AQU', this)">AQU &mdash; Aqueduct</button>
+      </div>
+      <p style="font-size:0.72rem;color:rgba(255,255,255,0.45);margin-top:0.4rem">Aqueduct available for pre-season testing</p>
     </div>
 
     <!-- Step 3: Data Mode -->
@@ -859,12 +870,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   <!-- TOP HEADER -->
   <header id="top-header">
     <div class="header-logo">
-      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="NE Racing">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Saratoga Racing">
         <path d="M7 22 C7 11 11 7 16 7 C21 7 25 11 25 22" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" fill="none"/>
         <path d="M7 22 L7 24 Q7 26 9 26 L11 26 Q13 26 13 24 L13 22" fill="#C9A84C"/>
         <path d="M25 22 L25 24 Q25 26 23 26 L21 26 Q19 26 19 24 L19 22" fill="#C9A84C"/>
       </svg>
-      <span class="header-logo-text">NE Racing 2026</span>
+      <span class="header-logo-text">Saratoga 2026</span>
     </div>
 
     <!-- Desktop nav -->
@@ -894,7 +905,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="header-right">
       <span class="sync-info" id="sync-time">Last synced: --:-- --</span>
       <button class="icon-btn" id="track-pill-btn" onclick="toggleTrackDrawer()" title="Switch track" aria-label="Switch track" aria-expanded="false">
-        <span class="track-pill" id="track-pill-text">AQU — Aqueduct</span>
+        <span class="track-pill" id="track-pill-text">SAR — Saratoga</span>
       </button>
       <button class="icon-btn" onclick="openSettings()" title="Settings" aria-label="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -902,16 +913,15 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     </div>
   </header>
 
-  <!-- TRACK SELECTOR DRAWER -->
+  <!-- TRACK TOGGLE (SAR / AQU) -->
   <div id="track-drawer" role="dialog" aria-label="Track selector">
-    <div class="track-drawer-group">
-      <div class="track-drawer-group-label">Racing Today / Active Meet</div>
-      <div id="drawer-racing-today"></div>
+    <div class="sar-aqu-drawer">
+      <div class="track-drawer-group-label" style="margin-bottom:0.5rem">Switch Track</div>
+      <div id="drawer-sar-aqu" class="sar-aqu-toggle"></div>
     </div>
-    <div class="track-drawer-group">
-      <div class="track-drawer-group-label">Upcoming / Off Season</div>
-      <div id="drawer-upcoming"></div>
-    </div>
+    <!-- Dormant: full 12-track drawer lists -->
+    <div id="drawer-racing-today" style="display:none"></div>
+    <div id="drawer-upcoming" style="display:none"></div>
     <div style="text-align:right;margin-top:0.5rem">
       <button class="btn btn-sm btn-ghost" style="color:rgba(255,255,255,0.6)" onclick="toggleTrackDrawer()">Close</button>
     </div>
@@ -1399,7 +1409,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
   <!-- FOOTER DISCLAIMER -->
   <footer id="app-footer">
-    For personal use only. Not affiliated with NYRA or any wagering platform. No real wagers are placed through this app. Betting suggestions are analysis based on available data — not financial advice and not a guarantee of results.
+    Saratoga Racing Companion 2026 — For personal use only. Not affiliated with NYRA, Saratoga Race Course, or any wagering platform. No real wagers are placed through this app. Betting suggestions are analysis based on available data — not financial advice and not a guarantee of results.
   </footer>
 
   <!-- BOTTOM TAB BAR -->
@@ -1547,7 +1557,7 @@ let scratchPollingInterval = null;
 let unviewedScratches = 0;
 let exoticMode = 'straight';
 let resultScope = 'track';
-let welcomeSelectedTrack = 'AQU';
+let welcomeSelectedTrack = 'SAR';
 let welcomeDataMode = 'manual';
 
 /* =============================================================
@@ -1569,7 +1579,7 @@ function initStore() {
   const existing = getStore();
   if (existing) return existing;
   const store = {
-    settings: { activeTrack: 'AQU', dataMode: 'manual', startingBankroll: 1000, workerUrl: '', welcomeDone: false },
+    settings: { activeTrack: 'SAR', dataMode: 'manual', startingBankroll: 1000, workerUrl: '', welcomeDone: false },
     tracks: {}
   };
   Object.keys(TRACKS).forEach(code => {
@@ -1581,7 +1591,7 @@ function initStore() {
 
 function getActiveTrack() {
   const store = getStore();
-  return store ? (store.settings.activeTrack || 'AQU') : 'AQU';
+  return store ? (store.settings.activeTrack || 'SAR') : 'SAR';
 }
 
 function getTrackData(code) {
@@ -1654,54 +1664,46 @@ function showToast(msg, type = 'default', duration = 8000) {
    WELCOME SCREEN
    ============================================================= */
 function buildWelcomeTrackGrid() {
+  // Saratoga-centric: welcome toggle is hardcoded SAR/AQU in HTML.
+  // Just ensure SAR is pre-selected.
+  welcomeSelectedTrack = 'SAR';
+}
+
+/* Dormant: full 12-track grid builder (kept for future multi-track expansion)
+function buildFullTrackGrid() {
   const grid = el('welcome-track-grid');
   if (!grid) return;
-  const today = getTodayStr();
   const active = [], upcoming = [];
   Object.values(TRACKS).forEach(t => {
-    if (isTrackActive(t.code)) active.push(t);
-    else upcoming.push(t);
+    if (isTrackActive(t.code)) active.push(t); else upcoming.push(t);
   });
-
   let html = '';
   if (active.length) {
     html += '<div class="track-section-header">Racing Today / Active Meet</div>';
-    active.forEach(t => {
-      html += buildTrackOption(t, true);
-    });
+    active.forEach(t => { html += buildTrackOption(t, true); });
   }
   if (upcoming.length) {
     html += '<div class="track-section-header">Upcoming / Off Season</div>';
-    upcoming.forEach(t => {
-      html += buildTrackOption(t, false);
-    });
+    upcoming.forEach(t => { html += buildTrackOption(t, false); });
   }
   grid.innerHTML = html;
-  // Select first active, or first overall
-  const first = active.length ? active[0].code : upcoming[0].code;
-  welcomeSelectedTrack = first;
-  const firstOpt = grid.querySelector('.track-option');
-  if (firstOpt) firstOpt.classList.add('selected');
 }
-
 function buildTrackOption(t, isActive) {
   return `<div class="track-option" onclick="selectWelcomeTrack('${t.code}', this)" data-code="${t.code}">
     <div class="track-option-left">
       <span class="track-status-dot ${isActive ? 'dot-active' : 'dot-inactive'}"></span>
       <span class="track-code">${t.code}</span>
-      <div>
-        <div class="track-name-sm">${t.name}</div>
-        <div class="track-location-sm">${t.location}</div>
-      </div>
+      <div><div class="track-name-sm">${t.name}</div><div class="track-location-sm">${t.location}</div></div>
     </div>
     ${isActive ? '<span class="badge badge-green" style="font-size:0.62rem">Active</span>' : ''}
   </div>`;
 }
+*/
 
 function selectWelcomeTrack(code, elem) {
   welcomeSelectedTrack = code;
-  document.querySelectorAll('.track-option').forEach(o => o.classList.remove('selected'));
-  elem.classList.add('selected');
+  document.querySelectorAll('.sar-aqu-btn').forEach(b => b.classList.remove('selected'));
+  if (elem) elem.classList.add('selected');
 }
 
 function setWelcomeMode(mode) {
@@ -1805,27 +1807,31 @@ function renderTabContent(name) {
    ============================================================= */
 function buildDrawerLists() {
   const activeCode = getActiveTrack();
+  const sarAquDiv = el('drawer-sar-aqu');
+  if (sarAquDiv) {
+    sarAquDiv.innerHTML = `
+      <button class="sar-aqu-btn ${activeCode === 'SAR' ? 'selected' : ''}" onclick="selectTrack('SAR')">SAR &mdash; Saratoga</button>
+      <button class="sar-aqu-btn ${activeCode === 'AQU' ? 'selected' : ''}" onclick="selectTrack('AQU')">AQU &mdash; Aqueduct</button>
+    `;
+  }
+  /* Dormant: full 12-track drawer
   const todayDiv = el('drawer-racing-today');
   const upcomingDiv = el('drawer-upcoming');
   if (!todayDiv || !upcomingDiv) return;
-
   let todayHtml = '', upcomingHtml = '';
   Object.values(TRACKS).forEach(t => {
     const active = isTrackActive(t.code);
     const item = `<div class="track-drawer-item ${t.code === activeCode ? 'selected' : ''}" onclick="selectTrack('${t.code}')">
       <span class="track-status-dot ${active ? 'dot-active' : 'dot-inactive'}" style="margin:0 2px"></span>
       <span class="track-code">${t.code}</span>
-      <div>
-        <div style="font-size:0.85rem;font-weight:600">${t.name}</div>
-        <div style="font-size:0.7rem;color:rgba(255,255,255,0.5)">${t.location}</div>
-      </div>
+      <div><div style="font-size:0.85rem;font-weight:600">${t.name}</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.5)">${t.location}</div></div>
       ${active ? '<span class="badge badge-green" style="font-size:0.6rem;margin-left:auto">Active</span>' : ''}
     </div>`;
-    if (active) todayHtml += item;
-    else upcomingHtml += item;
+    if (active) todayHtml += item; else upcomingHtml += item;
   });
-  todayDiv.innerHTML = todayHtml || '<div style="color:rgba(255,255,255,0.4);font-size:0.8rem;padding:0.5rem">No tracks currently in season</div>';
+  todayDiv.innerHTML = todayHtml;
   upcomingDiv.innerHTML = upcomingHtml;
+  */
 }
 
 function toggleTrackDrawer() {
