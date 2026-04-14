@@ -9,14 +9,22 @@
 <title>NE Racing — Cache Reset</title>
 <style>
   body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #1B4332; color: #FAF3E0; text-align: center; }
-  .box { max-width: 360px; padding: 2rem; }
+  .box { max-width: 400px; padding: 2rem; }
   h1 { font-size: 1.4rem; margin-bottom: 1rem; }
   p { font-size: 0.95rem; opacity: 0.8; line-height: 1.5; }
   #status { margin-top: 1.5rem; font-weight: 600; color: #C9A84C; min-height: 2em; font-size: 1.1rem; }
   #progress { margin-top: 1rem; font-size: 0.85rem; opacity: 0.7; }
   #log { margin-top: 1rem; font-size: 0.75rem; opacity: 0.5; text-align: left; max-height: 200px; overflow-y: auto; }
+  #browser-info { margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.08); border-radius: 8px; text-align: left; font-size: 0.85rem; line-height: 1.6; display: none; }
+  #browser-info h3 { font-size: 0.95rem; margin-bottom: 0.5rem; color: #C9A84C; }
+  #manual-fix { margin-top: 1.5rem; padding: 1rem; background: rgba(201,168,76,0.15); border-radius: 8px; text-align: left; font-size: 0.85rem; line-height: 1.6; display: none; }
+  #manual-fix h3 { font-size: 0.95rem; margin-bottom: 0.5rem; color: #C9A84C; }
+  #manual-fix ol { padding-left: 1.2rem; }
+  #manual-fix li { margin-bottom: 0.4rem; }
   .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(201,168,76,0.3); border-top-color: #C9A84C; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .btn { display: inline-block; margin-top: 1rem; padding: 0.6rem 1.5rem; background: #C9A84C; color: #1B4332; border: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; text-decoration: none; }
+  .btn:active { opacity: 0.8; }
 </style>
 </head>
 <body>
@@ -26,14 +34,47 @@
   <div id="status"><span class="spinner"></span>Clearing cache...</div>
   <div id="progress"></div>
   <div id="log"></div>
+  <div id="browser-info"></div>
+  <div id="manual-fix">
+    <h3>Still seeing old data?</h3>
+    <ol>
+      <li><strong>Close ALL tabs</strong> of this site (not just this one).</li>
+      <li>On iOS: swipe the browser app away from the app switcher to fully quit it.</li>
+      <li>Reopen the browser and navigate back to the app.</li>
+      <li>If using Home Screen PWA on iOS: delete the icon and re-add it from Safari.</li>
+    </ol>
+    <a class="btn" href="./index.html">Go to App</a>
+  </div>
 </div>
 <script>
 (async function() {
   var status = document.getElementById('status');
   var progress = document.getElementById('progress');
   var log = document.getElementById('log');
+  var browserInfo = document.getElementById('browser-info');
+  var manualFix = document.getElementById('manual-fix');
   var steps = 0;
   var totalSteps = 5;
+
+  // Detect browser for targeted advice
+  var ua = navigator.userAgent || '';
+  var browserName = 'Unknown';
+  var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isChromeIOS = isIOS && /CriOS/.test(ua);
+  var isSafariIOS = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
+  var isFirefoxIOS = isIOS && /FxiOS/.test(ua);
+  var isEdgeIOS = isIOS && /EdgiOS/.test(ua);
+  var isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+  if (isChromeIOS) browserName = 'Chrome on iOS';
+  else if (isSafariIOS) browserName = 'Safari on iOS';
+  else if (isFirefoxIOS) browserName = 'Firefox on iOS';
+  else if (isEdgeIOS) browserName = 'Edge on iOS';
+  else if (isIOS) browserName = 'Browser on iOS';
+  else if (/Chrome/.test(ua) && !/Edg/.test(ua)) browserName = 'Chrome';
+  else if (/Firefox/.test(ua)) browserName = 'Firefox';
+  else if (/Safari/.test(ua)) browserName = 'Safari';
+  else if (/Edg/.test(ua)) browserName = 'Edge';
 
   function updateProgress(msg) {
     steps++;
@@ -46,7 +87,41 @@
     log.appendChild(div);
   }
 
+  function showBrowserHelp() {
+    var html = '<h3>Detected: ' + browserName + (isStandalone ? ' (Standalone/PWA)' : '') + '</h3>';
+
+    if (isChromeIOS) {
+      html += '<p>Chrome on iOS uses its own separate cache from Safari. ' +
+        'Clearing this page in Safari will NOT fix Chrome. ' +
+        'The automatic clearing above should work, but if you still see stale data:</p>' +
+        '<p><strong>Chrome &rarr; Settings &rarr; Privacy &rarr; Clear Browsing Data</strong> &mdash; ' +
+        'select "Cached Images and Files" and "Cookies and Site Data", then clear.</p>' +
+        '<p>After clearing, <strong>close all tabs</strong> of this site and reopen.</p>';
+    } else if (isSafariIOS && isStandalone) {
+      html += '<p>You are running as a Home Screen app (standalone PWA). ' +
+        'Standalone mode on iOS has its own cache separate from Safari tabs.</p>' +
+        '<p>If the automatic clear didn\'t work: <strong>delete the Home Screen icon</strong>, ' +
+        'open Safari, visit the site, then re-add to Home Screen.</p>';
+    } else if (isSafariIOS) {
+      html += '<p>If you still see old data: ' +
+        '<strong>Settings &rarr; Safari &rarr; Clear History and Website Data</strong>.</p>' +
+        '<p>Then close all Safari tabs and reopen.</p>';
+    } else if (isFirefoxIOS || isEdgeIOS) {
+      html += '<p>Each browser on iOS has its own separate cache. ' +
+        'The automatic clearing above should work, but if you still see old data, ' +
+        'clear this browser\'s cache from its settings and close all tabs of this site.</p>';
+    } else {
+      html += '<p>The automatic clearing above should work. If you still see old data, ' +
+        'try a hard refresh (Ctrl+Shift+R or Cmd+Shift+R) or clear your browser cache.</p>';
+    }
+
+    browserInfo.innerHTML = html;
+    browserInfo.style.display = 'block';
+  }
+
   try {
+    addLog('[INFO] Browser: ' + browserName + (isStandalone ? ' (standalone)' : ''));
+
     // Step 1: Unregister ALL service workers
     updateProgress('Removing service workers...');
     if ('serviceWorker' in navigator) {
@@ -92,14 +167,14 @@
       addLog('[WARN] sessionStorage: ' + e.message);
     }
 
-    // Step 5: Wait for SW unregistration to fully propagate
-    // iOS standalone mode needs extra time for the SW to fully release
+    // Step 5: Wait for SW unregistration to propagate
+    // Chrome on iOS and Safari standalone need extra time
     updateProgress('Waiting for cleanup to finish...');
     status.innerHTML = '<span class="spinner"></span>Almost done...';
 
     await new Promise(function(resolve) { setTimeout(resolve, 2500); });
 
-    // Double-check: try unregistering again in case iOS was slow
+    // Double-check: try unregistering again (iOS can be slow)
     if ('serviceWorker' in navigator) {
       var regs2 = await navigator.serviceWorker.getRegistrations();
       for (var k = 0; k < regs2.length; k++) {
@@ -111,15 +186,22 @@
     addLog('[DONE] All cleanup complete');
     status.innerHTML = 'Done! Redirecting...';
 
-    // Redirect with cache-bust param after another short delay
+    // Show browser-specific help in case automatic clearing isn't enough
+    showBrowserHelp();
+
+    // Show the manual fix section
+    manualFix.style.display = 'block';
+
+    // Redirect with cache-bust param after a short delay
     setTimeout(function() {
-      // Use replace so the user can't back-button into clear.html
       window.location.replace('./index.html?_v=' + Date.now());
-    }, 500);
+    }, 1500);
 
   } catch (err) {
     status.textContent = 'Error: ' + err.message;
     addLog('[FAIL] ' + err.stack);
+    showBrowserHelp();
+    manualFix.style.display = 'block';
     // Still try to redirect after showing error
     setTimeout(function() {
       window.location.replace('./index.html?_v=' + Date.now());

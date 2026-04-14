@@ -7,54 +7,101 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
-// App version — bump on every deploy (must match version.json and sw.js)
-var NE_APP_VERSION = '20260414-2320';
+// App version — bump on every deploy (must match version.json)
+var NE_APP_VERSION = '20260414-2355';
 
-// Force-update: unregister all SWs, clear all caches, then hard reload
-function neForceUpdate() {
-  var done = Promise.resolve();
+// Nuclear force-update: unregister ALL service workers, clear ALL caches,
+// clear version from localStorage, then hard reload with cache bypass.
+// This is completely independent of any service worker state.
+function neForceUpdate(newVersion) {
+  var tasks = [];
+
+  // 1. Unregister every service worker
   if ('serviceWorker' in navigator) {
-    done = navigator.serviceWorker.getRegistrations().then(function(regs) {
-      return Promise.all(regs.map(function(r) { return r.unregister(); }));
-    });
+    tasks.push(
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        return Promise.all(regs.map(function(r) { return r.unregister(); }));
+      }).catch(function(){})
+    );
   }
-  done.then(function() {
-    if ('caches' in window) {
-      return caches.keys().then(function(names) {
+
+  // 2. Delete every Cache Storage entry
+  if ('caches' in window) {
+    tasks.push(
+      caches.keys().then(function(names) {
         return Promise.all(names.map(function(n) { return caches.delete(n); }));
-      });
-    }
-  }).then(function() {
-    // Cache-bust the redirect to guarantee fresh index.html
-    window.location.replace(window.location.pathname + '?_v=' + Date.now());
+      }).catch(function(){})
+    );
+  }
+
+  // 3. Update localStorage version marker
+  try {
+    localStorage.removeItem('ne-racing-version');
+    if (newVersion) localStorage.setItem('ne-racing-version', newVersion);
+  } catch(e) {}
+
+  // Wait for SW unregister + cache clear, then hard reload
+  Promise.all(tasks).then(function() {
+    // Force reload with cache-busting URL — works on all browsers including Chrome iOS
+    var v = newVersion || Date.now();
+    window.location.href = window.location.pathname + '?_v=' + v + '&_t=' + Date.now();
   });
 }
 
+// Version check — runs BEFORE any app initialization.
+// Completely independent of service workers. Works on Chrome iOS, Safari, Firefox, Edge.
 (function(){
   var key = 'ne-racing-version';
-  var stored = localStorage.getItem(key);
-  if (stored && stored !== NE_APP_VERSION) {
-    localStorage.setItem(key, NE_APP_VERSION);
-    neForceUpdate();
-    return; // stop further execution while reloading
-  }
-  localStorage.setItem(key, NE_APP_VERSION);
+  var reloadKey = 'ne-racing-reload-count';
+  var stored = null;
+  try { stored = localStorage.getItem(key); } catch(e) {}
 
-  // Poll version.json (cache-busted) to detect new deploys
+  // Guard against infinite reload loops: if we've reloaded more than 3 times
+  // in quick succession, stop and let the page load as-is.
+  var reloadCount = 0;
+  try { reloadCount = parseInt(localStorage.getItem(reloadKey) || '0', 10); } catch(e) {}
+  if (reloadCount > 3) {
+    // Reset counter and proceed normally — the version will sync on next deploy
+    try { localStorage.setItem(reloadKey, '0'); } catch(e) {}
+  }
+
+  // If the baked-in version differs from localStorage, force update immediately
+  if (stored && stored !== NE_APP_VERSION && reloadCount <= 3) {
+    try { localStorage.setItem(reloadKey, String(reloadCount + 1)); } catch(e) {}
+    neForceUpdate(NE_APP_VERSION);
+    return; // halt — page is reloading
+  }
+
+  // Successful load — reset reload counter
+  try {
+    localStorage.setItem(key, NE_APP_VERSION);
+    localStorage.setItem(reloadKey, '0');
+  } catch(e) {}
+
+  // On every page load, fetch version.json from the server (no cache)
+  // and compare to the baked-in version. This catches deploys.
   function checkVersion() {
-    if (!navigator.onLine) return;
-    fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    fetch('version.json?_=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
+    })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (d.v && d.v !== NE_APP_VERSION) {
-          localStorage.setItem(key, d.v);
-          neForceUpdate();
+          neForceUpdate(d.v);
         }
       }).catch(function(){});
   }
+
+  // Check immediately on load
   checkVersion();
   // Re-check every 60 seconds while the app is open
   setInterval(checkVersion, 60000);
+  // Also check when the page becomes visible again (e.g. switching back to tab)
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') checkVersion();
+  });
 })();
 </script>
 <meta name="theme-color" content="#1B4332">
@@ -1980,12 +2027,14 @@ function setWelcomeMode(mode) {
 function finishWelcome() {
   // On every "Let's Go" tap, check for a new version before proceeding
   if (navigator.onLine) {
-    fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
+    fetch('version.json?_=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
+    })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (d.v && d.v !== NE_APP_VERSION) {
-          localStorage.setItem('ne-racing-version', d.v);
-          neForceUpdate();
+          neForceUpdate(d.v);
         }
       }).catch(function(){});
   }
@@ -4671,22 +4720,8 @@ function closeSettings() {
 function closeSettingsOnBg(e) { if (e.target === el('settings-modal')) closeSettings(); }
 
 function forceRefresh() {
-  // 1. Unregister all service workers
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(regs) {
-      regs.forEach(function(r) { r.unregister(); });
-    });
-  }
-  // 2. Clear all caches
-  if ('caches' in window) {
-    caches.keys().then(function(names) {
-      return Promise.all(names.map(function(n) { return caches.delete(n); }));
-    });
-  }
-  // 3. Clear version key from localStorage
-  localStorage.removeItem('ne-racing-version');
-  // 4. Hard reload
-  setTimeout(function() { location.reload(true); }, 300);
+  // Use the nuclear force-update — unregisters SWs, clears caches, reloads
+  neForceUpdate(NE_APP_VERSION);
 }
 
 function settingsChangeTrack(code) { /* applied on close */ }
@@ -4887,7 +4922,7 @@ function transformWorkerEntries(json) {
 async function tryFetchEntries(code, date) {
   const url = getEntriesUrl(code, date);
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return null;
     const json = await res.json();
     const store = getStore();
@@ -4964,7 +4999,7 @@ async function fetchLiveScratches() {
   const url = getScratchesUrl(code, today);
   if (!url) return; // No scratches source available
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return;
     const json = await res.json();
     const scratches = json.scratches || (Array.isArray(json) ? json : []);
@@ -4996,7 +5031,7 @@ async function fetchLiveResults() {
   const code = getActiveTrack();
   const today = getTodayStr();
   try {
-    const res = await fetch(`${workerUrl}/api/results?track=${code}&date=${today}&_t=${Date.now()}`);
+    const res = await fetch(`${workerUrl}/api/results?track=${code}&date=${today}&_t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const results = await res.json();
     if (!Array.isArray(results)) return;
@@ -5113,27 +5148,14 @@ document.addEventListener('keydown', e => {
 
 </script>
 <script>
-// Register service worker — network-first, no HTML/JS/JSON caching
+// No service worker registration — the SW caused stale cache issues on
+// Chrome iOS, Safari standalone, and other browsers. The app needs live
+// data, not offline support. Instead, unregister any leftover SWs from
+// previous versions to ensure they don't intercept requests.
 if ('serviceWorker' in navigator) {
-  // updateViaCache:'none' ensures the browser always checks the network for sw.js
-  navigator.serviceWorker.register('sw.js?v=' + NE_APP_VERSION, { updateViaCache: 'none' }).then(function(reg) {
-    // Force an update check immediately
-    reg.update().catch(function(){});
-    reg.addEventListener('updatefound', function() {
-      var w = reg.installing;
-      if (!w) return;
-      w.addEventListener('statechange', function() {
-        // When the new SW activates, reload to ensure clean state
-        if (w.state === 'activated') {
-          // Small delay to let the SW fully take control
-          setTimeout(function() { location.reload(); }, 200);
-        }
-      });
-    });
-  }).catch(function(err) {
-    // If SW registration fails, clear any stale SW state
-    console.warn('SW registration failed:', err);
-  });
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(r) { r.unregister(); });
+  }).catch(function(){});
 }
 </script>
 </body>
