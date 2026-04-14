@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-1548';
+var NE_APP_VERSION = '20260414-1606';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -1968,18 +1968,46 @@ function finishWelcome() {
   // Update hero subtitle for selected track
   updateHeroSubtitle();
 
-  // Scroll to Today's Ticket (green card) or the today heading.
-  // The welcome screen takes up ~100vh, so the app-frame starts below it.
-  // We scroll to the ticket card, offset by the sticky header height.
+  // Ensure we're on the Today tab
+  switchTab('today');
+
+  // Scroll so Today's Ticket fills the screen — header hidden initially.
+  // Hide the sticky header so the ticket card can be flush with the top.
+  var header = el('top-header');
+  if (header) header.style.transform = 'translateY(-100%)';
+
   setTimeout(function() {
     var ticket = el('rec-bets-card');
     var heading = el('today-heading');
     var target = (ticket && !ticket.classList.contains('hidden')) ? ticket
                : heading || el('main-content') || af;
-    var headerH = (el('top-header') || {}).offsetHeight || 56;
     var rect = target.getBoundingClientRect();
-    var scrollTarget = rect.top + window.pageYOffset - headerH - 12;
+    // Scroll so the target is flush with the top of the viewport
+    var scrollTarget = rect.top + window.pageYOffset;
     window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+
+    // Reveal the header when the user scrolls (any direction)
+    var revealed = false;
+    function revealHeader() {
+      if (revealed) return;
+      revealed = true;
+      if (header) {
+        header.style.transition = 'transform 0.3s ease';
+        header.style.transform = 'translateY(0)';
+        // Clean up inline styles after transition
+        setTimeout(function() {
+          header.style.transition = '';
+          header.style.transform = '';
+        }, 350);
+      }
+      window.removeEventListener('scroll', revealHeader);
+      window.removeEventListener('touchstart', revealHeader);
+    }
+    // Small delay so our own scrollTo doesn't trigger it
+    setTimeout(function() {
+      window.addEventListener('scroll', revealHeader, { passive: true });
+      window.addEventListener('touchstart', revealHeader, { passive: true });
+    }, 600);
   }, 200);
 }
 
