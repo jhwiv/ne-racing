@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-2015';
+var NE_APP_VERSION = '20260414-2028';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -2081,6 +2081,9 @@ function switchTab(name) {
   const dBtn = el('dnav-' + name);
   if (dBtn) dBtn.classList.add('active');
 
+  // Prevent applyRaceFocus from overriding our scroll target
+  window._skipRaceFocusScroll = true;
+
   // Render tab-specific content
   renderTabContent(name);
 
@@ -2088,6 +2091,16 @@ function switchTab(name) {
   if (name === 'today') {
     unviewedScratches = 0;
     updateScratchBadge();
+  }
+
+  // Scroll to the top of the active tab panel (not back to hero).
+  // For Today tab, target the ticket card; for others, the panel top.
+  var scrollTarget = (name === 'today' && el('rec-bets-card') && !el('rec-bets-card').classList.contains('hidden'))
+    ? el('rec-bets-card') : panel;
+  if (scrollTarget) {
+    var headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 56;
+    var tgtTop = scrollTarget.getBoundingClientRect().top + window.pageYOffset - headerH;
+    window.scrollTo(0, tgtTop);
   }
 }
 
