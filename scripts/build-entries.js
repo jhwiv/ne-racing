@@ -1078,6 +1078,17 @@ async function main() {
     console.log('  No Equibase Entries Plus data available.');
   }
 
+  // Step 5d: Resolve expert pick PP numbers to horse names
+  for (const race of races) {
+    const entries = race.entries || [];
+    for (const ep of (race.expertPicks || [])) {
+      if (!ep.horseName && ep.pick) {
+        const match = entries.find(e => e.pp === ep.pick);
+        if (match) ep.horseName = match.name;
+      }
+    }
+  }
+
   // Step 6: Enrich entries with stats and running styles
   console.log('\nEnriching entries...');
   races = enrichRaces(races, jockeyLookup, trainerLookup);
