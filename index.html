@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-1606';
+var NE_APP_VERSION = '20260414-2015';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -94,7 +94,7 @@ var NE_APP_VERSION = '20260414-1606';
    RESET & BASE
    ========================================================= */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--font-body);
   font-size: 15px;
@@ -133,7 +133,7 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
 /* =========================================================
    LAYOUT SCAFFOLDING
    ========================================================= */
-html { scroll-behavior: smooth; }
+/* scroll-behavior: smooth removed — causes choppy scrolling on mobile */
 #app { display: flex; flex-direction: column; }
 #welcome-screen {
   position: relative;
@@ -1971,44 +1971,55 @@ function finishWelcome() {
   // Ensure we're on the Today tab
   switchTab('today');
 
-  // Scroll so Today's Ticket fills the screen — header hidden initially.
-  // Hide the sticky header so the ticket card can be flush with the top.
+  // Transition: fade out the welcome, then reveal the ticket card.
+  // 1. Fade the welcome screen to transparent
+  // 2. Instant-scroll to the ticket card (no smooth — avoids choppiness)
+  // 3. Fade the app content in
+  // 4. Header is hidden; slides in on first user interaction
   var header = el('top-header');
+  var ws = el('welcome-screen');
+
+  // Fade out the welcome screen
+  if (ws) {
+    ws.style.transition = 'opacity 0.3s ease';
+    ws.style.opacity = '0';
+  }
+
+  // Hide header so ticket fills viewport
   if (header) header.style.transform = 'translateY(-100%)';
 
+  // After fade-out completes, snap to the ticket card
   setTimeout(function() {
+    // Restore welcome opacity for when user scrolls back
+    if (ws) { ws.style.transition = ''; ws.style.opacity = '1'; }
+
     var ticket = el('rec-bets-card');
     var heading = el('today-heading');
     var target = (ticket && !ticket.classList.contains('hidden')) ? ticket
                : heading || el('main-content') || af;
     var rect = target.getBoundingClientRect();
-    // Scroll so the target is flush with the top of the viewport
-    var scrollTarget = rect.top + window.pageYOffset;
-    window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+    // Instant scroll — no animation, no choppiness
+    window.scrollTo(0, rect.top + window.pageYOffset);
 
-    // Reveal the header when the user scrolls (any direction)
+    // Reveal header on first user scroll or touch.
     var revealed = false;
     function revealHeader() {
       if (revealed) return;
       revealed = true;
       if (header) {
         header.style.transition = 'transform 0.3s ease';
-        header.style.transform = 'translateY(0)';
-        // Clean up inline styles after transition
-        setTimeout(function() {
-          header.style.transition = '';
-          header.style.transform = '';
-        }, 350);
+        header.style.transform = '';
+        setTimeout(function() { header.style.transition = ''; }, 350);
       }
-      window.removeEventListener('scroll', revealHeader);
       window.removeEventListener('touchstart', revealHeader);
+      window.removeEventListener('mousedown', revealHeader);
     }
-    // Small delay so our own scrollTo doesn't trigger it
-    setTimeout(function() {
-      window.addEventListener('scroll', revealHeader, { passive: true });
-      window.addEventListener('touchstart', revealHeader, { passive: true });
-    }, 600);
-  }, 200);
+    // Don't attach scroll listener — it's unreliable with programmatic scrollTo.
+    // Instead, only reveal header on touch (user interaction).
+    window.addEventListener('touchstart', revealHeader, { passive: true });
+    // For desktop: reveal on mousedown (not scroll)
+    window.addEventListener('mousedown', revealHeader, { passive: true });
+  }, 300);
 }
 
 /* =============================================================
@@ -2463,7 +2474,7 @@ function applyRaceFocus(races, activeIdx) {
     if (activeRace) {
       setTimeout(() => {
         const activeWrap = el('race-wrap-' + activeRace.id);
-        if (activeWrap) activeWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (activeWrap) activeWrap.scrollIntoView({ behavior: 'auto', block: 'start' });
       }, 300);
     }
   }
