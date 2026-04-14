@@ -12,70 +12,117 @@
   .box { max-width: 360px; padding: 2rem; }
   h1 { font-size: 1.4rem; margin-bottom: 1rem; }
   p { font-size: 0.95rem; opacity: 0.8; line-height: 1.5; }
-  #status { margin-top: 1.5rem; font-weight: 600; color: #C9A84C; min-height: 2em; }
+  #status { margin-top: 1.5rem; font-weight: 600; color: #C9A84C; min-height: 2em; font-size: 1.1rem; }
+  #progress { margin-top: 1rem; font-size: 0.85rem; opacity: 0.7; }
   #log { margin-top: 1rem; font-size: 0.75rem; opacity: 0.5; text-align: left; max-height: 200px; overflow-y: auto; }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(201,168,76,0.3); border-top-color: #C9A84C; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 <div class="box">
-  <h1>🔄 Resetting App</h1>
+  <h1>Resetting App</h1>
   <p>Clearing all cached data, service workers, and stored settings so you get the latest version.</p>
-  <div id="status">Working...</div>
+  <div id="status"><span class="spinner"></span>Clearing cache...</div>
+  <div id="progress"></div>
   <div id="log"></div>
 </div>
 <script>
 (async function() {
   var status = document.getElementById('status');
+  var progress = document.getElementById('progress');
   var log = document.getElementById('log');
+  var steps = 0;
+  var totalSteps = 5;
+
+  function updateProgress(msg) {
+    steps++;
+    progress.textContent = 'Step ' + steps + ' of ' + totalSteps + ': ' + msg;
+  }
+
   function addLog(msg) {
     var div = document.createElement('div');
-    div.textContent = '✓ ' + msg;
+    div.textContent = msg;
     log.appendChild(div);
   }
 
   try {
-    // 1. Unregister ALL service workers
+    // Step 1: Unregister ALL service workers
+    updateProgress('Removing service workers...');
     if ('serviceWorker' in navigator) {
       var regs = await navigator.serviceWorker.getRegistrations();
       for (var i = 0; i < regs.length; i++) {
-        await regs[i].unregister();
-        addLog('Unregistered service worker: ' + (regs[i].scope || 'default'));
+        var success = await regs[i].unregister();
+        addLog((success ? '[OK]' : '[WARN]') + ' Unregistered SW: ' + (regs[i].scope || 'default'));
       }
-      if (regs.length === 0) addLog('No service workers found');
+      if (regs.length === 0) addLog('[OK] No service workers found');
     } else {
-      addLog('Service workers not supported');
+      addLog('[SKIP] Service workers not supported');
     }
 
-    // 2. Delete ALL Cache Storage entries
+    // Step 2: Delete ALL Cache Storage entries
+    updateProgress('Deleting cached files...');
     if ('caches' in window) {
       var keys = await caches.keys();
       for (var j = 0; j < keys.length; j++) {
         await caches.delete(keys[j]);
-        addLog('Deleted cache: ' + keys[j]);
+        addLog('[OK] Deleted cache: ' + keys[j]);
       }
-      if (keys.length === 0) addLog('No caches found');
+      if (keys.length === 0) addLog('[OK] No caches found');
+    } else {
+      addLog('[SKIP] Cache API not supported');
     }
 
-    // 3. Clear localStorage
-    try { localStorage.clear(); addLog('localStorage cleared'); } catch(e) { addLog('localStorage skip: ' + e.message); }
+    // Step 3: Clear localStorage
+    updateProgress('Clearing local storage...');
+    try {
+      var lsCount = localStorage.length;
+      localStorage.clear();
+      addLog('[OK] localStorage cleared (' + lsCount + ' items)');
+    } catch(e) {
+      addLog('[WARN] localStorage: ' + e.message);
+    }
 
-    // 4. Clear sessionStorage
-    try { sessionStorage.clear(); addLog('sessionStorage cleared'); } catch(e) { addLog('sessionStorage skip: ' + e.message); }
+    // Step 4: Clear sessionStorage
+    updateProgress('Clearing session storage...');
+    try {
+      sessionStorage.clear();
+      addLog('[OK] sessionStorage cleared');
+    } catch(e) {
+      addLog('[WARN] sessionStorage: ' + e.message);
+    }
 
-    status.textContent = '✅ Done! Redirecting in 2 seconds...';
+    // Step 5: Wait for SW unregistration to fully propagate
+    // iOS standalone mode needs extra time for the SW to fully release
+    updateProgress('Waiting for cleanup to finish...');
+    status.innerHTML = '<span class="spinner"></span>Almost done...';
 
-    // 5. Redirect to app with cache-bust query param
+    await new Promise(function(resolve) { setTimeout(resolve, 2500); });
+
+    // Double-check: try unregistering again in case iOS was slow
+    if ('serviceWorker' in navigator) {
+      var regs2 = await navigator.serviceWorker.getRegistrations();
+      for (var k = 0; k < regs2.length; k++) {
+        await regs2[k].unregister();
+        addLog('[OK] Second-pass: unregistered lingering SW');
+      }
+    }
+
+    addLog('[DONE] All cleanup complete');
+    status.innerHTML = 'Done! Redirecting...';
+
+    // Redirect with cache-bust param after another short delay
     setTimeout(function() {
       // Use replace so the user can't back-button into clear.html
-      window.location.replace('./index.html?cache_bust=' + Date.now());
-    }, 2000);
+      window.location.replace('./index.html?_v=' + Date.now());
+    }, 500);
 
   } catch (err) {
-    status.textContent = '❌ Error: ' + err.message;
-    addLog('FAILED: ' + err.stack);
+    status.textContent = 'Error: ' + err.message;
+    addLog('[FAIL] ' + err.stack);
     // Still try to redirect after showing error
     setTimeout(function() {
-      window.location.replace('./index.html?cache_bust=' + Date.now());
+      window.location.replace('./index.html?_v=' + Date.now());
     }, 5000);
   }
 })();

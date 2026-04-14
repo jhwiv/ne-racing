@@ -7,41 +7,54 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
-// App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-2154';
+// App version — bump on every deploy (must match version.json and sw.js)
+var NE_APP_VERSION = '20260414-2320';
+
+// Force-update: unregister all SWs, clear all caches, then hard reload
+function neForceUpdate() {
+  var done = Promise.resolve();
+  if ('serviceWorker' in navigator) {
+    done = navigator.serviceWorker.getRegistrations().then(function(regs) {
+      return Promise.all(regs.map(function(r) { return r.unregister(); }));
+    });
+  }
+  done.then(function() {
+    if ('caches' in window) {
+      return caches.keys().then(function(names) {
+        return Promise.all(names.map(function(n) { return caches.delete(n); }));
+      });
+    }
+  }).then(function() {
+    // Cache-bust the redirect to guarantee fresh index.html
+    window.location.replace(window.location.pathname + '?_v=' + Date.now());
+  });
+}
+
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
   if (stored && stored !== NE_APP_VERSION) {
     localStorage.setItem(key, NE_APP_VERSION);
-    // Unregister stale service worker before reloading
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        regs.forEach(function(r) { r.unregister(); });
-      }).then(function() {
-        // Clear all caches then reload
-        if ('caches' in window) {
-          caches.keys().then(function(names) {
-            return Promise.all(names.map(function(n) { return caches.delete(n); }));
-          }).then(function() { location.reload(true); });
-        } else { location.reload(true); }
-      });
-    } else { location.reload(true); }
-    return;           // stop further execution while reloading
+    neForceUpdate();
+    return; // stop further execution while reloading
   }
   localStorage.setItem(key, NE_APP_VERSION);
 
-  // Also poll version.json (cache-busted) to detect new deploys
-  if (navigator.onLine) {
+  // Poll version.json (cache-busted) to detect new deploys
+  function checkVersion() {
+    if (!navigator.onLine) return;
     fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (d.v && d.v !== NE_APP_VERSION) {
           localStorage.setItem(key, d.v);
-          location.reload(true);
+          neForceUpdate();
         }
       }).catch(function(){});
   }
+  checkVersion();
+  // Re-check every 60 seconds while the app is open
+  setInterval(checkVersion, 60000);
 })();
 </script>
 <meta name="theme-color" content="#1B4332">
@@ -1965,6 +1978,18 @@ function setWelcomeMode(mode) {
 }
 
 function finishWelcome() {
+  // On every "Let's Go" tap, check for a new version before proceeding
+  if (navigator.onLine) {
+    fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.v && d.v !== NE_APP_VERSION) {
+          localStorage.setItem('ne-racing-version', d.v);
+          neForceUpdate();
+        }
+      }).catch(function(){});
+  }
+
   const bankroll = parseFloat(el('welcome-bankroll').value) || 1000;
   const store = getStore() || initStore();
   store.settings.startingBankroll = bankroll;
@@ -4740,15 +4765,16 @@ const STATIC_ENTRIES_BASE = 'https://jhwiv.github.io/ne-racing/data';
 function getEntriesUrl(code, date) {
   const store = getStore();
   const workerUrl = store && store.settings.workerUrl;
-  if (workerUrl) return `${workerUrl}/api/entries?track=${code}&date=${date}`;
-  // Fallback: static JSON from GitHub Pages
-  return `${STATIC_ENTRIES_BASE}/entries-${code}-${date}.json`;
+  const cb = '&_t=' + Date.now();
+  if (workerUrl) return `${workerUrl}/api/entries?track=${code}&date=${date}${cb}`;
+  // Fallback: static JSON from GitHub Pages (cache-bust to prevent CDN staleness)
+  return `${STATIC_ENTRIES_BASE}/entries-${code}-${date}.json?_t=${Date.now()}`;
 }
 
 function getScratchesUrl(code, date) {
   const store = getStore();
   const workerUrl = store && store.settings.workerUrl;
-  if (workerUrl) return `${workerUrl}/api/scratches?track=${code}&date=${date}`;
+  if (workerUrl) return `${workerUrl}/api/scratches?track=${code}&date=${date}&_t=${Date.now()}`;
   return null; // No free scratches without Worker (CORS blocks Equibase from browser)
 }
 
@@ -4970,7 +4996,7 @@ async function fetchLiveResults() {
   const code = getActiveTrack();
   const today = getTodayStr();
   try {
-    const res = await fetch(`${workerUrl}/api/results?track=${code}&date=${today}`);
+    const res = await fetch(`${workerUrl}/api/results?track=${code}&date=${today}&_t=${Date.now()}`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const results = await res.json();
     if (!Array.isArray(results)) return;
@@ -5087,17 +5113,26 @@ document.addEventListener('keydown', e => {
 
 </script>
 <script>
-// Register service worker for network-first caching
+// Register service worker — network-first, no HTML/JS/JSON caching
 if ('serviceWorker' in navigator) {
   // updateViaCache:'none' ensures the browser always checks the network for sw.js
-  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg) {
+  navigator.serviceWorker.register('sw.js?v=' + NE_APP_VERSION, { updateViaCache: 'none' }).then(function(reg) {
+    // Force an update check immediately
     reg.update().catch(function(){});
     reg.addEventListener('updatefound', function() {
       var w = reg.installing;
+      if (!w) return;
       w.addEventListener('statechange', function() {
-        if (w.state === 'activated') location.reload();
+        // When the new SW activates, reload to ensure clean state
+        if (w.state === 'activated') {
+          // Small delay to let the SW fully take control
+          setTimeout(function() { location.reload(); }, 200);
+        }
       });
     });
+  }).catch(function(err) {
+    // If SW registration fails, clear any stale SW state
+    console.warn('SW registration failed:', err);
   });
 }
 </script>
