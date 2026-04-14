@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-1540';
+var NE_APP_VERSION = '20260414-1548';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -1674,6 +1674,16 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           Reset App
         </button>
       </div>
+    </div>
+    <div class="settings-group">
+      <h4>App Info</h4>
+      <div style="font-size:0.8rem;color:var(--color-muted);font-family:var(--font-mono)">
+        Version: <span id="settings-app-version"></span>
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="window.location.href='clear.html'">
+        🔄 Clear Cache &amp; Reload
+      </button>
+      <p class="text-xs text-muted" style="margin-top:0.35rem">Use this if the app feels stale or isn't showing the latest version.</p>
     </div>
   </div>
 </div>
@@ -4454,6 +4464,8 @@ function buildSettingsModal() {
 
 function openSettings() {
   buildSettingsModal();
+  var vEl = el('settings-app-version');
+  if (vEl) vEl.textContent = NE_APP_VERSION;
   el('settings-modal').classList.add('open');
   document.body.classList.add('no-scroll');
 }
