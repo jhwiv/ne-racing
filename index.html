@@ -129,6 +129,8 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
   box-shadow: 0 -1px 8px rgba(0,0,0,0.06);
 }
 
+#desktop-nav { display: none; }
+
 /* Desktop nav */
 @media (min-width: 768px) {
   #bottom-tab-bar { display: none; }
@@ -136,7 +138,6 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
   #desktop-nav { display: flex; align-items: center; gap: 0.25rem; }
   #main-content { padding-bottom: 2rem; }
 }
-#desktop-nav { display: none; }
 
 /* Tab panels */
 .tab-panel { display: none; max-width: 900px; margin: 0 auto; padding: 1rem 1rem 1.5rem; }
@@ -775,6 +776,43 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .empty-state svg { width: 48px; height: 48px; margin: 0 auto 0.75rem; opacity: 0.4; }
 .empty-state p { font-size: 0.88rem; }
 
+/* Recommended Bets Card */
+.rec-bets-card {
+  background: var(--color-racing-green); color: var(--color-white);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+  padding: 1rem 1rem 0.75rem; margin-bottom: 1.25rem;
+  border: 1px solid rgba(201,168,76,0.25);
+}
+.rec-bets-card h3 {
+  font-family: var(--font-display); font-size: 1.05rem; color: var(--color-gold);
+  margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.rec-bet-item {
+  padding: 0.55rem 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.rec-bet-item:last-child { border-bottom: none; }
+.rec-bet-tag {
+  display: inline-block; font-size: 0.6rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 0.15rem 0.45rem; border-radius: 3px; margin-bottom: 4px;
+}
+.rec-tag-best { background: var(--color-gold); color: #1B4332; }
+.rec-tag-value { background: rgba(201,168,76,0.2); color: var(--color-gold); border: 1px solid rgba(201,168,76,0.4); }
+.rec-tag-pass { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+.rec-bet-detail {
+  font-size: 0.85rem; font-weight: 500; line-height: 1.4;
+}
+.rec-bet-detail strong { font-weight: 700; }
+.rec-bet-sub { font-size: 0.72rem; color: rgba(255,255,255,0.55); margin-top: 2px; }
+.rec-bet-summary {
+  margin-top: 0.6rem; padding-top: 0.6rem;
+  border-top: 1px solid rgba(201,168,76,0.3);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
+  font-size: 0.78rem; font-family: var(--font-mono);
+}
+.rec-bet-summary .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.5); font-family: var(--font-body); }
+.rec-bet-summary .val { font-weight: 600; color: var(--color-gold); }
+
 /* =========================================================
    DISCLAIMER
    ========================================================= */
@@ -964,7 +1002,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         No race card available — try manual entry or check back on a race day
       </div>
       <div id="preview-date-banner" class="banner banner-info hidden"></div>
-      <!-- Top Picks Summary Card -->
+      <!-- Recommended Bets Card (replaces top picks) -->
+      <div id="rec-bets-card" class="rec-bets-card hidden">
+        <h3>&#9733; Recommended Bets</h3>
+        <div id="rec-bets-content"></div>
+      </div>
+      <!-- Legacy Top Picks (hidden, kept for compat) -->
       <div id="top-picks-card" class="top-picks-card hidden">
         <h3>&#9733; Today's Top Picks</h3>
         <div id="top-picks-content"></div>
@@ -1560,9 +1603,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    TRACKS REGISTRY
    ============================================================= */
 const TRACKS = {
-  AQU: { name: "Aqueduct", code: "AQU", location: "Ozone Park, NY", surfaces: { main: "1 1/8-mile dirt", turf: "Widener turf course" }, seasons: [{ label: "Winter", from: "2026-01-01", to: "2026-03-29" }, { label: "Spring", from: "2026-04-02", to: "2026-04-26" }] },
+  AQU: { name: "Aqueduct", code: "AQU", location: "Ozone Park, NY", surfaces: { main: "1 1/8-mile dirt", turf: "Widener turf course" }, seasons: [{ label: "Winter", from: "2026-01-01", to: "2026-03-29" }, { label: "Spring", from: "2026-04-02", to: "2026-04-26" }], defaultBias: { surface: "Fast", rail: "Inside", style: "Speed", notes: "AQU spring dirt typically favors inside speed. Inner turf course can be kinder to closers." } },
   BEL: { name: "Belmont at the Big A", code: "BEL", location: "Ozone Park, NY (at Aqueduct)", surfaces: { main: "1 1/8-mile dirt", turf: "Widener turf course" }, seasons: [{ label: "Spring/Summer", from: "2026-04-30", to: "2026-06-28" }] },
-  SAR: { name: "Saratoga", code: "SAR", location: "Saratoga Springs, NY", surfaces: { main: "1 1/8-mile dirt", turf: "1 1/16-mile Mellon Turf", inner: "7-furlong Inner Turf" }, seasons: [{ label: "Belmont Stakes Festival", from: "2026-06-03", to: "2026-06-07" }, { label: "Summer Meet", from: "2026-07-03", to: "2026-09-07" }] },
+  SAR: { name: "Saratoga", code: "SAR", location: "Saratoga Springs, NY", surfaces: { main: "1 1/8-mile dirt", turf: "1 1/16-mile Mellon Turf", inner: "7-furlong Inner Turf" }, seasons: [{ label: "Belmont Stakes Festival", from: "2026-06-03", to: "2026-06-07" }, { label: "Summer Meet", from: "2026-07-03", to: "2026-09-07" }], defaultBias: { surface: "Fast", rail: "Neutral", style: "No Bias", notes: "Saratoga main track generally fair. Mellon turf can favor closers at longer distances." } },
   BTP: { name: "Belmont Park (New)", code: "BTP", location: "Elmont, NY", surfaces: { main: "TBD — new facility", turf: "TBD — new facility" }, seasons: [{ label: "Fall", from: "2026-09-18", to: "2026-12-06" }, { label: "Winter", from: "2026-12-10", to: "2027-01-31" }] },
   MTH: { name: "Monmouth Park", code: "MTH", location: "Oceanport, NJ", surfaces: { main: "1 1/8-mile dirt", turf: "1-mile turf" }, seasons: [{ label: "Summer", from: "2026-05-09", to: "2026-09-13" }] },
   PRX: { name: "Parx Racing", code: "PRX", location: "Bensalem, PA", surfaces: { main: "1-mile dirt", turf: "7-furlong turf" }, seasons: [{ label: "Year-round", from: "2026-01-05", to: "2026-12-30" }] },
@@ -1659,6 +1702,21 @@ function getTodayStr() {
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function mapRaceTypeToCode(typeStr) {
+  if (!typeStr) return 'CLM';
+  const t = typeStr.toLowerCase();
+  if (t.includes('maiden') && t.includes('claim')) return 'MCL';
+  if (t.includes('maiden') && t.includes('special')) return 'MSW';
+  if (t.includes('allowance') && t.includes('optional')) return 'AOC';
+  if (t.includes('allowance')) return 'ALW';
+  if (t.includes('grade 1') || t.includes('g1')) return 'STK-G1';
+  if (t.includes('grade 2') || t.includes('g2')) return 'STK-G2';
+  if (t.includes('grade 3') || t.includes('g3')) return 'STK-G3';
+  if (t.includes('stakes') || t.includes('listed')) return 'STK-L';
+  if (t.includes('claim')) return 'CLM';
+  return 'CLM';
 }
 
 /* =============================================================
@@ -1904,6 +1962,7 @@ function renderTodayTab() {
     container.innerHTML = '';
     container.appendChild(noMsg);
     el('top-picks-card').classList.add('hidden');
+    el('rec-bets-card').classList.add('hidden');
     return;
   }
   if (noMsg) noMsg.classList.add('hidden');
@@ -2461,7 +2520,9 @@ function runAdviceEngine() {
   if (!data || !data.races) return;
   const races = data.races;
   const today = getTodayStr();
-  const biasToday = (data.bias || []).find(b => b.date === today);
+  const code = getActiveTrack();
+  const biasLogEntry = (data.bias || []).find(b => b.date === today);
+  const biasToday = biasLogEntry || (TRACKS[code] && TRACKS[code].defaultBias) || null;
 
   let allScores = []; // flat list for "best bet of day"
 
@@ -2469,7 +2530,7 @@ function runAdviceEngine() {
     const horses = (race.horses || []).filter(h => !h.scratched);
     if (!horses.length) return;
 
-    const raceClassVal = CLASS_SCALE[race.type] || 40;
+    const raceClassVal = CLASS_SCALE[race.type] || CLASS_SCALE[mapRaceTypeToCode(race.type)] || 40;
 
     // Pace scenario
     const styles = horses.map(h => h.runningStyle || '');
@@ -2657,44 +2718,102 @@ function buildSuggestedBets(race, scored) {
 }
 
 function updateTopPicksCard(allScores) {
-  if (!allScores.length) { el('top-picks-card').classList.add('hidden'); return; }
+  // Hide legacy top-picks card
+  el('top-picks-card').classList.add('hidden');
 
-  // Best bet: widest gap between #1 and #2 in a race
-  let bestBetEntry = null;
-  let bestGap = -1;
+  const recCard = el('rec-bets-card');
+  const recContent = el('rec-bets-content');
+  if (!allScores.length) { recCard.classList.add('hidden'); return; }
+
+  const store = getStore();
+  const bankroll = (store && store.settings.startingBankroll) || 1000;
+  const dailyBudget = bankroll * 0.20;
+  let totalBetCost = 0;
+
+  // Group scores by race
   const raceMap = {};
   allScores.forEach(s => {
     if (!raceMap[s.race.id]) raceMap[s.race.id] = [];
     raceMap[s.race.id].push(s);
   });
+
+  // Best Bet: highest composite score AND highest confidence (gap > 15)
+  let bestBetEntry = null;
+  let bestGap = -1;
   Object.values(raceMap).forEach(group => {
     if (group.length >= 2) {
       const gap = group[0].score - group[1].score;
-      if (gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
+      if (gap > 15 && gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
+    }
+  });
+  // If no race has gap > 15, pick widest gap anyway but label medium confidence
+  if (!bestBetEntry) {
+    Object.values(raceMap).forEach(group => {
+      if (group.length >= 2) {
+        const gap = group[0].score - group[1].score;
+        if (gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
+      }
+    });
+  }
+
+  // Value Plays: ranked #1 or #2 with ML >= 5-1 AND composite >= 65
+  const valuePlays = allScores.filter(s => s.rank <= 2 && parseOddsToNum(s.horse.ml) >= 5 && s.score >= 65).slice(0, 4);
+
+  // Pass Races: gap < 7 between #1 and #2
+  const passRaces = [];
+  Object.values(raceMap).forEach(group => {
+    if (group.length >= 2) {
+      const gap = group[0].score - group[1].score;
+      if (gap < 7) passRaces.push(group[0].race);
     }
   });
 
-  // Value plays: top 3 horses with ML >= 5-1
-  const valuePlays = allScores.filter(s => s.rank <= 3 && parseOddsToNum(s.horse.ml) >= 5).slice(0,3);
-
   let html = '';
+
+  // Best Bet
   if (bestBetEntry) {
-    html += `<div class="top-pick-row">
-      <span class="top-pick-type">Best Bet</span>
-      <span class="top-pick-details">Race ${bestBetEntry.race.num} · #${bestBetEntry.horse.pp} <strong>${escHtml(bestBetEntry.horse.name)}</strong></span>
-      <span class="top-pick-grade" style="color:var(--color-gold)">${scoreToGrade(bestBetEntry.score)}</span>
+    const confLabel = bestGap > 15 ? 'High' : bestGap > 7 ? 'Medium' : 'Low';
+    const suggestedAmt = Math.round(bankroll * 0.05);
+    totalBetCost += suggestedAmt;
+    html += `<div class="rec-bet-item">
+      <div class="rec-bet-tag rec-tag-best">Best Bet of the Day</div>
+      <div class="rec-bet-detail">Race ${bestBetEntry.race.num}: <strong>#${bestBetEntry.horse.pp} ${escHtml(bestBetEntry.horse.name)}</strong> to WIN</div>
+      <div class="rec-bet-sub">Confidence: ${confLabel} · Suggested: $${suggestedAmt} to win · Score: ${bestBetEntry.score.toFixed(0)}</div>
     </div>`;
   }
+
+  // Value Plays
   valuePlays.forEach(v => {
-    html += `<div class="top-pick-row">
-      <span class="top-pick-type">Value</span>
-      <span class="top-pick-details">Race ${v.race.num} · #${v.horse.pp} ${escHtml(v.horse.name)} <span class="mono text-xs" style="opacity:0.65">${v.horse.ml||''}</span></span>
-      <span class="top-pick-grade">${scoreToGrade(v.score)}</span>
+    // Find #2 horse in same race for exotic suggestion
+    const raceGroup = raceMap[v.race.id];
+    const secondHorse = raceGroup && raceGroup.length > 1 ? raceGroup[v.rank === 1 ? 1 : 0] : null;
+    const exSuggestion = secondHorse ? ` · EX Box with #${secondHorse.horse.pp}` : '';
+    totalBetCost += 4; // $2 EX box = $4
+    html += `<div class="rec-bet-item">
+      <div class="rec-bet-tag rec-tag-value">Value Play</div>
+      <div class="rec-bet-detail">Race ${v.race.num}: <strong>#${v.horse.pp} ${escHtml(v.horse.name)}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(ML ${v.horse.ml || 'N/A'})</span></div>
+      <div class="rec-bet-sub">Score: ${v.score.toFixed(0)}${exSuggestion}</div>
     </div>`;
   });
 
-  el('top-picks-content').innerHTML = html || '<div class="text-muted text-sm">Add horses to see picks</div>';
-  el('top-picks-card').classList.toggle('hidden', !html);
+  // Pass Races
+  passRaces.forEach(race => {
+    html += `<div class="rec-bet-item">
+      <div class="rec-bet-tag rec-tag-pass">Pass</div>
+      <div class="rec-bet-detail" style="opacity:0.65">Race ${race.num}: No clear edge. Save your bankroll.</div>
+    </div>`;
+  });
+
+  // Daily Ticket Summary
+  const remaining = Math.max(0, dailyBudget - totalBetCost);
+  html += `<div class="rec-bet-summary">
+    <div><div class="label">Est. Cost</div><div class="val">${fmt$(totalBetCost)}</div></div>
+    <div><div class="label">Daily Budget</div><div class="val">${fmt$(dailyBudget)}</div></div>
+    <div><div class="label">Remaining</div><div class="val">${fmt$(remaining)}</div></div>
+  </div>`;
+
+  recContent.innerHTML = html;
+  recCard.classList.remove('hidden');
 }
 
 function updateAdviceRaceSelect(races) {
@@ -3903,12 +4022,13 @@ function transformStaticEntries(json) {
     id: generateId(),
     num: r.race_number,
     postTime: r.post_time || 'TBD',
-    type: r.race_type || 'N/A',
+    type: r.race_type_code || mapRaceTypeToCode(r.race_type) || 'CLM',
     conditions: r.conditions || '',
     distance: r.distance || 'N/A',
     surface: r.surface || 'N/A',
     purse: r.purse || 'N/A',
     horses: (r.entries || []).map(e => ({
+      id: generateId(),
       pp: e.pp,
       name: e.name || e.horseName || 'Unknown',
       jockey: e.jockey || 'N/A',
@@ -3917,7 +4037,13 @@ function transformStaticEntries(json) {
       ml: e.ml || 'N/A',
       liveOdds: null,
       scratched: e.scratched || false,
-      speed: '', classRating: '', pace: '', tjPct: ''
+      speedFigs: Array.isArray(e.speedFigs) ? e.speedFigs : [null, null, null],
+      runningStyle: e.runningStyle || '',
+      jockeyPct: e.jockeyPct || 0,
+      trainerPct: e.trainerPct || 0,
+      lastClass: e.lastClass || null,
+      notes: '',
+      wps: []
     })),
     updated: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
   }));
