@@ -799,6 +799,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .rec-tag-best { background: var(--color-gold); color: #1B4332; }
 .rec-tag-value { background: rgba(201,168,76,0.2); color: var(--color-gold); border: 1px solid rgba(201,168,76,0.4); }
 .rec-tag-pass { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+.rec-tag-play { background: rgba(201,168,76,0.15); color: var(--color-gold); border: 1px solid rgba(201,168,76,0.3); }
 .rec-bet-detail {
   font-size: 0.85rem; font-weight: 500; line-height: 1.4;
 }
@@ -2418,15 +2419,8 @@ function toggleScratch(raceId, horseId, scratched) {
     showToast(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' — Race ' + race.num + ': #' + horse.pp + ' ' + horse.name + ' scratched', 'scratch');
   }
   saveTrackData(data);
-  // Re-render just the row
-  const row = el('horse-row-' + raceId + '-' + horseId);
-  if (row) {
-    const tbody = el('entries-' + raceId);
-    if (tbody) {
-      const allHorses = race.horses || [];
-      tbody.innerHTML = allHorses.map(h => buildHorseRowHTML(raceId, h)).join('');
-    }
-  }
+  // Re-run advice engine and update Recommended Bets card
+  renderTodayTab();
 }
 
 function updateScratchBadge() {
@@ -2541,26 +2535,30 @@ function runAdviceEngine() {
     const scored = horses.map(h => {
       // Speed (35%)
       const figs = (h.speedFigs || []).filter(f => f != null);
-      let speedScore = 50;
+      let speedScore = 50; // default for unknown
       if (figs.length) {
         const avg = figs.reduce((a,b)=>a+b,0) / figs.length;
-        // Normalize: assume 60-110 range → 0-100
-        speedScore = Math.min(100, Math.max(0, ((avg - 60) / 50) * 100));
-        // Bonus if latest is highest
+        // Normalize: 45-90 range (realistic for AQU/SAR MCL through ALW)
+        speedScore = Math.min(100, Math.max(0, ((avg - 45) / 45) * 100));
+        // Bonus for improving form (latest is personal best)
         const latest = figs[figs.length - 1];
         const highest = Math.max(...figs);
-        if (latest === highest && figs.length > 1) speedScore = Math.min(100, speedScore + 5);
+        if (latest === highest && figs.length > 1) speedScore = Math.min(100, speedScore + 8);
+        // Penalty for declining form (latest is personal worst)
+        const lowest = Math.min(...figs);
+        if (latest === lowest && figs.length > 1) speedScore = Math.max(0, speedScore - 5);
       }
 
       // Class (20%)
       const lastClassVal = CLASS_SCALE[h.lastClass] || raceClassVal;
       const classDiff = lastClassVal - raceClassVal;
       let classScore = 50;
-      if (classDiff > 15) classScore = 70;       // dropping in class
-      else if (classDiff > 0) classScore = 60;
-      else if (classDiff === 0) classScore = 50;
-      else if (classDiff < -15) classScore = 30;  // rising sharply
-      else classScore = 40;
+      if (classDiff > 20) classScore = 90;       // big class drop
+      else if (classDiff > 10) classScore = 75;   // moderate class drop
+      else if (classDiff > 0) classScore = 60;    // slight class drop
+      else if (classDiff === 0) classScore = 50;  // same level
+      else if (classDiff > -10) classScore = 35;  // slight step up
+      else classScore = 20;                        // big step up
 
       // Pace (20%)
       const style = h.runningStyle || '';
@@ -2574,10 +2572,12 @@ function runAdviceEngine() {
       const trnPct = parseFloat(h.trainerPct) || 0;
       const tjAvg = (jkyPct + trnPct) / 2;
       let tjScore;
-      if (tjAvg > 20) tjScore = 90;
-      else if (tjAvg >= 15) tjScore = 70;
+      if (tjAvg >= 22) tjScore = 95;
+      else if (tjAvg >= 18) tjScore = 80;
+      else if (tjAvg >= 14) tjScore = 65;
       else if (tjAvg >= 10) tjScore = 50;
-      else tjScore = 30;
+      else if (tjAvg >= 6) tjScore = 35;
+      else tjScore = 20;
 
       // Post/Bias (10%)
       let biasScore = 50;
@@ -2613,7 +2613,7 @@ function runAdviceEngine() {
     const topScore = scored[0].score;
     const secondScore = scored.length > 1 ? scored[1].score : 0;
     const gap = topScore - secondScore;
-    const confidence = gap > 15 ? 'high' : gap > 7 ? 'medium' : 'low';
+    const confidence = gap > 12 ? 'high' : gap > 5 ? 'medium' : 'low';
 
     let html = buildConfidenceBar(confidence);
 
@@ -2743,10 +2743,10 @@ function updateTopPicksCard(allScores) {
   Object.values(raceMap).forEach(group => {
     if (group.length >= 2) {
       const gap = group[0].score - group[1].score;
-      if (gap > 15 && gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
+      if (gap > 12 && gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
     }
   });
-  // If no race has gap > 15, pick widest gap anyway but label medium confidence
+  // If no race has gap > 12, pick widest gap anyway but label medium confidence
   if (!bestBetEntry) {
     Object.values(raceMap).forEach(group => {
       if (group.length >= 2) {
@@ -2756,15 +2756,28 @@ function updateTopPicksCard(allScores) {
     });
   }
 
-  // Value Plays: ranked #1 or #2 with ML >= 5-1 AND composite >= 65
-  const valuePlays = allScores.filter(s => s.rank <= 2 && parseOddsToNum(s.horse.ml) >= 5 && s.score >= 65).slice(0, 4);
+  // Value Plays: ranked #1 or #2 with ML >= 5-1 AND composite >= 55
+  const valuePlays = allScores.filter(s => s.rank <= 2 && parseOddsToNum(s.horse.ml) >= 5 && s.score >= 55).slice(0, 4);
 
-  // Pass Races: gap < 7 between #1 and #2
+  // Playable Races: gap >= 5 but not Best Bet and not Pass
+  const playableRaces = [];
+  const bestBetRaceId = bestBetEntry ? bestBetEntry.race.id : null;
+  Object.values(raceMap).forEach(group => {
+    if (group.length >= 2) {
+      const gap = group[0].score - group[1].score;
+      const raceId = group[0].race.id;
+      if (gap >= 5 && raceId !== bestBetRaceId) {
+        playableRaces.push({ entry: group[0], gap });
+      }
+    }
+  });
+
+  // Pass Races: gap < 5 between #1 and #2
   const passRaces = [];
   Object.values(raceMap).forEach(group => {
     if (group.length >= 2) {
       const gap = group[0].score - group[1].score;
-      if (gap < 7) passRaces.push(group[0].race);
+      if (gap < 5) passRaces.push(group[0].race);
     }
   });
 
@@ -2772,7 +2785,7 @@ function updateTopPicksCard(allScores) {
 
   // Best Bet
   if (bestBetEntry) {
-    const confLabel = bestGap > 15 ? 'High' : bestGap > 7 ? 'Medium' : 'Low';
+    const confLabel = bestGap > 12 ? 'High' : bestGap > 5 ? 'Medium' : 'Low';
     const suggestedAmt = Math.round(bankroll * 0.05);
     totalBetCost += suggestedAmt;
     html += `<div class="rec-bet-item">
@@ -2793,6 +2806,17 @@ function updateTopPicksCard(allScores) {
       <div class="rec-bet-tag rec-tag-value">Value Play</div>
       <div class="rec-bet-detail">Race ${v.race.num}: <strong>#${v.horse.pp} ${escHtml(v.horse.name)}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(ML ${v.horse.ml || 'N/A'})</span></div>
       <div class="rec-bet-sub">Score: ${v.score.toFixed(0)}${exSuggestion}</div>
+    </div>`;
+  });
+
+  // Playable Races
+  playableRaces.forEach(({ entry, gap }) => {
+    const confLabel = gap > 12 ? 'High' : 'Medium';
+    totalBetCost += 10; // small win bet
+    html += `<div class="rec-bet-item">
+      <div class="rec-bet-tag rec-tag-play">Playable</div>
+      <div class="rec-bet-detail">Race ${entry.race.num}: <strong>#${entry.horse.pp} ${escHtml(entry.horse.name)}</strong> to WIN</div>
+      <div class="rec-bet-sub">Confidence: ${confLabel} · Score: ${entry.score.toFixed(0)} · Gap: ${gap.toFixed(0)}</div>
     </div>`;
   });
 
@@ -3297,7 +3321,7 @@ function renderAdviceEnginePanel() {
     html += `<div style="margin-bottom:1.25rem">
       <div style="font-family:var(--font-display);font-size:0.95rem;font-weight:600;margin-bottom:0.5rem;color:var(--color-racing-green)">Race ${race.num} — ${typeLbl}</div>`;
     const gap = scored.length > 1 ? scored[0].score - scored[1].score : 0;
-    const confidence = gap > 15 ? 'high' : gap > 7 ? 'medium' : 'low';
+    const confidence = gap > 12 ? 'high' : gap > 5 ? 'medium' : 'low';
     html += buildConfidenceBar(confidence);
     scored.forEach((s,i) => {
       const grade = scoreToGrade(s.score);
