@@ -4241,15 +4241,25 @@ function updateSyncTime() {
    ============================================================= */
 document.addEventListener('DOMContentLoaded', () => {
   const store = initStore();
+  buildWelcomeTrackGrid();
 
-  if (!store.settings.welcomeDone) {
-    buildWelcomeTrackGrid();
-    // Welcome screen shown by default
-  } else {
-    el('welcome-screen').classList.add('hidden');
-    el('app-frame').classList.remove('hidden');
-    initApp();
+  // Pre-fill saved settings for returning users
+  if (store.settings.welcomeDone) {
+    const br = el('welcome-bankroll');
+    if (br) br.value = store.settings.startingBankroll || 1000;
+    // Restore track selection
+    const savedTrack = store.settings.activeTrack || 'AQU';
+    welcomeSelectedTrack = savedTrack;
+    document.querySelectorAll('.sar-aqu-btn').forEach(b => b.classList.remove('selected'));
+    const trackBtn = el('welcome-' + savedTrack.toLowerCase() + '-btn');
+    if (trackBtn) trackBtn.classList.add('selected');
+    // Restore data mode
+    const savedMode = store.settings.dataMode || 'live';
+    welcomeDataMode = savedMode;
+    el('mode-live').classList.toggle('active', savedMode === 'live');
+    el('mode-manual').classList.toggle('active', savedMode === 'manual');
   }
+  // Always show the hero welcome screen on open
 });
 
 // Close drawer when clicking outside
