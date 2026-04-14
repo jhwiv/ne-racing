@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-1302';
+var NE_APP_VERSION = '20260414-1309';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -130,12 +130,11 @@ html { scroll-behavior: smooth; }
 #app { display: flex; flex-direction: column; }
 #welcome-screen {
   position: relative;
-  height: 100dvh;
-  max-height: 100dvh;
+  min-height: 100dvh;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 1rem 1.25rem;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 #welcome-screen-bg {
   position: absolute; inset: 0; z-index: 0;
