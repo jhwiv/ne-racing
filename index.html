@@ -4343,5 +4343,18 @@ document.addEventListener('keydown', e => {
 });
 
 </script>
+<script>
+// Register service worker for network-first caching
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(function(reg) {
+    reg.addEventListener('updatefound', function() {
+      var w = reg.installing;
+      w.addEventListener('statechange', function() {
+        if (w.state === 'activated') location.reload();
+      });
+    });
+  });
+}
+</script>
 </body>
 </html>
