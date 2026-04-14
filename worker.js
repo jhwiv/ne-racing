@@ -347,25 +347,34 @@ async function fetchFreeEntries(track, date, venue) {
 function transformStaticEntries(data, track, venue, date) {
   const races = (data.races || []).map((race) => {
     const entries = (race.entries || []).map((entry) => ({
-      pp:        entry.pp,
-      horseName: entry.name || "Unknown",
-      ml:        "N/A",   // Morning line not in static file; populated by Equibase/manual
-      jockey:    entry.jockey || "N/A",
-      trainer:   entry.trainer || "N/A",
-      // Honour the scratched flag in the static file
-      status: entry.scratched ? "SCRATCHED" : "RUNNER",
+      pp:               entry.pp,
+      horseName:        entry.name || "Unknown",
+      ml:               entry.ml || "N/A",
+      jockey:           entry.jockey || "N/A",
+      trainer:          entry.trainer || "N/A",
+      status:           entry.scratched ? "SCRATCHED" : "RUNNER",
+      speedFigs:        entry.speedFigs || [null, null, null],
+      runningStyle:     entry.runningStyle || "",
+      jockeyPct:        entry.jockeyPct || 0,
+      trainerPct:       entry.trainerPct || 0,
+      lastClass:        entry.lastClass || null,
+      lastRaceDate:     entry.lastRaceDate || null,
+      equipmentChanges: entry.equipmentChanges || "",
+      workouts:         entry.workouts || [],
     }));
 
     return {
-      raceNumber: race.race_number,
-      postTime:   race.post_time || "N/A",
-      raceType:   race.race_type || "N/A",
-      raceClass:  null,                    // not in static schema
-      distance:   race.distance || "N/A",
-      surface:    race.surface || "N/A",
-      going:      null,                    // not in static schema
-      purse:      formatPurse(race.purse),
-      conditions: race.conditions || null, // extra field; harmless to include
+      raceNumber:    race.race_number,
+      postTime:      race.post_time || "N/A",
+      raceType:      race.race_type || "N/A",
+      raceClass:     null,                    // not in static schema
+      distance:      race.distance || "N/A",
+      surface:       race.surface || "N/A",
+      going:         null,                    // not in static schema
+      purse:         formatPurse(race.purse),
+      conditions:    race.conditions || null, // extra field; harmless to include
+      expertPicks:   race.expertPicks || [],  // expert handicapper picks
+      equibaseUrl:   race.equibaseUrl || null,
       entries,
     };
   });
@@ -1141,6 +1150,79 @@ async function handleResults(request, env, origin) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// EXPERT PICKS
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Handles /api/expert-picks — returns expert handicapper picks for a given
+ * track and date. For the "free" data source, attempts to fetch from NYRA's
+ * expert picks page and falls back to the static JSON file's expertPicks
+ * field.
+ *
+ * @param {Request} request
+ * @param {object}  env
+ * @param {string}  origin
+ */
+async function handleExpertPicks(request, env, origin) {
+  const url   = new URL(request.url);
+  const track = (url.searchParams.get("track") || env.DEFAULT_TRACK || "AQU").toUpperCase();
+  const date  = url.searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const venue = TRACK_TO_VENUE[track] || track;
+
+  try {
+    // Try to load expert picks from the static entries file first
+    // (expertPicks are embedded per-race in the static JSON)
+    const fileUrl = `${STATIC_ENTRIES_BASE}/entries-${track}-${date}.json`;
+    const res = await fetch(fileUrl, {
+      headers: { Accept: "application/json" },
+      cf: { cacheTtl: CACHE_TTL.entries },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const expertPicks = (data.races || []).map((race) => ({
+        race: race.race_number,
+        picks: (race.expertPicks || []).map((ep) => ({
+          source:    ep.source,
+          pick:      ep.pick,
+          horseName: ep.horseName,
+        })),
+      })).filter((r) => r.picks.length > 0);
+
+      return jsonOk(
+        {
+          track,
+          date,
+          venue,
+          lastUpdated: new Date().toISOString(),
+          source: "github-pages-static",
+          expertPicks,
+        },
+        origin,
+        CACHE_TTL.entries
+      );
+    }
+
+    // No static file available — return empty
+    return jsonOk(
+      {
+        track,
+        date,
+        venue,
+        lastUpdated: new Date().toISOString(),
+        source: "unavailable",
+        expertPicks: [],
+        message: `No expert picks available for ${track} on ${date}.`,
+      },
+      origin,
+      0
+    );
+  } catch (err) {
+    return jsonError(`Expert picks fetch failed: ${err.message}`, 503, origin);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Main fetch handler (Worker entry point)
 // ═════════════════════════════════════════════════════════════════════════════
 export default {
@@ -1202,6 +1284,9 @@ export default {
       case "/api/results":
         return handleResults(request, env, origin);
 
+      case "/api/expert-picks":
+        return handleExpertPicks(request, env, origin);
+
       // ── Health check / root ───────────────────────────────────────────
       case "/":
       case "/health":
@@ -1224,6 +1309,7 @@ export default {
               "/api/scratches?track=AQU&date=YYYY-MM-DD",
               "/api/odds?track=AQU&date=YYYY-MM-DD&race=5",
               "/api/results?track=AQU&date=YYYY-MM-DD",
+              "/api/expert-picks?track=AQU&date=YYYY-MM-DD",
             ],
           },
           origin,

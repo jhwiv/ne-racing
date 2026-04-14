@@ -1,4 +1,65 @@
-# NE Racing — Upgrade Changelog (2026-04-14)
+# NE Racing — Changelog
+
+## v2.0 — Major Upgrade (2026-04-14)
+
+### Task 1: Expert Handicapper Picks
+- New `/api/expert-picks` endpoint in `worker.js` (fetches from static JSON or returns empty gracefully)
+- `expertPicks` array added to each race in the data model (source, pick PP, horse name)
+- Expert Consensus section in each race's advice panel showing who picked whom
+- HIGH CONVICTION badge (`.badge-conviction`) when engine's top pick matches 2+ expert picks
+- Expert picks referenced in Today's Ticket card ("Aragona & DeSantis both pick him")
+
+### Task 2: Today's Ticket Redesign
+- Replaced generic Recommended Bets card with ticket-themed "Today's Ticket" card
+- Three bet categories: Best Bet (5% bankroll), Value Play ($2 EX Box), Action Bet (2% bankroll)
+- Plain-English one-sentence reasons for every recommendation (no numeric scores on ticket)
+- PASS section listing races with no clear edge (gap < 5, low completeness, or auto-PASS)
+- "Copy Ticket" button copies clean text summary to clipboard
+- Est. Cost / Budget / Remaining summary footer
+- Maximum 4 recommendations per day (1 Best + up to 2 Value + 1 Action)
+
+### Task 3: Deeper Advice Engine
+- **Data completeness penalty**: 7-point check (3 speed figs, running style, jockey%, trainer%, lastClass). <50% = 15% penalty, <30% = 30% penalty
+- **Freshness factor** (5% weight): 14-28 days = 80 (ideal), 7-13d = 65, 29-60d = 55, 61-90d = 35, 90+ = 20. Pace reduced to 15%
+- **Equipment change bonus**: +5 to composite (capped at 100) when equipmentChanges is non-empty
+- **Improved confidence calibration**: High requires gap > 12 AND completeness >= 70% AND field >= 5. Medium requires gap > 6 AND completeness >= 50%. Else Low
+- **Auto-PASS**: When confidence is Low AND top score < 60
+- **Expert consensus boost**: +8 if 2+ experts match, +4 if 1 expert matches
+- Updated Reference tab methodology table with new weights and modifiers
+
+### Task 4: Workout Data Display
+- `workouts` array added to horse data model (date, distance, time, surface, rank, note)
+- Workout table in Horse Detail Modal showing recent workouts
+- Bullet workout indicator (lightning bolt) next to horse name in entry table
+- Bullet workouts mentioned in advice rationale
+
+### Task 5: Daily Data Pipeline
+- `.github/workflows/daily-entries.yml`: Runs 8 AM ET weekdays, triggers `scripts/build-entries.js`
+- `scripts/build-entries.js`: Node.js script (zero npm deps) that fetches NYRA entries, cross-references jockey/trainer stats, assigns running styles, fetches expert picks, outputs enriched JSON
+- `data/jockey-stats.json`: Top 50 NYRA circuit jockeys with trailing 12-month stats
+- `data/trainer-stats.json`: Top 50 NYRA circuit trainers with trailing 12-month stats
+
+### Task 6: UX Fixes
+- **6a**: Sync info hidden in manual mode (`syncInfo.classList.add('hidden')` when `dataMode === 'manual'`)
+- **6b**: No change needed — gear icon and track pill already work correctly
+- **6c**: Loading indicator (pulsing dot + "Loading entries...") shown during live data fetch
+- **6d**: Equibase deep links per race card ("View on Equibase" link in race header)
+
+### Task 7: Accuracy Tracking
+- `ne-racing-accuracy` localStorage key tracks best bet wins, value play ROI, expert consensus record, action bet record
+- Updated Advice Report Card in Results tab: Best Bet Record, Expert Consensus Record, Value Play ROI, Action Bet Record
+- `storeTicketPicks()` saves daily ticket picks for cross-referencing with results
+- `updateAccuracyTracking()` called on every result update
+
+### Data File Changes
+- `data/entries-AQU-2026-04-16.json`: Added `expertPicks` (per race), `equibaseUrl` (per race), `lastRaceDate`, `equipmentChanges`, `workouts` (per horse) for all 70 entries across 8 races
+
+### Worker Changes
+- `worker.js`: New `/api/expert-picks` endpoint, `transformStaticEntries()` passes through expertPicks, equibaseUrl, and all new horse-level fields
+
+---
+
+## v1.x — Previous Changes (2026-04-14)
 
 ## Part 1: CSS Navigation Bug Fix
 - **Moved** `#desktop-nav { display: none; }` **before** the `@media (min-width: 768px)` query so the responsive rule properly overrides on desktop

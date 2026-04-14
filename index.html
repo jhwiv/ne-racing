@@ -846,6 +846,13 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .rec-tag-value { background: rgba(201,168,76,0.2); color: var(--color-gold); border: 1px solid rgba(201,168,76,0.4); }
 .rec-tag-pass { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
 .rec-tag-play { background: rgba(201,168,76,0.15); color: var(--color-gold); border: 1px solid rgba(201,168,76,0.3); }
+.rec-tag-action { background: rgba(45,106,79,0.3); color: #52B788; border: 1px solid rgba(82,183,136,0.4); }
+.badge-conviction { background: #1B4332; color: #C9A84C; font-size: 0.6rem; font-weight: 800; padding: 0.15rem 0.45rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+.badge-equip { background: rgba(230,126,34,0.15); color: var(--color-amber); font-size: 0.6rem; font-weight: 700; padding: 0.12rem 0.35rem; border-radius: 3px; }
+.badge-bullet { color: #F59E0B; font-size: 0.75rem; cursor: help; }
+.expert-consensus { margin-top: 0.5rem; padding: 0.5rem; background: rgba(201,168,76,0.08); border-radius: 6px; border-left: 3px solid var(--color-gold); }
+.expert-consensus .expert-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-gold); margin-bottom: 3px; }
+.expert-consensus .expert-picks-list { font-size: 0.78rem; color: var(--color-slate); }
 .rec-bet-detail {
   font-size: 0.85rem; font-weight: 500; line-height: 1.4;
 }
@@ -859,6 +866,21 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .rec-bet-summary .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.5); font-family: var(--font-body); }
 .rec-bet-summary .val { font-weight: 600; color: var(--color-gold); }
+.rec-bet-reason { font-size: 0.78rem; color: rgba(255,255,255,0.7); font-style: italic; margin-top: 3px; line-height: 1.3; }
+.rec-bet-amount { font-family: var(--font-mono); font-size: 0.78rem; color: var(--color-gold); font-weight: 600; }
+.ticket-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem; }
+.ticket-header .ticket-icon { font-size: 1.2rem; }
+.ticket-subtitle { font-size: 0.72rem; color: rgba(255,255,255,0.5); margin-bottom: 0.75rem; }
+.copy-ticket-btn { display: flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%; margin-top: 0.6rem; padding: 0.5rem; background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.35); color: var(--color-gold); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.copy-ticket-btn:hover { background: rgba(201,168,76,0.25); }
+.pass-races-line { font-size: 0.78rem; color: rgba(255,255,255,0.5); padding: 0.4rem 0; }
+.loading-indicator { display: flex; align-items: center; gap: 0.5rem; padding: 1rem; color: var(--color-muted); font-size: 0.85rem; }
+.loading-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-gold); animation: pulseDot 1s ease infinite; }
+@keyframes pulseDot { 0%,100%{ opacity:0.3; transform:scale(0.8); } 50%{ opacity:1; transform:scale(1.2); } }
+.workout-table { width: 100%; font-size: 0.8rem; border-collapse: collapse; margin-top: 0.5rem; }
+.workout-table th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-muted); text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(0,0,0,0.1); }
+.workout-table td { padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(0,0,0,0.05); }
+.workout-bullet { color: #F59E0B; font-weight: 700; }
 
 /* =========================================================
    DISCLAIMER
@@ -1053,9 +1075,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         No race card available — try manual entry or check back on a race day
       </div>
       <div id="preview-date-banner" class="banner banner-info hidden"></div>
-      <!-- Recommended Bets Card (replaces top picks) -->
+      <!-- Today's Ticket Card -->
       <div id="rec-bets-card" class="rec-bets-card hidden">
-        <h3>&#9733; Recommended Bets</h3>
+        <div class="ticket-header"><span class="ticket-icon">&#127915;</span><h3 style="margin:0">Today's Ticket</h3></div>
+        <div class="ticket-subtitle" id="ticket-subtitle"></div>
         <div id="rec-bets-content"></div>
       </div>
       <!-- Legacy Top Picks (hidden, kept for compat) -->
@@ -1406,12 +1429,20 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         <div class="card-body">
           <div id="advice-report-card">
             <div class="flex justify-between items-center mb-1">
-              <span class="font-semibold text-sm">Best Bet of the Day</span>
+              <span class="font-semibold text-sm">Best Bet Record</span>
               <span class="mono text-sm" id="arc-best-bet">W-L: — (—%)</span>
+            </div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-sm">Expert Consensus Record</span>
+              <span class="mono text-sm" id="arc-expert-consensus">W-L: — (—%)</span>
             </div>
             <div class="flex justify-between items-center mb-1">
               <span class="font-semibold text-sm">Value Play ROI</span>
               <span class="mono text-sm" id="arc-value-roi">—</span>
+            </div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-sm">Action Bet Record</span>
+              <span class="mono text-sm" id="arc-action-bet">W-L: — (—%)</span>
             </div>
             <div class="flex justify-between items-center">
               <span class="font-semibold text-sm">Overall Advice Engine ROI</span>
@@ -1511,18 +1542,21 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="ref-section-body">
-          <p style="font-size:0.85rem;line-height:1.7;margin-bottom:0.75rem">The Advice Engine computes a composite score (0–100) for each horse in each race, then assigns a letter grade and generates a one-line rationale. The five factors and their weights are:</p>
+          <p style="font-size:0.85rem;line-height:1.7;margin-bottom:0.75rem">The Advice Engine computes a composite score (0–100) for each horse in each race, then assigns a letter grade and generates a one-line rationale. The six factors and their weights are:</p>
           <table class="breakdown-table" style="font-size:0.82rem">
             <thead><tr><th>Factor</th><th>Weight</th><th>Method</th></tr></thead>
             <tbody>
-              <tr><td><strong>Speed</strong></td><td class="mono">35%</td><td>Average of last 3 Beyer/speed figs, normalized 0–100. +5 bonus if most recent is highest.</td></tr>
+              <tr><td><strong>Speed</strong></td><td class="mono">35%</td><td>Average of last 3 Beyer/speed figs, normalized 0–100. +8 bonus if most recent is career best, −5 if career worst.</td></tr>
               <tr><td><strong>Class</strong></td><td class="mono">20%</td><td>Map race type to numeric scale (G1=100…MCL=20). Dropping in class = bonus; rising = penalty.</td></tr>
-              <tr><td><strong>Pace</strong></td><td class="mono">20%</td><td>Identify running styles. Lone speed gets +15. Hot pace (3+ front-runners) gives closers +10.</td></tr>
-              <tr><td><strong>Trainer/Jockey</strong></td><td class="mono">15%</td><td>Win % input: >20% = 90pts, 15–20% = 70, 10–15% = 50, &lt;10% = 30.</td></tr>
+              <tr><td><strong>Pace</strong></td><td class="mono">15%</td><td>Identify running styles. Lone speed gets 80. Hot pace (3+ front-runners) gives closers 70, penalizes front-runners to 30.</td></tr>
+              <tr><td><strong>Trainer/Jockey</strong></td><td class="mono">15%</td><td>Average jockey+trainer win %. ≥22% = 95pts, ≥18% = 80, ≥14% = 65, ≥10% = 50, ≥6% = 35, else 20.</td></tr>
               <tr><td><strong>Post + Bias</strong></td><td class="mono">10%</td><td>Cross-reference today's bias log entry (rail, running style adv.) with PP and style.</td></tr>
+              <tr><td><strong>Freshness</strong></td><td class="mono">5%</td><td>Days since last race: 14–28d = 80 (ideal), 7–13d = 65, 29–60d = 55, 61–90d = 35, 90+ = 20.</td></tr>
             </tbody>
           </table>
-          <p style="font-size:0.8rem;color:var(--color-muted);margin-top:0.75rem">Letter grades: A+ (90–100), A (80–89), B+ (73–79), B (65–72), C (50–64), D (&lt;50). Confidence level reflects score separation between top two horses.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);margin-top:0.5rem"><strong>Modifiers:</strong> Equipment change +5. Expert consensus (2+ picks) +8, (1 pick) +4. Data completeness &lt;50% = 15% penalty, &lt;30% = 30% penalty.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);margin-top:0.5rem"><strong>Confidence:</strong> High = gap &gt;12 AND completeness ≥70% AND field ≥5. Medium = gap &gt;6 AND completeness ≥50%. Else Low. Auto-PASS when Low AND top score &lt;60.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);margin-top:0.5rem">Letter grades: A+ (90–100), A (80–89), B+ (73–79), B (65–72), C (50–64), D (&lt;50).</p>
         </div>
       </div>
     </section>
@@ -1888,10 +1922,20 @@ function initApp() {
   renderGlossary();
   updateBiasDateDefault();
 
+  // Task 6a: Hide sync info in manual mode
+  const syncInfo = el('sync-time');
+  if (syncInfo) {
+    if (store.settings.dataMode === 'manual') syncInfo.classList.add('hidden');
+    else syncInfo.classList.remove('hidden');
+  }
+
   // Start live polling if needed
   if (store.settings.dataMode === 'live') {
     startLivePolling();
   }
+
+  // Load accuracy tracking data
+  renderAccuracyFromStorage();
 }
 
 function updateHeaderTrack() {
@@ -2035,12 +2079,13 @@ function renderTodayTab() {
 function buildRaceCardHTML(race) {
   const horses = race.horses || [];
   const typeLbl = CLASS_LABELS[race.type] || race.type || '';
+  const eqbUrl = race.equibaseUrl || buildEquibaseUrl(race.num);
   return `<div class="race-card-wrap" id="race-wrap-${race.id}">
     <div class="race-card-header" onclick="toggleRaceCard('${race.id}')" id="race-header-${race.id}">
       <span class="race-num">${String(race.num).padStart(2,'0')}</span>
       <div class="race-info">
         <div class="race-title">${typeLbl} — ${race.distance || ''} ${race.surface ? '<span style="opacity:0.75">'+race.surface+'</span>' : ''}</div>
-        <div class="race-meta">${race.postTime ? 'Post: ' + race.postTime + ' &nbsp;|&nbsp; ' : ''}${race.purse && race.purse !== 'N/A' ? 'Purse: ' + (String(race.purse).startsWith('$') ? race.purse : '$' + Number(String(race.purse).replace(/[^0-9.]/g,'')).toLocaleString()) : ''} &nbsp;${race.updated ? '· Updated ' + race.updated : ''}</div>
+        <div class="race-meta">${race.postTime ? 'Post: ' + race.postTime + ' &nbsp;|&nbsp; ' : ''}${race.purse && race.purse !== 'N/A' ? 'Purse: ' + (String(race.purse).startsWith('$') ? race.purse : '$' + Number(String(race.purse).replace(/[^0-9.]/g,'')).toLocaleString()) : ''} &nbsp;${race.updated ? '· Updated ' + race.updated : ''}${eqbUrl ? ' &nbsp;<a href="'+eqbUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:0.68rem;color:var(--color-gold);text-decoration:none">View on Equibase ↗</a>' : ''}</div>
       </div>
       <svg class="collapse-icon" id="collapse-icon-${race.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:18px;height:18px"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
@@ -2118,6 +2163,13 @@ function buildHorseRowHTML(raceId, h) {
   const pActive = (h.wps || []).includes('P') ? 'active' : '';
   const sActive = (h.wps || []).includes('S') ? 'active' : '';
 
+  // Bullet workout indicator
+  const hasBullet = hasBulletWorkout(h);
+  const bulletIcon = hasBullet ? ' <span class="badge-bullet" title="Bullet workout in last 14 days">&#9889;</span>' : '';
+
+  // Equipment change badge
+  const equipBadge = h.equipmentChanges ? ` <span class="badge-equip">${escHtml(h.equipmentChanges)}</span>` : '';
+
   let liveOddsCell = '<span class="text-muted">—</span>';
   if (h.liveOdds) {
     const ml = parseOddsToNum(h.ml);
@@ -2138,7 +2190,7 @@ function buildHorseRowHTML(raceId, h) {
       </label>
     </td>
     <td class="pp-cell">${h.pp || ''}</td>
-    <td><span class="horse-name" onclick="openHorseModal('${raceId}','${h.id}')">${h.name || '—'}</span>${h.scratched ? ' <span class="badge badge-scratch">SCRATCHED</span>' : ''}</td>
+    <td><span class="horse-name" onclick="openHorseModal('${raceId}','${h.id}')">${h.name || '—'}</span>${bulletIcon}${equipBadge}${h.scratched ? ' <span class="badge badge-scratch">SCRATCHED</span>' : ''}</td>
     <td class="odds-cell">${h.ml || '—'}</td>
     <td>${liveOddsCell}</td>
     <td><span>${h.jockey || '—'}</span><div class="jt-pct">${h.jockeyPct ? h.jockeyPct+'%' : ''}</div></td>
@@ -2162,7 +2214,28 @@ function buildHorseRowHTML(raceId, h) {
   </tr>`;
 }
 
+function hasBulletWorkout(h) {
+  if (!h.workouts || !h.workouts.length) return false;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 14);
+  return h.workouts.some(w => {
+    if (w.note === 'Bullet' || (w.rank && w.rank.startsWith('1/'))) {
+      const d = new Date(w.date + 'T12:00:00');
+      return d >= cutoff;
+    }
+    return false;
+  });
+}
+
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function buildEquibaseUrl(raceNum) {
+  const code = getActiveTrack();
+  const date = loadedRaceDate || getTodayStr();
+  if (!date || !code) return null;
+  const dt = date.replace(/-/g, '').slice(4) + date.slice(0, 4); // MMDDYYYY
+  return `https://www.equibase.com/static/entry/index.html?type=Entry&dt=${dt}&cy=USA&tk=${code}&rn=${raceNum}`;
+}
 
 function parseOddsToNum(odds) {
   if (!odds) return 0;
@@ -2508,12 +2581,43 @@ function openHorseModal(raceId, horseId) {
   const validFigs = sfs.filter(f => f != null);
   const avgFig = validFigs.length ? (validFigs.reduce((a,b)=>a+b,0)/validFigs.length).toFixed(1) : '—';
 
+  // Equipment changes
+  const equipHtml = horse.equipmentChanges ? `<div style="margin-bottom:0.75rem"><span class="badge-equip">${escHtml(horse.equipmentChanges)}</span></div>` : '';
+
+  // Last race date
+  let freshnessHtml = '';
+  if (horse.lastRaceDate) {
+    const lrd = new Date(horse.lastRaceDate + 'T12:00:00');
+    const daysSince = Math.floor((new Date() - lrd) / 86400000);
+    freshnessHtml = `<div><div class="text-xs text-muted">Last Race</div><div class="font-semibold">${horse.lastRaceDate} <span class="text-xs text-muted">(${daysSince}d ago)</span></div></div>`;
+  }
+
+  // Workouts section
+  let workoutHtml = '';
+  if (horse.workouts && horse.workouts.length) {
+    workoutHtml = `<div style="margin-top:0.75rem;margin-bottom:0.75rem">
+      <div class="text-xs text-muted font-semibold" style="margin-bottom:4px">Recent Workouts</div>
+      <table class="workout-table">
+        <thead><tr><th>Date</th><th>Dist</th><th>Time</th><th>Surface</th><th>Rank</th></tr></thead>
+        <tbody>${horse.workouts.map(w => {
+          const isBullet = w.note === 'Bullet' || (w.rank && w.rank.startsWith('1/'));
+          return `<tr${isBullet ? ' class="workout-bullet"' : ''}>
+            <td>${w.date||'—'}</td><td>${w.distance||'—'}</td><td>${w.time||'—'}</td><td>${w.surface||'—'}</td>
+            <td>${w.rank||'—'}${isBullet ? ' &#9889;' : ''}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>`;
+  }
+
   el('hm-body').innerHTML = `
+    ${equipHtml}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:1rem">
       <div><div class="text-xs text-muted">Jockey</div><div class="font-semibold">${horse.jockey||'—'}</div><div class="text-xs text-muted mono">${horse.jockeyPct ? horse.jockeyPct+'% win' : ''}</div></div>
       <div><div class="text-xs text-muted">Trainer</div><div class="font-semibold">${horse.trainer||'—'}</div><div class="text-xs text-muted mono">${horse.trainerPct ? horse.trainerPct+'% win' : ''}</div></div>
       <div><div class="text-xs text-muted">Running Style</div><div class="font-semibold">${horse.runningStyle||'—'}</div></div>
       <div><div class="text-xs text-muted">Last Class</div><div class="font-semibold">${CLASS_LABELS[horse.lastClass]||horse.lastClass||'—'}</div></div>
+      ${freshnessHtml}
     </div>
     <div style="margin-bottom:1rem">
       <div class="text-xs text-muted mb-1">Speed Figures (oldest → latest)</div>
@@ -2522,6 +2626,7 @@ function openHorseModal(raceId, horseId) {
         <div style="text-align:center;margin-left:0.5rem"><div class="mono" style="font-size:1.1rem;font-weight:700;color:var(--color-gold)">${avgFig}</div><div class="text-xs text-muted">Avg</div></div>
       </div>
     </div>
+    ${workoutHtml}
     ${horse.notes ? `<div style="background:rgba(27,67,50,0.05);border-radius:6px;padding:0.6rem;font-size:0.82rem"><strong>Notes:</strong> ${escHtml(horse.notes)}</div>` : ''}
     <div style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:0.4rem">
       ${['W','P','S'].map(type => `<button class="btn btn-sm ${(horse.wps||[]).includes(type) ? 'btn-primary' : 'btn-outline'}" onclick="toggleWPSFromModal('${raceId}','${horseId}','${type}',this)">${{W:'Win',P:'Place',S:'Show'}[type]}</button>`).join('')}
@@ -2585,18 +2690,26 @@ function runAdviceEngine() {
     const hotPace = frontRunners >= 3;
 
     const scored = horses.map(h => {
-      // Speed (35%)
+      // ── Data completeness (7 data points) ──
+      let dataPoints = 0;
       const figs = (h.speedFigs || []).filter(f => f != null);
+      if (figs.length >= 1) dataPoints++; // speedFigs[0]
+      if (figs.length >= 2) dataPoints++; // speedFigs[1]
+      if (figs.length >= 3) dataPoints++; // speedFigs[2]
+      if (h.runningStyle) dataPoints++;
+      if ((parseFloat(h.jockeyPct) || 0) > 0) dataPoints++;
+      if ((parseFloat(h.trainerPct) || 0) > 0) dataPoints++;
+      if (h.lastClass) dataPoints++;
+      const completeness = dataPoints / 7;
+
+      // Speed (35%)
       let speedScore = 50; // default for unknown
       if (figs.length) {
         const avg = figs.reduce((a,b)=>a+b,0) / figs.length;
-        // Normalize: 45-90 range (realistic for AQU/SAR MCL through ALW)
         speedScore = Math.min(100, Math.max(0, ((avg - 45) / 45) * 100));
-        // Bonus for improving form (latest is personal best)
         const latest = figs[figs.length - 1];
         const highest = Math.max(...figs);
         if (latest === highest && figs.length > 1) speedScore = Math.min(100, speedScore + 8);
-        // Penalty for declining form (latest is personal worst)
         const lowest = Math.min(...figs);
         if (latest === lowest && figs.length > 1) speedScore = Math.max(0, speedScore - 5);
       }
@@ -2605,14 +2718,14 @@ function runAdviceEngine() {
       const lastClassVal = CLASS_SCALE[h.lastClass] || raceClassVal;
       const classDiff = lastClassVal - raceClassVal;
       let classScore = 50;
-      if (classDiff > 20) classScore = 90;       // big class drop
-      else if (classDiff > 10) classScore = 75;   // moderate class drop
-      else if (classDiff > 0) classScore = 60;    // slight class drop
-      else if (classDiff === 0) classScore = 50;  // same level
-      else if (classDiff > -10) classScore = 35;  // slight step up
-      else classScore = 20;                        // big step up
+      if (classDiff > 20) classScore = 90;
+      else if (classDiff > 10) classScore = 75;
+      else if (classDiff > 0) classScore = 60;
+      else if (classDiff === 0) classScore = 50;
+      else if (classDiff > -10) classScore = 35;
+      else classScore = 20;
 
-      // Pace (20%)
+      // Pace (15% — reduced from 20%)
       const style = h.runningStyle || '';
       let paceScore = 50;
       if (loneSpeed && (style === 'E' || style === 'EP')) paceScore = 80;
@@ -2643,8 +2756,33 @@ function runAdviceEngine() {
         else if (railAdv === 'Outside' && pp >= 7) biasScore = Math.min(100, biasScore + 15);
       }
 
-      const composite = speedScore * 0.35 + classScore * 0.20 + paceScore * 0.20 + tjScore * 0.15 + biasScore * 0.10;
-      return { horse: h, score: composite, speedScore, classScore, paceScore, tjScore, biasScore };
+      // ── Freshness (5% — new) ──
+      let freshnessScore = 50;
+      if (h.lastRaceDate) {
+        const daysSince = Math.floor((new Date() - new Date(h.lastRaceDate + 'T12:00:00')) / 86400000);
+        if (daysSince >= 14 && daysSince <= 28) freshnessScore = 80;
+        else if (daysSince >= 7 && daysSince < 14) freshnessScore = 65;
+        else if (daysSince > 28 && daysSince <= 60) freshnessScore = 55;
+        else if (daysSince > 60 && daysSince <= 90) freshnessScore = 35;
+        else if (daysSince > 90) freshnessScore = 20;
+      }
+
+      // ── Composite: Speed 35%, Class 20%, Pace 15%, T/J 15%, Bias 10%, Freshness 5% ──
+      let composite = speedScore * 0.35 + classScore * 0.20 + paceScore * 0.15 + tjScore * 0.15 + biasScore * 0.10 + freshnessScore * 0.05;
+
+      // ── Equipment change bonus (+5, capped 100) ──
+      if (h.equipmentChanges) composite = Math.min(100, composite + 5);
+
+      // ── Data completeness penalty ──
+      if (completeness < 3/7) composite *= 0.70;       // < 30% → 30% penalty
+      else if (completeness < 4/7) composite *= 0.85;  // < 50% → 15% penalty
+
+      // ── Expert consensus boost ──
+      const expertMatchCount = countExpertPicks(race, h);
+      if (expertMatchCount >= 2) composite = Math.min(100, composite + 8);
+      else if (expertMatchCount === 1) composite = Math.min(100, composite + 4);
+
+      return { horse: h, score: composite, speedScore, classScore, paceScore, tjScore, biasScore, freshnessScore, completeness, expertMatchCount };
     });
 
     scored.sort((a,b) => b.score - a.score);
@@ -2665,9 +2803,19 @@ function runAdviceEngine() {
     const topScore = scored[0].score;
     const secondScore = scored.length > 1 ? scored[1].score : 0;
     const gap = topScore - secondScore;
-    const confidence = gap > 12 ? 'high' : gap > 5 ? 'medium' : 'low';
+    const topCompleteness = scored[0].completeness;
+    const fieldSize = horses.length;
+
+    // Improved confidence calibration (Task 3d)
+    let confidence;
+    if (gap > 12 && topCompleteness >= 0.70 && fieldSize >= 5) confidence = 'high';
+    else if (gap > 6 && topCompleteness >= 0.50) confidence = 'medium';
+    else confidence = 'low';
 
     let html = buildConfidenceBar(confidence);
+
+    // PASS auto-recommendation (Task 3d)
+    const isAutoPass = confidence === 'low' && topScore < 60;
 
     scored.forEach((s, i) => {
       const grade = scoreToGrade(s.score);
@@ -2675,22 +2823,38 @@ function runAdviceEngine() {
       const ml = s.horse.ml || '';
       const mlNum = parseOddsToNum(ml);
       const valueFlag = i < 3 && mlNum >= 5 ? '<span class="badge badge-burgundy" style="font-size:0.6rem;margin-left:4px">Value</span>' : '';
+      const convictionBadge = (i === 0 && s.expertMatchCount >= 2) ? ' <span class="badge-conviction">HIGH CONVICTION</span>' : '';
+      const equipBadge = s.horse.equipmentChanges ? ` <span class="badge-equip">${escHtml(s.horse.equipmentChanges)}</span>` : '';
 
       let rationale = buildRationale(s, race, confidence, i);
 
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
-          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">'+ml+'</span>' : ''} ${valueFlag}</div>
+          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">'+ml+'</span>' : ''} ${valueFlag}${convictionBadge}${equipBadge}</div>
           <div class="advice-rationale">${rationale}</div>
         </div>
         <div class="advice-score">${s.score.toFixed(0)}</div>
       </div>`;
     });
 
+    // Expert consensus section
+    const expertPicks = race.expertPicks || [];
+    if (expertPicks.length) {
+      html += `<div class="expert-consensus">
+        <div class="expert-label">Expert Picks</div>
+        <div class="expert-picks-list">${expertPicks.map(ep => `${ep.source}: <strong>#${ep.pick} ${escHtml(ep.horseName)}</strong>`).join(' &nbsp;·&nbsp; ')}</div>
+      </div>`;
+    }
+
+    // PASS recommendation
+    if (isAutoPass) {
+      html += `<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(193,18,31,0.08);border-radius:6px;font-size:0.8rem;color:var(--color-negative)"><strong>PASS</strong> — Low confidence and low scores. No clear edge in this race.</div>`;
+    }
+
     // Suggested bets
     const suggestions = buildSuggestedBets(race, scored);
-    if (suggestions.length) {
+    if (suggestions.length && !isAutoPass) {
       html += `<div style="margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid rgba(0,0,0,0.06)">
         <div class="text-xs text-muted font-semibold" style="margin-bottom:3px">Suggestions</div>
         <div>${suggestions.map(s => `<span class="suggested-bet-chip">${s}</span>`).join('')}</div>
@@ -2704,6 +2868,16 @@ function runAdviceEngine() {
 
   // Update advice tab selects
   updateAdviceRaceSelect(races);
+}
+
+function countExpertPicks(race, horse) {
+  if (!race.expertPicks || !race.expertPicks.length) return 0;
+  return race.expertPicks.filter(ep => ep.pick === horse.pp || ep.horseName === horse.name).length;
+}
+
+function getExpertNames(race, horse) {
+  if (!race.expertPicks || !race.expertPicks.length) return [];
+  return race.expertPicks.filter(ep => ep.pick === horse.pp || ep.horseName === horse.name).map(ep => ep.source.replace('NYRA - ', ''));
 }
 
 function buildConfidenceBar(level) {
@@ -2749,8 +2923,31 @@ function buildRationale(s, race, confidence, rank) {
   else if (s.classScore < 40) parts.push('stretching out in class');
   if (s.paceScore > 70 && style === 'E') parts.push('lone speed');
   if (s.paceScore > 65 && (style === 'S' || style === 'SS')) parts.push('pace setup suits closers');
+  // Expert consensus
+  const expertNames = getExpertNames(race, h);
+  if (expertNames.length >= 2) parts.push('Backed by ' + expertNames.join(' & '));
+  else if (expertNames.length === 1) parts.push(expertNames[0] + ' pick');
+  // Equipment change
+  if (h.equipmentChanges) parts.push(h.equipmentChanges);
+  // Bullet workout
+  if (hasBulletWorkout(h)) {
+    const bw = h.workouts.find(w => w.note === 'Bullet' || (w.rank && w.rank.startsWith('1/')));
+    if (bw) parts.push('bullet ' + bw.distance + ' work ' + formatWorkoutDate(bw.date));
+  }
+  // Freshness
+  if (h.lastRaceDate) {
+    const daysSince = Math.floor((new Date() - new Date(h.lastRaceDate + 'T12:00:00')) / 86400000);
+    if (daysSince > 60) parts.push('long layoff (' + daysSince + 'd)');
+    else if (daysSince >= 14 && daysSince <= 28) parts.push('fresh (' + daysSince + 'd)');
+  }
   if (!parts.length) parts.push('Limited data — add speed figs and connections for better analysis');
   return parts.join(' · ');
+}
+
+function formatWorkoutDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function buildSuggestedBets(race, scored) {
@@ -2782,6 +2979,14 @@ function updateTopPicksCard(allScores) {
   const dailyBudget = bankroll * 0.20;
   let totalBetCost = 0;
 
+  // Set ticket subtitle with track name and date
+  const code = getActiveTrack();
+  const track = TRACKS[code];
+  const displayDate = loadedRaceDate ? new Date(loadedRaceDate + 'T12:00:00') : new Date();
+  const dateStr = displayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const subtitle = el('ticket-subtitle');
+  if (subtitle && track) subtitle.textContent = track.name + ' \u2014 ' + dateStr;
+
   // Group scores by race
   const raceMap = {};
   allScores.forEach(s => {
@@ -2789,107 +2994,201 @@ function updateTopPicksCard(allScores) {
     raceMap[s.race.id].push(s);
   });
 
-  // Best Bet: highest composite score AND highest confidence (gap > 15)
+  // Compute per-race confidence and gap
+  const raceInfo = {};
+  Object.entries(raceMap).forEach(([raceId, group]) => {
+    const gap = group.length >= 2 ? group[0].score - group[1].score : 0;
+    const topCompleteness = group[0].completeness || 0;
+    const fieldSize = group.length;
+    let confidence;
+    if (gap > 12 && topCompleteness >= 0.70 && fieldSize >= 5) confidence = 'high';
+    else if (gap > 6 && topCompleteness >= 0.50) confidence = 'medium';
+    else confidence = 'low';
+    raceInfo[raceId] = { gap, confidence, topCompleteness };
+  });
+
+  // Best Bet: highest composite score with best confidence
   let bestBetEntry = null;
   let bestGap = -1;
-  Object.values(raceMap).forEach(group => {
-    if (group.length >= 2) {
-      const gap = group[0].score - group[1].score;
-      if (gap > 12 && gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
-    }
+  Object.entries(raceMap).forEach(([raceId, group]) => {
+    const { gap, confidence } = raceInfo[raceId];
+    if (gap > 12 && gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
   });
-  // If no race has gap > 12, pick widest gap anyway but label medium confidence
   if (!bestBetEntry) {
-    Object.values(raceMap).forEach(group => {
-      if (group.length >= 2) {
-        const gap = group[0].score - group[1].score;
-        if (gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
-      }
+    Object.entries(raceMap).forEach(([raceId, group]) => {
+      const { gap } = raceInfo[raceId];
+      if (gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
     });
   }
 
   // Value Plays: ranked #1 or #2 with ML >= 5-1 AND composite >= 55
-  const valuePlays = allScores.filter(s => s.rank <= 2 && parseOddsToNum(s.horse.ml) >= 5 && s.score >= 55).slice(0, 4);
-
-  // Playable Races: gap >= 5 but not Best Bet and not Pass
-  const playableRaces = [];
   const bestBetRaceId = bestBetEntry ? bestBetEntry.race.id : null;
-  Object.values(raceMap).forEach(group => {
-    if (group.length >= 2) {
-      const gap = group[0].score - group[1].score;
-      const raceId = group[0].race.id;
-      if (gap >= 5 && raceId !== bestBetRaceId) {
-        playableRaces.push({ entry: group[0], gap });
-      }
+  const valuePlays = allScores.filter(s =>
+    s.rank <= 2 && parseOddsToNum(s.horse.ml) >= 5 && s.score >= 55 && s.race.id !== bestBetRaceId
+  ).slice(0, 2);
+
+  // Action Bets: gap >= 5 AND not best bet AND not value play race AND not pass
+  const valueRaceIds = new Set(valuePlays.map(v => v.race.id));
+  const actionBets = [];
+  Object.entries(raceMap).forEach(([raceId, group]) => {
+    const { gap, confidence, topCompleteness } = raceInfo[raceId];
+    if (raceId === bestBetRaceId || valueRaceIds.has(raceId)) return;
+    if (gap >= 5 && !(confidence === 'low' && group[0].score < 60) && topCompleteness >= 0.50) {
+      actionBets.push({ entry: group[0], gap, confidence });
     }
   });
+  // Limit to 1 action bet
+  actionBets.sort((a, b) => b.entry.score - a.entry.score);
+  const topAction = actionBets.length ? actionBets[0] : null;
 
-  // Pass Races: gap < 5 between #1 and #2
-  const passRaces = [];
-  Object.values(raceMap).forEach(group => {
-    if (group.length >= 2) {
-      const gap = group[0].score - group[1].score;
-      if (gap < 5) passRaces.push(group[0].race);
+  // Pass Races: gap < 5 OR (low confidence AND top score < 60) OR data completeness < 60%
+  const passRaceNums = [];
+  Object.entries(raceMap).forEach(([raceId, group]) => {
+    const { gap, confidence, topCompleteness } = raceInfo[raceId];
+    if (raceId === bestBetRaceId) return;
+    if (valueRaceIds.has(raceId)) return;
+    if (topAction && raceId === topAction.entry.race.id) return;
+    if (gap < 5 || (confidence === 'low' && group[0].score < 60) || topCompleteness < 0.60) {
+      passRaceNums.push(group[0].race.num);
     }
   });
 
   let html = '';
+  const ticketLines = []; // for copy-to-clipboard
 
-  // Best Bet
+  // ── Best Bet ──
   if (bestBetEntry) {
-    const confLabel = bestGap > 12 ? 'High' : bestGap > 5 ? 'Medium' : 'Low';
     const suggestedAmt = Math.round(bankroll * 0.05);
     totalBetCost += suggestedAmt;
+    const expertNames = getExpertNames(bestBetEntry.race, bestBetEntry.horse);
+    const convictionBadge = bestBetEntry.expertMatchCount >= 2 ? ' <span class="badge-conviction">HIGH CONVICTION</span>' : '';
+    let reason = buildTicketReason(bestBetEntry, bestBetEntry.race);
+    if (expertNames.length >= 2) reason += '; ' + expertNames.join(' & ') + ' both pick him';
+    else if (expertNames.length === 1) reason += '; ' + expertNames[0] + ' pick';
     html += `<div class="rec-bet-item">
-      <div class="rec-bet-tag rec-tag-best">Best Bet of the Day</div>
-      <div class="rec-bet-detail">Race ${bestBetEntry.race.num}: <strong>#${bestBetEntry.horse.pp} ${escHtml(bestBetEntry.horse.name)}</strong> to WIN</div>
-      <div class="rec-bet-sub">Confidence: ${confLabel} · Suggested: $${suggestedAmt} to win · Score: ${bestBetEntry.score.toFixed(0)}</div>
+      <div class="rec-bet-tag rec-tag-best">&#127942; Best Bet</div>${convictionBadge}
+      <div class="rec-bet-detail">Race ${bestBetEntry.race.num}: <strong>#${bestBetEntry.horse.pp} ${escHtml(bestBetEntry.horse.name).toUpperCase()}</strong> to WIN</div>
+      <div class="rec-bet-amount">$${suggestedAmt} to Win</div>
+      <div class="rec-bet-reason">"${reason}"</div>
     </div>`;
+    ticketLines.push(`BEST BET — Race ${bestBetEntry.race.num}: #${bestBetEntry.horse.pp} ${bestBetEntry.horse.name} to WIN — $${suggestedAmt}`);
   }
 
-  // Value Plays
+  // ── Value Plays ──
   valuePlays.forEach(v => {
-    // Find #2 horse in same race for exotic suggestion
     const raceGroup = raceMap[v.race.id];
     const secondHorse = raceGroup && raceGroup.length > 1 ? raceGroup[v.rank === 1 ? 1 : 0] : null;
-    const exSuggestion = secondHorse ? ` · EX Box with #${secondHorse.horse.pp}` : '';
-    totalBetCost += 4; // $2 EX box = $4
+    const exPartner = secondHorse ? '#' + secondHorse.horse.pp : '';
+    totalBetCost += 4;
+    let reason = buildTicketReason(v, v.race);
+    const expertNames = getExpertNames(v.race, v.horse);
+    if (expertNames.length) reason += '; ' + expertNames.join(' & ') + ' pick';
     html += `<div class="rec-bet-item">
-      <div class="rec-bet-tag rec-tag-value">Value Play</div>
-      <div class="rec-bet-detail">Race ${v.race.num}: <strong>#${v.horse.pp} ${escHtml(v.horse.name)}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(ML ${v.horse.ml || 'N/A'})</span></div>
-      <div class="rec-bet-sub">Score: ${v.score.toFixed(0)}${exSuggestion}</div>
+      <div class="rec-bet-tag rec-tag-value">&#128176; Value Play</div>
+      <div class="rec-bet-detail">Race ${v.race.num}: <strong>#${v.horse.pp} ${escHtml(v.horse.name).toUpperCase()}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(${v.horse.ml || 'N/A'})</span></div>
+      <div class="rec-bet-amount">$2 EX Box with ${exPartner || '#2'}</div>
+      <div class="rec-bet-reason">"${reason}"</div>
     </div>`;
+    ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}) — $2 EX Box with ${exPartner || '#2'}`);
   });
 
-  // Playable Races
-  playableRaces.forEach(({ entry, gap }) => {
-    const confLabel = gap > 12 ? 'High' : 'Medium';
-    totalBetCost += 10; // small win bet
+  // ── Action Bet ──
+  if (topAction) {
+    const actionAmt = Math.round(bankroll * 0.02);
+    totalBetCost += actionAmt;
+    let reason = buildTicketReason(topAction.entry, topAction.entry.race);
+    const expertNames = getExpertNames(topAction.entry.race, topAction.entry.horse);
+    if (expertNames.length >= 2) reason = 'Expert consensus pick, ' + reason;
+    else if (expertNames.length === 1) reason += '; ' + expertNames[0] + ' pick';
     html += `<div class="rec-bet-item">
-      <div class="rec-bet-tag rec-tag-play">Playable</div>
-      <div class="rec-bet-detail">Race ${entry.race.num}: <strong>#${entry.horse.pp} ${escHtml(entry.horse.name)}</strong> to WIN</div>
-      <div class="rec-bet-sub">Confidence: ${confLabel} · Score: ${entry.score.toFixed(0)} · Gap: ${gap.toFixed(0)}</div>
+      <div class="rec-bet-tag rec-tag-action">&#127919; Action Bet</div>
+      <div class="rec-bet-detail">Race ${topAction.entry.race.num}: <strong>#${topAction.entry.horse.pp} ${escHtml(topAction.entry.horse.name).toUpperCase()}</strong> to WIN</div>
+      <div class="rec-bet-amount">$${actionAmt} to Win</div>
+      <div class="rec-bet-reason">"${reason}"</div>
     </div>`;
-  });
+    ticketLines.push(`ACTION — Race ${topAction.entry.race.num}: #${topAction.entry.horse.pp} ${topAction.entry.horse.name} to WIN — $${actionAmt}`);
+  }
 
-  // Pass Races
-  passRaces.forEach(race => {
+  // ── Pass Races ──
+  if (passRaceNums.length) {
+    passRaceNums.sort((a,b) => a - b);
     html += `<div class="rec-bet-item">
-      <div class="rec-bet-tag rec-tag-pass">Pass</div>
-      <div class="rec-bet-detail" style="opacity:0.65">Race ${race.num}: No clear edge. Save your bankroll.</div>
+      <div class="rec-bet-tag rec-tag-pass">&#9940; Pass</div>
+      <div class="pass-races-line">Races ${passRaceNums.join(', ')} — No clear edge, save bankroll</div>
     </div>`;
-  });
+    ticketLines.push(`PASS — Races ${passRaceNums.join(', ')}`);
+  }
 
-  // Daily Ticket Summary
+  // ── Summary + Copy button ──
   const remaining = Math.max(0, dailyBudget - totalBetCost);
   html += `<div class="rec-bet-summary">
     <div><div class="label">Est. Cost</div><div class="val">${fmt$(totalBetCost)}</div></div>
-    <div><div class="label">Daily Budget</div><div class="val">${fmt$(dailyBudget)}</div></div>
+    <div><div class="label">Budget</div><div class="val">${fmt$(dailyBudget)}</div></div>
     <div><div class="label">Remaining</div><div class="val">${fmt$(remaining)}</div></div>
   </div>`;
 
+  // Store ticket text for copy
+  const ticketText = "TODAY'S TICKET — " + (track ? track.name : '') + ' ' + dateStr + '\n\n' + ticketLines.join('\n') + '\n\nEst. Cost: ' + fmt$(totalBetCost) + ' | Budget: ' + fmt$(dailyBudget);
+  html += `<button class="copy-ticket-btn" onclick="copyTicket()">&#128203; Copy Ticket</button>`;
+
+  // Store on window for copy function
+  window._ticketText = ticketText;
+
   recContent.innerHTML = html;
   recCard.classList.remove('hidden');
+
+  // Store ticket picks in localStorage for accuracy tracking
+  storeTicketPicks(bestBetEntry, valuePlays, topAction);
+}
+
+function buildTicketReason(s, race) {
+  const parts = [];
+  const h = s.horse;
+  if (s.classScore > 65) parts.push('class dropper');
+  if (s.paceScore > 70 && (h.runningStyle === 'E' || h.runningStyle === 'EP')) parts.push('lone speed');
+  if (s.paceScore > 65 && (h.runningStyle === 'S' || h.runningStyle === 'SS')) parts.push('pace setup suits');
+  if (h.jockeyPct > 18 || h.trainerPct > 18) parts.push('hot connections');
+  if (h.equipmentChanges) parts.push(h.equipmentChanges.toLowerCase());
+  if (hasBulletWorkout(h)) parts.push('bullet work');
+  if (h.lastRaceDate) {
+    const daysSince = Math.floor((new Date() - new Date(h.lastRaceDate + 'T12:00:00')) / 86400000);
+    if (daysSince >= 14 && daysSince <= 28) parts.push('fresh');
+  }
+  if (!parts.length) parts.push('top-rated');
+  return parts.join(', ');
+}
+
+function copyTicket() {
+  const text = window._ticketText || '';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => showToast('Ticket copied to clipboard!', 'success', 2000));
+  } else {
+    showToast('Clipboard unavailable', 'danger', 2000);
+  }
+}
+
+function storeTicketPicks(bestBet, valuePlays, actionBet) {
+  const store = getStore();
+  const code = getActiveTrack();
+  const date = loadedRaceDate || getTodayStr();
+  const key = 'ne-racing-ticket-' + code + '-' + date;
+  const picks = {
+    date,
+    track: code,
+    bestBet: bestBet ? { race: bestBet.race.num, pp: bestBet.horse.pp, name: bestBet.horse.name, score: bestBet.score } : null,
+    valuePlays: valuePlays.map(v => ({ race: v.race.num, pp: v.horse.pp, name: v.horse.name, score: v.score, ml: v.horse.ml })),
+    actionBet: actionBet ? { race: actionBet.entry.race.num, pp: actionBet.entry.horse.pp, name: actionBet.entry.horse.name, score: actionBet.entry.score } : null,
+    expertConsensus: findExpertConsensusPicks(bestBet, valuePlays, actionBet)
+  };
+  try { localStorage.setItem(key, JSON.stringify(picks)); } catch(e) {}
+}
+
+function findExpertConsensusPicks(bestBet, valuePlays, actionBet) {
+  const all = [];
+  if (bestBet && bestBet.expertMatchCount >= 2) all.push({ race: bestBet.race.num, pp: bestBet.horse.pp, name: bestBet.horse.name });
+  valuePlays.forEach(v => { if (v.expertMatchCount >= 2) all.push({ race: v.race.num, pp: v.horse.pp, name: v.horse.name }); });
+  if (actionBet && actionBet.entry.expertMatchCount >= 2) all.push({ race: actionBet.entry.race.num, pp: actionBet.entry.horse.pp, name: actionBet.entry.horse.name });
+  return all;
 }
 
 function updateAdviceRaceSelect(races) {
@@ -3789,7 +4088,13 @@ function renderResultsList() {
 function setResultBet(betId, result) {
   const data = getTrackData();
   const bet = (data.bets||[]).find(b=>b.id===betId);
-  if (bet) { bet.result = bet.result === result ? null : result; saveTrackData(data); renderResultsTab(); }
+  if (bet) {
+    bet.result = bet.result === result ? null : result;
+    saveTrackData(data);
+    renderResultsTab();
+    // Task 7: Update accuracy tracking
+    updateAccuracyTracking();
+  }
 }
 
 function setResultPayout(betId, val) {
@@ -3812,21 +4117,103 @@ function renderAdviceReportCard() {
   const bestBets = bets.filter(b=>b.isBestBet);
   const valueBets = bets.filter(b=>b.isValuePlay);
 
+  // Read from localStorage accuracy tracking
+  const accuracy = getAccuracyData();
+
   if (el('arc-best-bet')) {
-    const w = bestBets.filter(b=>b.result==='win').length;
-    const total = bestBets.length;
-    el('arc-best-bet').textContent = total ? `W-L: ${w}-${total-w} (${(w/total*100).toFixed(0)}%)` : 'W-L: — (—%)';
+    const w = accuracy.bestBetWins || 0;
+    const total = accuracy.bestBetTotal || 0;
+    el('arc-best-bet').textContent = total ? `${w}-${total-w} (${(w/total*100).toFixed(1)}%)` : 'W-L: — (—%)';
+  }
+  if (el('arc-expert-consensus')) {
+    const w = accuracy.expertConsensusWins || 0;
+    const total = accuracy.expertConsensusTotal || 0;
+    el('arc-expert-consensus').textContent = total ? `${w}-${total-w} (${(w/total*100).toFixed(1)}%)` : 'W-L: — (—%)';
   }
   if (el('arc-value-roi')) {
-    const w = valueBets.reduce((s,b)=>s+(parseFloat(b.payout)||0),0);
-    const wag = valueBets.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
-    el('arc-value-roi').textContent = wag > 0 ? fmtPct((w-wag)/wag*100) : '—';
+    const roi = accuracy.valuePlaysROI;
+    el('arc-value-roi').textContent = roi != null ? fmtPct(roi) : '—';
+  }
+  if (el('arc-action-bet')) {
+    const w = accuracy.actionBetWins || 0;
+    const total = accuracy.actionBetTotal || 0;
+    el('arc-action-bet').textContent = total ? `${w}-${total-w} (${(w/total*100).toFixed(1)}%)` : 'W-L: — (—%)';
   }
   if (el('arc-overall-roi')) {
     const ret = bets.reduce((s,b)=>s+(parseFloat(b.payout)||0),0);
     const wag = bets.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
     el('arc-overall-roi').textContent = wag > 0 ? fmtPct((ret-wag)/wag*100) : '—';
   }
+}
+
+// ── Accuracy Tracking (Task 7) ──
+const ACCURACY_KEY = 'ne-racing-accuracy';
+
+function getAccuracyData() {
+  try {
+    const raw = localStorage.getItem(ACCURACY_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { bestBetWins: 0, bestBetTotal: 0, valuePlaysROI: null, valuePlaysReturned: 0, valuePlaysWagered: 0, expertConsensusWins: 0, expertConsensusTotal: 0, actionBetWins: 0, actionBetTotal: 0 };
+}
+
+function saveAccuracyData(data) {
+  try { localStorage.setItem(ACCURACY_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function updateAccuracyTracking() {
+  const data = getTrackData();
+  const bets = (data && data.bets) ? data.bets : [];
+  const accuracy = getAccuracyData();
+
+  // Count best bets with results
+  const bestBets = bets.filter(b => b.isBestBet && b.result);
+  accuracy.bestBetWins = bestBets.filter(b => b.result === 'win').length;
+  accuracy.bestBetTotal = bestBets.length;
+
+  // Count action bets with results
+  const actionBets = bets.filter(b => b.isActionBet && b.result);
+  accuracy.actionBetWins = actionBets.filter(b => b.result === 'win').length;
+  accuracy.actionBetTotal = actionBets.length;
+
+  // Value plays ROI
+  const valueBets = bets.filter(b => b.isValuePlay && b.result);
+  const vWag = valueBets.reduce((s, b) => s + (parseFloat(b.amount) || 0), 0);
+  const vRet = valueBets.reduce((s, b) => s + (parseFloat(b.payout) || 0), 0);
+  accuracy.valuePlaysWagered = vWag;
+  accuracy.valuePlaysReturned = vRet;
+  accuracy.valuePlaysROI = vWag > 0 ? ((vRet - vWag) / vWag * 100) : null;
+
+  // Expert consensus — check ticket picks against results
+  const code = getActiveTrack();
+  const ticketKeys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('ne-racing-ticket-' + code)) ticketKeys.push(key);
+  }
+  let ecWins = 0, ecTotal = 0;
+  ticketKeys.forEach(key => {
+    try {
+      const ticket = JSON.parse(localStorage.getItem(key));
+      if (ticket && ticket.expertConsensus) {
+        ticket.expertConsensus.forEach(ec => {
+          ecTotal++;
+          // Check if this horse won by looking at bets
+          const matchingBet = bets.find(b => b.raceNum === ec.race && b.result === 'win' && ((b.selections || []).includes(ec.name) || b.pp === ec.pp));
+          if (matchingBet) ecWins++;
+        });
+      }
+    } catch(e) {}
+  });
+  accuracy.expertConsensusWins = ecWins;
+  accuracy.expertConsensusTotal = ecTotal;
+
+  saveAccuracyData(accuracy);
+  renderAdviceReportCard();
+}
+
+function renderAccuracyFromStorage() {
+  renderAdviceReportCard();
 }
 
 /* =============================================================
@@ -4103,6 +4490,8 @@ function transformStaticEntries(json) {
     distance: r.distance || 'N/A',
     surface: r.surface || 'N/A',
     purse: r.purse || 'N/A',
+    expertPicks: r.expertPicks || [],
+    equibaseUrl: r.equibaseUrl || null,
     horses: (r.entries || []).map(e => ({
       id: generateId(),
       pp: e.pp,
@@ -4118,6 +4507,9 @@ function transformStaticEntries(json) {
       jockeyPct: e.jockeyPct || 0,
       trainerPct: e.trainerPct || 0,
       lastClass: e.lastClass || null,
+      lastRaceDate: e.lastRaceDate || null,
+      equipmentChanges: e.equipmentChanges || '',
+      workouts: Array.isArray(e.workouts) ? e.workouts : [],
       notes: '',
       wps: []
     })),
@@ -4137,7 +4529,10 @@ function transformWorkerEntries(json) {
     distance: r.distance || 'N/A',
     surface: r.surface || 'N/A',
     purse: r.purse || 'N/A',
+    expertPicks: r.expertPicks || [],
+    equibaseUrl: r.equibaseUrl || null,
     horses: (r.entries || []).map(e => ({
+      id: generateId(),
       pp: e.pp,
       name: e.horseName || 'Unknown',
       jockey: e.jockey || 'N/A',
@@ -4146,7 +4541,16 @@ function transformWorkerEntries(json) {
       ml: e.ml || 'N/A',
       liveOdds: e.liveOdds || null,
       scratched: e.status === 'SCRATCHED',
-      speed: '', classRating: '', pace: '', tjPct: ''
+      speedFigs: Array.isArray(e.speedFigs) ? e.speedFigs : [null, null, null],
+      runningStyle: e.runningStyle || '',
+      jockeyPct: e.jockeyPct || 0,
+      trainerPct: e.trainerPct || 0,
+      lastClass: e.lastClass || null,
+      lastRaceDate: e.lastRaceDate || null,
+      equipmentChanges: e.equipmentChanges || '',
+      workouts: Array.isArray(e.workouts) ? e.workouts : [],
+      notes: '',
+      wps: []
     })),
     updated: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
   }));
@@ -4171,6 +4575,9 @@ async function fetchLiveEntries() {
   const code = getActiveTrack();
   const today = getTodayStr();
 
+  // Task 6c: Show loading indicator
+  showLoadingIndicator();
+
   // Try today first, then look ahead up to 3 days for next available card
   let result = await tryFetchEntries(code, today);
   let lookaheadDate = null;
@@ -4184,8 +4591,9 @@ async function fetchLiveEntries() {
     }
   }
 
-  if (!result) { loadedRaceDate = null; showLiveUnavailable(); return; }
+  if (!result) { loadedRaceDate = null; hideLoadingIndicator(); showLiveUnavailable(); return; }
 
+  hideLoadingIndicator();
   hideLiveUnavailable();
   loadedRaceDate = result.date;
 
@@ -4286,6 +4694,24 @@ async function fetchLiveResults() {
 function updateSyncTime() {
   const st = el('sync-time');
   if (st) st.textContent = 'Last synced: ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+function showLoadingIndicator() {
+  let indicator = el('live-loading-indicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'live-loading-indicator';
+    indicator.className = 'loading-indicator';
+    indicator.innerHTML = '<div class="loading-dot"></div> Loading entries...';
+    const container = el('races-container');
+    if (container) container.parentNode.insertBefore(indicator, container);
+  }
+  indicator.classList.remove('hidden');
+}
+
+function hideLoadingIndicator() {
+  const indicator = el('live-loading-indicator');
+  if (indicator) indicator.classList.add('hidden');
 }
 
 /* =============================================================
