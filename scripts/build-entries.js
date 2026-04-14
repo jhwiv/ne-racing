@@ -872,15 +872,11 @@ function generatePlaceholderCard(track, date) {
 function enrichRaces(races, jockeyLookup, trainerLookup) {
   for (const race of races) {
     for (const entry of race.entries) {
-      // Jockey win %
-      if (entry.jockeyPct === null || entry.jockeyPct === undefined) {
-        entry.jockeyPct = lookupWinPct(entry.jockey, jockeyLookup, 10);
-      }
+      // Jockey win % — always re-apply lookup (overwrite fallback 10%)
+      entry.jockeyPct = lookupWinPct(entry.jockey, jockeyLookup, entry.jockeyPct ?? 10);
 
-      // Trainer win %
-      if (entry.trainerPct === null || entry.trainerPct === undefined) {
-        entry.trainerPct = lookupWinPct(entry.trainer, trainerLookup, 10);
-      }
+      // Trainer win % — always re-apply lookup (overwrite fallback 10%)
+      entry.trainerPct = lookupWinPct(entry.trainer, trainerLookup, entry.trainerPct ?? 10);
 
       // Running style
       if (!entry.runningStyle) {
@@ -976,8 +972,8 @@ async function main() {
   console.log('\nLoading stats files...');
   const jockeyStats = readDataJson('jockey-stats.json');
   const trainerStats = readDataJson('trainer-stats.json');
-  const jockeyLookup = buildLookup(jockeyStats);
-  const trainerLookup = buildLookup(trainerStats);
+  const jockeyLookup = buildLookup(jockeyStats?.jockeys || jockeyStats);
+  const trainerLookup = buildLookup(trainerStats?.trainers || trainerStats);
   console.log(`  Jockeys loaded: ${Object.keys(jockeyLookup).length}`);
   console.log(`  Trainers loaded: ${Object.keys(trainerLookup).length}`);
 
@@ -1076,6 +1072,75 @@ async function main() {
     mergeSpeedFigures(races, epDataByRace);
   } else {
     console.log('  No Equibase Entries Plus data available.');
+  }
+
+  // Step 5c2: Fallback — load static speed figures file if available
+  const speedFigPath = path.join(DATA_DIR, `speed-figures-${track}.json`);
+  if (fs.existsSync(speedFigPath)) {
+    try {
+      const sfData = JSON.parse(fs.readFileSync(speedFigPath, 'utf-8'));
+      const sfHorses = sfData.horses || {};
+      let sfApplied = 0;
+      for (const race of races) {
+        for (const entry of race.entries) {
+          const sfEntry = sfHorses[entry.name];
+          if (!sfEntry) continue;
+          // Apply speed figures if entry still has all nulls
+          const existingFigs = entry.speedFigs || [null, null, null];
+          const hasData = existingFigs.some(f => f != null);
+          if (!hasData && sfEntry.speedFigs) {
+            entry.speedFigs = sfEntry.speedFigs;
+            sfApplied++;
+          }
+          // Apply lastClass and lastRaceDate if missing
+          if (!entry.lastClass && sfEntry.lastClass) {
+            entry.lastClass = sfEntry.lastClass;
+          }
+          if (!entry.lastRaceDate && sfEntry.lastRaceDate) {
+            entry.lastRaceDate = sfEntry.lastRaceDate;
+          }
+          // Apply running style if missing
+          if (!entry.runningStyle && sfEntry.runningStyle) {
+            entry.runningStyle = sfEntry.runningStyle;
+          }
+        }
+      }
+      console.log(`  Static speed figures applied to ${sfApplied} horses from ${speedFigPath}`);
+    } catch (err) {
+      console.warn(`  Failed to load static speed figures: ${err.message}`);
+    }
+  }
+
+  // Step 5c3: Load additional expert picks from static file
+  const expertPicksPath = path.join(DATA_DIR, `expert-picks-${track}-${raceDate}.json`);
+  if (fs.existsSync(expertPicksPath)) {
+    try {
+      const epFile = JSON.parse(fs.readFileSync(expertPicksPath, 'utf-8'));
+      const sources = epFile.sources || [];
+      let epAdded = 0;
+      for (const source of sources) {
+        const picksByRace = source.picks || {};
+        for (const race of races) {
+          if (!race.expertPicks) race.expertPicks = [];
+          const raceKey = String(race.race_number);
+          const sp = picksByRace[raceKey];
+          if (!sp) continue;
+          // Avoid duplicates
+          const isDupe = race.expertPicks.some(ep => ep.source === source.name);
+          if (isDupe) continue;
+          race.expertPicks.push({
+            source: source.name,
+            pick: sp.pick,
+            picks: sp.picks,
+            horseName: sp.horseName || null,
+          });
+          epAdded++;
+        }
+      }
+      console.log(`  Additional expert picks: ${epAdded} race-source combos from ${expertPicksPath}`);
+    } catch (err) {
+      console.warn(`  Failed to load additional expert picks: ${err.message}`);
+    }
   }
 
   // Step 5d: Resolve expert pick PP numbers to horse names
