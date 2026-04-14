@@ -2861,7 +2861,7 @@ function runAdviceEngine() {
     const secondScore = scored.length > 1 ? scored[1].score : 0;
     const gap = topScore - secondScore;
     const topCompleteness = scored[0].completeness;
-    const fieldSize = horses.length;
+    const fieldSize = scored.length;
 
     // Improved confidence calibration (Task 3d)
     let confidence;
