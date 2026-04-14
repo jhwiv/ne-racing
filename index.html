@@ -2025,6 +2025,9 @@ function setWelcomeMode(mode) {
 }
 
 function finishWelcome() {
+  // Flag that the user completed onboarding this session — survives version-check reloads
+  try { sessionStorage.setItem('ne_welcomed', '1'); } catch(e) {}
+
   // On every "Let's Go" tap, check for a new version before proceeding
   if (navigator.onLine) {
     fetch('version.json?_=' + Date.now(), {
@@ -5082,6 +5085,20 @@ function hideLoadingIndicator() {
 document.addEventListener('DOMContentLoaded', () => {
   const store = initStore();
   buildWelcomeTrackGrid();
+
+  // If the user already tapped "Let's Go" this session (e.g. version-check reload
+  // brought them back), skip the welcome screen entirely.
+  var welcomed = false;
+  try { welcomed = sessionStorage.getItem('ne_welcomed') === '1'; } catch(e) {}
+  if (welcomed) {
+    sessionStorage.removeItem('ne_welcomed');
+    var ws = el('welcome-screen');
+    if (ws) ws.style.display = 'none';
+    el('app-frame').classList.remove('hidden');
+    initApp();
+    updateHeroSubtitle();
+    return;
+  }
 
   // Always scroll to top (hero) on load
   window.scrollTo(0, 0);
