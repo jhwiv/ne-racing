@@ -1,5 +1,13 @@
 # NE Racing — Changelog
 
+## v2.1 — Bug Fix (2026-04-14)
+
+### Fix
+- Fixed `fieldSize` reference bug in advice engine rendering: `horses.length` was referencing an out-of-scope variable from the scoring loop, causing confidence calibration in the race-panel rendering to use an undefined value. Changed to `scored.length` which correctly reflects the non-scratched field size.
+- Bumped app version to `20260414-1400`.
+
+---
+
 ## v2.0 — Major Upgrade (2026-04-14)
 
 ### Task 1: Expert Handicapper Picks
