@@ -859,10 +859,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="welcome-step-label">Step 2</div>
       <h3>Select Track</h3>
       <div class="sar-aqu-toggle">
-        <button class="sar-aqu-btn selected" id="welcome-sar-btn" onclick="selectWelcomeTrack('SAR', this)">SAR &mdash; Saratoga</button>
-        <button class="sar-aqu-btn" id="welcome-aqu-btn" onclick="selectWelcomeTrack('AQU', this)">AQU &mdash; Aqueduct</button>
+        <button class="sar-aqu-btn" id="welcome-sar-btn" onclick="selectWelcomeTrack('SAR', this)">SAR &mdash; Saratoga</button>
+        <button class="sar-aqu-btn selected" id="welcome-aqu-btn" onclick="selectWelcomeTrack('AQU', this)">AQU &mdash; Aqueduct</button>
       </div>
-      <p style="font-size:0.72rem;color:rgba(255,255,255,0.45);margin-top:0.4rem">Aqueduct available for pre-season testing</p>
+      <p style="font-size:0.72rem;color:rgba(255,255,255,0.45);margin-top:0.4rem">Aqueduct spring meet through Apr 26 &bull; Saratoga opens Jul 3</p>
     </div>
 
     <!-- Step 3: Data Mode -->
@@ -873,7 +873,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         <button class="mode-btn active" id="mode-live" onclick="setWelcomeMode('live')">Live Data (API)</button>
         <button class="mode-btn" id="mode-manual" onclick="setWelcomeMode('manual')">Manual Entry</button>
       </div>
-      <p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:0.5rem" id="mode-desc">Fetches live race cards and real-time odds from the API. Enter your Worker URL in Settings.</p>
+      <p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:0.5rem" id="mode-desc">Fetches race cards automatically on race days. Entries load from published data.</p>
     </div>
 
     <button class="btn-lets-go" onclick="finishWelcome()">Let's Go &rarr;</button>
@@ -952,8 +952,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     <section id="tab-today" class="tab-panel active" role="tabpanel" aria-label="Today's Card">
       <div id="live-unavailable-banner" class="banner banner-warning hidden">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Live data unavailable — manual entry mode active
+        No race card available — try manual entry or check back on a race day
       </div>
+      <div id="preview-date-banner" class="banner banner-info hidden"></div>
       <!-- Top Picks Summary Card -->
       <div id="top-picks-card" class="top-picks-card hidden">
         <h3>&#9733; Today's Top Picks</h3>
@@ -1575,7 +1576,7 @@ let scratchPollingInterval = null;
 let unviewedScratches = 0;
 let exoticMode = 'straight';
 let resultScope = 'track';
-let welcomeSelectedTrack = 'SAR';
+let welcomeSelectedTrack = 'AQU';
 let welcomeDataMode = 'live';
 
 /* =============================================================
@@ -1597,7 +1598,7 @@ function initStore() {
   const existing = getStore();
   if (existing) return existing;
   const store = {
-    settings: { activeTrack: 'SAR', dataMode: 'live', startingBankroll: 1000, workerUrl: '', welcomeDone: false },
+    settings: { activeTrack: 'AQU', dataMode: 'live', startingBankroll: 1000, workerUrl: '', welcomeDone: false },
     tracks: {}
   };
   Object.keys(TRACKS).forEach(code => {
@@ -1684,7 +1685,7 @@ function showToast(msg, type = 'default', duration = 8000) {
 function buildWelcomeTrackGrid() {
   // Saratoga-centric: welcome toggle is hardcoded SAR/AQU in HTML.
   // Just ensure SAR is pre-selected.
-  welcomeSelectedTrack = 'SAR';
+  welcomeSelectedTrack = 'AQU';
 }
 
 /* Dormant: full 12-track grid builder (kept for future multi-track expansion)
@@ -3828,45 +3829,74 @@ function transformWorkerEntries(json) {
   }));
 }
 
-async function fetchLiveEntries() {
-  const code = getActiveTrack();
-  const today = getTodayStr();
-  const url = getEntriesUrl(code, today);
+/** Try fetching entries for a specific date, returns {races, date, isToday} or null */
+async function tryFetchEntries(code, date) {
+  const url = getEntriesUrl(code, date);
   try {
     const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) return null;
     const json = await res.json();
-    // Determine source format and transform
     const store = getStore();
     const hasWorker = store && store.settings.workerUrl;
     const races = hasWorker ? transformWorkerEntries(json) : transformStaticEntries(json);
-    if (!races.length) { showLiveUnavailable(); return; }
-    hideLiveUnavailable();
-    const data = getTrackData();
-    // Merge: don't overwrite if user has manual edits on same race
-    races.forEach(apiRace => {
-      const existing = (data.races||[]).find(r => r.num === apiRace.num);
-      if (!existing) {
-        data.races = data.races || [];
-        data.races.push(apiRace);
-      } else {
-        // Merge live odds if available
-        if (apiRace.horses) {
-          apiRace.horses.forEach(apiH => {
-            const existingH = existing.horses && existing.horses.find(h => h.pp === apiH.pp || h.name === apiH.name);
-            if (existingH && apiH.liveOdds) existingH.liveOdds = apiH.liveOdds;
-          });
-        }
-        existing.updated = apiRace.updated;
-      }
-    });
-    saveTrackData(data);
-    updateSyncTime();
-    renderTodayTab();
-  } catch(e) {
-    console.log('Entries fetch:', e.message);
-    showLiveUnavailable();
+    if (!races.length) return null;
+    return { races, date, isToday: date === getTodayStr() };
+  } catch(e) { return null; }
+}
+
+async function fetchLiveEntries() {
+  const code = getActiveTrack();
+  const today = getTodayStr();
+
+  // Try today first, then look ahead up to 3 days for next available card
+  let result = await tryFetchEntries(code, today);
+  let lookaheadDate = null;
+  if (!result) {
+    for (let d = 1; d <= 3; d++) {
+      const dt = new Date();
+      dt.setDate(dt.getDate() + d);
+      const ds = dt.toISOString().split('T')[0];
+      result = await tryFetchEntries(code, ds);
+      if (result) { lookaheadDate = ds; break; }
+    }
   }
+
+  if (!result) { showLiveUnavailable(); return; }
+
+  hideLiveUnavailable();
+
+  // Show "next race day" banner if data is for a future date
+  const previewBanner = el('preview-date-banner');
+  if (lookaheadDate && previewBanner) {
+    const d = new Date(lookaheadDate + 'T12:00:00');
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    previewBanner.innerHTML = '&#128197; Showing entries for <strong>' + dayName + '</strong> (next race day)';
+    previewBanner.classList.remove('hidden');
+  } else if (previewBanner) {
+    previewBanner.classList.add('hidden');
+  }
+
+  const data = getTrackData();
+  // Merge: don't overwrite if user has manual edits on same race
+  result.races.forEach(apiRace => {
+    const existing = (data.races||[]).find(r => r.num === apiRace.num);
+    if (!existing) {
+      data.races = data.races || [];
+      data.races.push(apiRace);
+    } else {
+      // Merge live odds if available
+      if (apiRace.horses) {
+        apiRace.horses.forEach(apiH => {
+          const existingH = existing.horses && existing.horses.find(h => h.pp === apiH.pp || h.name === apiH.name);
+          if (existingH && apiH.liveOdds) existingH.liveOdds = apiH.liveOdds;
+        });
+      }
+      existing.updated = apiRace.updated;
+    }
+  });
+  saveTrackData(data);
+  updateSyncTime();
+  renderTodayTab();
 }
 
 async function fetchLiveScratches() {
