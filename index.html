@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-1252';
+var NE_APP_VERSION = '20260414-1302';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -130,9 +130,10 @@ html { scroll-behavior: smooth; }
 #app { display: flex; flex-direction: column; }
 #welcome-screen {
   position: relative;
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 1.25rem 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -340,24 +341,24 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    WELCOME SCREEN
    ========================================================= */
 .welcome-inner { width: 100%; max-width: 440px; }
-.welcome-logo { text-align: center; margin-bottom: 0.5rem; }
-.welcome-logo svg { width: 44px; height: 44px; }
+.welcome-logo { text-align: center; margin-bottom: 0.3rem; }
+.welcome-logo svg { width: 40px; height: 40px; }
 .welcome-title {
   font-family: var(--font-display); font-size: clamp(1.4rem, 4.5vw, 2.2rem);
   font-weight: 700; color: var(--color-white); text-align: center; line-height: 1.15;
   margin-bottom: 0.15rem;
 }
-.welcome-subtitle { color: rgba(255,255,255,0.65); text-align: center; font-size: 0.82rem; margin-bottom: 0.75rem; }
+.welcome-subtitle { color: rgba(255,255,255,0.65); text-align: center; font-size: 0.78rem; margin-bottom: 0.5rem; }
 .welcome-step {
   background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-radius: var(--radius-lg); padding: 0.9rem 1.1rem; margin-bottom: 0.6rem;
+  border-radius: var(--radius-lg); padding: 0.55rem 1rem; margin-bottom: 0.4rem;
 }
 .welcome-step-label {
   font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.1em; color: var(--color-gold); margin-bottom: 0.25rem;
+  letter-spacing: 0.1em; color: var(--color-gold); margin-bottom: 0.15rem;
 }
-.welcome-step h3 { color: var(--color-white); font-size: 0.9rem; margin-bottom: 0.5rem; }
+.welcome-step h3 { color: var(--color-white); font-size: 0.85rem; margin-bottom: 0.35rem; }
 .welcome-step .form-control { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: var(--color-white); }
 .welcome-step .form-control::placeholder { color: rgba(255,255,255,0.4); }
 .welcome-step .form-control:focus { border-color: var(--color-gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.2); }
@@ -387,7 +388,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .mode-btn { flex: 1; padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.6); cursor: pointer; background: transparent; transition: all 0.15s; text-align: center; border: none; }
 .mode-btn.active { background: var(--color-gold); color: var(--color-white); }
 .btn-lets-go {
-  width: 100%; margin-top: 0.75rem; padding: 0.8rem 1.5rem;
+  width: 100%; margin-top: 0.5rem; padding: 0.7rem 1.5rem;
   background: var(--color-gold); color: var(--color-white);
   border: none; border-radius: var(--radius-md);
   font-size: 1rem; font-weight: 700; letter-spacing: 0.03em;
@@ -2049,7 +2050,7 @@ function buildRaceCardHTML(race) {
         <table class="entry-table">
           <thead>
             <tr>
-              <th>PP</th><th>Horse</th><th>ML</th><th>Live</th><th>Jockey</th><th>Trainer</th><th>Figs (3-2-1)</th><th>Style</th><th>Notes</th><th>WPS</th><th>Out</th>
+              <th>Out</th><th>PP</th><th>Horse</th><th>ML</th><th>Live</th><th>Jockey</th><th>Trainer</th><th>Figs (3-2-1)</th><th>Style</th><th>Notes</th><th>WPS</th>
             </tr>
           </thead>
           <tbody id="entries-${race.id}">
@@ -2131,6 +2132,12 @@ function buildHorseRowHTML(raceId, h) {
   }
 
   return `<tr class="${scratch}" id="horse-row-${raceId}-${h.id}">
+    <td>
+      <label class="scratch-toggle">
+        <input type="checkbox" ${h.scratched ? 'checked' : ''} onchange="toggleScratch('${raceId}','${h.id}',this.checked)">
+        Scr
+      </label>
+    </td>
     <td class="pp-cell">${h.pp || ''}</td>
     <td><span class="horse-name" onclick="openHorseModal('${raceId}','${h.id}')">${h.name || '—'}</span>${h.scratched ? ' <span class="badge badge-scratch">SCRATCHED</span>' : ''}</td>
     <td class="odds-cell">${h.ml || '—'}</td>
@@ -2152,12 +2159,6 @@ function buildHorseRowHTML(raceId, h) {
         <button class="wps-btn p ${pActive}" onclick="toggleWPS('${raceId}','${h.id}','P',this)" title="Place">P</button>
         <button class="wps-btn s ${sActive}" onclick="toggleWPS('${raceId}','${h.id}','S',this)" title="Show">S</button>
       </div>
-    </td>
-    <td>
-      <label class="scratch-toggle">
-        <input type="checkbox" ${h.scratched ? 'checked' : ''} onchange="toggleScratch('${raceId}','${h.id}',this.checked)">
-        Scr
-      </label>
     </td>
   </tr>`;
 }
