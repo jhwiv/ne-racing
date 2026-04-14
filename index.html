@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-1523';
+var NE_APP_VERSION = '20260414-1529';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -1946,6 +1946,8 @@ function finishWelcome() {
   const af = el('app-frame');
   if (af.classList.contains('hidden')) {
     af.classList.remove('hidden');
+    // Prevent applyRaceFocus from overriding our scroll-to-ticket
+    window._skipRaceFocusScroll = true;
     initApp();
   }
 
@@ -1956,19 +1958,21 @@ function finishWelcome() {
   // Update hero subtitle for selected track
   updateHeroSubtitle();
 
-  // Scroll so Today's Ticket / main content lands cleanly in view
-  // Use requestAnimationFrame to ensure DOM is painted after initApp()
-  requestAnimationFrame(function() {
-    // Try to scroll to Today's Ticket card first; fall back to main content
-    const ticket = el('rec-bets-card');
-    const target = (ticket && !ticket.classList.contains('hidden')) ? ticket : el('main-content') || af;
-    // Scroll the app-frame to top first so header is in place
-    window.scrollTo(0, 0);
-    // Then scroll to the target with a small offset for the sticky header
-    const headerH = (el('top-header') || {}).offsetHeight || 56;
-    const targetTop = target.getBoundingClientRect().top + window.scrollY - headerH - 8;
-    window.scrollTo({ top: targetTop, behavior: 'smooth' });
-  });
+  // Scroll to Today's Ticket card cleanly.
+  // Strategy: instant-jump to app-frame top, then after a paint cycle,
+  // smooth-scroll to the ticket card (or today heading as fallback).
+  // The welcome screen is display:none so it has zero height.
+  window.scrollTo(0, 0);
+  setTimeout(function() {
+    var ticket = el('rec-bets-card');
+    var heading = el('today-heading');
+    var target = (ticket && !ticket.classList.contains('hidden')) ? ticket
+               : heading || el('main-content') || af;
+    var headerH = (el('top-header') || {}).offsetHeight || 56;
+    var rect = target.getBoundingClientRect();
+    var scrollTarget = rect.top + window.pageYOffset - headerH - 12;
+    window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+  }, 150);
 }
 
 /* =============================================================
@@ -2417,13 +2421,17 @@ function applyRaceFocus(races, activeIdx) {
   });
 
   // Scroll to active race (slight delay for DOM paint)
-  const activeRace = races[activeIdx];
-  if (activeRace) {
-    setTimeout(() => {
-      const activeWrap = el('race-wrap-' + activeRace.id);
-      if (activeWrap) activeWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 300);
+  // Skip if we just came from the welcome screen — finishWelcome handles scroll
+  if (!window._skipRaceFocusScroll) {
+    const activeRace = races[activeIdx];
+    if (activeRace) {
+      setTimeout(() => {
+        const activeWrap = el('race-wrap-' + activeRace.id);
+        if (activeWrap) activeWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
   }
+  window._skipRaceFocusScroll = false;
 }
 
 /* Race card collapse */
