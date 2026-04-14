@@ -442,6 +442,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    RACE CARD
    ========================================================= */
 .race-card-wrap { margin-bottom: 1.25rem; }
+.race-card-wrap.race-active { border-left: 3px solid var(--color-gold); box-shadow: 0 0 0 1px rgba(201,168,76,0.15), var(--shadow-md); border-radius: var(--radius-md); }
 .race-card-header {
   background: #f5f0e6; color: var(--color-racing-green);
   padding: 0.75rem 1rem; border-radius: var(--radius-md) var(--radius-md) 0 0;
@@ -449,6 +450,14 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   cursor: pointer;
 }
 .race-card-header.collapsed { border-radius: var(--radius-md); }
+.race-status-badge {
+  font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 2px 6px; border-radius: 3px; white-space: nowrap; margin-left: 6px;
+}
+.badge-next { background: var(--color-gold); color: #fff; }
+.badge-live { background: var(--color-positive); color: #fff; animation: pulse-live 2s ease-in-out infinite; }
+.badge-complete { background: var(--color-muted); color: #fff; opacity: 0.6; }
+@keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
 .race-num {
   font-family: var(--font-mono); font-size: 1.2rem; font-weight: 500;
   color: var(--color-gold); min-width: 36px;
@@ -1902,6 +1911,10 @@ function renderTodayTab() {
   // Render race cards
   container.innerHTML = races.map(race => buildRaceCardHTML(race)).join('');
 
+  // Auto-focus on current/next race
+  const activeIdx = getCurrentRaceIndex(races);
+  applyRaceFocus(races, activeIdx);
+
   // Run advice engine
   runAdviceEngine();
   updateHandicapSelects();
@@ -2045,6 +2058,112 @@ function parseOddsToNum(odds) {
   if (s.includes('/')) { const [a,b] = s.split('/'); return parseFloat(a)/parseFloat(b); }
   if (s.includes('-')) { const [a,b] = s.split('-'); return parseFloat(a)/parseFloat(b); }
   return parseFloat(s) || 0;
+}
+
+/* ── Post-time parsing & current-race detection ── */
+
+/** Parse "1:10 PM" or "13:10" into minutes since midnight */
+function parsePostTimeToMinutes(timeStr) {
+  if (!timeStr || timeStr === 'TBD') return -1;
+  const s = String(timeStr).trim().toUpperCase();
+  // Try "H:MM AM/PM"
+  const m12 = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (m12) {
+    let h = parseInt(m12[1]); const min = parseInt(m12[2]); const pm = m12[3] === 'PM';
+    if (pm && h !== 12) h += 12;
+    if (!pm && h === 12) h = 0;
+    return h * 60 + min;
+  }
+  // Try 24h "HH:MM"
+  const m24 = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
+  return -1;
+}
+
+/** Return the index of the current/next race (0-based), or 0 if before first race, or last if after all */
+function getCurrentRaceIndex(races) {
+  if (!races || !races.length) return -1;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  // If viewing a future date (lookahead), default to first race
+  if (loadedRaceDate && loadedRaceDate !== getTodayStr()) return 0;
+
+  // Find the first race whose post time hasn't passed yet (with 30min buffer after post)
+  for (let i = 0; i < races.length; i++) {
+    const pt = parsePostTimeToMinutes(races[i].postTime);
+    if (pt < 0) continue;
+    if (nowMin < pt + 30) return i; // Current or upcoming
+  }
+  // All races past → show the last one
+  return races.length - 1;
+}
+
+/** Get race status relative to current time: 'upcoming', 'live', 'complete' */
+function getRaceStatus(race, raceIndex, activeIndex, races) {
+  if (loadedRaceDate && loadedRaceDate !== getTodayStr()) return 'upcoming';
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const pt = parsePostTimeToMinutes(race.postTime);
+  if (pt < 0) return 'upcoming';
+
+  // "Live" = within ~30 min window around post time
+  if (nowMin >= pt - 5 && nowMin <= pt + 30) return 'live';
+  if (nowMin > pt + 30) return 'complete';
+  return 'upcoming';
+}
+
+/** Collapse all race cards except the active one, add status badges & highlight */
+function applyRaceFocus(races, activeIdx) {
+  if (activeIdx < 0 || !races.length) return;
+
+  races.forEach((race, i) => {
+    const wrap = el('race-wrap-' + race.id);
+    const body = el('race-body-' + race.id);
+    const icon = el('collapse-icon-' + race.id);
+    const header = el('race-header-' + race.id);
+    const numEl = header ? header.querySelector('.race-num') : null;
+    if (!wrap || !body) return;
+
+    const isActive = (i === activeIdx);
+    const status = getRaceStatus(race, i, activeIdx, races);
+
+    // Collapse non-active, expand active
+    if (isActive) {
+      body.classList.remove('hidden');
+      wrap.classList.add('race-active');
+      if (icon) icon.classList.remove('collapsed');
+      if (header) header.classList.remove('collapsed');
+    } else {
+      body.classList.add('hidden');
+      wrap.classList.remove('race-active');
+      if (icon) icon.classList.add('collapsed');
+      if (header) header.classList.add('collapsed');
+    }
+
+    // Add status badge next to race number
+    if (header) {
+      // Remove any existing badge from the header
+      const old = header.querySelector('.race-status-badge');
+      if (old) old.remove();
+
+      let badge = '';
+      if (status === 'live') badge = '<span class="race-status-badge badge-live">LIVE</span>';
+      else if (isActive) badge = '<span class="race-status-badge badge-next">NEXT</span>';
+      else if (status === 'complete') badge = '<span class="race-status-badge badge-complete">FINAL</span>';
+
+      if (badge && numEl) numEl.insertAdjacentHTML('afterend', badge);
+    }
+  });
+
+  // Scroll to active race (slight delay for DOM paint)
+  const activeRace = races[activeIdx];
+  if (activeRace) {
+    setTimeout(() => {
+      const activeWrap = el('race-wrap-' + activeRace.id);
+      if (activeWrap) activeWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+  }
 }
 
 /* Race card collapse */
