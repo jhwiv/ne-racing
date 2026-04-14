@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clearing Cache...</title>
+<style>
+  body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #1B4332; color: #FAF3E0; text-align: center; }
+  .box { max-width: 360px; padding: 2rem; }
+  h1 { font-size: 1.4rem; margin-bottom: 1rem; }
+  p { font-size: 0.95rem; opacity: 0.8; }
+  #status { margin-top: 1.5rem; font-weight: 600; color: #C9A84C; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Clearing Cache</h1>
+  <p>Removing old service worker and cached files...</p>
+  <div id="status">Working...</div>
+</div>
+<script>
+(async function() {
+  const status = document.getElementById('status');
+  const steps = [];
+
+  try {
+    // 1. Unregister ALL service workers
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        await reg.unregister();
+        steps.push('Service worker unregistered');
+      }
+      if (regs.length === 0) steps.push('No service workers found');
+    }
+
+    // 2. Delete ALL caches
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      for (const key of keys) {
+        await caches.delete(key);
+        steps.push('Deleted cache: ' + key);
+      }
+      if (keys.length === 0) steps.push('No caches found');
+    }
+
+    // 3. Clear localStorage for this site
+    localStorage.clear();
+    steps.push('localStorage cleared');
+
+    // 4. Clear sessionStorage
+    sessionStorage.clear();
+    steps.push('sessionStorage cleared');
+
+    status.textContent = 'Done! Redirecting...';
+    console.log('Cache clear steps:', steps);
+
+    // Redirect to the app with a cache-bust param
+    setTimeout(function() {
+      window.location.replace('./index.html?_=' + Date.now());
+    }, 1500);
+
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>
