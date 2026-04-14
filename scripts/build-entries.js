@@ -80,32 +80,63 @@ function todayET() {
 
 /**
  * Determine the next race date.
- * NYRA generally races Wed-Sun, but the weekday schedule varies.
- * This pipeline runs Mon-Fri; we look for the next likely race day.
+ * First tries to discover actual race dates from the NYRA HTMX endpoint,
+ * then falls back to a heuristic (skip Mon/Tue).
  */
-function nextRaceDate() {
-  const { year, month, day, iso } = todayET();
+function nextRaceDateFallback() {
+  const { iso } = todayET();
   const today = new Date(`${iso}T12:00:00`);
-  const dow = today.getDay(); // 0=Sun ... 6=Sat
-
-  // If today is Wed-Fri, assume today is a race day.
-  // If Mon or Tue, advance to Wednesday.
-  // (These are defaults; the NYRA schedule can vary.)
-  let target = new Date(today);
-  if (dow === 1) {
-    // Monday -> advance 2 days to Wednesday
-    target.setDate(target.getDate() + 2);
-  } else if (dow === 2) {
-    // Tuesday -> advance 1 day to Wednesday
-    target.setDate(target.getDate() + 1);
-  }
-  // Wed(3), Thu(4), Fri(5) -> use today
-
   const pad = (n) => String(n).padStart(2, '0');
-  const ry = target.getFullYear();
-  const rm = pad(target.getMonth() + 1);
-  const rd = pad(target.getDate());
-  return `${ry}-${rm}-${rd}`;
+
+  // Scan today + up to 7 days to find a Wed-Sun race day
+  for (let offset = 0; offset <= 7; offset++) {
+    const target = new Date(today);
+    target.setDate(target.getDate() + offset);
+    const dow = target.getDay(); // 0=Sun ... 6=Sat
+    if (dow === 1 || dow === 2) continue;
+
+    const ry = target.getFullYear();
+    const rm = pad(target.getMonth() + 1);
+    const rd = pad(target.getDate());
+    return `${ry}-${rm}-${rd}`;
+  }
+
+  return iso;
+}
+
+/**
+ * Discover the actual next race date from NYRA's HTMX endpoint.
+ * The entries page includes day-switcher buttons with upcoming dates.
+ * Returns a YYYY-MM-DD string or null if discovery fails.
+ */
+async function discoverNextRaceDate(trackSlug) {
+  try {
+    const { iso } = todayET();
+    // Fetch the entries page for today — even if no races today, it shows upcoming dates
+    const url = `${NYRA_BASE}/${trackSlug}/rdl/race/?day=${iso}&limit=entries`;
+    console.log(`  Discovering race dates from: ${url}`);
+    const html = await fetch(url);
+
+    // Extract all dates from the day-switcher buttons
+    const datePattern = /hx-get="\/[^/]+\/rdl\/race\/\?day=([\d-]+)&amp;limit=entries"/g;
+    const dates = new Set();
+    let m;
+    while ((m = datePattern.exec(html)) !== null) {
+      dates.add(m[1]);
+    }
+
+    if (dates.size === 0) return null;
+
+    // Sort dates and find the earliest one >= today
+    const sorted = [...dates].sort();
+    const nextDate = sorted.find(d => d >= iso) || sorted[0];
+    console.log(`  Available race dates: ${sorted.join(', ')}`);
+    console.log(`  Selected: ${nextDate}`);
+    return nextDate;
+  } catch (err) {
+    console.warn(`  Race date discovery failed: ${err.message}`);
+    return null;
+  }
 }
 
 /**
@@ -238,135 +269,229 @@ function parseDistance(distStr) {
 }
 
 // ---------------------------------------------------------------------------
-// NYRA entries fetching (best-effort)
+// NYRA HTMX entries fetching (best-effort)
 // ---------------------------------------------------------------------------
 
+const TRACK_SLUGS = { AQU: 'aqueduct', BEL: 'belmont', SAR: 'saratoga' };
+
 /**
- * Attempt to fetch entries from NYRA's website.
- * This is a best-effort scraper -- the page structure can change at any time.
- * Returns an array of race objects or null on failure.
+ * Decode common HTML entities in scraped text.
+ */
+function decodeEntities(str) {
+  return str
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&bull;/g, '•')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+
+/**
+ * Detect how many races exist by fetching the all-races HTMX endpoint
+ * and counting race tab links.
+ */
+async function discoverRaceCount(trackSlug, date) {
+  const url = `${NYRA_BASE}/${trackSlug}/rdl/race/?day=${date}&limit=entries`;
+  console.log(`  Discovering race count: ${url}`);
+  const html = await fetch(url);
+  const pattern = new RegExp(
+    `hx-get="/${trackSlug}/rdl/race/\\?day=[\\d-]+&amp;limit=entries&amp;race=(\\d+)"`,
+    'g'
+  );
+  const raceNums = new Set();
+  let m;
+  while ((m = pattern.exec(html)) !== null) {
+    raceNums.add(parseInt(m[1], 10));
+  }
+  const count = raceNums.size;
+  console.log(`  Found ${count} race tabs.`);
+  return count;
+}
+
+/**
+ * Parse a single race's HTMX HTML response into a race object.
+ * Returns { race, serlingPicks } where serlingPicks may be null.
+ */
+function parseRaceHTML(html, raceNumber) {
+  const race = {
+    race_number: raceNumber,
+    post_time: null,
+    purse: null,
+    race_type: null,
+    conditions: null,
+    distance: null,
+    surface: 'Dirt',
+    entries: [],
+    race_type_code: null,
+  };
+
+  // --- Race metadata ---
+  // Race header: "Race N"
+  const headerMatch = html.match(/<header[^>]*font-heading[^>]*>\s*Race\s+(\d+)\s*<\/header>/);
+  if (headerMatch) race.race_number = parseInt(headerMatch[1], 10);
+
+  // Purse and race type: "$40,000\n    Maiden Claiming"
+  const purseTypeMatch = html.match(/<div>\s*(\$[\d,]+)\s*\n\s*([^<]+)\s*<\/div>/);
+  if (purseTypeMatch) {
+    race.purse = purseTypeMatch[1].trim();
+    race.race_type = purseTypeMatch[2].trim();
+  }
+
+  // Race type code from race_type
+  if (race.race_type) {
+    const rt = race.race_type.toLowerCase();
+    if (rt.includes('maiden claiming')) race.race_type_code = 'MCL';
+    else if (rt.includes('maiden special')) race.race_type_code = 'MSW';
+    else if (rt.includes('allowance optional') || rt.includes('optional claiming')) race.race_type_code = 'AOC';
+    else if (rt.includes('allowance')) race.race_type_code = 'ALW';
+    else if (rt.includes('claiming')) race.race_type_code = 'CLM';
+    else if (rt.includes('stakes') || rt.includes('graded')) race.race_type_code = 'STK';
+  }
+
+  // Distance: title="Six Furlongs">6F</div> or title="One And One Eighth Miles">1 1/8M</div>
+  const distMatch = html.match(/title="[^"]*">([\d\s/]+[FM])<\/div>/);
+  if (distMatch) race.distance = distMatch[1].trim();
+
+  // Surface: "Dirt" or "Turf" or "Inner Turf"
+  const surfaceMatch = html.match(/<div[^>]*text-zinc-800[^>]*>\s*(Dirt|Turf|Inner Turf|Hurdle)\s*<\/div>/);
+  if (surfaceMatch) race.surface = surfaceMatch[1].trim();
+
+  // Post time: "1:10p at Aqueduct"
+  const postTimeMatch = html.match(/([\d]+:[\d]+[ap])\s*at\s/);
+  if (postTimeMatch) {
+    const raw = postTimeMatch[1];
+    const ampm = raw.endsWith('p') ? 'PM' : 'AM';
+    race.post_time = raw.slice(0, -1) + ' ' + ampm;
+  }
+
+  // Conditions
+  const condMatch = html.match(/<div class="text-sm lg:text-base text-zinc-800 dark:text-white">\s*FOR\s+([\s\S]*?)<\/div>/);
+  if (condMatch) race.conditions = condMatch[1].replace(/\s+/g, ' ').trim();
+
+  // --- Entries ---
+  // Each entry block starts with: <div class="flex items-start gap-3 lg:gap-5 text-sm
+  const entryBlocks = html.split(/<div class="flex items-start gap-3 lg:gap-5 text-sm/).slice(1);
+
+  for (const block of entryBlocks) {
+    const entry = {
+      pp: 0,
+      name: 'Unknown',
+      jockey: 'Unknown',
+      trainer: 'Unknown',
+      weight: '120',
+      scratched: false,
+      ml: null,
+      equibaseUrl: null,
+      speedFigs: [null, null, null],
+      runningStyle: null,
+      lastClass: null,
+      jockeyPct: null,
+      trainerPct: null,
+    };
+
+    // Horse name from equibase link inside blend-links div
+    const nameMatch = block.match(/blend-links[^>]*><a\s+href="([^"]*)"[^>]*>\s*([^<]+)\s*<\/a>/);
+    if (nameMatch) {
+      entry.equibaseUrl = decodeEntities(nameMatch[1]);
+      entry.name = decodeEntities(nameMatch[2]).trim();
+    }
+
+    // Jockey • Trainer
+    const jtMatch = block.match(/<div class="text-zinc-800 dark:text-white">([^<]+?)&bull;([^<]+?)<\/div>/);
+    if (jtMatch) {
+      entry.jockey = decodeEntities(jtMatch[1]).trim();
+      entry.trainer = decodeEntities(jtMatch[2]).trim();
+    }
+
+    // Weight: "120lbs • L • 3/F" or "113lbs • 3/F"
+    const weightMatch = block.match(/(\d+)lbs/);
+    if (weightMatch) entry.weight = weightMatch[1];
+
+    // Post position from saddle-N class
+    const ppMatch = block.match(/saddle-(\d+)/);
+    if (ppMatch) entry.pp = parseInt(ppMatch[1], 10);
+
+    // Morning line: title="Morning Line Odds">ML 4/1</div>
+    const mlMatch = block.match(/title="Morning Line Odds">ML\s*([^<]+)<\/div>/);
+    if (mlMatch) entry.ml = mlMatch[1].trim();
+
+    // Scratched: check for line-through or "Scratched"
+    if (block.includes('line-through') || block.includes('Scratched') || block.includes('scratched')) {
+      entry.scratched = true;
+    }
+
+    if (entry.name !== 'Unknown') {
+      race.entries.push(entry);
+    }
+  }
+
+  // --- Serling picks (embedded in race response) ---
+  let serlingPicks = null;
+  const serlingMatch = html.match(/Talking Horses[\s\S]*?Andy Serling[\s\S]*?<div>\s*([\d]+(?:\s*-\s*[\d]+)*)\s*<\/div>/);
+  if (serlingMatch) {
+    const picksStr = serlingMatch[1].trim();
+    const picks = picksStr.split(/\s*-\s*/).map(Number).filter(n => !isNaN(n));
+    if (picks.length >= 2) {
+      serlingPicks = picks;
+    }
+  }
+
+  return { race, serlingPicks };
+}
+
+/**
+ * Fetch entries from NYRA's HTMX endpoints.
+ * Returns { races, serlingPicksByRace } or null on failure.
  */
 async function fetchNYRAEntries(track, date) {
-  const trackNames = { AQU: 'aqueduct', BEL: 'belmont', SAR: 'saratoga' };
-  const trackSlug = trackNames[track] || track.toLowerCase();
+  const trackSlug = TRACK_SLUGS[track] || track.toLowerCase();
 
-  // Try the NYRA entries API/page
-  const urls = [
-    `${NYRA_BASE}/racing/entries/${trackSlug}/${date}`,
-    `${NYRA_BASE}/racing/entries`,
-  ];
-
-  for (const url of urls) {
-    try {
-      console.log(`  Fetching: ${url}`);
-      const html = await fetch(url);
-
-      // Try to find embedded JSON data (NYRA sometimes embeds race data in script tags)
-      const jsonMatch = html.match(/__NEXT_DATA__.*?<\/script>/s);
-      if (jsonMatch) {
-        const dataMatch = jsonMatch[0].match(/\{[\s\S]*\}/);
-        if (dataMatch) {
-          try {
-            const nextData = JSON.parse(dataMatch[0]);
-            const races = extractRacesFromNextData(nextData, track);
-            if (races && races.length > 0) {
-              console.log(`  Found ${races.length} races from NYRA data.`);
-              return races;
-            }
-          } catch (e) {
-            console.warn(`  Could not parse NYRA embedded data: ${e.message}`);
-          }
-        }
-      }
-
-      // Try to find races from HTML structure
-      const races = extractRacesFromHTML(html, track);
-      if (races && races.length > 0) {
-        console.log(`  Extracted ${races.length} races from HTML.`);
-        return races;
-      }
-
-      console.log(`  No race data found at ${url}`);
-    } catch (err) {
-      console.warn(`  Fetch failed for ${url}: ${err.message}`);
+  try {
+    // Step 1: Discover how many races exist
+    const numRaces = await discoverRaceCount(trackSlug, date);
+    if (!numRaces || numRaces === 0) {
+      console.log('  No races found at HTMX endpoint.');
+      return null;
     }
-  }
 
-  return null;
-}
-
-/** Extract race data from Next.js __NEXT_DATA__ payload. */
-function extractRacesFromNextData(nextData, track) {
-  try {
-    // Navigate common Next.js data paths
-    const props = nextData.props?.pageProps;
-    if (!props) return null;
-
-    const raceData = props.races || props.entries || props.card;
-    if (!Array.isArray(raceData)) return null;
-
-    return raceData.map((race, idx) => ({
-      race_number: race.raceNumber || race.race_number || idx + 1,
-      post_time: race.postTime || race.post_time || null,
-      purse: race.purse || null,
-      race_type: race.raceType || race.race_type || null,
-      conditions: race.conditions || null,
-      distance: race.distance || null,
-      surface: race.surface || 'Dirt',
-      entries: (race.entries || race.runners || []).map((e, eidx) => ({
-        pp: e.pp || e.postPosition || e.post_position || eidx + 1,
-        name: e.name || e.horseName || e.horse_name || 'Unknown',
-        jockey: e.jockey || e.jockeyName || e.jockey_name || 'Unknown',
-        trainer: e.trainer || e.trainerName || e.trainer_name || 'Unknown',
-        weight: String(e.weight || '120'),
-        scratched: e.scratched || false,
-        ml: e.ml || e.morningLine || e.morning_line || null,
-        speedFigs: e.speedFigs || [null, null, null],
-        runningStyle: null, // will be populated later
-        lastClass: e.lastClass || e.last_class || null,
-        jockeyPct: null,
-        trainerPct: null,
-      })),
-      race_type_code: race.raceTypeCode || race.race_type_code || null,
-    }));
-  } catch (err) {
-    console.warn(`  extractRacesFromNextData error: ${err.message}`);
-    return null;
-  }
-}
-
-/** Best-effort HTML extraction. Likely to fail if structure changes. */
-function extractRacesFromHTML(html, track) {
-  // This is intentionally simplistic -- if NYRA changes their HTML this will
-  // return null and the pipeline will generate placeholder data.
-  try {
+    // Step 2: Fetch each race individually with 500ms delay
     const races = [];
-    // Look for race-card patterns; many NYRA pages use data-race-number attributes
-    const raceBlocks = html.match(/data-race-number="(\d+)"/g);
-    if (!raceBlocks || raceBlocks.length === 0) return null;
+    const serlingPicksByRace = {};
 
-    const uniqueRaces = [...new Set(raceBlocks.map((b) => {
-      const m = b.match(/(\d+)/);
-      return m ? parseInt(m[1], 10) : 0;
-    }))].sort((a, b) => a - b);
+    for (let rn = 1; rn <= numRaces; rn++) {
+      try {
+        const url = `${NYRA_BASE}/${trackSlug}/rdl/race/?day=${date}&limit=entries&race=${rn}`;
+        console.log(`  Fetching Race ${rn}: ${url}`);
+        const html = await fetch(url);
 
-    for (const rNum of uniqueRaces) {
-      races.push({
-        race_number: rNum,
-        post_time: null,
-        purse: null,
-        race_type: null,
-        conditions: null,
-        distance: null,
-        surface: 'Dirt',
-        entries: [],
-        race_type_code: null,
-      });
+        const { race, serlingPicks } = parseRaceHTML(html, rn);
+        races.push(race);
+
+        if (serlingPicks) {
+          serlingPicksByRace[rn] = serlingPicks;
+          console.log(`    Serling picks for R${rn}: ${serlingPicks.join(' - ')}`);
+        }
+
+        console.log(`    R${rn}: ${race.entries.length} entries, ${race.race_type || 'unknown type'}, ${race.distance || '?'}`);
+      } catch (err) {
+        console.warn(`  Race ${rn} fetch failed: ${err.message}`);
+        // Push a stub so race numbering stays correct
+        races.push({
+          race_number: rn, post_time: null, purse: null, race_type: null,
+          conditions: null, distance: null, surface: 'Dirt', entries: [],
+          race_type_code: null,
+        });
+      }
+
+      if (rn < numRaces) await delay(500);
     }
 
-    return races.length > 0 ? races : null;
+    console.log(`  Fetched ${races.length} races total.`);
+    return { races, serlingPicksByRace };
   } catch (err) {
-    console.warn(`  extractRacesFromHTML error: ${err.message}`);
+    console.warn(`  fetchNYRAEntries error: ${err.message}`);
     return null;
   }
 }
@@ -380,112 +505,152 @@ function delay(ms) {
 }
 
 // ---------------------------------------------------------------------------
-// Expert picks (best-effort)
-// ---------------------------------------------------------------------------
-
-async function fetchExpertPicks(track, date) {
-  const trackNames = { AQU: 'aqueduct', BEL: 'belmont', SAR: 'saratoga' };
-  const trackSlug = trackNames[track] || track.toLowerCase();
-
-  const urls = [
-    `${NYRA_BASE}/racing/picks/${trackSlug}/${date}`,
-    `${NYRA_BASE}/racing/picks`,
-  ];
-
-  for (const url of urls) {
-    try {
-      console.log(`  Fetching picks: ${url}`);
-      const html = await fetch(url);
-
-      // Try to find picks in embedded JSON
-      const jsonMatch = html.match(/__NEXT_DATA__.*?<\/script>/s);
-      if (jsonMatch) {
-        const dataMatch = jsonMatch[0].match(/\{[\s\S]*\}/);
-        if (dataMatch) {
-          try {
-            const nextData = JSON.parse(dataMatch[0]);
-            const picks = nextData.props?.pageProps?.picks;
-            if (picks) {
-              console.log('  Found expert picks data.');
-              return picks;
-            }
-          } catch (_) { /* ignore parse errors */ }
-        }
-      }
-    } catch (err) {
-      console.warn(`  Picks fetch failed: ${err.message}`);
-    }
-  }
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Additional expert pick sources (best-effort, fail gracefully)
+// Expert picks — NYRA Talking Horses & TimeformUS (best-effort)
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch Andy Serling / Talking Horses picks from NYRA expert picks page.
- * Returns array of { raceNumber, source, pick, horseName } or empty array.
+ * Parse picks from an NYRA picks page section.
+ * Looks for: <div class="font-semibold w-[5rem]">Race N</div><div>picks</div>
+ * within a date section identified by id="th-pick-{date}".
+ * Returns object: { [raceNumber]: [pp, pp, pp, ...] }
+ */
+function parsePicksFromHTML(html, targetDate) {
+  const picksByRace = {};
+
+  // Try to find the section for the target date first
+  const dateId = `th-pick-${targetDate}`;
+  const dateIdx = html.indexOf(`id="${dateId}"`);
+
+  // Determine section to parse: target date section, or first section, or whole page
+  let section = html;
+  if (dateIdx !== -1) {
+    // Extract from this date section to the next th-pick section or end
+    const rest = html.slice(dateIdx);
+    const nextSection = rest.indexOf('id="th-pick-', 20);
+    section = nextSection !== -1 ? rest.slice(0, nextSection) : rest;
+  } else {
+    // No exact date match — try the first th-pick section
+    const firstIdx = html.indexOf('id="th-pick-');
+    if (firstIdx !== -1) {
+      const rest = html.slice(firstIdx);
+      const nextSection = rest.indexOf('id="th-pick-', 20);
+      section = nextSection !== -1 ? rest.slice(0, nextSection) : rest;
+    }
+  }
+
+  // Parse Race N -> picks pairs
+  const pattern = /font-semibold w-\[5rem\]">Race\s*(\d+)<\/div>\s*<div>([^<]+)<\/div>/g;
+  let m;
+  while ((m = pattern.exec(section)) !== null) {
+    const raceNum = parseInt(m[1], 10);
+    const picksStr = m[2].trim();
+    const picks = picksStr.split(/\s*-\s*/).map(Number).filter(n => !isNaN(n));
+    if (picks.length >= 2) {
+      picksByRace[raceNum] = picks;
+    }
+  }
+
+  return picksByRace;
+}
+
+/**
+ * Fetch Serling picks from the Talking Horses page (backup source).
+ * Returns array of { raceNumber, source, picks } or empty array.
  */
 async function fetchSerlingPicks(track, date) {
   try {
-    const trackNames = { AQU: 'aqueduct', BEL: 'belmont', SAR: 'saratoga' };
-    const trackSlug = trackNames[track] || track.toLowerCase();
-    const url = `${NYRA_BASE}/${trackSlug}/racing/expert-picks/`;
-    console.log(`  Fetching Serling picks: ${url}`);
+    const trackSlug = TRACK_SLUGS[track] || track.toLowerCase();
+    const url = `${NYRA_BASE}/${trackSlug}/racing/talking-horses/`;
+    console.log(`  Fetching Serling picks (Talking Horses page): ${url}`);
     const html = await fetch(url);
 
-    // Look for Serling/Talking Horses section in the picks page
+    const picksByRace = parsePicksFromHTML(html, date);
     const picks = [];
-    // Try embedded JSON first
-    const jsonMatch = html.match(/__NEXT_DATA__.*?<\/script>/s);
-    if (jsonMatch) {
-      const dataMatch = jsonMatch[0].match(/\{[\s\S]*\}/);
-      if (dataMatch) {
-        try {
-          const nextData = JSON.parse(dataMatch[0]);
-          const allPicks = nextData.props?.pageProps?.picks || nextData.props?.pageProps?.experts || [];
-          const serlingData = Array.isArray(allPicks) ? allPicks.filter(p =>
-            p.expert && (p.expert.toLowerCase().includes('serling') || p.expert.toLowerCase().includes('talking'))
-          ) : [];
-          for (const sp of serlingData) {
-            if (sp.raceNumber && sp.horseName) {
-              picks.push({
-                raceNumber: sp.raceNumber,
-                source: 'NYRA - Serling',
-                pick: sp.pp || sp.postPosition || sp.pick || 0,
-                horseName: sp.horseName || '',
-              });
-            }
-          }
-        } catch (_) { /* ignore parse errors */ }
-      }
+    for (const [rn, pp] of Object.entries(picksByRace)) {
+      picks.push({
+        raceNumber: parseInt(rn, 10),
+        source: 'NYRA - Serling',
+        pick: pp[0], // top pick is first PP
+        picks: pp,
+      });
     }
 
-    // Fallback: try to find Serling picks in HTML patterns
-    if (!picks.length) {
-      const serlingSection = html.match(/[Ss]erling|[Tt]alking\s*[Hh]orses/i);
-      if (serlingSection) {
-        // Best-effort HTML parsing for Serling section
-        const racePickPattern = /[Rr]ace\s*(\d+)[^<]*?#(\d+)\s+([^<\n]+)/g;
-        let match;
-        while ((match = racePickPattern.exec(html)) !== null) {
+    if (picks.length) console.log(`  Found ${picks.length} Serling picks from Talking Horses page.`);
+    else console.log('  No Serling picks found on Talking Horses page.');
+    return picks;
+  } catch (err) {
+    console.warn(`  Serling picks fetch failed (graceful): ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Fetch Aragona picks from the TimeformUS page.
+ * Returns array of { raceNumber, source, picks } or empty array.
+ */
+async function fetchAragonaPicks(track, date) {
+  try {
+    const trackSlug = TRACK_SLUGS[track] || track.toLowerCase();
+    const url = `${NYRA_BASE}/${trackSlug}/racing/timeformus/`;
+    console.log(`  Fetching Aragona picks: ${url}`);
+    const html = await fetch(url);
+
+    const picksByRace = parsePicksFromHTML(html, date);
+    const picks = [];
+    for (const [rn, pp] of Object.entries(picksByRace)) {
+      picks.push({
+        raceNumber: parseInt(rn, 10),
+        source: 'NYRA - Aragona',
+        pick: pp[0],
+        picks: pp,
+      });
+    }
+
+    if (picks.length) console.log(`  Found ${picks.length} Aragona picks.`);
+    else console.log('  No Aragona picks found.');
+    return picks;
+  } catch (err) {
+    console.warn(`  Aragona picks fetch failed (graceful): ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Fetch DeSantis picks from NYRABets expert picks.
+ * Returns array of { raceNumber, source, pick } or empty array.
+ */
+async function fetchDeSantisPicks(track, date) {
+  try {
+    const url = 'https://racing.nyrabets.com/expert-picks';
+    console.log(`  Fetching DeSantis picks: ${url}`);
+    const html = await fetch(url);
+
+    const picks = [];
+    // Look for DeSantis section and parse Race N -> picks
+    const desantisIdx = html.search(/DeSantis/i);
+    if (desantisIdx !== -1) {
+      const section = html.slice(desantisIdx, desantisIdx + 5000);
+      const pattern = /Race\s*(\d+)[^<]*?(\d+(?:\s*-\s*\d+)*)/g;
+      let m;
+      while ((m = pattern.exec(section)) !== null) {
+        const raceNum = parseInt(m[1], 10);
+        const pp = m[2].split(/\s*-\s*/).map(Number).filter(n => !isNaN(n));
+        if (pp.length >= 1) {
           picks.push({
-            raceNumber: parseInt(match[1], 10),
-            source: 'NYRA - Serling',
-            pick: parseInt(match[2], 10),
-            horseName: match[3].trim(),
+            raceNumber: raceNum,
+            source: 'NYRA - DeSantis',
+            pick: pp[0],
+            picks: pp,
           });
         }
       }
     }
 
-    if (picks.length) console.log(`  Found ${picks.length} Serling picks.`);
-    else console.log('  No Serling picks found.');
+    if (picks.length) console.log(`  Found ${picks.length} DeSantis picks.`);
+    else console.log('  No DeSantis picks found.');
     return picks;
   } catch (err) {
-    console.warn(`  Serling picks fetch failed (graceful): ${err.message}`);
+    console.warn(`  DeSantis picks fetch failed (graceful): ${err.message}`);
     return [];
   }
 }
@@ -793,8 +958,17 @@ async function main() {
   console.log(`  Time: ${new Date().toISOString()}`);
 
   // Step 1: Determine race date and track
-  const raceDate = nextRaceDate();
-  const track = activeTrack(raceDate);
+  let raceDate = nextRaceDateFallback();
+  let track = activeTrack(raceDate);
+  const trackSlug = TRACK_SLUGS[track] || track.toLowerCase();
+
+  // Try to discover actual next race date from NYRA
+  const discoveredDate = await discoverNextRaceDate(trackSlug);
+  if (discoveredDate) {
+    raceDate = discoveredDate;
+    track = activeTrack(raceDate);
+  }
+
   console.log(`  Race date: ${raceDate}`);
   console.log(`  Track:     ${track}`);
 
@@ -807,11 +981,16 @@ async function main() {
   console.log(`  Jockeys loaded: ${Object.keys(jockeyLookup).length}`);
   console.log(`  Trainers loaded: ${Object.keys(trainerLookup).length}`);
 
-  // Step 3: Fetch entries from NYRA
-  console.log('\nFetching NYRA entries...');
+  // Step 3: Fetch entries from NYRA HTMX endpoints
+  console.log('\nFetching NYRA entries (HTMX)...');
   let races = null;
+  let serlingPicksByRace = {};
   try {
-    races = await fetchNYRAEntries(track, raceDate);
+    const result = await fetchNYRAEntries(track, raceDate);
+    if (result) {
+      races = result.races;
+      serlingPicksByRace = result.serlingPicksByRace || {};
+    }
   } catch (err) {
     console.warn(`  NYRA fetch error: ${err.message}`);
   }
@@ -822,39 +1001,61 @@ async function main() {
     races = generatePlaceholderCard(track, raceDate);
   }
 
-  // Step 5: Fetch expert picks (optional — all sources fail gracefully)
-  console.log('\nFetching expert picks...');
-  let picks = null;
-  try {
-    picks = await fetchExpertPicks(track, raceDate);
-  } catch (err) {
-    console.warn(`  Expert picks fetch error: ${err.message}`);
-  }
-  if (picks) {
-    console.log('  Expert picks loaded.');
-  } else {
-    console.log('  No expert picks available.');
+  // Step 5: Inject Serling picks from embedded HTMX data
+  if (Object.keys(serlingPicksByRace).length) {
+    console.log(`\n  Serling picks found in entries for ${Object.keys(serlingPicksByRace).length} races.`);
+    for (const race of races) {
+      const sp = serlingPicksByRace[race.race_number];
+      if (sp) {
+        if (!race.expertPicks) race.expertPicks = [];
+        race.expertPicks.push({
+          source: 'NYRA - Serling',
+          pick: sp[0],
+          picks: sp,
+        });
+      }
+    }
   }
 
   // Step 5b: Fetch additional expert sources (all fail gracefully)
   console.log('\nFetching additional expert sources...');
-  const serlingPicks = await fetchSerlingPicks(track, raceDate);
+
+  // Serling backup from Talking Horses page (only if not already from entries)
+  let serlingPicks = [];
+  if (Object.keys(serlingPicksByRace).length === 0) {
+    serlingPicks = await fetchSerlingPicks(track, raceDate);
+    await delay(500);
+  }
+
+  // Aragona from TimeformUS
+  const aragonaPicks = await fetchAragonaPicks(track, raceDate);
+  await delay(500);
+
+  // DeSantis from NYRABets (fail gracefully)
+  const desantisPicks = await fetchDeSantisPicks(track, raceDate);
+  await delay(500);
+
+  // Other sources (keep existing, fail gracefully)
   const smartPicks = await fetchEquibaseSmartPick(track, raceDate, races.length);
   const fanDuelPicks = await fetchFanDuelConsensus(track, raceDate);
 
-  // Merge additional expert picks into race-level expertPicks arrays
-  const additionalPicks = [...serlingPicks, ...smartPicks, ...fanDuelPicks];
+  // Merge all additional expert picks into race-level expertPicks arrays
+  const additionalPicks = [...serlingPicks, ...aragonaPicks, ...desantisPicks, ...smartPicks, ...fanDuelPicks];
   if (additionalPicks.length) {
     console.log(`  Total additional expert picks: ${additionalPicks.length}`);
     for (const race of races) {
       if (!race.expertPicks) race.expertPicks = [];
       const racePicks = additionalPicks.filter(p => p.raceNumber === race.race_number);
       for (const rp of racePicks) {
-        race.expertPicks.push({
-          source: rp.source,
-          pick: rp.pick,
-          horseName: rp.horseName,
-        });
+        // Avoid duplicate Serling entries
+        const isDupe = race.expertPicks.some(ep => ep.source === rp.source);
+        if (!isDupe) {
+          race.expertPicks.push({
+            source: rp.source,
+            pick: rp.pick,
+            picks: rp.picks,
+          });
+        }
       }
     }
   }
@@ -888,11 +1089,6 @@ async function main() {
     races,
   };
 
-  // Include expert picks if available (legacy top-level field)
-  if (picks) {
-    output.expertPicks = picks;
-  }
-
   // Step 8: Write to disk
   const outputFilename = `entries-${track}-${raceDate}.json`;
   const outputPath = path.join(DATA_DIR, outputFilename);
@@ -907,8 +1103,12 @@ async function main() {
   console.log(`  Races: ${races.length}`);
 
   let totalEntries = 0;
+  console.log('\n  Entries per race:');
   for (const race of races) {
-    totalEntries += (race.entries || []).length;
+    const count = (race.entries || []).length;
+    const expertCount = (race.expertPicks || []).length;
+    console.log(`    R${race.race_number}: ${count} horses, ${expertCount} expert picks`);
+    totalEntries += count;
   }
   console.log(`  Total entries: ${totalEntries}`);
 
