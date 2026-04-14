@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1B4332">
+<meta name="theme-color" content="#FAF3E0">
 <meta name="description" content="Saratoga Racing Companion 2026 — Personal horse racing handicapping tool for Saratoga Springs.">
 <title>Saratoga Racing Companion 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,11 +88,18 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
 #app { display: flex; flex-direction: column; min-height: 100dvh; }
 #welcome-screen {
   position: fixed; inset: 0; z-index: 1000;
-  background: var(--color-racing-green);
+  background: url('https://cdn.securem2.com/commonimages/pages/2023/3/horses-racing-grass.jpg') center/cover no-repeat;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 2rem 1.5rem;
   overflow-y: auto;
 }
+#welcome-screen::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(27,67,50,0.3) 0%, rgba(27,67,50,0.7) 60%, rgba(27,67,50,0.9) 100%);
+  z-index: 0;
+}
+#welcome-screen > * { position: relative; z-index: 1; }
 #welcome-screen.fade-out { animation: fadeOut 0.5s ease forwards; }
 @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
 
@@ -100,12 +107,12 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
 #app-frame { display: flex; flex-direction: column; flex: 1; }
 #top-header {
   height: var(--header-height);
-  background: var(--color-racing-green);
-  color: var(--color-white);
+  background: var(--color-white);
+  color: var(--color-slate);
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 1rem;
   position: sticky; top: 0; z-index: 200;
-  box-shadow: var(--shadow-md);
+  border-bottom: 1px solid #e5e0d5;
 }
 #main-content {
   flex: 1;
@@ -116,10 +123,10 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
   position: fixed; bottom: 0; left: 0; right: 0;
   height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: var(--color-racing-green);
+  background: var(--color-white);
   display: flex; align-items: stretch; justify-content: space-around;
   z-index: 200;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 -1px 8px rgba(0,0,0,0.06);
 }
 
 /* Desktop nav */
@@ -147,26 +154,26 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
 }
 .card + .card { margin-top: 1rem; }
 .card-header {
-  background: var(--color-racing-green);
-  color: var(--color-white);
+  background: #f5f0e6;
+  color: var(--color-racing-green);
   padding: 0.75rem 1rem;
   display: flex; align-items: center; justify-content: space-between;
   gap: 0.5rem;
 }
-.card-header h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-white); }
+.card-header h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-racing-green); }
 .card-body { padding: 1rem; }
 .card-section { border-top: 1px solid rgba(0,0,0,0.06); padding: 0.75rem 1rem; }
 
 /* Race card variant */
 .race-card { border-left: 4px solid var(--color-gold); }
-.race-card .card-header { background: var(--color-racing-green); }
+.race-card .card-header { background: #f5f0e6; }
 
 /* =========================================================
    TABS
    ========================================================= */
 .tab-btn {
   flex: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 3px; color: rgba(255,255,255,0.55);
+  justify-content: center; gap: 3px; color: var(--color-muted);
   font-size: 0.65rem; font-weight: 500; text-transform: uppercase;
   letter-spacing: 0.04em; padding: 0.5rem 0.25rem;
   transition: color 0.15s, background 0.15s;
@@ -174,7 +181,7 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
   border-radius: 0;
 }
 .tab-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
-.tab-btn.active { color: var(--color-gold); }
+.tab-btn.active { color: var(--color-racing-green); }
 .tab-btn.active::after {
   content: ''; position: absolute; top: 0; left: 20%; right: 20%;
   height: 2px; background: var(--color-gold); border-radius: 0 0 2px 2px;
@@ -191,12 +198,14 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
 /* Desktop nav buttons */
 .desktop-nav-btn {
   display: flex; align-items: center; gap: 6px;
-  color: rgba(255,255,255,0.75); font-size: 0.875rem; font-weight: 500;
+  color: var(--color-slate); font-size: 0.875rem; font-weight: 500;
   padding: 0.4rem 0.75rem; border-radius: var(--radius-sm);
   transition: color 0.15s, background 0.15s;
+  position: relative;
 }
-.desktop-nav-btn:hover { color: var(--color-white); background: rgba(255,255,255,0.08); }
-.desktop-nav-btn.active { color: var(--color-gold); background: rgba(201,168,76,0.12); }
+.desktop-nav-btn:hover { color: var(--color-racing-green); background: rgba(27,67,50,0.06); }
+.desktop-nav-btn.active { color: var(--color-racing-green); background: transparent; }
+.desktop-nav-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0.75rem; right: 0.75rem; height: 2px; background: var(--color-gold); border-radius: 1px; }
 .desktop-nav-btn svg { width: 16px; height: 16px; }
 
 /* =========================================================
@@ -273,27 +282,28 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .badge-scratch { background: var(--color-negative); color: #fff; font-size: 0.65rem; padding: 0.1rem 0.4rem; }
 .track-pill {
   display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
-  color: var(--color-white); font-size: 0.8rem; font-weight: 600;
+  background: var(--color-green-light); border: 1px solid rgba(27,67,50,0.2);
+  color: var(--color-racing-green); font-size: 0.8rem; font-weight: 600;
   padding: 0.3rem 0.75rem; border-radius: 20px; cursor: pointer;
   transition: background 0.15s; max-width: 200px;
 }
-.track-pill:hover { background: rgba(255,255,255,0.22); }
+.track-pill:hover { background: #c3ebd0; }
 
 /* =========================================================
    WELCOME SCREEN
    ========================================================= */
 .welcome-inner { width: 100%; max-width: 440px; }
-.welcome-logo { text-align: center; margin-bottom: 2rem; }
-.welcome-logo svg { width: 80px; height: 80px; }
+.welcome-logo { text-align: center; margin-bottom: 1rem; }
+.welcome-logo svg { width: 52px; height: 52px; }
 .welcome-title {
   font-family: var(--font-display); font-size: clamp(1.6rem, 5vw, 2.2rem);
   font-weight: 700; color: var(--color-white); text-align: center; line-height: 1.2;
   margin-bottom: 0.25rem;
 }
-.welcome-subtitle { color: rgba(255,255,255,0.65); text-align: center; font-size: 0.9rem; margin-bottom: 2rem; }
+.welcome-subtitle { color: rgba(255,255,255,0.65); text-align: center; font-size: 0.9rem; margin-bottom: 1rem; }
 .welcome-step {
-  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem;
 }
 .welcome-step-label {
@@ -323,7 +333,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .track-location-sm { font-size: 0.72rem; color: rgba(255,255,255,0.5); }
 .track-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dot-active { background: #52b788; box-shadow: 0 0 0 3px rgba(82,183,136,0.25); }
-.dot-inactive { background: rgba(255,255,255,0.25); }
+.dot-inactive { background: #d1d5db; }
 
 /* Mode toggle */
 .mode-toggle { display: flex; gap: 0; border: 1.5px solid rgba(255,255,255,0.2); border-radius: var(--radius-md); overflow: hidden; }
@@ -347,19 +357,24 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .sar-aqu-btn.selected { background: var(--color-gold); color: var(--color-white); }
 .sar-aqu-btn:hover:not(.selected) { background: rgba(255,255,255,0.08); }
 .sar-aqu-drawer { padding: 0.25rem 0; }
+/* Override sar-aqu styles inside the white track drawer */
+#track-drawer .sar-aqu-toggle { border-color: rgba(27,67,50,0.2); }
+#track-drawer .sar-aqu-btn { color: var(--color-muted); }
+#track-drawer .sar-aqu-btn.selected { background: var(--color-racing-green); color: var(--color-white); }
+#track-drawer .sar-aqu-btn:hover:not(.selected) { background: rgba(27,67,50,0.06); color: var(--color-slate); }
 
 /* =========================================================
    HEADER
    ========================================================= */
 .header-logo { display: flex; align-items: center; gap: 8px; }
 .header-logo svg { width: 32px; height: 32px; flex-shrink: 0; }
-.header-logo-text { font-family: var(--font-display); font-size: 0.9rem; font-weight: 600; color: var(--color-gold); display: none; }
+.header-logo-text { font-family: var(--font-display); font-size: 0.9rem; font-weight: 600; color: var(--color-racing-green); display: none; }
 @media (min-width: 768px) { .header-logo-text { display: block; } }
 .header-right { display: flex; align-items: center; gap: 0.5rem; }
-.sync-info { font-size: 0.7rem; color: rgba(255,255,255,0.5); font-family: var(--font-mono); display: none; }
+.sync-info { font-size: 0.7rem; color: var(--color-muted); font-family: var(--font-mono); display: none; }
 @media (min-width: 768px) { .sync-info { display: block; } }
-.icon-btn { padding: 0.4rem; border-radius: var(--radius-sm); color: rgba(255,255,255,0.75); transition: all 0.15s; }
-.icon-btn:hover { background: rgba(255,255,255,0.12); color: var(--color-white); }
+.icon-btn { padding: 0.4rem; border-radius: var(--radius-sm); color: var(--color-muted); transition: all 0.15s; }
+.icon-btn:hover { background: rgba(27,67,50,0.08); color: var(--color-racing-green); }
 .icon-btn svg { width: 20px; height: 20px; display: block; }
 
 /* =========================================================
@@ -367,23 +382,26 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    ========================================================= */
 #track-drawer {
   position: fixed; top: var(--header-height); left: 0; right: 0;
-  background: var(--color-racing-green); z-index: 190;
+  background: var(--color-white); z-index: 190;
   padding: 1rem; max-height: 70vh; overflow-y: auto;
   transform: translateY(-110%); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
   box-shadow: var(--shadow-lg);
+  border: 1px solid #e5e0d5;
 }
 #track-drawer.open { transform: translateY(0); }
 .track-drawer-group { margin-bottom: 1rem; }
-.track-drawer-group-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); margin-bottom: 0.5rem; }
+.track-drawer-group-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-muted); margin-bottom: 0.5rem; }
 .track-drawer-item {
   display: flex; align-items: center; gap: 0.75rem;
   padding: 0.6rem 0.75rem; border-radius: var(--radius-md);
-  color: var(--color-white); cursor: pointer;
+  color: var(--color-slate); cursor: pointer;
   transition: background 0.12s;
 }
-.track-drawer-item:hover { background: rgba(255,255,255,0.1); }
-.track-drawer-item.selected { background: rgba(201,168,76,0.2); }
-.track-drawer-item .track-code { color: var(--color-gold); font-family: var(--font-mono); font-weight: 600; width: 40px; flex-shrink: 0; }
+.track-drawer-item:hover { background: rgba(27,67,50,0.06); }
+.track-drawer-item.selected { background: var(--color-racing-green); color: var(--color-white); }
+.track-drawer-item.selected .track-code { color: var(--color-gold); }
+.track-drawer-item.selected div { color: var(--color-white); }
+.track-drawer-item .track-code { color: var(--color-racing-green); font-family: var(--font-mono); font-weight: 600; width: 40px; flex-shrink: 0; }
 
 /* =========================================================
    TOAST NOTIFICATIONS
@@ -425,7 +443,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    ========================================================= */
 .race-card-wrap { margin-bottom: 1.25rem; }
 .race-card-header {
-  background: var(--color-racing-green); color: var(--color-white);
+  background: #f5f0e6; color: var(--color-racing-green);
   padding: 0.75rem 1rem; border-radius: var(--radius-md) var(--radius-md) 0 0;
   display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
   cursor: pointer;
@@ -437,13 +455,13 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .race-info { flex: 1; min-width: 0; }
 .race-title { font-family: var(--font-display); font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.race-meta { font-size: 0.72rem; color: rgba(255,255,255,0.65); margin-top: 1px; }
+.race-meta { font-size: 0.72rem; color: var(--color-muted); margin-top: 1px; }
 .race-body {
   background: var(--color-white); border-radius: 0 0 var(--radius-md) var(--radius-md);
   box-shadow: var(--shadow-sm); overflow: hidden;
 }
 .race-body.hidden { display: none; }
-.collapse-icon { transition: transform 0.2s; color: rgba(255,255,255,0.6); flex-shrink: 0; }
+.collapse-icon { transition: transform 0.2s; color: var(--color-muted); flex-shrink: 0; }
 .collapse-icon.collapsed { transform: rotate(-90deg); }
 
 /* Entry table */
@@ -852,10 +870,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="welcome-step-label">Step 3</div>
       <h3>Data Mode</h3>
       <div class="mode-toggle">
-        <button class="mode-btn" id="mode-live" onclick="setWelcomeMode('live')">Live Data (API)</button>
-        <button class="mode-btn active" id="mode-manual" onclick="setWelcomeMode('manual')">Manual Entry</button>
+        <button class="mode-btn active" id="mode-live" onclick="setWelcomeMode('live')">Live Data (API)</button>
+        <button class="mode-btn" id="mode-manual" onclick="setWelcomeMode('manual')">Manual Entry</button>
       </div>
-      <p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:0.5rem" id="mode-desc">Manually enter race cards, entries, and results. No API key needed.</p>
+      <p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:0.5rem" id="mode-desc">Fetches live race cards and real-time odds from the API. Enter your Worker URL in Settings.</p>
     </div>
 
     <button class="btn-lets-go" onclick="finishWelcome()">Let's Go &rarr;</button>
@@ -923,7 +941,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     <div id="drawer-racing-today" style="display:none"></div>
     <div id="drawer-upcoming" style="display:none"></div>
     <div style="text-align:right;margin-top:0.5rem">
-      <button class="btn btn-sm btn-ghost" style="color:rgba(255,255,255,0.6)" onclick="toggleTrackDrawer()">Close</button>
+      <button class="btn btn-sm btn-ghost" style="color:var(--color-muted)" onclick="toggleTrackDrawer()">Close</button>
     </div>
   </div>
 
@@ -1558,7 +1576,7 @@ let unviewedScratches = 0;
 let exoticMode = 'straight';
 let resultScope = 'track';
 let welcomeSelectedTrack = 'SAR';
-let welcomeDataMode = 'manual';
+let welcomeDataMode = 'live';
 
 /* =============================================================
    LOCAL STORAGE HELPERS
@@ -1579,7 +1597,7 @@ function initStore() {
   const existing = getStore();
   if (existing) return existing;
   const store = {
-    settings: { activeTrack: 'SAR', dataMode: 'manual', startingBankroll: 1000, workerUrl: '', welcomeDone: false },
+    settings: { activeTrack: 'SAR', dataMode: 'live', startingBankroll: 1000, workerUrl: '', welcomeDone: false },
     tracks: {}
   };
   Object.keys(TRACKS).forEach(code => {
@@ -1824,7 +1842,7 @@ function buildDrawerLists() {
     const item = `<div class="track-drawer-item ${t.code === activeCode ? 'selected' : ''}" onclick="selectTrack('${t.code}')">
       <span class="track-status-dot ${active ? 'dot-active' : 'dot-inactive'}" style="margin:0 2px"></span>
       <span class="track-code">${t.code}</span>
-      <div><div style="font-size:0.85rem;font-weight:600">${t.name}</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.5)">${t.location}</div></div>
+      <div><div style="font-size:0.85rem;font-weight:600">${t.name}</div><div style="font-size:0.7rem;color:var(--color-muted)">${t.location}</div></div>
       ${active ? '<span class="badge badge-green" style="font-size:0.6rem;margin-left:auto">Active</span>' : ''}
     </div>`;
     if (active) todayHtml += item; else upcomingHtml += item;
