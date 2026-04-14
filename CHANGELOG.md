@@ -1,5 +1,29 @@
 # NE Racing — Changelog
 
+## v2.3 — Cache Fix (2026-04-14)
+
+### Fix
+- Rewrote `sw.js` to use network-first for ALL requests (not just HTML). Old cache-first strategy for assets caused stale content to persist.
+- Removed hardcoded `APP_VERSION` from `sw.js` — the SW no longer needs version coupling with `index.html`.
+- On activate, the new SW purges all caches so existing users get fresh content immediately.
+- Added `updateViaCache: 'none'` to SW registration so the browser always checks the network for `sw.js` updates.
+- Note: `_headers` file is for Cloudflare Pages and has no effect on GitHub Pages. Cache busting relies on the SW + version.json polling.
+
+---
+
+## v2.2 — Polish Pass (2026-04-14)
+
+### Fixes
+- Welcome overlay scroll bleed-through — hidden via `display: none` after "Let's Go"
+- LIVE odds column hidden when Worker URL is placeholder
+- Exotic bet horse pills grouped by race with headers
+- Reference tab meet badges: Completed / Active / Upcoming based on date
+- Dynamic hero subtitle based on selected track and season
+- Advice onboarding hint updated to mention checkboxes with pulse animation
+- All "Bet Slip" references renamed to "Bets"
+
+---
+
 ## v2.1 — Bug Fix (2026-04-14)
 
 ### Fix

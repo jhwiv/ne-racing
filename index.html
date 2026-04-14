@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-1500';
+var NE_APP_VERSION = '20260414-1517';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -4864,8 +4864,8 @@ document.addEventListener('keydown', e => {
 <script>
 // Register service worker for network-first caching
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(function(reg) {
-    // Force check for SW updates on every page load
+  // updateViaCache:'none' ensures the browser always checks the network for sw.js
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg) {
     reg.update().catch(function(){});
     reg.addEventListener('updatefound', function() {
       var w = reg.installing;
