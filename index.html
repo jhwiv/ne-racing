@@ -6,6 +6,31 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<script>
+// App version — bump on every deploy
+var NE_APP_VERSION = '20260414-1147';
+(function(){
+  var key = 'ne-racing-version';
+  var stored = localStorage.getItem(key);
+  if (stored && stored !== NE_APP_VERSION) {
+    localStorage.setItem(key, NE_APP_VERSION);
+    location.reload(true);
+  } else {
+    localStorage.setItem(key, NE_APP_VERSION);
+  }
+  // Also check server for newer version via network fetch
+  if (navigator.onLine) {
+    fetch(location.href, { cache: 'no-store', method: 'HEAD' })
+      .then(function(r) { return r.headers.get('last-modified') || r.headers.get('etag') || ''; })
+      .then(function(tag) {
+        var tagKey = 'ne-racing-etag';
+        var prev = localStorage.getItem(tagKey);
+        localStorage.setItem(tagKey, tag);
+        if (prev && prev !== tag) location.reload(true);
+      }).catch(function(){});
+  }
+})();
+</script>
 <meta name="theme-color" content="#FAF3E0">
 <meta name="description" content="Saratoga Racing Companion 2026 — Personal horse racing handicapping tool for Saratoga Springs.">
 <title>Saratoga Racing Companion 2026</title>
