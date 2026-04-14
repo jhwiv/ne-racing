@@ -1,0 +1,27 @@
+{
+  "name": "NE Racing Companion",
+  "short_name": "NE Racing",
+  "description": "Your personal horse racing handicapping & bet tracking tool for the NYRA circuit.",
+  "start_url": "/ne-racing/",
+  "display": "standalone",
+  "background_color": "#FAF3E0",
+  "theme_color": "#1B4332",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,5 +1,19 @@
 # NE Racing — Changelog
 
+## v2.4 — Scroll Fix + App Icon (2026-04-14)
+
+### Features
+- Added PWA manifest (`manifest.json`) with proper app name "NE Racing Companion"
+- Added Saratoga-themed app icon (gold jockey on racing green) for home screen: 192x192, 512x512, 180x180 Apple touch icon, plus favicons
+- Added `apple-mobile-web-app-capable` meta tags for standalone mode on iOS
+- Updated `theme-color` to racing green `#1B4332`
+
+### Fixes
+- "Let's Go" now scrolls to land cleanly on Today's Ticket (or main content), accounting for sticky header height, instead of showing header chrome
+- Used `requestAnimationFrame` to ensure DOM is painted before calculating scroll position
+
+---
+
 ## v2.3 — Cache Fix (2026-04-14)
 
 ### Fix
