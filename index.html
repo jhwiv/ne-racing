@@ -7,26 +7,39 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
-// App version — bump on every deploy
-var NE_APP_VERSION = '20260414-1147';
+// App version — bump on every deploy (must match version.json)
+var NE_APP_VERSION = '20260414-1211';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
   if (stored && stored !== NE_APP_VERSION) {
     localStorage.setItem(key, NE_APP_VERSION);
-    location.reload(true);
-  } else {
-    localStorage.setItem(key, NE_APP_VERSION);
+    // Unregister stale service worker before reloading
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) { r.unregister(); });
+      }).then(function() {
+        // Clear all caches then reload
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            return Promise.all(names.map(function(n) { return caches.delete(n); }));
+          }).then(function() { location.reload(true); });
+        } else { location.reload(true); }
+      });
+    } else { location.reload(true); }
+    return;           // stop further execution while reloading
   }
-  // Also check server for newer version via network fetch
+  localStorage.setItem(key, NE_APP_VERSION);
+
+  // Also poll version.json (cache-busted) to detect new deploys
   if (navigator.onLine) {
-    fetch(location.href, { cache: 'no-store', method: 'HEAD' })
-      .then(function(r) { return r.headers.get('last-modified') || r.headers.get('etag') || ''; })
-      .then(function(tag) {
-        var tagKey = 'ne-racing-etag';
-        var prev = localStorage.getItem(tagKey);
-        localStorage.setItem(tagKey, tag);
-        if (prev && prev !== tag) location.reload(true);
+    fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.v && d.v !== NE_APP_VERSION) {
+          localStorage.setItem(key, d.v);
+          location.reload(true);
+        }
       }).catch(function(){});
   }
 })();
@@ -4347,6 +4360,8 @@ document.addEventListener('keydown', e => {
 // Register service worker for network-first caching
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then(function(reg) {
+    // Force check for SW updates on every page load
+    reg.update().catch(function(){});
     reg.addEventListener('updatefound', function() {
       var w = reg.installing;
       w.addEventListener('statechange', function() {

@@ -1,5 +1,5 @@
 // Service worker — network-first for index.html to prevent stale cache
-const APP_VERSION = '20260414-1158';
+const APP_VERSION = '20260414-1211';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => {
