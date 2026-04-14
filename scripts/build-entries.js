@@ -372,6 +372,14 @@ function extractRacesFromHTML(html, track) {
 }
 
 // ---------------------------------------------------------------------------
+// Rate-limiting helper
+// ---------------------------------------------------------------------------
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ---------------------------------------------------------------------------
 // Expert picks (best-effort)
 // ---------------------------------------------------------------------------
 
@@ -410,6 +418,234 @@ async function fetchExpertPicks(track, date) {
   }
 
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Additional expert pick sources (best-effort, fail gracefully)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch Andy Serling / Talking Horses picks from NYRA expert picks page.
+ * Returns array of { raceNumber, source, pick, horseName } or empty array.
+ */
+async function fetchSerlingPicks(track, date) {
+  try {
+    const trackNames = { AQU: 'aqueduct', BEL: 'belmont', SAR: 'saratoga' };
+    const trackSlug = trackNames[track] || track.toLowerCase();
+    const url = `${NYRA_BASE}/${trackSlug}/racing/expert-picks/`;
+    console.log(`  Fetching Serling picks: ${url}`);
+    const html = await fetch(url);
+
+    // Look for Serling/Talking Horses section in the picks page
+    const picks = [];
+    // Try embedded JSON first
+    const jsonMatch = html.match(/__NEXT_DATA__.*?<\/script>/s);
+    if (jsonMatch) {
+      const dataMatch = jsonMatch[0].match(/\{[\s\S]*\}/);
+      if (dataMatch) {
+        try {
+          const nextData = JSON.parse(dataMatch[0]);
+          const allPicks = nextData.props?.pageProps?.picks || nextData.props?.pageProps?.experts || [];
+          const serlingData = Array.isArray(allPicks) ? allPicks.filter(p =>
+            p.expert && (p.expert.toLowerCase().includes('serling') || p.expert.toLowerCase().includes('talking'))
+          ) : [];
+          for (const sp of serlingData) {
+            if (sp.raceNumber && sp.horseName) {
+              picks.push({
+                raceNumber: sp.raceNumber,
+                source: 'NYRA - Serling',
+                pick: sp.pp || sp.postPosition || sp.pick || 0,
+                horseName: sp.horseName || '',
+              });
+            }
+          }
+        } catch (_) { /* ignore parse errors */ }
+      }
+    }
+
+    // Fallback: try to find Serling picks in HTML patterns
+    if (!picks.length) {
+      const serlingSection = html.match(/[Ss]erling|[Tt]alking\s*[Hh]orses/i);
+      if (serlingSection) {
+        // Best-effort HTML parsing for Serling section
+        const racePickPattern = /[Rr]ace\s*(\d+)[^<]*?#(\d+)\s+([^<\n]+)/g;
+        let match;
+        while ((match = racePickPattern.exec(html)) !== null) {
+          picks.push({
+            raceNumber: parseInt(match[1], 10),
+            source: 'NYRA - Serling',
+            pick: parseInt(match[2], 10),
+            horseName: match[3].trim(),
+          });
+        }
+      }
+    }
+
+    if (picks.length) console.log(`  Found ${picks.length} Serling picks.`);
+    else console.log('  No Serling picks found.');
+    return picks;
+  } catch (err) {
+    console.warn(`  Serling picks fetch failed (graceful): ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Fetch Equibase Smart Pick for each race.
+ * Returns array of { raceNumber, source, pick, horseName } or empty array.
+ */
+async function fetchEquibaseSmartPick(track, date, numRaces) {
+  try {
+    const [y, m, d] = date.split('-');
+    const dtParam = `${m}${d}${y}`; // MMDDYYYY
+    const picks = [];
+    const maxRaces = numRaces || 10;
+
+    // Fetch up to maxRaces races
+    for (let rn = 1; rn <= maxRaces; rn++) {
+      try {
+        const url = `https://www.equibase.com/static/entry/index.html?type=Entry&dt=${dtParam}&cy=USA&tk=${track}&rn=${rn}`;
+        console.log(`  Fetching Equibase SmartPick R${rn}...`);
+        const html = await fetch(url);
+
+        // Look for "Smart Pick" or "smartPick" in the HTML
+        const smartPickMatch = html.match(/[Ss]mart\s*[Pp]ick[^<]*?#(\d+)\s+([^<\n"]+)/);
+        if (smartPickMatch) {
+          picks.push({
+            raceNumber: rn,
+            source: 'Equibase SmartPick',
+            pick: parseInt(smartPickMatch[1], 10),
+            horseName: smartPickMatch[2].trim(),
+          });
+        }
+
+        await delay(500); // Rate limit
+      } catch (err) {
+        console.warn(`  Equibase SmartPick R${rn} failed (graceful): ${err.message}`);
+        // Continue to next race
+      }
+    }
+
+    if (picks.length) console.log(`  Found ${picks.length} Equibase SmartPick selections.`);
+    else console.log('  No Equibase SmartPick data found.');
+    return picks;
+  } catch (err) {
+    console.warn(`  Equibase SmartPick fetch failed (graceful): ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Fetch FanDuel Consensus top pick per race for the given NYRA track.
+ * Returns array of { raceNumber, source, pick, horseName } or empty array.
+ */
+async function fetchFanDuelConsensus(track, date) {
+  try {
+    const url = 'https://www.fanduel.com/research/horse-racing/consensus-picks-tool';
+    console.log(`  Fetching FanDuel Consensus: ${url}`);
+    const html = await fetch(url);
+
+    const picks = [];
+    const trackNames = { AQU: 'Aqueduct', BEL: 'Belmont', SAR: 'Saratoga' };
+    const trackName = trackNames[track] || track;
+
+    // Look for the track section in the consensus table
+    const trackRegex = new RegExp(trackName + '[\\s\\S]*?(?=<\\/table|$)', 'i');
+    const trackSection = html.match(trackRegex);
+    if (trackSection) {
+      // Parse race rows: look for race number and #1 consensus pick
+      const rowPattern = /[Rr]ace\s*(\d+)[^<]*?(?:#(\d+)|[Pp]ick[:\s]*(\d+))\s*([^<\n"]*)/g;
+      let match;
+      while ((match = rowPattern.exec(trackSection[0])) !== null) {
+        picks.push({
+          raceNumber: parseInt(match[1], 10),
+          source: 'FanDuel Consensus',
+          pick: parseInt(match[2] || match[3], 10),
+          horseName: (match[4] || '').trim(),
+        });
+      }
+    }
+
+    if (picks.length) console.log(`  Found ${picks.length} FanDuel Consensus picks.`);
+    else console.log('  No FanDuel Consensus data found.');
+    return picks;
+  } catch (err) {
+    console.warn(`  FanDuel Consensus fetch failed (graceful): ${err.message}`);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Equibase Entries Plus — speed figures (best-effort)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch Equibase Entries Plus for a single race to get speed figures.
+ * Returns array of { horseName, speedFigs, lastClass, lastRaceDate } or empty array.
+ */
+async function fetchEquibaseEntriesPlus(track, date, raceNumber) {
+  try {
+    const [y, m, d] = date.split('-');
+    const dtParam = `${m}${d}${y}`; // MMDDYYYY
+    const url = `https://www.equibase.com/premium/eqbEntriesPlus.cfm?type=EP&dt=${dtParam}&cy=USA&tk=${track}&rn=${raceNumber}`;
+    console.log(`  Fetching Equibase Entries Plus R${raceNumber}...`);
+    const html = await fetch(url);
+
+    const results = [];
+
+    // Try to parse speed figures from the Entries Plus HTML
+    // The page typically has a table with horse name and last 3 speed figures
+    const horseRows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+    for (const row of horseRows) {
+      // Look for horse name
+      const nameMatch = row.match(/class="[^"]*horse[^"]*"[^>]*>([^<]+)</i) ||
+                         row.match(/<td[^>]*>([A-Z][a-z]+(?:\s+[A-Za-z]+)+)<\/td>/);
+      if (!nameMatch) continue;
+
+      const horseName = nameMatch[1].trim();
+
+      // Look for speed figures (typically 2-3 digit numbers in consecutive cells)
+      const figMatches = row.match(/(?:speed|fig|beyer)[^<]*?(\d{2,3})/gi) ||
+                         row.match(/<td[^>]*>\s*(\d{2,3})\s*<\/td>/g);
+      const figs = [];
+      if (figMatches) {
+        for (const fm of figMatches.slice(0, 3)) {
+          const num = fm.match(/(\d{2,3})/);
+          if (num) {
+            const val = parseInt(num[1], 10);
+            if (val >= 20 && val <= 130) figs.push(val);
+          }
+        }
+      }
+
+      // Look for last class
+      const classMatch = row.match(/(?:CLM|MCL|MSW|ALW|AOC|STK)/);
+      const lastClass = classMatch ? classMatch[0] : null;
+
+      // Look for last race date
+      const dateMatch = row.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+      let lastRaceDate = null;
+      if (dateMatch) {
+        const parts = dateMatch[1].split('/');
+        if (parts.length === 3) {
+          const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+          lastRaceDate = `${yr}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+        }
+      }
+
+      results.push({
+        horseName,
+        speedFigs: figs.length ? figs : [null, null, null],
+        lastClass,
+        lastRaceDate,
+      });
+    }
+
+    return results;
+  } catch (err) {
+    console.warn(`  Equibase Entries Plus R${raceNumber} failed (graceful): ${err.message}`);
+    return [];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -485,9 +721,67 @@ function enrichRaces(races, jockeyLookup, trainerLookup) {
       if (!entry.runningStyle) {
         entry.runningStyle = assignRunningStyle(entry, race.distance);
       }
+
+      // Data completeness: count of non-null fields out of 7
+      let dc = 0;
+      const figs = entry.speedFigs || [];
+      if (figs[0] != null) dc++;
+      if (figs[1] != null) dc++;
+      if (figs[2] != null) dc++;
+      if (entry.runningStyle) dc++;
+      if ((parseFloat(entry.jockeyPct) || 0) > 0) dc++;
+      if ((parseFloat(entry.trainerPct) || 0) > 0) dc++;
+      if (entry.lastClass) dc++;
+      entry.dataCompleteness = parseFloat((dc / 7).toFixed(2));
     }
   }
   return races;
+}
+
+/**
+ * Merge speed figure data from Equibase Entries Plus into race entries.
+ * Only overwrites null/empty values — preserves manually entered data.
+ */
+function mergeSpeedFigures(races, epDataByRace) {
+  for (const race of races) {
+    const epData = epDataByRace[race.race_number];
+    if (!epData || !epData.length) continue;
+
+    for (const entry of race.entries) {
+      // Find matching horse in EP data (case-insensitive name match)
+      const entryName = (entry.name || '').toLowerCase().trim();
+      const epMatch = epData.find(ep =>
+        (ep.horseName || '').toLowerCase().trim() === entryName
+      );
+      if (!epMatch) continue;
+
+      // Merge speed figures: only overwrite if fetched array has at least 1 non-null
+      const fetchedFigs = epMatch.speedFigs || [];
+      const hasNonNull = fetchedFigs.some(f => f != null);
+      if (hasNonNull) {
+        const existingFigs = entry.speedFigs || [null, null, null];
+        const existingHasData = existingFigs.some(f => f != null);
+        if (!existingHasData) {
+          // No existing data — use fetched
+          entry.speedFigs = [
+            fetchedFigs[0] != null ? fetchedFigs[0] : null,
+            fetchedFigs[1] != null ? fetchedFigs[1] : null,
+            fetchedFigs[2] != null ? fetchedFigs[2] : null,
+          ];
+        }
+      }
+
+      // Merge lastClass: only overwrite if existing is null
+      if (!entry.lastClass && epMatch.lastClass) {
+        entry.lastClass = epMatch.lastClass;
+      }
+
+      // Merge lastRaceDate: only overwrite if existing is null
+      if (!entry.lastRaceDate && epMatch.lastRaceDate) {
+        entry.lastRaceDate = epMatch.lastRaceDate;
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -528,7 +822,7 @@ async function main() {
     races = generatePlaceholderCard(track, raceDate);
   }
 
-  // Step 5: Fetch expert picks (optional)
+  // Step 5: Fetch expert picks (optional — all sources fail gracefully)
   console.log('\nFetching expert picks...');
   let picks = null;
   try {
@@ -542,6 +836,47 @@ async function main() {
     console.log('  No expert picks available.');
   }
 
+  // Step 5b: Fetch additional expert sources (all fail gracefully)
+  console.log('\nFetching additional expert sources...');
+  const serlingPicks = await fetchSerlingPicks(track, raceDate);
+  const smartPicks = await fetchEquibaseSmartPick(track, raceDate, races.length);
+  const fanDuelPicks = await fetchFanDuelConsensus(track, raceDate);
+
+  // Merge additional expert picks into race-level expertPicks arrays
+  const additionalPicks = [...serlingPicks, ...smartPicks, ...fanDuelPicks];
+  if (additionalPicks.length) {
+    console.log(`  Total additional expert picks: ${additionalPicks.length}`);
+    for (const race of races) {
+      if (!race.expertPicks) race.expertPicks = [];
+      const racePicks = additionalPicks.filter(p => p.raceNumber === race.race_number);
+      for (const rp of racePicks) {
+        race.expertPicks.push({
+          source: rp.source,
+          pick: rp.pick,
+          horseName: rp.horseName,
+        });
+      }
+    }
+  }
+
+  // Step 5c: Fetch Equibase Entries Plus speed figures (with rate limiting)
+  console.log('\nFetching Equibase Entries Plus (speed figures)...');
+  const epDataByRace = {};
+  for (const race of races) {
+    const epData = await fetchEquibaseEntriesPlus(track, raceDate, race.race_number);
+    if (epData.length) {
+      epDataByRace[race.race_number] = epData;
+    }
+    await delay(500); // Rate limit: 500ms between requests
+  }
+  const epRaceCount = Object.keys(epDataByRace).length;
+  if (epRaceCount) {
+    console.log(`  Speed figures found for ${epRaceCount} races.`);
+    mergeSpeedFigures(races, epDataByRace);
+  } else {
+    console.log('  No Equibase Entries Plus data available.');
+  }
+
   // Step 6: Enrich entries with stats and running styles
   console.log('\nEnriching entries...');
   races = enrichRaces(races, jockeyLookup, trainerLookup);
@@ -553,7 +888,7 @@ async function main() {
     races,
   };
 
-  // Include expert picks if available
+  // Include expert picks if available (legacy top-level field)
   if (picks) {
     output.expertPicks = picks;
   }

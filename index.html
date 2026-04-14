@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-2028';
+var NE_APP_VERSION = '20260414-2054';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -859,6 +859,24 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .rec-tag-play { background: rgba(201,168,76,0.15); color: var(--color-gold); border: 1px solid rgba(201,168,76,0.3); }
 .rec-tag-action { background: rgba(45,106,79,0.3); color: #52B788; border: 1px solid rgba(82,183,136,0.4); }
 .badge-conviction { background: #1B4332; color: #C9A84C; font-size: 0.6rem; font-weight: 800; padding: 0.15rem 0.45rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+.badge-lock { background: linear-gradient(135deg, #C9A84C, #E8D48B); color: #1B4332; font-size: 0.6rem; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.06em; box-shadow: 0 1px 4px rgba(201,168,76,0.4); }
+.badge-strong-value { background: #1B4332; color: #D8F3DC; font-size: 0.6rem; font-weight: 700; padding: 0.15rem 0.4rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+.badge-value { background: var(--color-burgundy); color: #fff; font-size: 0.6rem; font-weight: 700; padding: 0.15rem 0.4rem; border-radius: 3px; }
+.badge-underlay { background: rgba(141,153,174,0.2); color: var(--color-muted); font-size: 0.6rem; font-weight: 600; padding: 0.15rem 0.4rem; border-radius: 3px; }
+.overlay-pct { font-size: 0.65rem; font-family: var(--font-mono); color: var(--color-positive); margin-left: 4px; }
+.overlay-pct.negative { color: var(--color-muted); }
+.ticket-confidence-meter { display: flex; align-items: center; gap: 4px; margin-top: 3px; }
+.ticket-conf-bar { height: 4px; border-radius: 2px; flex: 1; max-width: 60px; }
+.ticket-conf-bar.filled-high { background: var(--color-positive); }
+.ticket-conf-bar.filled-medium { background: var(--color-gold); }
+.ticket-conf-bar.filled-low { background: var(--color-negative); }
+.ticket-conf-bar.empty { background: rgba(255,255,255,0.1); }
+.ticket-conf-label { font-size: 0.65rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.04em; }
+.ticket-payout { font-size: 0.72rem; font-family: var(--font-mono); color: rgba(255,255,255,0.55); margin-top: 2px; }
+.ticket-exotic { margin-top: 0.5rem; padding: 0.5rem; background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.25); border-radius: var(--radius-sm); }
+.ticket-exotic-tag { font-size: 0.7rem; font-weight: 700; color: var(--color-gold); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+.ticket-exotic-detail { font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.9); }
+.ticket-exotic-reason { font-size: 0.72rem; color: rgba(255,255,255,0.55); font-style: italic; margin-top: 2px; }
 .badge-equip { background: rgba(230,126,34,0.15); color: var(--color-amber); font-size: 0.6rem; font-weight: 700; padding: 0.12rem 0.35rem; border-radius: 3px; }
 .badge-bullet { color: #F59E0B; font-size: 0.75rem; cursor: help; }
 .expert-consensus { margin-top: 0.5rem; padding: 0.5rem; background: rgba(201,168,76,0.08); border-radius: 6px; border-left: 3px solid var(--color-gold); }
@@ -1680,10 +1698,13 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <div style="font-size:0.8rem;color:var(--color-muted);font-family:var(--font-mono)">
         Version: <span id="settings-app-version"></span>
       </div>
-      <button class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="window.location.href='clear.html'">
-        🔄 Clear Cache &amp; Reload
+      <button class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="forceRefresh()">
+        &#128260; Force Refresh
       </button>
-      <p class="text-xs text-muted" style="margin-top:0.35rem">Use this if the app feels stale or isn't showing the latest version.</p>
+      <p class="text-xs text-muted" style="margin-top:0.35rem">Unregisters service workers, clears all caches, and reloads. Use if the app feels stale.</p>
+      <button class="btn btn-outline btn-sm" style="margin-top:0.35rem" onclick="window.location.href='clear.html'">
+        &#128259; Clear Cache Page
+      </button>
     </div>
   </div>
 </div>
@@ -2920,12 +2941,23 @@ function runAdviceEngine() {
       if (completeness < 3/7) composite *= 0.70;       // < 30% → 30% penalty
       else if (completeness < 4/7) composite *= 0.85;  // < 50% → 15% penalty
 
-      // ── Expert consensus boost ──
+      // ── Expert consensus boost (scaled for up to 6 sources) ──
       const expertMatchCount = countExpertPicks(race, h);
-      if (expertMatchCount >= 2) composite = Math.min(100, composite + 8);
-      else if (expertMatchCount === 1) composite = Math.min(100, composite + 4);
+      if (expertMatchCount >= 4) composite = Math.min(100, composite + 14);
+      else if (expertMatchCount === 3) composite = Math.min(100, composite + 10);
+      else if (expertMatchCount === 2) composite = Math.min(100, composite + 6);
+      else if (expertMatchCount === 1) composite = Math.min(100, composite + 3);
 
-      return { horse: h, score: composite, speedScore, classScore, paceScore, tjScore, biasScore, freshnessScore, completeness, expertMatchCount };
+      return { horse: h, score: composite, speedScore, classScore, paceScore, tjScore, biasScore, freshnessScore, completeness, expertMatchCount, modelProb: 0, impliedProb: 0, overlay: 0 };
+    });
+
+    // Calculate model probability and overlay for each horse
+    const sumScores = scored.reduce((sum, s) => sum + Math.max(s.score, 1), 0);
+    scored.forEach(s => {
+      s.modelProb = Math.max(s.score, 1) / sumScores;
+      const mlOdds = parseOddsToNum(s.horse.ml);
+      s.impliedProb = mlOdds > 0 ? 1 / (mlOdds + 1) : 0;
+      s.overlay = s.impliedProb > 0 ? s.modelProb - s.impliedProb : 0;
     });
 
     scored.sort((a,b) => b.score - a.score);
@@ -2965,8 +2997,17 @@ function runAdviceEngine() {
       const gradeClass = gradeToClass(grade);
       const ml = s.horse.ml || '';
       const mlNum = parseOddsToNum(ml);
-      const valueFlag = i < 3 && mlNum >= 5 ? '<span class="badge badge-burgundy" style="font-size:0.6rem;margin-left:4px">Value</span>' : '';
-      const convictionBadge = (i === 0 && s.expertMatchCount >= 2) ? ' <span class="badge-conviction">HIGH CONVICTION</span>' : '';
+      // Value overlay badges
+      let valueFlag = '';
+      if (s.overlay > 0.15) valueFlag = '<span class="badge-strong-value" style="margin-left:4px">Strong Value</span>';
+      else if (s.overlay > 0.08) valueFlag = '<span class="badge-value" style="margin-left:4px">Value</span>';
+      else if (s.overlay < -0.05) valueFlag = '<span class="badge-underlay" style="margin-left:4px">Underlay</span>';
+      // Overlay percentage next to ML
+      const overlayPct = s.impliedProb > 0 ? (s.overlay > 0 ? `<span class="overlay-pct">+${(s.overlay * 100).toFixed(0)}%</span>` : `<span class="overlay-pct negative">${(s.overlay * 100).toFixed(0)}%</span>`) : '';
+      // LOCK badge for 4+ expert consensus, HIGH CONVICTION for 2-3
+      let convictionBadge = '';
+      if (i === 0 && s.expertMatchCount >= 4) convictionBadge = ' <span class="badge-lock">LOCK</span>';
+      else if (i === 0 && s.expertMatchCount >= 2) convictionBadge = ' <span class="badge-conviction">HIGH CONVICTION</span>';
       const equipBadge = s.horse.equipmentChanges ? ` <span class="badge-equip">${escHtml(s.horse.equipmentChanges)}</span>` : '';
 
       let rationale = buildRationale(s, race, confidence, i);
@@ -2974,7 +3015,7 @@ function runAdviceEngine() {
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
-          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">'+ml+'</span>' : ''} ${valueFlag}${convictionBadge}${equipBadge}</div>
+          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">'+ml+'</span>' : ''}${overlayPct} ${valueFlag}${convictionBadge}${equipBadge}</div>
           <div class="advice-rationale">${rationale}</div>
         </div>
         <div class="advice-score">${s.score.toFixed(0)}</div>
@@ -3096,17 +3137,40 @@ function formatWorkoutDate(dateStr) {
 function buildSuggestedBets(race, scored) {
   const suggestions = [];
   if (!scored.length) return suggestions;
-  const top = scored[0];
-  if (scored.length >= 2) {
-    const second = scored[1];
+  // Prefer Value/Strong Value horses for exotic keys
+  const valueHorses = scored.filter(s => (s.overlay || 0) > 0.08);
+  const topPicks = valueHorses.length >= 2 ? valueHorses.slice(0, 2) : scored.slice(0, 2);
+  const top = topPicks[0] || scored[0];
+  if (topPicks.length >= 2 || scored.length >= 2) {
+    const second = topPicks[1] || scored[1];
     suggestions.push('EX: ' + top.horse.pp + '/' + second.horse.pp);
     suggestions.push('EX BOX: ' + top.horse.pp + '-' + second.horse.pp);
   }
   if (scored.length >= 3) {
-    const t = scored.map(s=>s.horse.pp).slice(0,3).join('/');
+    const triPicks = valueHorses.length >= 3 ? valueHorses.slice(0, 3) : scored.slice(0, 3);
+    const t = triPicks.map(s=>s.horse.pp).join('/');
     suggestions.push('TRI: ' + t);
   }
   return suggestions;
+}
+
+function buildTicketConfidenceMeter(confidence) {
+  const segs = 5;
+  const filled = confidence === 'high' ? 4 : confidence === 'medium' ? 3 : 1;
+  const cls = confidence === 'high' ? 'filled-high' : confidence === 'medium' ? 'filled-medium' : 'filled-low';
+  let html = '<div class="ticket-confidence-meter">';
+  for (let i = 0; i < segs; i++) {
+    html += `<div class="ticket-conf-bar ${i < filled ? cls : 'empty'}"></div>`;
+  }
+  html += `<span class="ticket-conf-label">${confidence}</span></div>`;
+  return html;
+}
+
+function estimatePayoutRange(mlOdds, betAmount) {
+  if (!mlOdds || mlOdds <= 0) return '';
+  const minReturn = Math.round(betAmount * mlOdds * 0.85);
+  const maxReturn = Math.round(betAmount * mlOdds * 1.15);
+  return `Potential return: $${minReturn}\u2013$${maxReturn} on $${betAmount} win`;
 }
 
 function updateTopPicksCard(allScores) {
@@ -3164,10 +3228,10 @@ function updateTopPicksCard(allScores) {
     });
   }
 
-  // Value Plays: ranked #1 or #2 with ML >= 5-1 AND composite >= 55
+  // Value Plays: overlay > 0.08 AND score >= 55 (upgraded from simple ML >= 5 check)
   const bestBetRaceId = bestBetEntry ? bestBetEntry.race.id : null;
   const valuePlays = allScores.filter(s =>
-    s.rank <= 2 && parseOddsToNum(s.horse.ml) >= 5 && s.score >= 55 && s.race.id !== bestBetRaceId
+    (s.overlay || 0) > 0.08 && s.score >= 55 && s.race.id !== bestBetRaceId
   ).slice(0, 2);
 
   // Action Bets: gap >= 5 AND not best bet AND not value play race AND not pass
@@ -3204,17 +3268,30 @@ function updateTopPicksCard(allScores) {
     const suggestedAmt = Math.round(bankroll * 0.05);
     totalBetCost += suggestedAmt;
     const expertNames = getExpertNames(bestBetEntry.race, bestBetEntry.horse);
-    const convictionBadge = bestBetEntry.expertMatchCount >= 2 ? ' <span class="badge-conviction">HIGH CONVICTION</span>' : '';
-    let reason = buildTicketReason(bestBetEntry, bestBetEntry.race);
-    if (expertNames.length >= 2) reason += '; ' + expertNames.join(' & ') + ' both pick him';
-    else if (expertNames.length === 1) reason += '; ' + expertNames[0] + ' pick';
+    const bbConf = raceInfo[bestBetEntry.race.id] ? raceInfo[bestBetEntry.race.id].confidence : 'medium';
+    // LOCK badge for 4+ expert consensus
+    let convictionBadge = '';
+    let reason;
+    if (bestBetEntry.expertMatchCount >= 4) {
+      convictionBadge = ' <span class="badge-lock">LOCK</span>';
+      reason = '\uD83D\uDD12 LOCK \u2014 ' + bestBetEntry.expertMatchCount + ' of ' + Math.max(bestBetEntry.expertMatchCount, (bestBetEntry.race.expertPicks || []).length) + ' experts agree';
+    } else {
+      if (bestBetEntry.expertMatchCount >= 2) convictionBadge = ' <span class="badge-conviction">HIGH CONVICTION</span>';
+      reason = buildTicketReason(bestBetEntry, bestBetEntry.race);
+      if (expertNames.length >= 2) reason += '; ' + expertNames.join(' & ') + ' both pick him';
+      else if (expertNames.length === 1) reason += '; ' + expertNames[0] + ' pick';
+    }
+    const bbMlOdds = parseOddsToNum(bestBetEntry.horse.ml);
+    const bbPayout = estimatePayoutRange(bbMlOdds, suggestedAmt);
     html += `<div class="rec-bet-item">
       <div class="rec-bet-tag rec-tag-best">&#127942; Best Bet</div>${convictionBadge}
       <div class="rec-bet-detail">Race ${bestBetEntry.race.num}: <strong>#${bestBetEntry.horse.pp} ${escHtml(bestBetEntry.horse.name).toUpperCase()}</strong> to WIN</div>
       <div class="rec-bet-amount">$${suggestedAmt} to Win</div>
+      ${bbPayout ? '<div class="ticket-payout">' + bbPayout + '</div>' : ''}
+      ${buildTicketConfidenceMeter(bbConf)}
       <div class="rec-bet-reason">"${reason}"</div>
     </div>`;
-    ticketLines.push(`BEST BET — Race ${bestBetEntry.race.num}: #${bestBetEntry.horse.pp} ${bestBetEntry.horse.name} to WIN — $${suggestedAmt}`);
+    ticketLines.push(`BEST BET — Race ${bestBetEntry.race.num}: #${bestBetEntry.horse.pp} ${bestBetEntry.horse.name} to WIN — $${suggestedAmt}${bbPayout ? ' (' + bbPayout + ')' : ''}`);
   }
 
   // ── Value Plays ──
@@ -3226,13 +3303,19 @@ function updateTopPicksCard(allScores) {
     let reason = buildTicketReason(v, v.race);
     const expertNames = getExpertNames(v.race, v.horse);
     if (expertNames.length) reason += '; ' + expertNames.join(' & ') + ' pick';
+    const overlayStr = (v.overlay || 0) > 0 ? ' +' + (v.overlay * 100).toFixed(0) + '% overlay' : '';
+    const vpConf = raceInfo[v.race.id] ? raceInfo[v.race.id].confidence : 'medium';
+    const vpMlOdds = parseOddsToNum(v.horse.ml);
+    const vpPayout = vpMlOdds > 0 ? 'Potential return: $' + Math.round(4 * vpMlOdds * 0.85) + '\u2013$' + Math.round(4 * vpMlOdds * 1.15) + ' on $4 exacta' : '';
     html += `<div class="rec-bet-item">
       <div class="rec-bet-tag rec-tag-value">&#128176; Value Play</div>
-      <div class="rec-bet-detail">Race ${v.race.num}: <strong>#${v.horse.pp} ${escHtml(v.horse.name).toUpperCase()}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(${v.horse.ml || 'N/A'})</span></div>
+      <div class="rec-bet-detail">Race ${v.race.num}: <strong>#${v.horse.pp} ${escHtml(v.horse.name).toUpperCase()}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(${v.horse.ml || 'N/A'}${overlayStr})</span></div>
       <div class="rec-bet-amount">$2 EX Box with ${exPartner || '#2'}</div>
+      ${vpPayout ? '<div class="ticket-payout">' + vpPayout + '</div>' : ''}
+      ${buildTicketConfidenceMeter(vpConf)}
       <div class="rec-bet-reason">"${reason}"</div>
     </div>`;
-    ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}) — $2 EX Box with ${exPartner || '#2'}`);
+    ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}${overlayStr}) — $2 EX Box with ${exPartner || '#2'}${vpPayout ? ' (' + vpPayout + ')' : ''}`);
   });
 
   // ── Action Bet ──
@@ -3243,13 +3326,18 @@ function updateTopPicksCard(allScores) {
     const expertNames = getExpertNames(topAction.entry.race, topAction.entry.horse);
     if (expertNames.length >= 2) reason = 'Expert consensus pick, ' + reason;
     else if (expertNames.length === 1) reason += '; ' + expertNames[0] + ' pick';
+    const actConf = topAction.confidence || 'medium';
+    const actMlOdds = parseOddsToNum(topAction.entry.horse.ml);
+    const actPayout = estimatePayoutRange(actMlOdds, actionAmt);
     html += `<div class="rec-bet-item">
       <div class="rec-bet-tag rec-tag-action">&#127919; Action Bet</div>
       <div class="rec-bet-detail">Race ${topAction.entry.race.num}: <strong>#${topAction.entry.horse.pp} ${escHtml(topAction.entry.horse.name).toUpperCase()}</strong> to WIN</div>
       <div class="rec-bet-amount">$${actionAmt} to Win</div>
+      ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
+      ${buildTicketConfidenceMeter(actConf)}
       <div class="rec-bet-reason">"${reason}"</div>
     </div>`;
-    ticketLines.push(`ACTION — Race ${topAction.entry.race.num}: #${topAction.entry.horse.pp} ${topAction.entry.horse.name} to WIN — $${actionAmt}`);
+    ticketLines.push(`ACTION — Race ${topAction.entry.race.num}: #${topAction.entry.horse.pp} ${topAction.entry.horse.name} to WIN — $${actionAmt}${actPayout ? ' (' + actPayout + ')' : ''}`);
   }
 
   // ── Pass Races ──
@@ -3262,6 +3350,36 @@ function updateTopPicksCard(allScores) {
     ticketLines.push(`PASS — Races ${passRaceNums.join(', ')}`);
   }
 
+  // ── Exotic of the Day: best exacta box across all races ──
+  let exoticHtml = '';
+  let exoticLine = '';
+  // Find the race with the highest top score that has at least 2 horses
+  let bestExoticRace = null;
+  let bestExoticScore = -1;
+  Object.entries(raceMap).forEach(([raceId, group]) => {
+    if (group.length >= 2 && group[0].score > bestExoticScore) {
+      bestExoticScore = group[0].score;
+      bestExoticRace = { raceId, group };
+    }
+  });
+  if (bestExoticRace && bestExoticRace.group.length >= 2) {
+    const ex1 = bestExoticRace.group[0];
+    const ex2 = bestExoticRace.group[1];
+    const exRaceNum = ex1.race.num;
+    let exReason = '';
+    if (ex1.score - ex2.score < 6) exReason = 'tight top-2 scores, strong exacta spot';
+    else exReason = '#' + ex1.horse.pp + ' has clear edge, key over #' + ex2.horse.pp;
+    totalBetCost += 4; // $2 box = $4
+    exoticHtml = `<div class="ticket-exotic">
+      <div class="ticket-exotic-tag">&#127922; Exotic of the Day</div>
+      <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $2</div>
+      <div class="ticket-exotic-reason">"${exReason}"</div>
+    </div>`;
+    exoticLine = `EXOTIC — EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $4 ($2 box) — ${exReason}`;
+    ticketLines.push(exoticLine);
+  }
+  html += exoticHtml;
+
   // ── Summary + Copy button ──
   const remaining = Math.max(0, dailyBudget - totalBetCost);
   html += `<div class="rec-bet-summary">
@@ -3271,7 +3389,7 @@ function updateTopPicksCard(allScores) {
   </div>`;
 
   // Store ticket text for copy
-  const ticketText = "TODAY'S TICKET — " + (track ? track.name : '') + ' ' + dateStr + '\n\n' + ticketLines.join('\n') + '\n\nEst. Cost: ' + fmt$(totalBetCost) + ' | Budget: ' + fmt$(dailyBudget);
+  const ticketText = "TODAY'S TICKET \u2014 " + (track ? track.name : '') + ' ' + dateStr + '\n\n' + ticketLines.join('\n') + '\n\nEst. Cost: ' + fmt$(totalBetCost) + ' | Budget: ' + fmt$(dailyBudget);
   html += `<button class="copy-ticket-btn" onclick="copyTicket()">&#128203; Copy Ticket</button>`;
 
   // Store on window for copy function
@@ -4526,6 +4644,25 @@ function closeSettings() {
   document.body.classList.remove('no-scroll');
 }
 function closeSettingsOnBg(e) { if (e.target === el('settings-modal')) closeSettings(); }
+
+function forceRefresh() {
+  // 1. Unregister all service workers
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      regs.forEach(function(r) { r.unregister(); });
+    });
+  }
+  // 2. Clear all caches
+  if ('caches' in window) {
+    caches.keys().then(function(names) {
+      return Promise.all(names.map(function(n) { return caches.delete(n); }));
+    });
+  }
+  // 3. Clear version key from localStorage
+  localStorage.removeItem('ne-racing-version');
+  // 4. Hard reload
+  setTimeout(function() { location.reload(true); }, 300);
+}
 
 function settingsChangeTrack(code) { /* applied on close */ }
 
