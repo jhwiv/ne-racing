@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-1529';
+var NE_APP_VERSION = '20260414-1540';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -1951,18 +1951,16 @@ function finishWelcome() {
     initApp();
   }
 
-  // Hide the welcome screen so it can't bleed through on scroll-back
-  const ws = el('welcome-screen');
-  if (ws) ws.style.display = 'none';
+  // Keep the welcome/hero screen in the DOM so users can scroll back to it.
+  // The IntersectionObserver on #welcome-screen already handles hiding/showing
+  // the tab bar when the hero comes into view.
 
   // Update hero subtitle for selected track
   updateHeroSubtitle();
 
-  // Scroll to Today's Ticket card cleanly.
-  // Strategy: instant-jump to app-frame top, then after a paint cycle,
-  // smooth-scroll to the ticket card (or today heading as fallback).
-  // The welcome screen is display:none so it has zero height.
-  window.scrollTo(0, 0);
+  // Scroll to Today's Ticket (green card) or the today heading.
+  // The welcome screen takes up ~100vh, so the app-frame starts below it.
+  // We scroll to the ticket card, offset by the sticky header height.
   setTimeout(function() {
     var ticket = el('rec-bets-card');
     var heading = el('today-heading');
@@ -1972,7 +1970,7 @@ function finishWelcome() {
     var rect = target.getBoundingClientRect();
     var scrollTarget = rect.top + window.pageYOffset - headerH - 12;
     window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
-  }, 150);
+  }, 200);
 }
 
 /* =============================================================
