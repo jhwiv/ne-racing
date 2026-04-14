@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#FAF3E0">
 <meta name="description" content="Saratoga Racing Companion 2026 — Personal horse racing handicapping tool for Saratoga Springs.">
 <title>Saratoga Racing Companion 2026</title>
@@ -4243,6 +4246,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const store = initStore();
   buildWelcomeTrackGrid();
 
+  // --- ALWAYS land on hero welcome screen ---
+  // Force welcome screen visible & app hidden on every load
+  const ws = el('welcome-screen');
+  ws.classList.remove('fade-out', 'hidden');
+  ws.style.display = '';
+  ws.style.opacity = '';
+  ws.style.pointerEvents = '';
+  el('app-frame').classList.add('hidden');
+
   // Pre-fill saved settings for returning users
   if (store.settings.welcomeDone) {
     const br = el('welcome-bankroll');
@@ -4259,7 +4271,10 @@ document.addEventListener('DOMContentLoaded', () => {
     el('mode-live').classList.toggle('active', savedMode === 'live');
     el('mode-manual').classList.toggle('active', savedMode === 'manual');
   }
-  // Always show the hero welcome screen on open
+
+  // Reset welcomeDone so next load also shows hero
+  store.settings.welcomeDone = false;
+  saveStore(store);
 });
 
 // Close drawer when clicking outside
