@@ -1578,6 +1578,7 @@ let exoticMode = 'straight';
 let resultScope = 'track';
 let welcomeSelectedTrack = 'AQU';
 let welcomeDataMode = 'live';
+let loadedRaceDate = null; // Tracks which date's entries are loaded (may differ from today)
 
 /* =============================================================
    LOCAL STORAGE HELPERS
@@ -1880,12 +1881,13 @@ function renderTodayTab() {
   const noMsg = el('no-races-msg');
   const todayHeading = el('today-heading');
 
-  // Update heading with track name
+  // Update heading with track name and correct date
   const code = getActiveTrack();
   const track = TRACKS[code];
   if (todayHeading && track) {
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    todayHeading.textContent = track.name + ' — ' + today;
+    const displayDate = loadedRaceDate ? new Date(loadedRaceDate + 'T12:00:00') : new Date();
+    const dateStr = displayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    todayHeading.textContent = track.name + ' \u2014 ' + dateStr;
   }
 
   if (!races.length) {
@@ -1913,7 +1915,7 @@ function buildRaceCardHTML(race) {
       <span class="race-num">${String(race.num).padStart(2,'0')}</span>
       <div class="race-info">
         <div class="race-title">${typeLbl} — ${race.distance || ''} ${race.surface ? '<span style="opacity:0.75">'+race.surface+'</span>' : ''}</div>
-        <div class="race-meta">${race.postTime ? 'Post: ' + race.postTime + ' &nbsp;|&nbsp; ' : ''}${race.purse ? 'Purse: $' + Number(race.purse).toLocaleString() : ''} &nbsp;${race.updated ? '· Updated ' + race.updated : ''}</div>
+        <div class="race-meta">${race.postTime ? 'Post: ' + race.postTime + ' &nbsp;|&nbsp; ' : ''}${race.purse && race.purse !== 'N/A' ? 'Purse: ' + (String(race.purse).startsWith('$') ? race.purse : '$' + Number(String(race.purse).replace(/[^0-9.]/g,'')).toLocaleString()) : ''} &nbsp;${race.updated ? '· Updated ' + race.updated : ''}</div>
       </div>
       <svg class="collapse-icon" id="collapse-icon-${race.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:18px;height:18px"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
@@ -3861,9 +3863,10 @@ async function fetchLiveEntries() {
     }
   }
 
-  if (!result) { showLiveUnavailable(); return; }
+  if (!result) { loadedRaceDate = null; showLiveUnavailable(); return; }
 
   hideLiveUnavailable();
+  loadedRaceDate = result.date;
 
   // Show "next race day" banner if data is for a future date
   const previewBanner = el('preview-date-banner');
