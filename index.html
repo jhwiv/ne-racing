@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-1309';
+var NE_APP_VERSION = '20260414-1500';
 (function(){
   var key = 'ne-racing-version';
   var stored = localStorage.getItem(key);
@@ -505,6 +505,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .badge-live { background: var(--color-positive); color: #fff; animation: pulse-live 2s ease-in-out infinite; }
 .badge-complete { background: var(--color-muted); color: #fff; opacity: 0.6; }
 @keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+.pulse-hint { animation: pulseHint 1.5s ease-in-out infinite; }
+@keyframes pulseHint { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 8px 2px rgba(201,168,76,0.5); } }
 .race-num {
   font-family: var(--font-mono); font-size: 1.2rem; font-weight: 500;
   color: var(--color-gold); min-width: 36px;
@@ -609,7 +611,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .best-bet-banner .horse { font-family: var(--font-display); font-size: 1rem; font-weight: 600; }
 
 /* =========================================================
-   BET SLIP
+   BETS
    ========================================================= */
 .bet-slip-item {
   background: var(--color-white); border-radius: var(--radius-md);
@@ -654,6 +656,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .horse-chip.selected { background: var(--color-racing-green); color: #fff; }
 .horse-chip.selected-key { background: var(--color-gold); border-color: var(--color-gold); color: #fff; }
+.exotic-race-header { width: 100%; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-muted); margin-top: 0.4rem; padding-bottom: 0.15rem; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.exotic-race-header:first-child { margin-top: 0; }
 .cost-display {
   background: rgba(27,67,50,0.06); border-radius: var(--radius-sm);
   padding: 0.5rem 0.75rem; font-family: var(--font-mono); font-size: 0.88rem;
@@ -959,7 +963,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       </svg>
     </div>
     <h1 class="welcome-title">Saratoga Racing<br>Companion 2026</h1>
-    <p class="welcome-subtitle">Your personal handicapping &amp; bet tracking tool for the summer meet at Saratoga Springs</p>
+    <p class="welcome-subtitle" id="hero-subtitle">Your personal handicapping &amp; bet tracking tool for the spring meet at Aqueduct</p>
 
     <!-- Step 1: Bankroll -->
     <div class="welcome-step">
@@ -1162,9 +1166,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       </div>
     </section>
 
-    <!-- ===== TAB 2: BET SLIP ===== -->
-    <section id="tab-bets" class="tab-panel" role="tabpanel" aria-label="Bet Slip">
-      <h2 class="section-title">Bet Slip</h2>
+    <!-- ===== TAB 2: BETS ===== -->
+    <section id="tab-bets" class="tab-panel" role="tabpanel" aria-label="Bets">
+      <h2 class="section-title">Bets</h2>
 
       <!-- Bankroll banner -->
       <div class="bankroll-banner" id="bet-bankroll-banner">
@@ -1213,7 +1217,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="exotic-builder">
         <div class="flex items-center justify-between mb-2">
           <h3>Exotic Bets Builder</h3>
-          <button class="btn btn-gold btn-sm" onclick="addExoticToBetSlip()">+ Add to Slip</button>
+          <button class="btn btn-gold btn-sm" onclick="addExoticToBetSlip()">+ Add to Bets</button>
         </div>
         <div class="form-row-2">
           <div class="form-group">
@@ -1463,7 +1467,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Bet history -->
       <div class="section-title">Bet History</div>
       <div id="results-list">
-        <div class="empty-state" id="no-results-msg"><p>No locked bets yet. Lock bets from the Bet Slip tab.</p></div>
+        <div class="empty-state" id="no-results-msg"><p>No locked bets yet. Lock bets from the Bets tab.</p></div>
       </div>
     </section>
 
@@ -1580,7 +1584,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <span>Today</span>
       <span class="tab-badge hidden" id="scratch-badge">0</span>
     </button>
-    <button class="tab-btn" id="tab-btn-bets" onclick="switchTab('bets')" aria-label="Bet Slip" aria-selected="false">
+    <button class="tab-btn" id="tab-btn-bets" onclick="switchTab('bets')" aria-label="Bets" aria-selected="false">
       <!-- Ticket SVG -->
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M2 9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4V9z"/>
@@ -1643,6 +1647,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="settings-group" id="worker-url-group">
       <h4>Worker URL (Live Mode)</h4>
       <input type="url" id="settings-worker-url" class="form-control" placeholder="https://your-worker.workers.dev">
+      <p class="text-xs text-muted" style="margin-top:0.35rem">Enter your Cloudflare Worker URL to enable live odds, scratches, and results. See the README for setup instructions.</p>
       <button class="btn btn-primary btn-sm mt-1" onclick="saveWorkerUrl()">Save URL</button>
     </div>
     <div class="settings-group">
@@ -1823,6 +1828,12 @@ function isTrackActive(code) {
   return track.seasons.some(s => today >= s.from && today <= s.to);
 }
 
+function hasValidWorkerUrl() {
+  const store = getStore();
+  const url = store && store.settings.workerUrl;
+  return url && url !== '' && url !== 'https://your-worker.workers.dev';
+}
+
 function showToast(msg, type = 'default', duration = 8000) {
   const container = el('toast-container');
   const div = document.createElement('div');
@@ -1876,6 +1887,34 @@ function selectWelcomeTrack(code, elem) {
   welcomeSelectedTrack = code;
   document.querySelectorAll('.sar-aqu-btn').forEach(b => b.classList.remove('selected'));
   if (elem) elem.classList.add('selected');
+  updateHeroSubtitle();
+}
+
+function updateHeroSubtitle() {
+  const sub = el('hero-subtitle');
+  if (!sub) return;
+  const code = welcomeSelectedTrack || getActiveTrack();
+  const track = TRACKS[code];
+  if (!track) return;
+  const today = getTodayStr();
+  // Find the current or next season for this track
+  let seasonLabel = '';
+  const activeSeason = track.seasons.find(s => today >= s.from && today <= s.to);
+  if (activeSeason) {
+    seasonLabel = activeSeason.label.toLowerCase() + ' meet';
+  } else {
+    // Find the next upcoming season
+    const upcoming = track.seasons.filter(s => today < s.from).sort((a,b) => a.from.localeCompare(b.from));
+    if (upcoming.length) {
+      seasonLabel = upcoming[0].label.toLowerCase() + ' meet';
+    } else {
+      seasonLabel = 'racing season';
+    }
+  }
+  // Build location name
+  const locMap = { AQU: 'Aqueduct', SAR: 'Saratoga Springs', BEL: 'Belmont at the Big A', BTP: 'Belmont Park' };
+  const loc = locMap[code] || track.name;
+  sub.textContent = 'Your personal handicapping & bet tracking tool for the ' + seasonLabel + ' at ' + loc;
 }
 
 function setWelcomeMode(mode) {
@@ -1902,6 +1941,13 @@ function finishWelcome() {
     af.classList.remove('hidden');
     initApp();
   }
+
+  // Hide the welcome screen so it can't bleed through on scroll-back
+  const ws = el('welcome-screen');
+  if (ws) ws.style.display = 'none';
+
+  // Update hero subtitle for selected track
+  updateHeroSubtitle();
 
   // Smooth scroll to the app
   af.scrollIntoView({ behavior: 'smooth' });
@@ -2074,6 +2120,17 @@ function renderTodayTab() {
   // Run advice engine
   runAdviceEngine();
   updateHandicapSelects();
+
+  // Pulse-hint on WPS checkboxes for first-time users
+  if (!localStorage.getItem('ne-racing-advice-hint-shown')) {
+    document.querySelectorAll('.wps-btn').forEach(b => b.classList.add('pulse-hint'));
+    const removePulse = () => {
+      document.querySelectorAll('.wps-btn.pulse-hint').forEach(b => b.classList.remove('pulse-hint'));
+      localStorage.setItem('ne-racing-advice-hint-shown', '1');
+    };
+    document.querySelectorAll('.wps-btn').forEach(b => b.addEventListener('click', removePulse, { once: true }));
+    setTimeout(removePulse, 5000);
+  }
 }
 
 function buildRaceCardHTML(race) {
@@ -2094,7 +2151,7 @@ function buildRaceCardHTML(race) {
         <table class="entry-table">
           <thead>
             <tr>
-              <th>Out</th><th>PP</th><th>Horse</th><th>ML</th><th>Live</th><th>Jockey</th><th>Trainer</th><th>Figs (3-2-1)</th><th>Style</th><th>Notes</th><th>WPS</th>
+              <th>Out</th><th>PP</th><th>Horse</th><th>ML</th>${hasValidWorkerUrl() ? '<th>Live</th>' : ''}<th>Jockey</th><th>Trainer</th><th>Figs (3-2-1)</th><th>Style</th><th>Notes</th><th>WPS</th>
             </tr>
           </thead>
           <tbody id="entries-${race.id}">
@@ -2147,7 +2204,7 @@ function buildRaceCardHTML(race) {
           <svg id="advice-icon-${race.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div id="advice-panel-body-${race.id}" class="advice-content">
-          <div class="text-muted text-sm">Add horses and click Refresh Advice to generate picks.</div>
+          <div class="text-muted text-sm">Check the boxes next to horses you're considering, then click Refresh Advice to generate picks.</div>
         </div>
       </div>
     </div>
@@ -2192,7 +2249,7 @@ function buildHorseRowHTML(raceId, h) {
     <td class="pp-cell">${h.pp || ''}</td>
     <td><span class="horse-name" onclick="openHorseModal('${raceId}','${h.id}')">${h.name || '—'}</span>${bulletIcon}${equipBadge}${h.scratched ? ' <span class="badge badge-scratch">SCRATCHED</span>' : ''}</td>
     <td class="odds-cell">${h.ml || '—'}</td>
-    <td>${liveOddsCell}</td>
+    ${hasValidWorkerUrl() ? '<td>' + liveOddsCell + '</td>' : ''}
     <td><span>${h.jockey || '—'}</span><div class="jt-pct">${h.jockeyPct ? h.jockeyPct+'%' : ''}</div></td>
     <td><span>${h.trainer || '—'}</span><div class="jt-pct">${h.trainerPct ? h.trainerPct+'%' : ''}</div></td>
     <td>
@@ -2524,7 +2581,7 @@ function toggleWPS(raceId, horseId, type, btnEl) {
   if (idx > -1) { horse.wps.splice(idx, 1); btnEl.classList.remove('active'); }
   else { horse.wps.push(type); btnEl.classList.add('active'); }
   saveTrackData(data);
-  // Update bet slip count badge
+  // Update bets count badge
   updateBetSlipBadge();
 }
 
@@ -3213,7 +3270,7 @@ function renderAdviceForRace() {
 }
 
 /* =============================================================
-   TAB 2: BET SLIP
+   TAB 2: BETS
    ============================================================= */
 function renderBetsTab() {
   renderStraightBets();
@@ -3365,6 +3422,25 @@ function renderSingleRaceExotic(type, body) {
 
   if (!horses.length) { body.innerHTML = '<p class="text-muted text-sm">Add horses in Today\'s Card first.</p>'; return; }
 
+  // Group horses by race for display
+  const raceGroups = [];
+  races.forEach(r => {
+    const rh = (r.horses||[]).filter(h=>!h.scratched).map(h=>({...h, raceNum:r.num}));
+    if (rh.length) raceGroups.push({ num: r.num, horses: rh });
+  });
+
+  function buildGroupedChips(posIdx, onclickFn) {
+    let html = '';
+    raceGroups.forEach(g => {
+      html += `<div class="exotic-race-header">Race ${g.num}</div>`;
+      g.horses.forEach(h => {
+        html += `<button class="horse-chip" data-pos="${posIdx}" data-horseid="${h.id}" data-pp="${h.pp}" data-name="${escHtml(h.name)}"
+          onclick="${onclickFn(h)}">#${h.pp||''} ${escHtml(h.name)}</button>`;
+      });
+    });
+    return html;
+  }
+
   if (mode === 'straight' || mode === 'box') {
     const posLabels = positions[type] || ['1st'];
     const posList = mode === 'box' ? [posLabels[0]] : posLabels;
@@ -3373,10 +3449,7 @@ function renderSingleRaceExotic(type, body) {
     posList.forEach((pos, posIdx) => {
       if (mode === 'straight') html += `<div class="position-label">${pos}</div>`;
       html += `<div class="horse-chip-row" id="exotic-pos-${posIdx}">`;
-      horses.forEach(h => {
-        html += `<button class="horse-chip" data-pos="${posIdx}" data-horseid="${h.id}" data-pp="${h.pp}" data-name="${escHtml(h.name)}"
-          onclick="toggleExoticHorse(${posIdx},'${h.id}','${escHtml(h.name)}',this)">#${h.pp||''} ${escHtml(h.name)}</button>`;
-      });
+      html += buildGroupedChips(posIdx, h => `toggleExoticHorse(${posIdx},'${h.id}','${escHtml(h.name)}',this)`);
       html += '</div>';
     });
     body.innerHTML = html;
@@ -3384,13 +3457,11 @@ function renderSingleRaceExotic(type, body) {
     body.innerHTML = `
       <div class="position-label">Key Horse (wins the key position)</div>
       <div class="horse-chip-row" id="exotic-pos-key">
-        ${horses.map(h=>`<button class="horse-chip" data-pos="key" data-horseid="${h.id}" data-pp="${h.pp}" data-name="${escHtml(h.name)}"
-          onclick="toggleExoticKey('${h.id}','${escHtml(h.name)}',this)">#${h.pp||''} ${escHtml(h.name)}</button>`).join('')}
+        ${buildGroupedChips('key', h => `toggleExoticKey('${h.id}','${escHtml(h.name)}',this)`)}
       </div>
       <div class="position-label mt-1">With (fill remaining positions)</div>
       <div class="horse-chip-row" id="exotic-pos-with">
-        ${horses.map(h=>`<button class="horse-chip" data-pos="with" data-horseid="${h.id}" data-pp="${h.pp}" data-name="${escHtml(h.name)}"
-          onclick="toggleExoticWith('${h.id}','${escHtml(h.name)}',this)">#${h.pp||''} ${escHtml(h.name)}</button>`).join('')}
+        ${buildGroupedChips('with', h => `toggleExoticWith('${h.id}','${escHtml(h.name)}',this)`)}
       </div>`;
   }
 }
@@ -3557,7 +3628,7 @@ function addExoticToBetSlip() {
   data.bets.push(bet);
   saveTrackData(data);
   renderLockedExotics();
-  showToast('Exotic bet added to slip: ' + costText, 'success', 4000);
+  showToast('Exotic bet added: ' + costText, 'success', 4000);
   exoticSelections = {};
   renderExoticBuilder();
 }
@@ -4262,14 +4333,19 @@ function renderMeetSchedule() {
 
   body.innerHTML = (track.seasons||[]).map(s => {
     const active = today >= s.from && today <= s.to;
+    const completed = today > s.to;
     const start = new Date(s.from + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
     const end = new Date(s.to + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    let badgeClass, badgeText;
+    if (completed) { badgeClass = 'badge-muted'; badgeText = 'Completed'; }
+    else if (active) { badgeClass = 'badge-green'; badgeText = 'Active'; }
+    else { badgeClass = 'badge-gold'; badgeText = 'Upcoming'; }
     return `<div class="ref-row">
       <div>
         <div class="font-semibold">${s.label}</div>
         <div class="text-xs text-muted mono">${start} — ${end}</div>
       </div>
-      <span class="badge ${active?'badge-green':'badge-muted'}">${active?'Active':'Upcoming'}</span>
+      <span class="badge ${badgeClass}">${badgeText}</span>
     </div>`;
   }).join('') || '<div class="text-muted text-sm">No schedule data.</div>';
 }
@@ -4755,6 +4831,9 @@ document.addEventListener('DOMContentLoaded', () => {
     el('mode-live').classList.toggle('active', savedMode === 'live');
     el('mode-manual').classList.toggle('active', savedMode === 'manual');
   }
+
+  // Update hero subtitle for current track selection
+  updateHeroSubtitle();
 });
 
 // Close drawer when clicking outside
