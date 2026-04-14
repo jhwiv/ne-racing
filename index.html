@@ -88,26 +88,31 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
 /* =========================================================
    LAYOUT SCAFFOLDING
    ========================================================= */
-#app { display: flex; flex-direction: column; min-height: 100dvh; }
+html { scroll-behavior: smooth; }
+#app { display: flex; flex-direction: column; }
 #welcome-screen {
-  position: fixed; inset: 0; z-index: 1000;
-  background: url('https://cdn.securem2.com/commonimages/pages/2023/3/horses-racing-grass.jpg') center/cover no-repeat;
+  position: relative;
+  min-height: 100dvh;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 2rem 1.5rem;
-  overflow-y: auto;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+#welcome-screen-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: url('https://cdn.securem2.com/commonimages/pages/2023/3/horses-racing-grass.jpg') center/cover no-repeat;
 }
 #welcome-screen::before {
   content: '';
   position: absolute; inset: 0;
   background: linear-gradient(to bottom, rgba(27,67,50,0.3) 0%, rgba(27,67,50,0.7) 60%, rgba(27,67,50,0.9) 100%);
-  z-index: 0;
+  z-index: 1;
 }
-#welcome-screen > * { position: relative; z-index: 1; }
-#welcome-screen.fade-out { animation: fadeOut 0.5s ease forwards; }
-@keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
+#welcome-screen > * { position: relative; z-index: 2; }
+#welcome-screen > #welcome-screen-bg { z-index: 0; }
 
 /* App frame (shown after welcome) */
-#app-frame { display: flex; flex-direction: column; flex: 1; }
+#app-frame { display: flex; flex-direction: column; min-height: 100dvh; }
 #top-header {
   height: var(--header-height);
   background: var(--color-white);
@@ -881,6 +886,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
      WELCOME SCREEN
      ============================================= -->
 <div id="welcome-screen">
+  <div id="welcome-screen-bg"></div>
   <div class="welcome-inner">
     <div class="welcome-logo">
       <!-- Horseshoe logo SVG -->
@@ -930,6 +936,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     <button class="btn-lets-go" onclick="finishWelcome()">Let's Go &rarr;</button>
   </div>
 </div>
+
+<!-- Scroll-to-hero anchor -->
+<div id="app-anchor"></div>
 
 <!-- =============================================
      MAIN APP FRAME
@@ -1815,13 +1824,15 @@ function finishWelcome() {
   store.settings.welcomeDone = true;
   saveStore(store);
 
-  const ws = el('welcome-screen');
-  ws.classList.add('fade-out');
-  setTimeout(() => {
-    ws.classList.add('hidden');
-    el('app-frame').classList.remove('hidden');
+  // Show the app frame and initialize if first time
+  const af = el('app-frame');
+  if (af.classList.contains('hidden')) {
+    af.classList.remove('hidden');
     initApp();
-  }, 500);
+  }
+
+  // Smooth scroll to the app
+  af.scrollIntoView({ behavior: 'smooth' });
 }
 
 /* =============================================================
@@ -4246,13 +4257,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const store = initStore();
   buildWelcomeTrackGrid();
 
-  // --- ALWAYS land on hero welcome screen ---
-  // Force welcome screen visible & app hidden on every load
-  const ws = el('welcome-screen');
-  ws.classList.remove('fade-out', 'hidden');
-  ws.style.display = '';
-  ws.style.opacity = '';
-  ws.style.pointerEvents = '';
+  // Always scroll to top (hero) on load
+  window.scrollTo(0, 0);
+
+  // App frame stays hidden until "Let's Go" is tapped
   el('app-frame').classList.add('hidden');
 
   // Pre-fill saved settings for returning users
@@ -4271,10 +4279,6 @@ document.addEventListener('DOMContentLoaded', () => {
     el('mode-live').classList.toggle('active', savedMode === 'live');
     el('mode-manual').classList.toggle('active', savedMode === 'manual');
   }
-
-  // Reset welcomeDone so next load also shows hero
-  store.settings.welcomeDone = false;
-  saveStore(store);
 });
 
 // Close drawer when clicking outside
