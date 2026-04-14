@@ -3,66 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clearing Cache...</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>NE Racing — Cache Reset</title>
 <style>
   body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #1B4332; color: #FAF3E0; text-align: center; }
   .box { max-width: 360px; padding: 2rem; }
   h1 { font-size: 1.4rem; margin-bottom: 1rem; }
-  p { font-size: 0.95rem; opacity: 0.8; }
-  #status { margin-top: 1.5rem; font-weight: 600; color: #C9A84C; }
+  p { font-size: 0.95rem; opacity: 0.8; line-height: 1.5; }
+  #status { margin-top: 1.5rem; font-weight: 600; color: #C9A84C; min-height: 2em; }
+  #log { margin-top: 1rem; font-size: 0.75rem; opacity: 0.5; text-align: left; max-height: 200px; overflow-y: auto; }
 </style>
 </head>
 <body>
 <div class="box">
-  <h1>Clearing Cache</h1>
-  <p>Removing old service worker and cached files...</p>
+  <h1>🔄 Resetting App</h1>
+  <p>Clearing all cached data, service workers, and stored settings so you get the latest version.</p>
   <div id="status">Working...</div>
+  <div id="log"></div>
 </div>
 <script>
 (async function() {
-  const status = document.getElementById('status');
-  const steps = [];
+  var status = document.getElementById('status');
+  var log = document.getElementById('log');
+  function addLog(msg) {
+    var div = document.createElement('div');
+    div.textContent = '✓ ' + msg;
+    log.appendChild(div);
+  }
 
   try {
     // 1. Unregister ALL service workers
     if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const reg of regs) {
-        await reg.unregister();
-        steps.push('Service worker unregistered');
+      var regs = await navigator.serviceWorker.getRegistrations();
+      for (var i = 0; i < regs.length; i++) {
+        await regs[i].unregister();
+        addLog('Unregistered service worker: ' + (regs[i].scope || 'default'));
       }
-      if (regs.length === 0) steps.push('No service workers found');
+      if (regs.length === 0) addLog('No service workers found');
+    } else {
+      addLog('Service workers not supported');
     }
 
-    // 2. Delete ALL caches
+    // 2. Delete ALL Cache Storage entries
     if ('caches' in window) {
-      const keys = await caches.keys();
-      for (const key of keys) {
-        await caches.delete(key);
-        steps.push('Deleted cache: ' + key);
+      var keys = await caches.keys();
+      for (var j = 0; j < keys.length; j++) {
+        await caches.delete(keys[j]);
+        addLog('Deleted cache: ' + keys[j]);
       }
-      if (keys.length === 0) steps.push('No caches found');
+      if (keys.length === 0) addLog('No caches found');
     }
 
-    // 3. Clear localStorage for this site
-    localStorage.clear();
-    steps.push('localStorage cleared');
+    // 3. Clear localStorage
+    try { localStorage.clear(); addLog('localStorage cleared'); } catch(e) { addLog('localStorage skip: ' + e.message); }
 
     // 4. Clear sessionStorage
-    sessionStorage.clear();
-    steps.push('sessionStorage cleared');
+    try { sessionStorage.clear(); addLog('sessionStorage cleared'); } catch(e) { addLog('sessionStorage skip: ' + e.message); }
 
-    status.textContent = 'Done! Redirecting...';
-    console.log('Cache clear steps:', steps);
+    status.textContent = '✅ Done! Redirecting in 2 seconds...';
 
-    // Redirect to the app with a cache-bust param
+    // 5. Redirect to app with cache-bust query param
     setTimeout(function() {
-      window.location.replace('./index.html?_=' + Date.now());
-    }, 1500);
+      // Use replace so the user can't back-button into clear.html
+      window.location.replace('./index.html?cache_bust=' + Date.now());
+    }, 2000);
 
   } catch (err) {
-    status.textContent = 'Error: ' + err.message;
-    console.error(err);
+    status.textContent = '❌ Error: ' + err.message;
+    addLog('FAILED: ' + err.stack);
+    // Still try to redirect after showing error
+    setTimeout(function() {
+      window.location.replace('./index.html?cache_bust=' + Date.now());
+    }, 5000);
   }
 })();
 </script>
