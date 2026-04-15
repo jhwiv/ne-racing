@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0730';
+var NE_APP_VERSION = '20260415-0740';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -195,7 +195,70 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
    ========================================================= */
 /* scroll-behavior: smooth removed — causes choppy scrolling on mobile */
 #app { display: flex; flex-direction: column; }
-#app-frame { display: flex; flex-direction: column; min-height: 100dvh; }
+/* =========================================================
+   HERO SCREEN (scrollable, non-gating)
+   ========================================================= */
+#hero-screen {
+  position: relative;
+  min-height: 85dvh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 1.5rem 1.25rem 2rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+#hero-screen-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: url('https://www.saratoga.com/images/horse-race-grandstand-view.jpg') center/cover no-repeat;
+}
+#hero-screen::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(27,67,50,0.2) 0%, rgba(27,67,50,0.5) 40%, rgba(27,67,50,0.85) 100%);
+  z-index: 1;
+}
+#hero-screen > * { position: relative; z-index: 2; }
+#hero-screen > #hero-screen-bg { position: absolute; inset: 0; z-index: 0; }
+.welcome-inner { width: 100%; max-width: 440px; }
+.welcome-logo { text-align: center; margin-bottom: 0.3rem; }
+.welcome-logo svg { width: 40px; height: 40px; }
+.welcome-title {
+  font-family: var(--font-display); font-size: clamp(1.4rem, 4.5vw, 2.2rem);
+  font-weight: 700; color: var(--color-white); text-align: center; line-height: 1.15;
+  margin-bottom: 0.15rem;
+}
+.welcome-subtitle { color: rgba(255,255,255,0.65); text-align: center; font-size: 0.78rem; margin-bottom: 0.5rem; }
+.welcome-step {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius-lg); padding: 0.55rem 1rem; margin-bottom: 0.4rem;
+}
+.welcome-step-label {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--color-gold); margin-bottom: 0.15rem;
+}
+.welcome-step h3 { color: var(--color-white); font-size: 0.85rem; margin-bottom: 0.35rem; }
+.welcome-step .form-control { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: var(--color-white); }
+.welcome-step .form-control::placeholder { color: rgba(255,255,255,0.4); }
+.welcome-step .form-control:focus { border-color: var(--color-gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.2); }
+.welcome-step .form-label { color: rgba(255,255,255,0.8); }
+.sar-aqu-toggle { display: flex; gap: 0.5rem; }
+.sar-aqu-btn {
+  flex: 1; padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 600;
+  color: rgba(255,255,255,0.6); cursor: pointer;
+  background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-md); transition: all 0.15s; text-align: center;
+}
+.sar-aqu-btn.selected { background: rgba(201,168,76,0.25); border-color: var(--color-gold); color: var(--color-white); }
+.mode-toggle { display: flex; gap: 0; border: 1.5px solid rgba(255,255,255,0.2); border-radius: var(--radius-md); overflow: hidden; }
+.mode-btn { flex: 1; padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.6); cursor: pointer; background: transparent; transition: all 0.15s; text-align: center; border: none; }
+.mode-btn.active { background: var(--color-gold); color: var(--color-white); }
+.hero-scroll-hint {
+  margin-top: 1rem; text-align: center; color: rgba(255,255,255,0.4);
+  font-size: 0.75rem; animation: hero-bounce 2s ease-in-out infinite;
+}
+.hero-scroll-hint svg { width: 20px; height: 20px; margin: 0 auto; display: block; }
+@keyframes hero-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+#app-frame { display: flex; flex-direction: column; min-height: auto; }
 #top-header {
   height: var(--header-height);
   background: var(--color-white);
@@ -1271,6 +1334,61 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 <!-- =============================================
      WELCOME SCREEN
      ============================================= -->
+
+<!-- =============================================
+     HERO SCREEN (scrollable — no gate)
+     ============================================= -->
+<div id="hero-screen">
+  <div id="hero-screen-bg"></div>
+  <div class="welcome-inner">
+    <div class="welcome-logo">
+      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Saratoga Racing Companion">
+        <circle cx="40" cy="40" r="38" fill="rgba(255,255,255,0.07)" stroke="rgba(201,168,76,0.4)" stroke-width="1.5"/>
+        <path d="M20 52 C20 30 27 20 40 20 C53 20 60 30 60 52" stroke="#C9A84C" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <path d="M20 52 L20 56 Q20 60 24 60 L28 60 Q32 60 32 56 L32 52" fill="#C9A84C"/>
+        <path d="M60 52 L60 56 Q60 60 56 60 L52 60 Q48 60 48 56 L48 52" fill="#C9A84C"/>
+        <circle cx="40" cy="38" r="5" fill="rgba(201,168,76,0.3)" stroke="#C9A84C" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <h1 class="welcome-title">Saratoga Racing<br>Companion 2026</h1>
+    <p class="welcome-subtitle" id="hero-subtitle">Your personal handicapping &amp; bet tracking tool</p>
+
+    <div class="welcome-step">
+      <div class="welcome-step-label">Bankroll</div>
+      <h3>Starting Bankroll</h3>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" for="welcome-bankroll">Amount ($)</label>
+        <input type="number" id="welcome-bankroll" class="form-control" value="1000" min="1" inputmode="numeric" placeholder="1000"
+          onchange="applyHeroBankroll(this.value)">
+      </div>
+    </div>
+
+    <div class="welcome-step">
+      <div class="welcome-step-label">Track</div>
+      <h3>Select Track</h3>
+      <div class="sar-aqu-toggle">
+        <button class="sar-aqu-btn" id="welcome-sar-btn" onclick="selectWelcomeTrack('SAR', this)">SAR &mdash; Saratoga</button>
+        <button class="sar-aqu-btn selected" id="welcome-aqu-btn" onclick="selectWelcomeTrack('AQU', this)">AQU &mdash; Aqueduct</button>
+      </div>
+      <p style="font-size:0.72rem;color:rgba(255,255,255,0.45);margin-top:0.4rem">Aqueduct spring meet through Apr 26 &bull; Saratoga opens Jul 3</p>
+    </div>
+
+    <div class="welcome-step">
+      <div class="welcome-step-label">Data</div>
+      <h3>Data Mode</h3>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="mode-live" onclick="setWelcomeMode('live')">Live Data (API)</button>
+        <button class="mode-btn" id="mode-manual" onclick="setWelcomeMode('manual')">Manual Entry</button>
+      </div>
+      <p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:0.5rem" id="mode-desc">Fetches race cards automatically on race days.</p>
+    </div>
+
+    <div class="hero-scroll-hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      scroll down for today&rsquo;s card
+    </div>
+  </div>
+</div>
 
 <!-- =============================================
      MAIN APP FRAME
@@ -2604,6 +2722,67 @@ function setResultsModeFilter(filter) {
     else if (filter === 'real' && btns[2]) btns[2].classList.add('active');
   }
   renderResultsTab();
+}
+
+
+/* =============================================================
+   HERO SCREEN FUNCTIONS
+   ============================================================= */
+let welcomeSelectedTrack = 'AQU';
+let welcomeDataMode = 'live';
+
+function selectWelcomeTrack(code, elem) {
+  welcomeSelectedTrack = code;
+  document.querySelectorAll('.sar-aqu-btn').forEach(b => b.classList.remove('selected'));
+  if (elem) elem.classList.add('selected');
+  // Apply immediately
+  const store = getStore();
+  if (store) { store.settings.activeTrack = code; saveStore(store); }
+  updateHeaderTrack();
+  renderTabContent('today');
+  updateHeroSubtitle();
+}
+
+function updateHeroSubtitle() {
+  const sub = el('hero-subtitle');
+  if (!sub) return;
+  const code = welcomeSelectedTrack || getActiveTrack();
+  const track = TRACKS[code];
+  if (!track) return;
+  const today = getTodayStr();
+  let seasonLabel = '';
+  const activeSeason = track.seasons.find(s => today >= s.from && today <= s.to);
+  if (activeSeason) {
+    seasonLabel = activeSeason.label.toLowerCase() + ' meet';
+  } else {
+    const upcoming = track.seasons.filter(s => today < s.from).sort((a,b) => a.from.localeCompare(b.from));
+    if (upcoming.length) seasonLabel = upcoming[0].label.toLowerCase() + ' meet';
+    else seasonLabel = 'racing season';
+  }
+  const locMap = { AQU: 'Aqueduct', SAR: 'Saratoga Springs', BEL: 'Belmont at the Big A', BTP: 'Belmont Park' };
+  const loc = locMap[code] || track.name;
+  sub.textContent = 'Your personal handicapping & bet tracking tool for the ' + seasonLabel + ' at ' + loc;
+}
+
+function setWelcomeMode(mode) {
+  welcomeDataMode = mode;
+  el('mode-live').classList.toggle('active', mode === 'live');
+  el('mode-manual').classList.toggle('active', mode === 'manual');
+  el('mode-desc').textContent = mode === 'live'
+    ? 'Fetches race cards automatically on race days.'
+    : 'Manually enter race cards, entries, and results. No API key needed.';
+  // Apply immediately
+  const store = getStore();
+  if (store) { store.settings.dataMode = mode; saveStore(store); }
+  if (mode === 'live') startLivePolling();
+  else stopLivePolling();
+}
+
+function applyHeroBankroll(val) {
+  const amt = parseFloat(val) || 1000;
+  const store = getStore();
+  if (store) { store.settings.startingBankroll = amt; saveStore(store); }
+  updateBankrollBanner();
 }
 
 /* =============================================================
@@ -6183,6 +6362,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize the app immediately
   initApp();
+
+  // Pre-fill hero from saved settings
+  if (store.settings.activeTrack) {
+    welcomeSelectedTrack = store.settings.activeTrack;
+    document.querySelectorAll('.sar-aqu-btn').forEach(b => b.classList.remove('selected'));
+    const trackBtn = el('welcome-' + store.settings.activeTrack.toLowerCase() + '-btn');
+    if (trackBtn) trackBtn.classList.add('selected');
+  }
+  if (store.settings.startingBankroll) {
+    const br = el('welcome-bankroll');
+    if (br) br.value = store.settings.startingBankroll;
+  }
+  if (store.settings.dataMode) {
+    welcomeDataMode = store.settings.dataMode;
+    var livBtn = el('mode-live'), manBtn = el('mode-manual');
+    if (livBtn) livBtn.classList.toggle('active', store.settings.dataMode === 'live');
+    if (manBtn) manBtn.classList.toggle('active', store.settings.dataMode === 'manual');
+  }
+  updateHeroSubtitle();
+
+  // Hide bottom tab bar when hero is in view
+  var heroEl = el('hero-screen');
+  var tabBar = el('bottom-tab-bar');
+  if (heroEl && tabBar) {
+    var heroObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        tabBar.style.transform = entry.isIntersecting ? 'translateY(100%)' : 'translateY(0)';
+        tabBar.style.transition = 'transform 0.3s ease';
+      });
+    }, { threshold: 0.15 });
+    heroObserver.observe(heroEl);
+  }
 
   // Show/hide floating Home button based on scroll position
   var homeBtn = el('floating-home-btn');
