@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0200';
+var NE_APP_VERSION = '20260415-0300';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1045,6 +1045,110 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; line-height: 1.4;
   padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.06);
 }
+
+/* =========================================================
+   BETTING MODE TOGGLE
+   ========================================================= */
+.betting-mode-toggle {
+  display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 0.75rem;
+}
+.betting-mode-toggle .mode-pill {
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.45rem 1rem; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer;
+  border: none; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.08);
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.betting-mode-toggle .mode-pill:first-child { border-radius: 20px 0 0 20px; }
+.betting-mode-toggle .mode-pill:last-child { border-radius: 0 20px 20px 0; }
+.betting-mode-toggle .mode-pill svg { width: 14px; height: 14px; flex-shrink: 0; }
+.betting-mode-toggle .mode-pill.active-sim {
+  background: var(--color-racing-green); color: #D8F3DC;
+  box-shadow: 0 0 8px rgba(45,106,79,0.4);
+  animation: simPulse 3s ease-in-out infinite;
+}
+.betting-mode-toggle .mode-pill.active-real {
+  background: var(--color-gold); color: #1B4332;
+  box-shadow: 0 0 8px rgba(201,168,76,0.4);
+}
+@keyframes simPulse { 0%,100% { box-shadow: 0 0 8px rgba(45,106,79,0.4); } 50% { box-shadow: 0 0 14px rgba(45,106,79,0.6); } }
+
+/* Settings mode toggle (light bg variant) */
+.settings-mode-toggle {
+  display: flex; align-items: center; gap: 0; margin-top: 0.5rem;
+}
+.settings-mode-toggle .mode-pill-light {
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.5rem 1.1rem; font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer;
+  border: 1.5px solid rgba(0,0,0,0.1); color: var(--color-muted); background: #f5f0e6;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.settings-mode-toggle .mode-pill-light:first-child { border-radius: 20px 0 0 20px; border-right: none; }
+.settings-mode-toggle .mode-pill-light:last-child { border-radius: 0 20px 20px 0; border-left: none; }
+.settings-mode-toggle .mode-pill-light svg { width: 14px; height: 14px; flex-shrink: 0; }
+.settings-mode-toggle .mode-pill-light.active-sim {
+  background: var(--color-racing-green); color: #D8F3DC; border-color: var(--color-racing-green);
+}
+.settings-mode-toggle .mode-pill-light.active-real {
+  background: var(--color-gold); color: #1B4332; border-color: var(--color-gold);
+}
+
+/* Sim mode banner in ticket */
+.sim-mode-banner {
+  font-size: 0.68rem; color: rgba(255,255,255,0.45); text-align: center;
+  padding: 0.3rem 0.6rem; background: rgba(255,255,255,0.05);
+  border-radius: var(--radius-sm); margin-bottom: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+/* SIM / REAL badges on bets and tabs */
+.badge-sim {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: var(--color-racing-green); color: #D8F3DC;
+  font-size: 0.55rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0.1rem 0.35rem; border-radius: 3px;
+}
+.badge-real {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: var(--color-gold); color: #1B4332;
+  font-size: 0.55rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0.1rem 0.35rem; border-radius: 3px;
+}
+
+/* Tab mode indicator badges */
+.tab-mode-badge {
+  position: absolute; top: 4px; right: calc(50% - 22px);
+  font-size: 0.5rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 1px 4px; border-radius: 3px; line-height: 1.2;
+}
+.tab-mode-badge.sim { background: var(--color-racing-green); color: #D8F3DC; }
+.tab-mode-badge.real { background: var(--color-gold); color: #1B4332; }
+
+/* Desktop nav mode badge */
+.desktop-mode-badge {
+  font-size: 0.5rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 1px 4px; border-radius: 3px; margin-left: 4px; vertical-align: middle;
+}
+.desktop-mode-badge.sim { background: var(--color-racing-green); color: #D8F3DC; }
+.desktop-mode-badge.real { background: var(--color-gold); color: #1B4332; }
+
+/* Results mode filter */
+.results-mode-filter {
+  display: flex; align-items: center; gap: 0; margin-bottom: 0.75rem;
+}
+.results-mode-filter .filter-btn {
+  padding: 0.35rem 0.8rem; font-size: 0.72rem; font-weight: 600;
+  cursor: pointer; border: 1.5px solid rgba(0,0,0,0.1); background: #f5f0e6;
+  color: var(--color-muted); transition: background 0.15s, color 0.15s;
+}
+.results-mode-filter .filter-btn:first-child { border-radius: 6px 0 0 6px; }
+.results-mode-filter .filter-btn:last-child { border-radius: 0 6px 6px 0; }
+.results-mode-filter .filter-btn:not(:first-child) { border-left: none; }
+.results-mode-filter .filter-btn.active {
+  background: var(--color-racing-green); color: var(--color-white); border-color: var(--color-racing-green);
+}
+
 .advice-bet-pill {
   display: inline-flex; align-items: center; gap: 0.2rem;
   background: transparent; color: var(--color-gold);
@@ -1309,6 +1413,18 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Today's Ticket Card -->
       <div id="rec-bets-card" class="rec-bets-card hidden">
         <div class="ticket-header"><span class="ticket-icon">&#127915;</span><h3 style="margin:0">Today's Ticket</h3></div>
+        <!-- Betting Mode Toggle -->
+        <div class="betting-mode-toggle" id="ticket-mode-toggle">
+          <button class="mode-pill active-sim" id="ticket-mode-sim" onclick="setBettingMode('simulate')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            SIMULATE
+          </button>
+          <button class="mode-pill" id="ticket-mode-real" onclick="setBettingMode('real')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            REAL
+          </button>
+        </div>
+        <div id="sim-banner" class="sim-mode-banner">Simulation Mode — track your picks without real money</div>
         <div class="ticket-subtitle" id="ticket-subtitle"></div>
         <div id="rec-bets-content"></div>
       </div>
@@ -1619,6 +1735,13 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         <button class="toggle-btn" id="scope-all-btn" onclick="setResultScope('all')">All Tracks</button>
       </div>
 
+      <!-- Results mode filter -->
+      <div class="results-mode-filter" id="results-mode-filter">
+        <button class="filter-btn active" onclick="setResultsModeFilter('all')">All Bets</button>
+        <button class="filter-btn" onclick="setResultsModeFilter('sim')">Simulated</button>
+        <button class="filter-btn" onclick="setResultsModeFilter('real')">Real</button>
+      </div>
+
       <!-- Bankroll stats -->
       <div class="bankroll-grid" id="bankroll-grid">
         <div class="bankroll-stat"><div class="stat-label">Starting</div><div class="stat-value" id="res-starting">$0</div></div>
@@ -1876,6 +1999,20 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       </div>
     </div>
     <div class="settings-group">
+      <h4>Betting Mode</h4>
+      <div class="settings-mode-toggle" id="settings-mode-toggle">
+        <button class="mode-pill-light active-sim" id="settings-bm-sim" onclick="setBettingMode('simulate')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          SIMULATE
+        </button>
+        <button class="mode-pill-light" id="settings-bm-real" onclick="setBettingMode('real')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          REAL
+        </button>
+      </div>
+      <p class="text-xs text-muted" style="margin-top:0.35rem">Simulate mode tracks picks internally. Real mode opens external betting platforms.</p>
+    </div>
+    <div class="settings-group">
       <h4>Preferred Betting Platform</h4>
       <select id="settings-betting-platform" class="form-control" onchange="saveBettingPlatform(this.value)">
         <option value="nyrabets">NYRA Bets</option>
@@ -1984,6 +2121,8 @@ let resultScope = 'track';
 let welcomeSelectedTrack = 'AQU';
 let welcomeDataMode = 'live';
 let loadedRaceDate = null; // Tracks which date's entries are loaded (may differ from today)
+let resultsModeFilter = 'all'; // 'all', 'sim', 'real' — filter for Results tab
+var realModeConfirmed = false; // Whether user has confirmed real mode prompt this session
 
 /* =============================================================
    LOCAL STORAGE HELPERS
@@ -2104,6 +2243,181 @@ function showToast(msg, type = 'default', duration = 8000) {
   div.innerHTML = '<span style="flex:1">' + msg + '</span><button onclick="this.parentElement.remove()" style="color:rgba(255,255,255,0.5);font-size:1.1rem;line-height:1;padding:0 0.2rem">&times;</button>';
   container.appendChild(div);
   if (duration > 0) setTimeout(() => { div.style.animation = 'toastOut 0.3s ease forwards'; setTimeout(() => div.remove(), 300); }, duration);
+}
+
+/* =============================================================
+   BETTING MODE (SIMULATE / REAL)
+   ============================================================= */
+var BETTING_MODE_KEY = 'ne-racing-betting-mode';
+
+function getBettingMode() {
+  return localStorage.getItem(BETTING_MODE_KEY) || 'simulate';
+}
+
+function setBettingMode(mode) {
+  if (mode === 'real' && getBettingMode() !== 'real' && !realModeConfirmed) {
+    if (!confirm('Real Money Mode will open external betting platforms when you tap Bet buttons. You must have an active account to place wagers. Continue?')) {
+      return;
+    }
+    realModeConfirmed = true;
+  }
+  localStorage.setItem(BETTING_MODE_KEY, mode);
+  syncBettingModeUI();
+  showToast(mode === 'simulate' ? 'Switched to Simulate Mode' : 'Switched to Real Money Mode', 'success', 3000);
+}
+
+function syncBettingModeUI() {
+  var mode = getBettingMode();
+  var isSim = mode === 'simulate';
+
+  // Ticket toggle
+  var tSim = el('ticket-mode-sim');
+  var tReal = el('ticket-mode-real');
+  if (tSim) { tSim.className = 'mode-pill' + (isSim ? ' active-sim' : ''); }
+  if (tReal) { tReal.className = 'mode-pill' + (!isSim ? ' active-real' : ''); }
+
+  // Settings toggle
+  var sSim = el('settings-bm-sim');
+  var sReal = el('settings-bm-real');
+  if (sSim) { sSim.className = 'mode-pill-light' + (isSim ? ' active-sim' : ''); }
+  if (sReal) { sReal.className = 'mode-pill-light' + (!isSim ? ' active-real' : ''); }
+
+  // Sim banner in ticket
+  var simBanner = el('sim-banner');
+  if (simBanner) simBanner.style.display = isSim ? '' : 'none';
+
+  // Update tab badges
+  updateModeTabBadges();
+
+  // Update bet button labels in ticket card
+  updateTicketBetButtons();
+}
+
+function updateModeTabBadges() {
+  var mode = getBettingMode();
+  var isSim = mode === 'simulate';
+  var badgeText = isSim ? 'SIM' : 'REAL';
+  var badgeCls = isSim ? 'sim' : 'real';
+
+  // Mobile bottom tab bar
+  ['bets', 'results'].forEach(function(tab) {
+    var btn = el('tab-btn-' + tab);
+    if (!btn) return;
+    var existing = btn.querySelector('.tab-mode-badge');
+    if (existing) existing.remove();
+    var badge = document.createElement('span');
+    badge.className = 'tab-mode-badge ' + badgeCls;
+    badge.textContent = badgeText;
+    btn.appendChild(badge);
+  });
+
+  // Desktop nav
+  ['bets', 'results'].forEach(function(tab) {
+    var btn = el('dnav-' + tab);
+    if (!btn) return;
+    var existing = btn.querySelector('.desktop-mode-badge');
+    if (existing) existing.remove();
+    var badge = document.createElement('span');
+    badge.className = 'desktop-mode-badge ' + badgeCls;
+    badge.textContent = badgeText;
+    btn.appendChild(badge);
+  });
+}
+
+function updateTicketBetButtons() {
+  var mode = getBettingMode();
+  var isSim = mode === 'simulate';
+  // Update all bet buttons inside the ticket card
+  var recCard = el('rec-bets-card');
+  if (!recCard) return;
+  recCard.querySelectorAll('.btn-bet, .btn-bet-sm, .btn-bet-outline').forEach(function(btn) {
+    if (isSim) {
+      btn.textContent = '';
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('width', '14');
+      svg.setAttribute('height', '14');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+      svg.setAttribute('stroke-width', '2.5');
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M12 5v14M5 12h14');
+      svg.appendChild(path);
+      btn.appendChild(svg);
+      btn.appendChild(document.createTextNode(' PLACE BET'));
+    }
+  });
+}
+
+function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, betTag) {
+  e.preventDefault();
+  var mode = getBettingMode();
+  if (mode === 'simulate') {
+    // Add bet to internal bet slip
+    var data = getTrackData();
+    data.bets = data.bets || [];
+    var bet = {
+      id: generateId(),
+      date: getTodayStr(),
+      raceNum: raceNum,
+      type: betType,
+      selections: [horseName],
+      pp: [horsePp],
+      amount: amount,
+      result: null,
+      payout: 0,
+      isBestBet: betTag === 'best',
+      isValuePlay: betTag === 'value',
+      track: getActiveTrack(),
+      bettingMode: 'simulate'
+    };
+    data.bets.push(bet);
+    saveTrackData(data);
+    showToast('Added to bet slip: $' + amount + ' ' + betType + ' #' + horsePp + ' ' + horseName + ' R' + raceNum, 'success', 3000);
+    updateBankrollBanner();
+  } else {
+    // Real mode: open external platform + also track internally
+    var data = getTrackData();
+    data.bets = data.bets || [];
+    var bet = {
+      id: generateId(),
+      date: getTodayStr(),
+      raceNum: raceNum,
+      type: betType,
+      selections: [horseName],
+      pp: [horsePp],
+      amount: amount,
+      result: null,
+      payout: 0,
+      isBestBet: betTag === 'best',
+      isValuePlay: betTag === 'value',
+      track: getActiveTrack(),
+      bettingMode: 'real'
+    };
+    data.bets.push(bet);
+    saveTrackData(data);
+    var platform = getBettingPlatform();
+    var platformName = (BETTING_PLATFORMS[platform] || {}).name || 'betting platform';
+    window.open(buildBetUrl(raceNum), '_blank', 'noopener');
+    showToast('Opened ' + platformName + ' — don\'t forget to log your result', 'success', 3000);
+  }
+}
+
+function setResultsModeFilter(filter) {
+  resultsModeFilter = filter;
+  // Update active button state
+  var container = el('results-mode-filter');
+  if (container) {
+    container.querySelectorAll('.filter-btn').forEach(function(btn) {
+      btn.classList.remove('active');
+    });
+    // Activate the clicked one
+    var btns = container.querySelectorAll('.filter-btn');
+    if (filter === 'all' && btns[0]) btns[0].classList.add('active');
+    else if (filter === 'sim' && btns[1]) btns[1].classList.add('active');
+    else if (filter === 'real' && btns[2]) btns[2].classList.add('active');
+  }
+  renderResultsTab();
 }
 
 /* =============================================================
@@ -2317,6 +2631,9 @@ function initApp() {
 
   // Load accuracy tracking data
   renderAccuracyFromStorage();
+
+  // Initialize betting mode UI
+  syncBettingModeUI();
 }
 
 function updateHeaderTrack() {
@@ -3540,7 +3857,7 @@ function updateTopPicksCard(allScores) {
       ${bbPayout ? '<div class="ticket-payout">' + bbPayout + '</div>' : ''}
       ${buildTicketConfidenceMeter(bbConf)}
       <div class="rec-bet-reason">"${reason}"</div>
-      <a class="btn-bet" href="${buildBetUrl(bestBetEntry.race.num)}" target="_blank" rel="noopener">BET NOW &#8594;</a>
+      <button class="btn-bet" onclick="handleTicketBetClick(event, ${bestBetEntry.race.num}, '${escHtml(bestBetEntry.horse.name).replace(/'/g,"\\'")}', ${bestBetEntry.horse.pp}, 'Win', ${suggestedAmt}, 'best')">PLACE BET</button>
     </div>`;
     ticketLines.push(`BEST BET — Race ${bestBetEntry.race.num}: #${bestBetEntry.horse.pp} ${bestBetEntry.horse.name} to WIN — $${suggestedAmt}${bbPayout ? ' (' + bbPayout + ')' : ''}`);
   }
@@ -3565,7 +3882,7 @@ function updateTopPicksCard(allScores) {
       ${vpPayout ? '<div class="ticket-payout">' + vpPayout + '</div>' : ''}
       ${buildTicketConfidenceMeter(vpConf)}
       <div class="rec-bet-reason">"${reason}"</div>
-      <a class="btn-bet-sm" href="${buildBetUrl(v.race.num)}" target="_blank" rel="noopener" style="margin-top:0.35rem">BET NOW &#8594;</a>
+      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}', ${v.horse.pp}, 'Exacta Box', 4, 'value')">PLACE BET</button>
     </div>`;
     ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}${overlayStr}) — $2 EX Box with ${exPartner || '#2'}${vpPayout ? ' (' + vpPayout + ')' : ''}`);
   });
@@ -3588,7 +3905,7 @@ function updateTopPicksCard(allScores) {
       ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
       ${buildTicketConfidenceMeter(actConf)}
       <div class="rec-bet-reason">"${reason}"</div>
-      <a class="btn-bet-sm" href="${buildBetUrl(topAction.entry.race.num)}" target="_blank" rel="noopener" style="margin-top:0.35rem">BET NOW &#8594;</a>
+      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${topAction.entry.race.num}, '${escHtml(topAction.entry.horse.name).replace(/'/g,"\\'")}', ${topAction.entry.horse.pp}, 'Win', ${actionAmt}, 'action')">PLACE BET</button>
     </div>`;
     ticketLines.push(`ACTION — Race ${topAction.entry.race.num}: #${topAction.entry.horse.pp} ${topAction.entry.horse.name} to WIN — $${actionAmt}${actPayout ? ' (' + actPayout + ')' : ''}`);
   }
@@ -3627,7 +3944,7 @@ function updateTopPicksCard(allScores) {
       <div class="ticket-exotic-tag">&#127922; Exotic of the Day</div>
       <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $2</div>
       <div class="ticket-exotic-reason">"${exReason}"</div>
-      <a class="btn-bet-outline" href="${buildBetUrl(exRaceNum)}" target="_blank" rel="noopener" style="margin-top:0.4rem">BET EXOTIC &#8594;</a>
+      <button class="btn-bet-outline" style="margin-top:0.4rem" onclick="handleTicketBetClick(event, ${exRaceNum}, '${escHtml(ex1.horse.name).replace(/'/g,"\\'")}/${escHtml(ex2.horse.name).replace(/'/g,"\\'")}', '${ex1.horse.pp}/${ex2.horse.pp}', 'Exacta Box', 4, 'exotic')">PLACE BET</button>
     </div>`;
     exoticLine = `EXOTIC — EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $4 ($2 box) — ${exReason}`;
     ticketLines.push(exoticLine);
@@ -3645,13 +3962,21 @@ function updateTopPicksCard(allScores) {
   // Store ticket text for copy
   const ticketText = "TODAY'S TICKET \u2014 " + (track ? track.name : '') + ' ' + dateStr + '\n\n' + ticketLines.join('\n') + '\n\nEst. Cost: ' + fmt$(totalBetCost) + ' | Budget: ' + fmt$(dailyBudget);
   html += `<button class="copy-ticket-btn" onclick="copyTicket()">&#128203; Copy Ticket</button>`;
-  html += `<div class="bet-disclaimer">Opens external betting platform. You must have an active account to place wagers.</div>`;
+  var bMode = getBettingMode();
+  if (bMode === 'real') {
+    html += `<div class="bet-disclaimer">Opens external betting platform. You must have an active account to place wagers.</div>`;
+  } else {
+    html += `<div class="bet-disclaimer">Bets are added to your simulated bet slip for tracking purposes only.</div>`;
+  }
 
   // Store on window for copy function
   window._ticketText = ticketText;
 
   recContent.innerHTML = html;
   recCard.classList.remove('hidden');
+
+  // Sync betting mode UI after rendering ticket buttons
+  syncBettingModeUI();
 
   // Store ticket picks in localStorage for accuracy tracking
   storeTicketPicks(bestBetEntry, valuePlays, topAction);
@@ -3829,7 +4154,8 @@ function lockAllBets() {
           selections: [horse.name], pp: [horse.pp],
           amount: amt, result: null, payout: 0,
           isBestBet: false, isValuePlay: false,
-          track: getActiveTrack()
+          track: getActiveTrack(),
+          bettingMode: getBettingMode()
         };
         data.bets = data.bets || [];
         data.bets.push(bet);
@@ -4076,7 +4402,8 @@ function addExoticToBetSlip() {
     type: type, mode: exoticMode, selections: {},
     amount: base, cost: 0, result: null, payout: 0,
     formula: costText, isExotic: true, locked: false,
-    track: getActiveTrack()
+    track: getActiveTrack(),
+    bettingMode: getBettingMode()
   };
 
   // Copy selections
@@ -4623,13 +4950,22 @@ function renderResultsTab() {
 }
 
 function getResultsBets() {
+  var bets;
   if (resultScope === 'all') {
     const store = getStore();
     if (!store) return [];
-    return Object.values(store.tracks).flatMap(t => (t.bets||[]).filter(b=>!b.isExotic));
+    bets = Object.values(store.tracks).flatMap(t => (t.bets||[]).filter(b=>!b.isExotic));
+  } else {
+    const data = getTrackData();
+    bets = (data && data.bets ? data.bets : []).filter(b=>!b.isExotic);
   }
-  const data = getTrackData();
-  return (data && data.bets ? data.bets : []).filter(b=>!b.isExotic);
+  // Apply betting mode filter
+  if (resultsModeFilter === 'sim') {
+    bets = bets.filter(b => b.bettingMode === 'simulate' || !b.bettingMode);
+  } else if (resultsModeFilter === 'real') {
+    bets = bets.filter(b => b.bettingMode === 'real');
+  }
+  return bets;
 }
 
 function renderBankrollStats() {
@@ -4740,12 +5076,7 @@ function renderBetTypeBreakdown() {
 }
 
 function renderResultsList() {
-  const data = getTrackData();
-  const bets = resultScope === 'all' ? (() => {
-    const store = getStore();
-    if (!store) return [];
-    return Object.values(store.tracks).flatMap(t => (t.bets||[]).filter(b=>!b.isExotic));
-  })() : (data && data.bets ? data.bets.filter(b=>!b.isExotic) : []);
+  var bets = getResultsBets();
 
   const container = el('results-list');
   const noMsg = el('no-results-msg');
@@ -4763,10 +5094,14 @@ function renderResultsList() {
   container.innerHTML = sorted.map(bet => {
     const isWin = bet.result === 'win';
     const isLoss = bet.result === 'loss';
+    const modeBadge = bet.bettingMode === 'real'
+      ? '<span class="badge-real" style="margin-left:4px">REAL</span>'
+      : '<span class="badge-sim" style="margin-left:4px">SIM</span>';
     return `<div class="result-bet-item ${isWin?'win':isLoss?'loss':''}" id="rbi-${bet.id}">
       <div class="result-bet-top">
         <div>
           <span class="badge ${isWin?'badge-gold':isLoss?'badge-muted':'badge-muted'}" style="margin-right:4px">${bet.type||'BET'}</span>
+          ${modeBadge}
           <span class="font-semibold">${(bet.selections||[]).join(', ')}</span>
         </div>
         <div class="mono font-bold">${fmt$(bet.amount)}</div>
@@ -5149,6 +5484,7 @@ function openSettings() {
   if (vEl) vEl.textContent = NE_APP_VERSION;
   var bpEl = el('settings-betting-platform');
   if (bpEl) bpEl.value = getBettingPlatform();
+  syncBettingModeUI();
   el('settings-modal').classList.add('open');
   document.body.classList.add('no-scroll');
 }
