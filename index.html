@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0028';
+var NE_APP_VERSION = '20260415-0100';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -486,7 +486,11 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 @media (min-width: 768px) { .header-logo-text { display: block; } }
 .header-right { display: flex; align-items: center; gap: 0.5rem; }
 .sync-info { font-size: 0.7rem; color: var(--color-muted); font-family: var(--font-mono); display: none; }
-@media (min-width: 768px) { .sync-info { display: block; } }
+.live-odds-status { font-size: 0.6rem; font-family: var(--font-mono); font-weight: 700; letter-spacing: 0.5px; padding: 2px 6px; border-radius: var(--radius-sm); display: none; }
+.live-odds-status.off { background: rgba(141,153,174,0.15); color: var(--color-muted); }
+.live-odds-status.on { background: rgba(45,106,79,0.15); color: var(--color-positive); animation: livePulse 2s ease-in-out infinite; }
+@keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+@media (min-width: 768px) { .sync-info { display: block; } .live-odds-status { display: block; } }
 .icon-btn { padding: 0.4rem; border-radius: var(--radius-sm); color: var(--color-muted); transition: all 0.15s; }
 .icon-btn:hover { background: rgba(27,67,50,0.08); color: var(--color-racing-green); }
 .icon-btn svg { width: 20px; height: 20px; display: block; }
@@ -1163,6 +1167,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     </nav>
 
     <div class="header-right">
+      <span class="live-odds-status" id="live-odds-status" title="Live tote odds feed status">LIVE ODDS: OFF</span>
       <span class="sync-info" id="sync-time">Last synced: --:-- --</span>
       <button class="icon-btn" id="track-pill-btn" onclick="toggleTrackDrawer()" title="Switch track" aria-label="Switch track" aria-expanded="false">
         <span class="track-pill" id="track-pill-text">SAR — Saratoga</span>
@@ -1848,6 +1853,7 @@ let livePollingInterval = null;
 let scratchPollingInterval = null;
 let oddsPollingInterval = null;
 let lastOddsData = {}; // { raceNum: { pp: prevOdds } } for movement detection
+let _adviceByRaceId = {}; // Cache: raceId → scored advice array (set by runAdviceEngine)
 let unviewedScratches = 0;
 let exoticMode = 'straight';
 let resultScope = 'track';
@@ -2177,6 +2183,9 @@ function initApp() {
     else syncInfo.classList.remove('hidden');
   }
 
+  // Initialize live odds status badge
+  updateLiveOddsStatus(false);
+
   // Start live polling if needed
   if (store.settings.dataMode === 'live') {
     startLivePolling();
@@ -2357,7 +2366,8 @@ function buildRaceCardHTML(race) {
   if (race._mtp != null && race._mtp >= 0) {
     const mtp = race._mtp;
     const mtpClass = mtp <= 5 ? 'mtp-soon' : mtp <= 15 ? 'mtp-near' : 'mtp-far';
-    mtpHtml = ` <span class="mtp-badge ${mtpClass}">${mtp} MTP</span>`;
+    const mtpLabel = mtp >= 60 ? Math.floor(mtp/60) + 'h ' + (mtp%60) + 'm' : mtp + ' MTP';
+    mtpHtml = ` <span class="mtp-badge ${mtpClass}">MTP: ${mtpLabel}</span>`;
   } else if (race.postTime && race.postTime !== 'TBD' && loadedRaceDate === getTodayStr()) {
     // Calculate MTP from post time
     const ptMin = parsePostTimeToMinutes(race.postTime);
@@ -2365,9 +2375,10 @@ function buildRaceCardHTML(race) {
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
       const mtp = ptMin - nowMin;
-      if (mtp > 0 && mtp <= 120) {
+      if (mtp > 0) {
         const mtpClass = mtp <= 5 ? 'mtp-soon' : mtp <= 15 ? 'mtp-near' : 'mtp-far';
-        mtpHtml = ` <span class="mtp-badge ${mtpClass}">${mtp} MTP</span>`;
+        const mtpLabel = mtp >= 60 ? Math.floor(mtp/60) + 'h ' + (mtp%60) + 'm' : mtp + ' MTP';
+        mtpHtml = ` <span class="mtp-badge ${mtpClass}">MTP: ${mtpLabel}</span>`;
       }
     }
   }
@@ -2388,7 +2399,7 @@ function buildRaceCardHTML(race) {
         <table class="entry-table">
           <thead>
             <tr>
-              <th>Out</th><th>PP</th><th>Horse</th><th>ML</th>${hasValidWorkerUrl() ? '<th>Live</th>' : ''}<th>Jockey</th><th>Trainer</th><th>Figs (3-2-1)</th><th>Style</th><th>Notes</th><th>WPS</th>
+              <th>Out</th><th>PP</th><th>Horse</th><th>ML</th><th>Live</th><th>Jockey</th><th>Trainer</th><th>Figs (3-2-1)</th><th>Style</th><th>Notes</th><th>WPS</th>
             </tr>
           </thead>
           <tbody id="entries-${race.id}">
@@ -2477,7 +2488,7 @@ function buildHorseRowHTML(raceId, h) {
     <td class="pp-cell">${h.pp || ''}</td>
     <td><span class="horse-name" onclick="openHorseModal('${raceId}','${h.id}')">${h.name || '—'}</span>${bulletIcon}${equipBadge}${h.scratched ? ' <span class="badge badge-scratch">SCRATCHED</span>' : ''}</td>
     <td class="odds-cell">${h.ml || '—'}</td>
-    ${hasValidWorkerUrl() ? '<td>' + liveOddsCell + '</td>' : ''}
+    <td>${liveOddsCell}</td>
     <td><span>${h.jockey || '—'}</span><div class="jt-pct">${h.jockeyPct ? h.jockeyPct+'%' : ''}</div></td>
     <td><span>${h.trainer || '—'}</span><div class="jt-pct">${h.trainerPct ? h.trainerPct+'%' : ''}</div></td>
     <td>
@@ -2924,6 +2935,7 @@ function runAdviceEngine() {
   const data = getTrackData();
   if (!data || !data.races) return;
   const races = data.races;
+  _adviceByRaceId = {}; // reset cache
   const today = getTodayStr();
   const code = getActiveTrack();
   const biasLogEntry = (data.bias || []).find(b => b.date === today);
@@ -3060,6 +3072,7 @@ function runAdviceEngine() {
 
     scored.sort((a,b) => b.score - a.score);
     race._advice = scored;
+    _adviceByRaceId[race.id] = scored;
 
     scored.forEach((s, idx) => {
       allScores.push({ ...s, race, rank: idx + 1 });
@@ -3118,6 +3131,8 @@ function runAdviceEngine() {
           else if (liveNum > mlNum * 1.2) { liveArrow = ' &#9650;'; liveArrowStyle = 'color:var(--color-positive)'; }
         }
         oddsDisplay += ` <span class="mono text-xs" style="margin-left:3px;font-weight:600">LIVE: ${s.horse.liveOdds}<span style="${liveArrowStyle}">${liveArrow}</span></span>`;
+      } else {
+        oddsDisplay += ' <span class="mono text-xs text-muted" style="margin-left:3px">LIVE: &mdash;</span>';
       }
 
       let rationale = buildRationale(s, race, confidence, i);
@@ -4043,8 +4058,8 @@ function renderAdviceEnginePanel() {
   const output = el('advice-output');
   if (!output) return;
 
-  // Run the advice engine first to ensure _advice is populated
-  if (!races.some(r => r._advice)) runAdviceEngine();
+  // Run the advice engine if cache is empty (populates _adviceByRaceId)
+  if (!Object.keys(_adviceByRaceId).length) runAdviceEngine();
 
   const targetRaces = raceId === 'all' ? races : races.filter(r=>r.id===raceId);
   if (!targetRaces.length) {
@@ -4056,7 +4071,7 @@ function renderAdviceEnginePanel() {
 
   let html = '';
   targetRaces.forEach(race => {
-    const scored = race._advice;
+    const scored = _adviceByRaceId[race.id];
     if (!scored || !scored.length) return;
     const typeLbl = CLASS_LABELS[race.type] || race.type || '';
     html += `<div style="margin-bottom:1.25rem">
@@ -4098,6 +4113,8 @@ function renderAdviceEnginePanel() {
           else if (liveNum > mlNum * 1.33) { arrow = '&#9650;'; arrowCls = 'color:var(--color-positive)'; }
         }
         liveOddsHtml = ` <span class="mono text-xs" style="margin-left:4px">LIVE: ${liveOdds} <span style="${arrowCls}">${arrow}</span></span>`;
+      } else {
+        liveOddsHtml = ' <span class="mono text-xs text-muted" style="margin-left:4px">LIVE: &mdash;</span>';
       }
 
       html += `<div class="advice-row">
@@ -4138,24 +4155,22 @@ function renderAdviceEnginePanel() {
 
 function buildScoreBreakdownHtml(s) {
   const components = [
-    { label: 'Speed (35%)', score: s.speedScore, weight: 0.35 },
-    { label: 'Class (20%)', score: s.classScore, weight: 0.20 },
-    { label: 'Pace (15%)', score: s.paceScore, weight: 0.15 },
-    { label: 'T/J (15%)', score: s.tjScore, weight: 0.15 },
-    { label: 'Bias (10%)', score: s.biasScore, weight: 0.10 },
-    { label: 'Fresh (5%)', score: s.freshnessScore, weight: 0.05 },
+    { label: 'Speed (35%)', score: s.speedScore, weight: 0.35, color: '#2d6a4f' },
+    { label: 'Class (20%)', score: s.classScore, weight: 0.20, color: '#2563eb' },
+    { label: 'Pace (15%)', score: s.paceScore, weight: 0.15, color: '#e67e22' },
+    { label: 'T/J (15%)', score: s.tjScore, weight: 0.15, color: '#7c3aed' },
+    { label: 'Bias (10%)', score: s.biasScore, weight: 0.10, color: '#6b7280' },
+    { label: 'Fresh (5%)', score: s.freshnessScore, weight: 0.05, color: '#0d9488' },
   ];
   const dataQual = Math.round(s.completeness * 100);
   const modelPct = (s.modelProb * 100).toFixed(1);
   return `<div class="score-breakdown">
     <div class="score-breakdown-bars">
       ${components.map(c => {
-        const weighted = (c.score * c.weight).toFixed(1);
         const barW = Math.max(4, c.score);
-        const hue = c.score >= 70 ? '145' : c.score >= 50 ? '45' : '0';
         return `<div class="score-breakdown-row">
           <span class="score-breakdown-label">${c.label}</span>
-          <div class="score-breakdown-track"><div class="score-breakdown-fill" style="width:${barW}%;background:hsl(${hue},55%,42%)"></div></div>
+          <div class="score-breakdown-track"><div class="score-breakdown-fill" style="width:${barW}%;background:${c.color}"></div></div>
           <span class="score-breakdown-val">${c.score.toFixed(0)}</span>
         </div>`;
       }).join('')}
@@ -5037,6 +5052,14 @@ function stopLivePolling() {
   if (livePollingInterval) { clearInterval(livePollingInterval); livePollingInterval = null; }
   if (scratchPollingInterval) { clearInterval(scratchPollingInterval); scratchPollingInterval = null; }
   if (oddsPollingInterval) { clearInterval(oddsPollingInterval); oddsPollingInterval = null; }
+  updateLiveOddsStatus(false);
+}
+
+function updateLiveOddsStatus(active) {
+  const badge = el('live-odds-status');
+  if (!badge) return;
+  badge.textContent = active ? 'LIVE ODDS: ON' : 'LIVE ODDS: OFF';
+  badge.className = 'live-odds-status ' + (active ? 'on' : 'off');
 }
 
 /** Check if it's within race hours (11am-6pm ET) */
@@ -5051,11 +5074,12 @@ function isDuringRaceHours() {
 /** Start/stop odds polling based on race hours and worker availability */
 function startOddsPolling() {
   if (oddsPollingInterval) { clearInterval(oddsPollingInterval); oddsPollingInterval = null; }
-  if (!hasValidWorkerUrl()) return;
-  if (!isDuringRaceHours()) return;
+  if (!hasValidWorkerUrl()) { updateLiveOddsStatus(false); return; }
+  if (!isDuringRaceHours()) { updateLiveOddsStatus(false); return; }
   // Only poll if viewing today's or current race date
-  if (loadedRaceDate && loadedRaceDate !== getTodayStr()) return;
+  if (loadedRaceDate && loadedRaceDate !== getTodayStr()) { updateLiveOddsStatus(false); return; }
 
+  updateLiveOddsStatus(true);
   fetchLiveOdds();
   oddsPollingInterval = setInterval(() => {
     if (isDuringRaceHours()) {
@@ -5063,6 +5087,7 @@ function startOddsPolling() {
     } else {
       clearInterval(oddsPollingInterval);
       oddsPollingInterval = null;
+      updateLiveOddsStatus(false);
     }
   }, 60 * 1000); // every 60 seconds
 }
