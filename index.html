@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0534';
+var NE_APP_VERSION = '20260415-0600';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2503,6 +2503,9 @@ function setWelcomeMode(mode) {
     : 'Manually enter race cards, entries, and results. No API key needed.';
 }
 
+// Timer ID for finishWelcome scroll — lets us cancel if button is pressed rapidly
+var _finishWelcomeTimer = 0;
+
 function finishWelcome() {
   // Flag that the user completed onboarding this session — survives version-check reloads
   try { sessionStorage.setItem('ne_welcomed', '1'); } catch(e) {}
@@ -2533,26 +2536,39 @@ function finishWelcome() {
   const af = el('app-frame');
   if (af.classList.contains('hidden')) {
     af.classList.remove('hidden');
-    // Prevent applyRaceFocus from overriding our scroll-to-ticket
     window._skipRaceFocusScroll = true;
     initApp();
   }
 
-  // Keep the welcome/hero screen in the DOM so users can scroll back to it.
-  // The IntersectionObserver on #welcome-screen already handles hiding/showing
-  // the tab bar when the hero comes into view.
-
   // Update hero subtitle for selected track
   updateHeroSubtitle();
 
-  // Ensure we're on the Today tab
-  switchTab('today');
+  // Ensure the Today tab is active without triggering switchTab's own scroll.
+  // switchTab calls renderTabContent which re-renders races and runs
+  // applyRaceFocus (with its own 300ms scroll timeout) — we need to suppress
+  // ALL of those competing scrolls so only our final scroll (below) wins.
+  window._skipRaceFocusScroll = true;
 
-  // Transition: fade out the welcome, then reveal the ticket card.
-  // 1. Fade the welcome screen to transparent
-  // 2. Instant-scroll to the ticket card (no smooth — avoids choppiness)
-  // 3. Fade the app content in
-  // 4. Header is hidden; slides in on first user interaction
+  // Activate Today tab panels and buttons directly (same logic as switchTab
+  // but without the scroll at the end, which would race with our timeout).
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+  document.querySelectorAll('.desktop-nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  var todayPanel = el('tab-today');
+  if (todayPanel) todayPanel.classList.add('active');
+  var todayBtn = el('tab-btn-today');
+  if (todayBtn) { todayBtn.classList.add('active'); todayBtn.setAttribute('aria-selected', 'true'); }
+  var todayDBtn = el('dnav-today');
+  if (todayDBtn) todayDBtn.classList.add('active');
+  renderTabContent('today');
+  // Clear scratch badge (same as switchTab does for 'today')
+  unviewedScratches = 0;
+  updateScratchBadge();
+
+  // Cancel any in-flight scroll from a previous "Let's Go" press
+  clearTimeout(_finishWelcomeTimer);
+
+  // Transition: fade out the welcome, then snap-scroll to the ticket card.
   var header = el('top-header');
   var ws = el('welcome-screen');
 
@@ -2562,23 +2578,25 @@ function finishWelcome() {
     ws.style.opacity = '0';
   }
 
-  // Hide header so ticket fills viewport
+  // Hide header so ticket fills the full viewport on arrival
   if (header) header.style.transform = 'translateY(-100%)';
 
-  // After fade-out completes, snap to the ticket card
-  setTimeout(function() {
-    // Restore welcome opacity for when user scrolls back
+  // After the fade completes, perform a single authoritative scroll
+  _finishWelcomeTimer = setTimeout(function() {
+    // Restore welcome opacity so the user can scroll back to it
     if (ws) { ws.style.transition = ''; ws.style.opacity = '1'; }
 
+    // Determine scroll target — always the same regardless of press count
     var ticket = el('rec-bets-card');
     var heading = el('today-heading');
     var target = (ticket && !ticket.classList.contains('hidden')) ? ticket
                : heading || el('main-content') || af;
+
+    // Compute absolute document offset of the target
     var rect = target.getBoundingClientRect();
-    // Instant scroll — no animation, no choppiness
     window.scrollTo(0, rect.top + window.pageYOffset);
 
-    // Reveal header on first user scroll or touch.
+    // Reveal header on first user interaction (touch or click)
     var revealed = false;
     function revealHeader() {
       if (revealed) return;
@@ -2591,10 +2609,7 @@ function finishWelcome() {
       window.removeEventListener('touchstart', revealHeader);
       window.removeEventListener('mousedown', revealHeader);
     }
-    // Don't attach scroll listener — it's unreliable with programmatic scrollTo.
-    // Instead, only reveal header on touch (user interaction).
     window.addEventListener('touchstart', revealHeader, { passive: true });
-    // For desktop: reveal on mousedown (not scroll)
     window.addEventListener('mousedown', revealHeader, { passive: true });
   }, 300);
 }
@@ -3079,12 +3094,14 @@ function applyRaceFocus(races, activeIdx) {
     }
   });
 
-  // Scroll to active race (slight delay for DOM paint)
-  // Skip if we just came from the welcome screen — finishWelcome handles scroll
+  // Scroll to active race (slight delay for DOM paint).
+  // Skip if finishWelcome is handling scroll — it sets _skipRaceFocusScroll.
+  // Cancel any previously-queued race-focus scroll to avoid races.
+  clearTimeout(window._raceFocusScrollTimer);
   if (!window._skipRaceFocusScroll) {
     const activeRace = races[activeIdx];
     if (activeRace) {
-      setTimeout(() => {
+      window._raceFocusScrollTimer = setTimeout(() => {
         const activeWrap = el('race-wrap-' + activeRace.id);
         if (activeWrap) activeWrap.scrollIntoView({ behavior: 'auto', block: 'start' });
       }, 300);
