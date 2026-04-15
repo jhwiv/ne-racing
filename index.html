@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0600';
+var NE_APP_VERSION = '20260415-0700';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -540,6 +540,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .toast.scratch { border-left-color: var(--color-negative); }
 .toast.success { border-left-color: var(--color-positive); }
+.toast.warning { border-left-color: var(--color-amber); }
+.toast.danger { border-left-color: var(--color-negative); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes toastOut { to { opacity: 0; transform: translateY(-10px); height: 0; padding: 0; margin: 0; } }
 
@@ -911,6 +913,30 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 #horse-modal.open .horse-sheet { transform: translateY(0); }
 @media (min-width: 500px) { #horse-modal.open .horse-sheet { transform: scale(1); } }
 .horse-modal-name { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem; }
+
+/* Bet helper popup */
+#bet-helper-popup {
+  position: fixed; inset: 0; z-index: 450;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+#bet-helper-popup.open { opacity: 1; pointer-events: auto; }
+.bet-helper-sheet {
+  background: var(--color-white); border-radius: var(--radius-xl);
+  width: min(400px, 90vw); max-height: 80vh; overflow-y: auto;
+  transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+#bet-helper-popup.open .bet-helper-sheet { transform: scale(1); }
+.bet-helper-header {
+  background: var(--color-racing-green); color: var(--color-white);
+  padding: 0.75rem 1rem; border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  font-family: var(--font-display); font-size: 1rem; font-weight: 700;
+}
+.bet-helper-body { padding: 1rem; font-size: 0.85rem; line-height: 1.7; color: var(--color-slate); }
+.bet-helper-body ul { padding-left: 1.2rem; margin: 0.5rem 0; }
+.bet-helper-body li { margin-bottom: 0.25rem; }
+.bet-helper-footer { padding: 0 1rem 1rem; text-align: right; }
 
 /* =========================================================
    TOP PICKS CARD
@@ -1581,6 +1607,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
             <input type="number" id="exotic-base" class="form-control form-control-sm" value="2" min="0.5" step="0.5" inputmode="decimal" oninput="calcExoticCost()">
           </div>
         </div>
+        <div id="exotic-race-select-row" class="mb-1 hidden">
+          <label class="form-label" for="exotic-race-select" style="font-size:0.78rem">Race</label>
+          <select id="exotic-race-select" class="form-control form-control-sm" onchange="onExoticRaceChange()">
+            <option value="">Select a Race</option>
+          </select>
+        </div>
         <div id="exotic-mode-row" class="mb-1">
           <div class="mode-seg" id="exotic-mode-seg">
             <button class="mode-seg-btn active" onclick="setExoticMode('straight')">Straight</button>
@@ -1875,6 +1907,144 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         </div>
       </div>
 
+      <!-- Betting Basics -->
+      <div class="ref-section">
+        <div class="ref-section-header" onclick="toggleRefSection(this)">
+          <h3>Betting Basics</h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="ref-section-body hidden">
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:0 0 0.5rem;color:var(--color-gold)">How Parimutuel Betting Works</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>Horse racing uses parimutuel (pool) betting, NOT fixed-odds like sports betting</li>
+            <li>All bets go into a pool; the track takes its cut (called &ldquo;takeout,&rdquo; typically 15&ndash;25%)</li>
+            <li>Remaining money is split among winners proportional to how much they bet</li>
+            <li>This means odds change right up until post time as more bets come in</li>
+            <li>Morning Line (ML) odds are just estimates &mdash; they&rsquo;re the track handicapper&rsquo;s prediction of where the odds will land, not a guarantee</li>
+            <li>The tote board shows live odds that update every 60 seconds</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">The $2 Base Bet</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>Most bets at the track have a $2 minimum (some exotics allow $0.50 or $0.10)</li>
+            <li>When odds are listed as &ldquo;5-1,&rdquo; that means $5 profit per $1 wagered, so a $2 bet returns $12 ($10 profit + $2 stake)</li>
+            <li>Win pays the most, Place pays less, Show pays the least &mdash; but each is progressively easier to hit</li>
+            <li>Don&rsquo;t think of Show bets as &ldquo;bad&rdquo; &mdash; they&rsquo;re a lower-variance way to play a strong opinion</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Your First Day at the Track</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>Study the program or Daily Racing Form before betting &mdash; look at speed figures, jockey/trainer records, and recent form</li>
+            <li>Set a bankroll BEFORE you arrive and stick to it (this app helps with the 20% daily budget rule)</li>
+            <li>Start with straight Win bets on horses you have conviction on &mdash; exotics come later</li>
+            <li>Watch a few races before betting to observe the track surface and see which running styles are working</li>
+            <li>&ldquo;Chalk&rdquo; = the favorite. A &ldquo;bridge jumper&rdquo; bet is a large Show bet on a heavy favorite &mdash; low return but high hit rate</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Understanding Takeout</h4>
+          <p style="font-size:0.85rem;line-height:1.7;margin-bottom:0.75rem">Takeout varies by bet type and track:</p>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>Win/Place/Show: typically 15&ndash;17%</li>
+            <li>Exacta/Trifecta: typically 19&ndash;22%</li>
+            <li>Pick 4/5/6: typically 22&ndash;25%</li>
+          </ul>
+          <div class="banner banner-warning" style="font-size:0.82rem;padding:0.5rem 0.75rem;margin:0.5rem 0">Higher takeout = harder to profit long-term. You need horses that win MORE often than their odds imply to overcome the takeout. A 3-1 shot that wins 30% of the time is a good bet; a 3-1 shot that wins 20% is a bad bet &mdash; even if it wins today.</div>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Bankroll Management 101</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>The Kelly Criterion suggests betting a percentage proportional to your edge &mdash; but most recreational players should cap at 5% per bet</li>
+            <li>This app&rsquo;s 20% daily budget rule is designed to keep you in action across 4-5 bets per day</li>
+            <li>Never chase losses &mdash; if you lose your daily budget, you&rsquo;re done for the day</li>
+            <li>Track every bet (the Results tab does this for you) &mdash; review weekly to find patterns in what you&rsquo;re good at</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Common Beginner Mistakes</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li><strong>Betting every race:</strong> the best handicappers PASS more races than they play</li>
+            <li><strong>Only betting favorites:</strong> favorites win ~33% of the time but rarely at profitable odds</li>
+            <li><strong>Ignoring the odds:</strong> a great horse at 1-5 odds is usually a terrible bet; a decent horse at 8-1 can be excellent</li>
+            <li><strong>Over-boxing:</strong> a $2 Trifecta box with 6 horses costs $120 &mdash; know your cost before you click</li>
+            <li><strong>Emotional betting:</strong> never bet a horse because of its name, colors, or your &ldquo;gut feeling&rdquo; without data</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Advanced Strategies -->
+      <div class="ref-section">
+        <div class="ref-section-header" onclick="toggleRefSection(this)">
+          <h3>Advanced Strategies</h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="ref-section-body hidden">
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:0 0 0.5rem;color:var(--color-gold)">Expected Value (EV) and Overlay Theory</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>A bet has positive EV when the true win probability exceeds the implied probability of the tote odds</li>
+            <li>Implied probability = 1 / (decimal odds). At 4-1, implied probability = 20%. If you estimate the horse wins 28% of the time, that&rsquo;s an 8% overlay</li>
+            <li>This app&rsquo;s Advice Engine calculates overlay as: (modelProb - impliedProb) / impliedProb &mdash; values &gt; 0.08 (8% overlay) flag a horse as a &ldquo;Value Play&rdquo;</li>
+            <li>Professional bettors focus exclusively on overlay &mdash; they don&rsquo;t care if a horse &ldquo;wins,&rdquo; they care if it wins MORE OFTEN than the odds price in</li>
+            <li>Key insight: you can be profitable betting horses that lose 70% of the time, as long as the 30% wins pay enough to overcome losses + takeout</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Dutching and Spreading</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>Dutching: betting multiple horses in the same race, sized so that any winner returns the same profit</li>
+            <li>Formula: stake_i = (totalStake &times; impliedProb_i) / sum(impliedProbs) for all selected horses</li>
+            <li>Best applied when you can eliminate 40%+ of the field but can&rsquo;t narrow to one horse</li>
+            <li>Spreading in exotics: using a Key horse with multiple &ldquo;with&rdquo; horses rather than boxing, to reduce cost while keeping the high-probability horse anchored</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Pace Analysis Deep Dive</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>The single most predictive factor in route races (1 mile+): the pace scenario</li>
+            <li>Classify every horse as E (front-runner), EP (presser), P (mid-pack), S (closer), SS (deep closer)</li>
+            <li>Count the &ldquo;E&rdquo; and &ldquo;EP&rdquo; horses: 0-1 = slow pace (favors speed), 2 = moderate (honest), 3+ = hot pace (favors closers)</li>
+            <li>Lone speed is the most powerful angle in handicapping &mdash; a front-runner with no early challengers can dictate tempo and save energy</li>
+            <li>In sprint races (under 7f), pace is less decisive &mdash; raw speed figures dominate</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Trainer/Jockey Pattern Exploitation</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>Track trainer stats in specific situations: first-time starters, turf-to-dirt, layoff returns (60+ days), equipment changes (blinkers on/off)</li>
+            <li>Some trainers have 30%+ win rates in specific spots but 12% overall &mdash; the specific angle matters more than the overall number</li>
+            <li>Jockey/trainer combos that work together frequently often outperform either individual&rsquo;s stats</li>
+            <li>&ldquo;Barn moves&rdquo; (horse transfers to a new trainer) are high-value angles, especially when moving to a top barn</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Exotic Wagering Strategy</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li><strong>Exactas:</strong> Rarely box &mdash; instead, play two straight exactas if you have a strong opinion on the winner. $2 EX 3/5 + $2 EX 3/7 costs $4 and gives you a key position. Boxing 3-5-7 costs $12</li>
+            <li><strong>Trifectas:</strong> Key your strongest horse on top with 3-4 &ldquo;with&rdquo; horses underneath. Key cost = base &times; n &times; (n-1) where n = with-horses. Much cheaper than full box</li>
+            <li><strong>Pick 4/5/6:</strong> Use &ldquo;spread&rdquo; legs (many horses) in races with no standout, and &ldquo;single&rdquo; legs (one horse) in races with a strong opinion. The ideal ticket has 2-3 singles and 1-2 spread legs. A Pick 4 with singles of 1&times;1&times;4&times;6 = 24 combinations ($48 at $2) vs full spread 4&times;4&times;4&times;4 = 256 combinations ($512)</li>
+            <li><strong>Daily Doubles:</strong> The most underrated exotic. Lower takeout than Trifectas/Supers, and you only need two winners. Use them to create value when one leg has a clear standout</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Bankroll Management for Serious Players</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li><strong>Flat betting:</strong> Same amount every bet. Simple, prevents overexposure, but doesn&rsquo;t maximize edge</li>
+            <li><strong>Proportional betting:</strong> Bet a fixed % of current bankroll (e.g., 3%). Automatically scales down during losing streaks and up during winning streaks</li>
+            <li><strong>Kelly staking:</strong> Optimal bet size = (edge / odds). If you estimate 30% win probability at 4-1 odds: Kelly = (0.30 &times; 5 - 1) / (5 - 1) = 12.5% of bankroll. Most pros use &ldquo;fractional Kelly&rdquo; (half or quarter Kelly) to reduce variance</li>
+            <li><strong>Session management:</strong> Set stop-loss (e.g., -40% of daily bankroll) and stop-win (e.g., +100%) targets. When either hits, walk away</li>
+            <li>Track your ROI by bet type &mdash; most players find they&rsquo;re profitable in one or two bet types and losing in others. Double down on your strengths</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Reading Tote Board Patterns</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>&ldquo;Steam&rdquo; = odds dropping rapidly, usually indicating sharp (professional) money. Late steam on a non-obvious horse is the strongest signal</li>
+            <li>&ldquo;Drift&rdquo; = odds rising. Can mean insiders are NOT betting their own horse &mdash; a negative signal</li>
+            <li>Watch the late odds changes (final 2 minutes before post) &mdash; this is when sharp money tends to appear</li>
+            <li>Pool size matters: in small pools ($10-20K win pool), a single large bet can distort odds. In large pools ($200K+), significant moves more likely represent collective sharp action</li>
+          </ul>
+
+          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Mental Game</h4>
+          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+            <li>Results-oriented thinking is the enemy. A correct bet that loses is still a correct bet &mdash; evaluate process, not outcome</li>
+            <li>Keep a betting journal (beyond just results) &mdash; note WHY you made each bet. Review weekly to identify pattern biases</li>
+            <li>The concept of &ldquo;due&rdquo; doesn&rsquo;t exist in racing &mdash; each race is independent</li>
+            <li>Fatigue kills edge: your worst bets will come late in the card when you&rsquo;re tired and chasing. The 20% budget rule prevents this</li>
+          </ul>
+        </div>
+      </div>
+
       <!-- Odds & Payout Table -->
       <div class="ref-section">
         <div class="ref-section-header" onclick="toggleRefSection(this)">
@@ -2068,6 +2238,17 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 </div>
 
+<!-- BET HELPER POPUP -->
+<div id="bet-helper-popup" role="dialog" aria-modal="true" aria-label="Bet Helper" onclick="if(event.target===this)closeBetHelperPopup()">
+  <div class="bet-helper-sheet">
+    <div class="bet-helper-header" id="bet-helper-title">Fix Your Bet</div>
+    <div class="bet-helper-body" id="bet-helper-body"></div>
+    <div class="bet-helper-footer">
+      <button class="btn btn-gold btn-sm" onclick="closeBetHelperPopup()">Got it</button>
+    </div>
+  </div>
+</div>
+
 <!-- HORSE DETAIL MODAL -->
 <div id="horse-modal" role="dialog" aria-modal="true" aria-label="Horse Details" onclick="closeHorseModalOnBg(event)">
   <div class="horse-sheet">
@@ -2239,7 +2420,8 @@ function hasValidWorkerUrl() {
 function showToast(msg, type = 'default', duration = 8000) {
   const container = el('toast-container');
   const div = document.createElement('div');
-  div.className = 'toast' + (type === 'scratch' ? ' scratch' : type === 'success' ? ' success' : '');
+  const typeClass = {scratch:' scratch', success:' success', warning:' warning', danger:' danger'}[type] || '';
+  div.className = 'toast' + typeClass;
   div.innerHTML = '<span style="flex:1">' + msg + '</span><button onclick="this.parentElement.remove()" style="color:rgba(255,255,255,0.5);font-size:1.1rem;line-height:1;padding:0 0.2rem">&times;</button>';
   container.appendChild(div);
   if (duration > 0) setTimeout(() => { div.style.animation = 'toastOut 0.3s ease forwards'; setTimeout(() => div.remove(), 300); }, duration);
@@ -2375,6 +2557,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     saveTrackData(data);
     showToast('Added to bet slip: $' + amount + ' ' + betType + ' #' + horsePp + ' ' + horseName + ' R' + raceNum, 'success', 3000);
     updateBankrollBanner();
+    checkBankrollOverrun();
   } else {
     // Real mode: open external platform + also track internally
     var data = getTrackData();
@@ -2400,6 +2583,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     var platformName = (BETTING_PLATFORMS[platform] || {}).name || 'betting platform';
     window.open(buildBetUrl(raceNum), '_blank', 'noopener');
     showToast('Opened ' + platformName + ' — don\'t forget to log your result', 'success', 3000);
+    checkBankrollOverrun();
   }
 }
 
@@ -3243,6 +3427,11 @@ function toggleWPS(raceId, horseId, type, btnEl) {
   if (!race) return;
   const horse = (race.horses || []).find(h => h.id === horseId);
   if (!horse) return;
+  // Scratched horse protection
+  if (horse.scratched) {
+    showToast('\u26a0\ufe0f ' + (horse.name || 'This horse') + ' is scratched \u2014 bet removed from card', 'warning', 3500);
+    return;
+  }
   if (!horse.wps) horse.wps = [];
   const idx = horse.wps.indexOf(type);
   if (idx > -1) { horse.wps.splice(idx, 1); btnEl.classList.remove('active'); }
@@ -3366,6 +3555,11 @@ function toggleWPSFromModal(raceId, horseId, type, btnEl) {
   if (!race) return;
   const horse = (race.horses||[]).find(h=>h.id===horseId);
   if (!horse) return;
+  // Scratched horse protection
+  if (horse.scratched) {
+    showToast('\u26a0\ufe0f ' + (horse.name || 'This horse') + ' is scratched \u2014 bet removed from card', 'warning', 3500);
+    return;
+  }
   if (!horse.wps) horse.wps = [];
   const idx = horse.wps.indexOf(type);
   if (idx > -1) horse.wps.splice(idx, 1);
@@ -4191,6 +4385,56 @@ function lockAllBets() {
 
 /* Exotic builder */
 let exoticSelections = {}; // keyed by position (0-based) or leg index
+let exoticSelectedRace = null;
+
+function showBetHelperPopup(title, message, suggestions) {
+  const popup = el('bet-helper-popup');
+  if (!popup) return;
+  el('bet-helper-title').textContent = title || 'Fix Your Bet';
+  let html = '<p style="margin:0 0 0.5rem">' + message + '</p>';
+  if (suggestions && suggestions.length) {
+    html += '<ul>';
+    suggestions.forEach(s => { html += '<li>' + s + '</li>'; });
+    html += '</ul>';
+  }
+  el('bet-helper-body').innerHTML = html;
+  popup.classList.add('open');
+}
+
+function closeBetHelperPopup() {
+  const popup = el('bet-helper-popup');
+  if (popup) popup.classList.remove('open');
+}
+
+function onExoticRaceChange() {
+  const sel = el('exotic-race-select');
+  exoticSelectedRace = sel && sel.value ? sel.value : null;
+  exoticSelections = {};
+  const type = el('exotic-type').value;
+  const body = el('exotic-builder-body');
+  if (body) renderSingleRaceExotic(type, body);
+  calcExoticCost();
+}
+
+function checkBankrollOverrun() {
+  const store = getStore();
+  if (!store) return;
+  const bankroll = store.settings.startingBankroll || 1000;
+  const budget = bankroll * 0.2;
+  const data = getTrackData();
+  const bets = (data && data.bets) || [];
+  const races = (data && data.races) || [];
+  let committed = 0;
+  bets.filter(b => b.isExotic).forEach(b => { committed += parseFloat(b.amount) || 0; });
+  races.forEach(race => {
+    (race.horses||[]).forEach(h => {
+      (h.wps||[]).forEach(() => { committed += 2; });
+    });
+  });
+  if (committed > budget) {
+    showToast('\u26a0\ufe0f You\'re now over your daily budget \u2014 proceed with caution', 'warning', 4000);
+  }
+}
 
 function renderExoticBuilder() {
   exoticSelections = {};
@@ -4203,7 +4447,21 @@ function renderExoticBuilder() {
   const isMulti = multiRaceTypes.includes(type);
   modeRow.classList.toggle('hidden', isMulti);
 
+  // Show/hide race selector for single-race exotics
+  const raceSelectRow = el('exotic-race-select-row');
+  if (raceSelectRow) {
+    raceSelectRow.classList.toggle('hidden', isMulti);
+    if (!isMulti) {
+      const select = el('exotic-race-select');
+      const races = getHorsesForExotic();
+      const raceGroups = races.filter(r => (r.horses||[]).some(h=>!h.scratched));
+      select.innerHTML = '<option value="">Select a Race</option>' +
+        raceGroups.map(r => `<option value="${r.num}"${exoticSelectedRace == r.num ? ' selected' : ''}>Race ${r.num}</option>`).join('');
+    }
+  }
+
   if (isMulti) {
+    exoticSelectedRace = null;
     renderMultiRaceExotic(type, body);
   } else {
     renderSingleRaceExotic(type, body);
@@ -4221,13 +4479,22 @@ function renderSingleRaceExotic(type, body) {
   const positions = { EX: ['1st','2nd'], TRI: ['1st','2nd','3rd'], SUPER: ['1st','2nd','3rd','4th'] };
   const mode = exoticMode;
   const races = getHorsesForExotic();
-  const horses = races.flatMap(r => (r.horses||[]).filter(h=>!h.scratched).map(h=>({...h, raceNum:r.num})));
 
-  if (!horses.length) { body.innerHTML = '<p class="text-muted text-sm">Add horses in Today\'s Card first.</p>'; return; }
+  // If no race selected, prompt to select one
+  if (!exoticSelectedRace) {
+    body.innerHTML = '<p class="text-muted text-sm">Select a race above to build your exotic bet.</p>';
+    return;
+  }
 
-  // Group horses by race for display
+  // Filter to only the selected race
+  const filteredRaces = races.filter(r => String(r.num) === String(exoticSelectedRace));
+  const horses = filteredRaces.flatMap(r => (r.horses||[]).filter(h=>!h.scratched).map(h=>({...h, raceNum:r.num})));
+
+  if (!horses.length) { body.innerHTML = '<p class="text-muted text-sm">No horses available in Race ' + exoticSelectedRace + '.</p>'; return; }
+
+  // Group horses by race for display (single race now)
   const raceGroups = [];
-  races.forEach(r => {
+  filteredRaces.forEach(r => {
     const rh = (r.horses||[]).filter(h=>!h.scratched).map(h=>({...h, raceNum:r.num}));
     if (rh.length) raceGroups.push({ num: r.num, horses: rh });
   });
@@ -4235,7 +4502,6 @@ function renderSingleRaceExotic(type, body) {
   function buildGroupedChips(posIdx, onclickFn) {
     let html = '';
     raceGroups.forEach(g => {
-      html += `<div class="exotic-race-header">Race ${g.num}</div>`;
       g.horses.forEach(h => {
         html += `<button class="horse-chip" data-pos="${posIdx}" data-horseid="${h.id}" data-pp="${h.pp}" data-name="${escHtml(h.name)}"
           onclick="${onclickFn(h)}">#${h.pp||''} ${escHtml(h.name)}</button>`;
@@ -4298,7 +4564,18 @@ function toggleExoticHorse(pos, horseId, name, btn) {
   if (!exoticSelections[pos]) exoticSelections[pos] = [];
   const idx = exoticSelections[pos].findIndex(h=>h.id===horseId);
   if (idx > -1) { exoticSelections[pos].splice(idx,1); btn.classList.remove('selected'); }
-  else { exoticSelections[pos].push({id:horseId, name}); btn.classList.add('selected'); }
+  else {
+    // Cross-position duplicate prevention (straight mode only)
+    if (exoticMode === 'straight') {
+      for (const otherPos in exoticSelections) {
+        if (String(otherPos) !== String(pos) && exoticSelections[otherPos].some(h=>h.id===horseId)) {
+          showToast('\u26a0\ufe0f #' + (btn.dataset.pp||'') + ' ' + name + ' is already in another position \u2014 each horse can only fill one spot', 'warning', 4000);
+          return;
+        }
+      }
+    }
+    exoticSelections[pos].push({id:horseId, name}); btn.classList.add('selected');
+  }
   calcExoticCost();
 }
 
@@ -4307,10 +4584,25 @@ function toggleExoticKey(horseId, name, btn) {
   document.querySelectorAll('#exotic-pos-key .horse-chip').forEach(b=>b.classList.remove('selected-key'));
   exoticSelections['key'] = [{id:horseId, name}];
   btn.classList.add('selected-key');
+  // Remove this horse from With list if present
+  if (exoticSelections['with']) {
+    const wIdx = exoticSelections['with'].findIndex(h=>h.id===horseId);
+    if (wIdx > -1) {
+      exoticSelections['with'].splice(wIdx, 1);
+      document.querySelectorAll('#exotic-pos-with .horse-chip').forEach(b => {
+        if (b.dataset.horseid === horseId) b.classList.remove('selected');
+      });
+    }
+  }
   calcExoticCost();
 }
 
 function toggleExoticWith(horseId, name, btn) {
+  // Key horse can't also be a With horse
+  if (exoticSelections['key'] && exoticSelections['key'].some(h=>h.id===horseId)) {
+    showToast('\u26a0\ufe0f Key horse can\'t also be a With horse \u2014 pick different horses for each', 'warning', 4000);
+    return;
+  }
   if (!exoticSelections['with']) exoticSelections['with'] = [];
   const idx = exoticSelections['with'].findIndex(h=>h.id===horseId);
   if (idx > -1) { exoticSelections['with'].splice(idx,1); btn.classList.remove('selected'); }
@@ -4406,6 +4698,60 @@ function addExoticToBetSlip() {
   const type = el('exotic-type').value;
   const base = parseFloat(el('exotic-base').value) || 2;
   const costText = el('exotic-cost-display').textContent;
+  const multiRaceTypes = ['DD','P3','P4','P5','P6'];
+  const isMulti = multiRaceTypes.includes(type);
+  const positions = { EX: 2, TRI: 3, SUPER: 4 };
+  const typeNames = { EX: 'Exacta', TRI: 'Trifecta', SUPER: 'Superfecta', DD: 'Daily Double', P3: 'Pick 3', P4: 'Pick 4', P5: 'Pick 5', P6: 'Pick 6' };
+  const numPos = positions[type] || 2;
+  const typeName = typeNames[type] || type;
+
+  // -- Validation for single-race exotics --
+  if (!isMulti) {
+    if (exoticMode === 'box') {
+      const sel = exoticSelections[0] || [];
+      if (sel.length < numPos) {
+        showBetHelperPopup('Almost There', 'A ' + typeName + ' Box needs at least ' + numPos + ' different horses, but you\'ve only selected ' + sel.length + '.', ['Select ' + (numPos - sel.length) + ' more horse' + (numPos - sel.length > 1 ? 's' : '') + ' to complete the box', 'Tip: Box bets let your horses finish in any order']);
+        return;
+      }
+    } else if (exoticMode === 'straight') {
+      let emptyPos = false;
+      for (let i = 0; i < numPos; i++) {
+        if (!exoticSelections[i] || exoticSelections[i].length === 0) { emptyPos = true; break; }
+      }
+      if (emptyPos) {
+        showBetHelperPopup('Almost There', 'Pick a horse for each position to complete this ' + typeName + '.', ['Fill in every position (1st, 2nd' + (numPos >= 3 ? ', 3rd' : '') + (numPos >= 4 ? ', 4th' : '') + ')', 'Each position needs at least one horse selected']);
+        return;
+      }
+    } else if (exoticMode === 'key') {
+      const keyHorse = exoticSelections['key'] || [];
+      const withHorses = exoticSelections['with'] || [];
+      if (keyHorse.length === 0 || withHorses.length < (numPos - 1)) {
+        const missing = [];
+        if (keyHorse.length === 0) missing.push('Select a Key horse');
+        if (withHorses.length < (numPos - 1)) missing.push('Select at least ' + (numPos - 1) + ' With horse' + (numPos - 1 > 1 ? 's' : ''));
+        showBetHelperPopup('Almost There', 'Your ' + typeName + ' Key bet isn\'t complete yet.', missing);
+        return;
+      }
+    }
+  }
+
+  // -- Validation for multi-race exotics --
+  if (isMulti) {
+    const legCounts = { DD: 2, P3: 3, P4: 4, P5: 5, P6: 6 };
+    const numLegs = legCounts[type] || 2;
+    const races = getHorsesForExotic();
+    if (races.length < numLegs) {
+      showToast('\u26a0\ufe0f Need at least ' + numLegs + ' races for a ' + typeName + ' \u2014 only ' + races.length + ' loaded', 'warning', 4000);
+      return;
+    }
+    for (let i = 0; i < numLegs; i++) {
+      const legSel = exoticSelections['leg_' + i] || [];
+      if (legSel.length === 0) {
+        showBetHelperPopup('Almost There', 'Pick at least one horse for each leg of your ' + typeName + '.', ['Leg ' + (i + 1) + ' has no horses selected', 'Each leg needs at least one selection']);
+        return;
+      }
+    }
+  }
 
   if (!costText || costText === 'Select horses to calculate cost') {
     showToast('Complete your exotic selections first', 'danger', 3000);
@@ -4416,7 +4762,7 @@ function addExoticToBetSlip() {
   if (!data.bets) data.bets = [];
 
   const bet = {
-    id: generateId(), date: getTodayStr(), raceNum: '—',
+    id: generateId(), date: getTodayStr(), raceNum: exoticSelectedRace || '—',
     type: type, mode: exoticMode, selections: {},
     amount: base, cost: 0, result: null, payout: 0,
     formula: costText, isExotic: true, locked: false,
@@ -4433,6 +4779,7 @@ function addExoticToBetSlip() {
   saveTrackData(data);
   renderLockedExotics();
   showToast('Exotic bet added: ' + costText, 'success', 4000);
+  checkBankrollOverrun();
   exoticSelections = {};
   renderExoticBuilder();
 }
