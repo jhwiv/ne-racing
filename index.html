@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0300';
+var NE_APP_VERSION = '20260415-0534';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2965,6 +2965,7 @@ function hasBulletWorkout(h) {
 }
 
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escJs(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"  ); }
 
 function buildEquibaseUrl(raceNum) {
   const code = getActiveTrack();
@@ -4234,7 +4235,7 @@ function renderSingleRaceExotic(type, body) {
     posList.forEach((pos, posIdx) => {
       if (mode === 'straight') html += `<div class="position-label">${pos}</div>`;
       html += `<div class="horse-chip-row" id="exotic-pos-${posIdx}">`;
-      html += buildGroupedChips(posIdx, h => `toggleExoticHorse(${posIdx},'${h.id}','${escHtml(h.name)}',this)`);
+      html += buildGroupedChips(posIdx, h => `toggleExoticHorse(${posIdx},'${h.id}','${escJs(h.name)}',this)`);
       html += '</div>';
     });
     body.innerHTML = html;
@@ -4242,11 +4243,11 @@ function renderSingleRaceExotic(type, body) {
     body.innerHTML = `
       <div class="position-label">Key Horse (wins the key position)</div>
       <div class="horse-chip-row" id="exotic-pos-key">
-        ${buildGroupedChips('key', h => `toggleExoticKey('${h.id}','${escHtml(h.name)}',this)`)}
+        ${buildGroupedChips('key', h => `toggleExoticKey('${h.id}','${escJs(h.name)}',this)`)}
       </div>
       <div class="position-label mt-1">With (fill remaining positions)</div>
       <div class="horse-chip-row" id="exotic-pos-with">
-        ${buildGroupedChips('with', h => `toggleExoticWith('${h.id}','${escHtml(h.name)}',this)`)}
+        ${buildGroupedChips('with', h => `toggleExoticWith('${h.id}','${escJs(h.name)}',this)`)}
       </div>`;
   }
 }
@@ -4265,7 +4266,7 @@ function renderMultiRaceExotic(type, body) {
       <div class="horse-chip-row" id="exotic-leg-${leg}">
         ${horses.length
           ? horses.map(h=>`<button class="horse-chip" data-leg="${leg}" data-horseid="${h.id}" data-name="${escHtml(h.name)}"
-            onclick="toggleExoticLeg(${leg},'${h.id}','${escHtml(h.name)}',this)">#${h.pp||''} ${escHtml(h.name)}</button>`).join('')
+            onclick="toggleExoticLeg(${leg},'${h.id}','${escJs(h.name)}',this)">#${h.pp||''} ${escHtml(h.name)}</button>`).join('')
           : '<span class="text-xs text-muted">No horses in this race</span>'}
         <button class="horse-chip" data-leg="${leg}" data-horseid="ALL" data-name="ALL"
           onclick="toggleExoticLeg(${leg},'ALL','ALL',this)" style="border-style:dashed">ALL</button>
