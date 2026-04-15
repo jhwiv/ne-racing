@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0818';
+var NE_APP_VERSION = '20260415-1200';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -565,6 +565,108 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .banner-danger { background: #fde8e8; color: #8b0000; border: 1px solid rgba(193,18,31,0.25); }
 .banner-info { background: var(--color-green-light); color: var(--color-positive); border: 1px solid rgba(45,106,79,0.25); }
 .banner svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* =========================================================
+   DATE STRIP
+   ========================================================= */
+.date-strip-wrap {
+  margin-bottom: 0.75rem;
+}
+.date-strip {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0.25rem 0;
+}
+.date-strip::-webkit-scrollbar { display: none; }
+.date-strip-day {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid transparent;
+  background: var(--color-white);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.date-strip-day:active { transform: scale(0.95); }
+.date-strip-day .ds-dow {
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  line-height: 1;
+}
+.date-strip-day .ds-date {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-slate);
+  line-height: 1.3;
+}
+.date-strip-day .ds-month {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+  line-height: 1;
+}
+.date-strip-day.ds-today {
+  border-color: var(--color-racing-green);
+  background: var(--color-green-light);
+}
+.date-strip-day.ds-today .ds-dow { color: var(--color-positive); }
+.date-strip-day.ds-today .ds-date { color: var(--color-racing-green); }
+.date-strip-day.ds-today .ds-month { color: var(--color-positive); }
+.date-strip-day.ds-selected {
+  border-color: var(--color-gold);
+  background: var(--color-gold-light);
+  box-shadow: 0 0 0 2px rgba(201,168,76,0.25);
+}
+.date-strip-day.ds-selected .ds-dow { color: #8B6914; }
+.date-strip-day.ds-selected .ds-date { color: var(--color-slate); }
+.date-strip-day.ds-selected .ds-month { color: #8B6914; }
+.date-strip-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+.date-strip-nav-label {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.date-strip-nav-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--color-racing-green);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.date-strip-nav-btn:active { background: var(--color-green-light); }
+.date-strip-nav-btn svg { width: 16px; height: 16px; }
 
 /* =========================================================
    RACE CARD
@@ -1452,6 +1554,21 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         No race card available — try manual entry or check back on a race day
       </div>
       <div id="preview-date-banner" class="banner banner-info hidden"></div>
+
+      <!-- Date Strip -->
+      <div class="date-strip-wrap" id="date-strip-wrap">
+        <div class="date-strip-nav">
+          <button class="date-strip-nav-btn" onclick="shiftDateStrip(-7)" aria-label="Previous week">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="date-strip-nav-label" id="date-strip-label"></span>
+          <button class="date-strip-nav-btn" onclick="shiftDateStrip(7)" aria-label="Next week">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div class="date-strip" id="date-strip"></div>
+      </div>
+
       <!-- Today's Ticket Card -->
       <div id="rec-bets-card" class="rec-bets-card hidden">
         <div class="ticket-header"><span class="ticket-icon">&#127915;</span><h3 style="margin:0">Today's Ticket</h3></div>
@@ -2404,6 +2521,8 @@ let unviewedScratches = 0;
 let exoticMode = 'straight';
 let resultScope = 'track';
 let loadedRaceDate = null; // Tracks which date's entries are loaded (may differ from today)
+let selectedCalendarDate = null; // Date selected via the date strip (YYYY-MM-DD), null = auto/today
+let dateStripAnchor = null; // Center date of the current date strip week view
 let resultsModeFilter = 'all'; // 'all', 'sim', 'real' — filter for Results tab
 var realModeConfirmed = false; // Whether user has confirmed real mode prompt this session
 
@@ -2777,6 +2896,7 @@ function initApp() {
   if (!store) return;
 
   updateHeaderTrack();
+  buildDateStrip();
   renderTabContent('today');
   buildDrawerLists();
   buildSettingsModal();
@@ -2910,6 +3030,10 @@ function selectTrack(code) {
   toggleTrackDrawer();
   updateHeaderTrack();
   buildDrawerLists();
+  // Reset calendar to today when switching tracks
+  selectedCalendarDate = null;
+  dateStripAnchor = null;
+  buildDateStrip();
   renderTabContent(document.querySelector('.tab-panel.active')?.id.replace('tab-', '') || 'today');
 }
 
@@ -6147,6 +6271,138 @@ function transformWorkerEntries(json) {
   }));
 }
 
+/* =============================================================
+   DATE STRIP — horizontal scrollable week picker
+   ============================================================= */
+function buildDateStrip() {
+  const strip = el('date-strip');
+  const label = el('date-strip-label');
+  if (!strip) return;
+
+  const today = getTodayStr();
+  const anchor = dateStripAnchor || today;
+  const anchorDate = new Date(anchor + 'T12:00:00');
+
+  // Build 7 days centered on anchor (3 before, anchor, 3 after)
+  const days = [];
+  for (let i = -3; i <= 3; i++) {
+    const d = new Date(anchorDate);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
+
+  // Update nav label with month/year range
+  const firstMonth = days[0].toLocaleDateString('en-US', { month: 'short' });
+  const lastMonth = days[6].toLocaleDateString('en-US', { month: 'short' });
+  const year = days[3].getFullYear();
+  if (label) {
+    label.textContent = firstMonth === lastMonth
+      ? firstMonth + ' ' + year
+      : firstMonth + ' – ' + lastMonth + ' ' + year;
+  }
+
+  const selected = selectedCalendarDate || today;
+  const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  strip.innerHTML = days.map(d => {
+    const ds = d.toISOString().split('T')[0];
+    const isToday = ds === today;
+    const isSelected = ds === selected;
+    let cls = 'date-strip-day';
+    if (isToday && !isSelected) cls += ' ds-today';
+    if (isSelected) cls += ' ds-selected';
+    return `<button class="${cls}" onclick="selectCalendarDate('${ds}')" aria-label="${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}${isToday ? ' (today)' : ''}">
+      <span class="ds-dow">${isToday ? 'Today' : DOW[d.getDay()]}</span>
+      <span class="ds-date">${d.getDate()}</span>
+      <span class="ds-month">${MONTHS[d.getMonth()]}</span>
+    </button>`;
+  }).join('');
+
+  // Scroll to center the selected day
+  requestAnimationFrame(() => {
+    const selBtn = strip.querySelector('.ds-selected') || strip.querySelector('.ds-today');
+    if (selBtn) selBtn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
+  });
+}
+
+function shiftDateStrip(days) {
+  const anchor = dateStripAnchor || getTodayStr();
+  const d = new Date(anchor + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  dateStripAnchor = d.toISOString().split('T')[0];
+  buildDateStrip();
+}
+
+async function selectCalendarDate(dateStr) {
+  const today = getTodayStr();
+  selectedCalendarDate = dateStr;
+
+  // Shift the strip anchor if the selected date is near the edge
+  const anchor = dateStripAnchor || today;
+  const anchorD = new Date(anchor + 'T12:00:00');
+  const selD = new Date(dateStr + 'T12:00:00');
+  const diffDays = Math.round((selD - anchorD) / 86400000);
+  if (Math.abs(diffDays) >= 3) {
+    dateStripAnchor = dateStr;
+  }
+  buildDateStrip();
+
+  // Fetch entries for this date
+  const code = getActiveTrack();
+  showLoadingIndicator();
+  hideLiveUnavailable();
+
+  const result = await tryFetchEntries(code, dateStr);
+
+  hideLoadingIndicator();
+
+  // Update preview banner
+  const previewBanner = el('preview-date-banner');
+  if (!result) {
+    loadedRaceDate = dateStr;
+    // Clear existing races and show empty state
+    const data = getTrackData();
+    data.races = [];
+    saveTrackData(data);
+    if (previewBanner) {
+      if (dateStr !== today) {
+        const d = new Date(dateStr + 'T12:00:00');
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        previewBanner.innerHTML = '&#128197; No races found for <strong>' + dayName + '</strong>';
+        previewBanner.classList.remove('hidden');
+      } else {
+        previewBanner.classList.add('hidden');
+      }
+    }
+    showLiveUnavailable();
+    renderTodayTab();
+    return;
+  }
+
+  hideLiveUnavailable();
+  loadedRaceDate = result.date;
+
+  // Show banner for non-today dates
+  if (previewBanner) {
+    if (dateStr !== today) {
+      const d = new Date(dateStr + 'T12:00:00');
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      previewBanner.innerHTML = '&#128197; Showing entries for <strong>' + dayName + '</strong>';
+      previewBanner.classList.remove('hidden');
+    } else {
+      previewBanner.classList.add('hidden');
+    }
+  }
+
+  // Load races (replace for calendar selection — not merge)
+  const data = getTrackData();
+  data.races = result.races;
+  saveTrackData(data);
+  updateSyncTime();
+  renderTodayTab();
+}
+
 /** Try fetching entries for a specific date, returns {races, date, isToday} or null */
 async function tryFetchEntries(code, date) {
   const url = getEntriesUrl(code, date);
@@ -6165,6 +6421,10 @@ async function tryFetchEntries(code, date) {
 async function fetchLiveEntries() {
   const code = getActiveTrack();
   const today = getTodayStr();
+
+  // If user has manually selected a non-today date via the calendar, skip auto-load
+  // (their selection takes priority over polling)
+  if (selectedCalendarDate && selectedCalendarDate !== today) return;
 
   // Task 6c: Show loading indicator
   showLoadingIndicator();
@@ -6187,6 +6447,13 @@ async function fetchLiveEntries() {
   hideLoadingIndicator();
   hideLiveUnavailable();
   loadedRaceDate = result.date;
+
+  // Update date strip to reflect the loaded date (e.g. lookahead found tomorrow's card)
+  if (lookaheadDate) {
+    selectedCalendarDate = lookaheadDate;
+    dateStripAnchor = lookaheadDate;
+    buildDateStrip();
+  }
 
   // Show "next race day" banner if data is for a future date
   const previewBanner = el('preview-date-banner');
