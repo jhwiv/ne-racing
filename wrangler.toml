@@ -1,0 +1,8 @@
+name = "cloudflare-worker"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+
+[vars]
+DATA_SOURCE = "free"
+DEFAULT_TRACK = "AQU"
+ALLOWED_ORIGIN = "*"
