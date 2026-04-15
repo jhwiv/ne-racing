@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0710';
+var NE_APP_VERSION = '20260415-0720';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -195,28 +195,6 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
    ========================================================= */
 /* scroll-behavior: smooth removed — causes choppy scrolling on mobile */
 #app { display: flex; flex-direction: column; }
-#welcome-screen {
-  position: relative;
-  min-height: 100dvh;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 1rem 1.25rem;
-  box-sizing: border-box;
-  overflow-x: hidden;
-}
-#welcome-screen-bg {
-  position: absolute; inset: 0; z-index: 0;
-  background: url('https://www.saratoga.com/images/horse-race-grandstand-view.jpg') center/cover no-repeat;
-}
-#welcome-screen::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(to bottom, rgba(27,67,50,0.2) 0%, rgba(27,67,50,0.5) 40%, rgba(27,67,50,0.85) 100%);
-  z-index: 1;
-}
-#welcome-screen > * { position: relative; z-index: 2; }
-#welcome-screen > #welcome-screen-bg { position: absolute; inset: 0; z-index: 0; }
-
-/* App frame (shown after welcome) */
 #app-frame { display: flex; flex-direction: column; min-height: 100dvh; }
 #top-header {
   height: var(--header-height);
@@ -406,31 +384,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 /* =========================================================
    WELCOME SCREEN
    ========================================================= */
-.welcome-inner { width: 100%; max-width: 440px; }
-.welcome-logo { text-align: center; margin-bottom: 0.3rem; }
-.welcome-logo svg { width: 40px; height: 40px; }
-.welcome-title {
-  font-family: var(--font-display); font-size: clamp(1.4rem, 4.5vw, 2.2rem);
-  font-weight: 700; color: var(--color-white); text-align: center; line-height: 1.15;
-  margin-bottom: 0.15rem;
-}
-.welcome-subtitle { color: rgba(255,255,255,0.65); text-align: center; font-size: 0.78rem; margin-bottom: 0.5rem; }
-.welcome-step {
-  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-radius: var(--radius-lg); padding: 0.55rem 1rem; margin-bottom: 0.4rem;
-}
-.welcome-step-label {
-  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.1em; color: var(--color-gold); margin-bottom: 0.15rem;
-}
-.welcome-step h3 { color: var(--color-white); font-size: 0.85rem; margin-bottom: 0.35rem; }
-.welcome-step .form-control { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: var(--color-white); }
-.welcome-step .form-control::placeholder { color: rgba(255,255,255,0.4); }
-.welcome-step .form-control:focus { border-color: var(--color-gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.2); }
-.welcome-step .form-label { color: rgba(255,255,255,0.8); }
 
-/* Track grid for welcome */
 .track-grid { display: flex; flex-direction: column; gap: 0.4rem; max-height: 280px; overflow-y: auto; }
 .track-option {
   display: flex; align-items: center; justify-content: space-between;
@@ -450,31 +404,22 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .dot-inactive { background: #d1d5db; }
 
 /* Mode toggle */
-.mode-toggle { display: flex; gap: 0; border: 1.5px solid rgba(255,255,255,0.2); border-radius: var(--radius-md); overflow: hidden; }
-.mode-btn { flex: 1; padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.6); cursor: pointer; background: transparent; transition: all 0.15s; text-align: center; border: none; }
-.mode-btn.active { background: var(--color-gold); color: var(--color-white); }
-.btn-lets-go {
-  width: 100%; margin-top: 0.5rem; padding: 0.7rem 1.5rem;
-  background: var(--color-gold); color: var(--color-white);
-  border: none; border-radius: var(--radius-md);
-  font-size: 1rem; font-weight: 700; letter-spacing: 0.03em;
-  cursor: pointer; transition: background 0.15s;
-}
-.btn-lets-go:hover { background: #b8923e; }
 
-/* Track section headers in welcome */
+
+
+
 .track-section-header { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.45); margin: 0.75rem 0 0.35rem; padding: 0 0.25rem; }
 
 /* SAR / AQU two-button toggle */
-.sar-aqu-toggle { display: flex; gap: 0; border: 1.5px solid rgba(255,255,255,0.2); border-radius: var(--radius-md); overflow: hidden; }
-.sar-aqu-btn { flex: 1; padding: 0.6rem 0.75rem; font-size: 0.85rem; font-weight: 600; font-family: var(--font-mono); letter-spacing: 0.03em; color: rgba(255,255,255,0.6); cursor: pointer; background: transparent; transition: all 0.15s; text-align: center; border: none; }
-.sar-aqu-btn.selected { background: var(--color-gold); color: var(--color-white); }
+
+
+
 .sar-aqu-btn:hover:not(.selected) { background: rgba(255,255,255,0.08); }
 .sar-aqu-drawer { padding: 0.25rem 0; }
 /* Override sar-aqu styles inside the white track drawer */
-#track-drawer .sar-aqu-toggle { border-color: rgba(27,67,50,0.2); }
-#track-drawer .sar-aqu-btn { color: var(--color-muted); }
-#track-drawer .sar-aqu-btn.selected { background: var(--color-racing-green); color: var(--color-white); }
+#track-drawer 
+#track-drawer 
+#track-drawer 
 #track-drawer .sar-aqu-btn:hover:not(.selected) { background: rgba(27,67,50,0.06); color: var(--color-slate); }
 
 /* =========================================================
@@ -794,6 +739,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .ref-section { background: var(--color-white); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); margin-bottom: 1rem; overflow: hidden; }
 .ref-section-header { padding: 0.75rem 1rem; background: rgba(27,67,50,0.06); border-bottom: 1px solid rgba(0,0,0,0.07); display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
 .ref-section-header h3 { font-size: 0.9rem; flex: 1; }
+.ref-section-header svg { transform: rotate(-90deg); }
 .ref-section-body { padding: 1rem; }
 .ref-section-body .ref-section { margin: 0.25rem 0; border-radius: 6px; border: 1px solid rgba(0,0,0,0.06); }
 .ref-section-body .ref-section .ref-section-header { padding: 0.55rem 0.75rem; background: rgba(27,67,50,0.03); font-size: 0.88rem; }
@@ -1297,6 +1243,21 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .collapsible-content { overflow: hidden; transition: max-height 0.25s ease; }
 .collapsible-content.closed { max-height: 0 !important; }
 
+/* Floating Home button */
+#floating-home-btn {
+  position: fixed; bottom: 80px; right: 16px; z-index: 900;
+  background: var(--color-racing-green); color: var(--color-white);
+  border: 2px solid var(--color-gold); border-radius: 24px;
+  padding: 8px 16px; font-family: var(--font-display); font-size: 0.82rem;
+  font-weight: 600; letter-spacing: 0.03em; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  display: flex; align-items: center; gap: 6px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+#floating-home-btn:active { transform: scale(0.94); }
+#floating-home-btn.hidden-btn { opacity: 0; pointer-events: none; transform: translateY(12px); }
+@media (min-width: 640px) { #floating-home-btn { bottom: 24px; right: 24px; } }
 </style>
 </head>
 <body>
@@ -1309,65 +1270,11 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 <!-- =============================================
      WELCOME SCREEN
      ============================================= -->
-<div id="welcome-screen">
-  <div id="welcome-screen-bg"></div>
-  <div class="welcome-inner">
-    <div class="welcome-logo">
-      <!-- Horseshoe logo SVG -->
-      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Saratoga Racing Companion">
-        <circle cx="40" cy="40" r="38" fill="rgba(255,255,255,0.07)" stroke="rgba(201,168,76,0.4)" stroke-width="1.5"/>
-        <path d="M20 52 C20 30 27 20 40 20 C53 20 60 30 60 52" stroke="#C9A84C" stroke-width="4" stroke-linecap="round" fill="none"/>
-        <path d="M20 52 L20 56 Q20 60 24 60 L28 60 Q32 60 32 56 L32 52" fill="#C9A84C"/>
-        <path d="M60 52 L60 56 Q60 60 56 60 L52 60 Q48 60 48 56 L48 52" fill="#C9A84C"/>
-        <circle cx="40" cy="38" r="5" fill="rgba(201,168,76,0.3)" stroke="#C9A84C" stroke-width="1.5"/>
-      </svg>
-    </div>
-    <h1 class="welcome-title">Saratoga Racing<br>Companion 2026</h1>
-    <p class="welcome-subtitle" id="hero-subtitle">Your personal handicapping &amp; bet tracking tool for the spring meet at Aqueduct</p>
-
-    <!-- Step 1: Bankroll -->
-    <div class="welcome-step">
-      <div class="welcome-step-label">Step 1</div>
-      <h3>Set Your Starting Bankroll</h3>
-      <div class="form-group" style="margin-bottom:0">
-        <label class="form-label" for="welcome-bankroll">Starting Bankroll ($)</label>
-        <input type="number" id="welcome-bankroll" class="form-control" value="1000" min="1" inputmode="numeric" placeholder="1000">
-      </div>
-    </div>
-
-    <!-- Step 2: Track -->
-    <div class="welcome-step">
-      <div class="welcome-step-label">Step 2</div>
-      <h3>Select Track</h3>
-      <div class="sar-aqu-toggle">
-        <button class="sar-aqu-btn" id="welcome-sar-btn" onclick="selectWelcomeTrack('SAR', this)">SAR &mdash; Saratoga</button>
-        <button class="sar-aqu-btn selected" id="welcome-aqu-btn" onclick="selectWelcomeTrack('AQU', this)">AQU &mdash; Aqueduct</button>
-      </div>
-      <p style="font-size:0.72rem;color:rgba(255,255,255,0.45);margin-top:0.4rem">Aqueduct spring meet through Apr 26 &bull; Saratoga opens Jul 3</p>
-    </div>
-
-    <!-- Step 3: Data Mode -->
-    <div class="welcome-step">
-      <div class="welcome-step-label">Step 3</div>
-      <h3>Data Mode</h3>
-      <div class="mode-toggle">
-        <button class="mode-btn active" id="mode-live" onclick="setWelcomeMode('live')">Live Data (API)</button>
-        <button class="mode-btn" id="mode-manual" onclick="setWelcomeMode('manual')">Manual Entry</button>
-      </div>
-      <p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:0.5rem" id="mode-desc">Fetches race cards automatically on race days. Entries load from published data.</p>
-    </div>
-
-    <button class="btn-lets-go" onclick="finishWelcome()">Let's Go &rarr;</button>
-  </div>
-</div>
-
-<!-- Scroll-to-hero anchor -->
-<div id="app-anchor"></div>
 
 <!-- =============================================
      MAIN APP FRAME
      ============================================= -->
-<div id="app-frame" class="hidden">
+<div id="app-frame">
 
   <!-- TOP HEADER -->
   <header id="top-header">
@@ -1867,7 +1774,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <h3>Track Guide</h3>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="ref-section-body" id="track-guide-body"></div>
+        <div class="ref-section-body hidden" id="track-guide-body"></div>
       </div>
 
       <!-- Meet Schedule -->
@@ -1876,7 +1783,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <h3>Meet Schedule</h3>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="ref-section-body" id="meet-schedule-body"></div>
+        <div class="ref-section-body hidden" id="meet-schedule-body"></div>
       </div>
 
       <!-- Expert Handicappers -->
@@ -1885,7 +1792,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <h3>Expert Handicappers</h3>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="ref-section-body" id="handicapper-profiles-body"></div>
+        <div class="ref-section-body hidden" id="handicapper-profiles-body"></div>
       </div>
 
       <!-- Wager Types -->
@@ -1894,7 +1801,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <h3>Wager Types Quick Reference</h3>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="ref-section-body">
+        <div class="ref-section-body hidden">
           <dl>
             <div class="ref-row"><dt>Win</dt><dd>Horse must finish 1st. Pays on 1st only.</dd></div>
             <div class="ref-row"><dt>Place</dt><dd>Horse must finish 1st or 2nd.</dd></div>
@@ -2141,7 +2048,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <h3>Odds &amp; Payout Table ($2 Win)</h3>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="ref-section-body" style="overflow-x:auto">
+        <div class="ref-section-body hidden" style="overflow-x:auto">
           <table class="odds-table">
             <thead><tr><th>Odds (to-1)</th><th>Pays ($2)</th><th>Profit ($2)</th></tr></thead>
             <tbody id="odds-table-body"></tbody>
@@ -2155,7 +2062,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <h3>Handicapping Glossary</h3>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="ref-section-body" id="glossary-body"></div>
+        <div class="ref-section-body hidden" id="glossary-body"></div>
       </div>
 
       <!-- Advice Engine Methodology -->
@@ -2164,7 +2071,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <h3>Advice Engine Methodology</h3>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="ref-section-body">
+        <div class="ref-section-body hidden">
           <p style="font-size:0.85rem;line-height:1.7;margin-bottom:0.75rem">The Advice Engine computes a composite score (0–100) for each horse in each race, then assigns a letter grade and generates a one-line rationale. The six factors and their weights are:</p>
           <table class="breakdown-table" style="font-size:0.82rem">
             <thead><tr><th>Factor</th><th>Weight</th><th>Method</th></tr></thead>
@@ -2190,6 +2097,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   <footer id="app-footer">
     Saratoga Racing Companion 2026 — For personal use only. Not affiliated with NYRA, Saratoga Race Course, or any wagering platform. No real wagers are placed through this app. Betting suggestions are analysis based on available data — not financial advice and not a guarantee of results.
   </footer>
+
+<!-- FLOATING HOME BUTTON -->
+  <button id="floating-home-btn" class="hidden-btn" onclick="scrollToHome()" aria-label="Scroll to Today's Ticket">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    Home
+  </button>
 
   <!-- BOTTOM TAB BAR -->
   <nav id="bottom-tab-bar" role="navigation" aria-label="Tab navigation">
@@ -2389,8 +2302,6 @@ let _adviceByRaceId = {}; // Cache: raceId → scored advice array (set by runAd
 let unviewedScratches = 0;
 let exoticMode = 'straight';
 let resultScope = 'track';
-let welcomeSelectedTrack = 'AQU';
-let welcomeDataMode = 'live';
 let loadedRaceDate = null; // Tracks which date's entries are loaded (may differ from today)
 let resultsModeFilter = 'all'; // 'all', 'sim', 'real' — filter for Results tab
 var realModeConfirmed = false; // Whether user has confirmed real mode prompt this session
@@ -2695,197 +2606,23 @@ function setResultsModeFilter(filter) {
 }
 
 /* =============================================================
-   WELCOME SCREEN
+   FLOATING HOME BUTTON
    ============================================================= */
-function buildWelcomeTrackGrid() {
-  // Saratoga-centric: welcome toggle is hardcoded SAR/AQU in HTML.
-  // Just ensure SAR is pre-selected.
-  welcomeSelectedTrack = 'AQU';
-}
-
-/* Dormant: full 12-track grid builder (kept for future multi-track expansion)
-function buildFullTrackGrid() {
-  const grid = el('welcome-track-grid');
-  if (!grid) return;
-  const active = [], upcoming = [];
-  Object.values(TRACKS).forEach(t => {
-    if (isTrackActive(t.code)) active.push(t); else upcoming.push(t);
-  });
-  let html = '';
-  if (active.length) {
-    html += '<div class="track-section-header">Racing Today / Active Meet</div>';
-    active.forEach(t => { html += buildTrackOption(t, true); });
-  }
-  if (upcoming.length) {
-    html += '<div class="track-section-header">Upcoming / Off Season</div>';
-    upcoming.forEach(t => { html += buildTrackOption(t, false); });
-  }
-  grid.innerHTML = html;
-}
-function buildTrackOption(t, isActive) {
-  return `<div class="track-option" onclick="selectWelcomeTrack('${t.code}', this)" data-code="${t.code}">
-    <div class="track-option-left">
-      <span class="track-status-dot ${isActive ? 'dot-active' : 'dot-inactive'}"></span>
-      <span class="track-code">${t.code}</span>
-      <div><div class="track-name-sm">${t.name}</div><div class="track-location-sm">${t.location}</div></div>
-    </div>
-    ${isActive ? '<span class="badge badge-green" style="font-size:0.62rem">Active</span>' : ''}
-  </div>`;
-}
-*/
-
-function selectWelcomeTrack(code, elem) {
-  welcomeSelectedTrack = code;
-  document.querySelectorAll('.sar-aqu-btn').forEach(b => b.classList.remove('selected'));
-  if (elem) elem.classList.add('selected');
-  updateHeroSubtitle();
-}
-
-function updateHeroSubtitle() {
-  const sub = el('hero-subtitle');
-  if (!sub) return;
-  const code = welcomeSelectedTrack || getActiveTrack();
-  const track = TRACKS[code];
-  if (!track) return;
-  const today = getTodayStr();
-  // Find the current or next season for this track
-  let seasonLabel = '';
-  const activeSeason = track.seasons.find(s => today >= s.from && today <= s.to);
-  if (activeSeason) {
-    seasonLabel = activeSeason.label.toLowerCase() + ' meet';
-  } else {
-    // Find the next upcoming season
-    const upcoming = track.seasons.filter(s => today < s.from).sort((a,b) => a.from.localeCompare(b.from));
-    if (upcoming.length) {
-      seasonLabel = upcoming[0].label.toLowerCase() + ' meet';
+function scrollToHome() {
+  var ticket = el('rec-bets-card');
+  var heading = el('today-heading');
+  // Make sure we're on the Today tab
+  switchTab('today');
+  // Give the tab switch a tick to render
+  setTimeout(function() {
+    var target = (ticket && !ticket.classList.contains('hidden')) ? ticket : heading || el('main-content');
+    if (target) {
+      var rect = target.getBoundingClientRect();
+      window.scrollTo({ top: rect.top + window.pageYOffset - 8, behavior: 'smooth' });
     } else {
-      seasonLabel = 'racing season';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }
-  // Build location name
-  const locMap = { AQU: 'Aqueduct', SAR: 'Saratoga Springs', BEL: 'Belmont at the Big A', BTP: 'Belmont Park' };
-  const loc = locMap[code] || track.name;
-  sub.textContent = 'Your personal handicapping & bet tracking tool for the ' + seasonLabel + ' at ' + loc;
-}
-
-function setWelcomeMode(mode) {
-  welcomeDataMode = mode;
-  el('mode-live').classList.toggle('active', mode === 'live');
-  el('mode-manual').classList.toggle('active', mode === 'manual');
-  el('mode-desc').textContent = mode === 'live'
-    ? 'Fetches race entries and scratches from your configured worker API.'
-    : 'Manually enter race cards, entries, and results. No API key needed.';
-}
-
-// Timer ID for finishWelcome scroll — lets us cancel if button is pressed rapidly
-var _finishWelcomeTimer = 0;
-
-function finishWelcome() {
-  // Flag that the user completed onboarding this session — survives version-check reloads
-  try { sessionStorage.setItem('ne_welcomed', '1'); } catch(e) {}
-
-  // On every "Let's Go" tap, check for a new version before proceeding
-  if (navigator.onLine) {
-    fetch('version.json?_=' + Date.now(), {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
-    })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.v && d.v !== NE_APP_VERSION) {
-          neForceUpdate(d.v);
-        }
-      }).catch(function(){});
-  }
-
-  const bankroll = parseFloat(el('welcome-bankroll').value) || 1000;
-  const store = getStore() || initStore();
-  store.settings.startingBankroll = bankroll;
-  store.settings.activeTrack = welcomeSelectedTrack;
-  store.settings.dataMode = welcomeDataMode;
-  store.settings.welcomeDone = true;
-  saveStore(store);
-
-  // Show the app frame and initialize if first time
-  const af = el('app-frame');
-  if (af.classList.contains('hidden')) {
-    af.classList.remove('hidden');
-    window._skipRaceFocusScroll = true;
-    initApp();
-  }
-
-  // Update hero subtitle for selected track
-  updateHeroSubtitle();
-
-  // Ensure the Today tab is active without triggering switchTab's own scroll.
-  // switchTab calls renderTabContent which re-renders races and runs
-  // applyRaceFocus (with its own 300ms scroll timeout) — we need to suppress
-  // ALL of those competing scrolls so only our final scroll (below) wins.
-  window._skipRaceFocusScroll = true;
-
-  // Activate Today tab panels and buttons directly (same logic as switchTab
-  // but without the scroll at the end, which would race with our timeout).
-  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
-  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
-  document.querySelectorAll('.desktop-nav-btn').forEach(function(b) { b.classList.remove('active'); });
-  var todayPanel = el('tab-today');
-  if (todayPanel) todayPanel.classList.add('active');
-  var todayBtn = el('tab-btn-today');
-  if (todayBtn) { todayBtn.classList.add('active'); todayBtn.setAttribute('aria-selected', 'true'); }
-  var todayDBtn = el('dnav-today');
-  if (todayDBtn) todayDBtn.classList.add('active');
-  renderTabContent('today');
-  // Clear scratch badge (same as switchTab does for 'today')
-  unviewedScratches = 0;
-  updateScratchBadge();
-
-  // Cancel any in-flight scroll from a previous "Let's Go" press
-  clearTimeout(_finishWelcomeTimer);
-
-  // Transition: fade out the welcome, then snap-scroll to the ticket card.
-  var header = el('top-header');
-  var ws = el('welcome-screen');
-
-  // Fade out the welcome screen
-  if (ws) {
-    ws.style.transition = 'opacity 0.3s ease';
-    ws.style.opacity = '0';
-  }
-
-  // Hide header so ticket fills the full viewport on arrival
-  if (header) header.style.transform = 'translateY(-100%)';
-
-  // After the fade completes, perform a single authoritative scroll
-  _finishWelcomeTimer = setTimeout(function() {
-    // Restore welcome opacity so the user can scroll back to it
-    if (ws) { ws.style.transition = ''; ws.style.opacity = '1'; }
-
-    // Determine scroll target — always the same regardless of press count
-    var ticket = el('rec-bets-card');
-    var heading = el('today-heading');
-    var target = (ticket && !ticket.classList.contains('hidden')) ? ticket
-               : heading || el('main-content') || af;
-
-    // Compute absolute document offset of the target
-    var rect = target.getBoundingClientRect();
-    window.scrollTo(0, rect.top + window.pageYOffset);
-
-    // Reveal header on first user interaction (touch or click)
-    var revealed = false;
-    function revealHeader() {
-      if (revealed) return;
-      revealed = true;
-      if (header) {
-        header.style.transition = 'transform 0.3s ease';
-        header.style.transform = '';
-        setTimeout(function() { header.style.transition = ''; }, 350);
-      }
-      window.removeEventListener('touchstart', revealHeader);
-      window.removeEventListener('mousedown', revealHeader);
-    }
-    window.addEventListener('touchstart', revealHeader, { passive: true });
-    window.addEventListener('mousedown', revealHeader, { passive: true });
-  }, 300);
+  }, 50);
 }
 
 /* =============================================================
@@ -2954,7 +2691,6 @@ function switchTab(name) {
   if (dBtn) dBtn.classList.add('active');
 
   // Prevent applyRaceFocus from overriding our scroll target
-  window._skipRaceFocusScroll = true;
 
   // Render tab-specific content
   renderTabContent(name);
@@ -3368,20 +3104,15 @@ function applyRaceFocus(races, activeIdx) {
     }
   });
 
-  // Scroll to active race (slight delay for DOM paint).
-  // Skip if finishWelcome is handling scroll — it sets _skipRaceFocusScroll.
-  // Cancel any previously-queued race-focus scroll to avoid races.
+  // Scroll to active race (slight delay for DOM paint)
   clearTimeout(window._raceFocusScrollTimer);
-  if (!window._skipRaceFocusScroll) {
-    const activeRace = races[activeIdx];
-    if (activeRace) {
-      window._raceFocusScrollTimer = setTimeout(() => {
-        const activeWrap = el('race-wrap-' + activeRace.id);
-        if (activeWrap) activeWrap.scrollIntoView({ behavior: 'auto', block: 'start' });
-      }, 300);
-    }
+  const activeRace = races[activeIdx];
+  if (activeRace) {
+    window._raceFocusScrollTimer = setTimeout(() => {
+      const activeWrap = el('race-wrap-' + activeRace.id);
+      if (activeWrap) activeWrap.scrollIntoView({ behavior: 'auto', block: 'start' });
+    }, 300);
   }
-  window._skipRaceFocusScroll = false;
 }
 
 /* Race card collapse */
@@ -6444,59 +6175,44 @@ function hideLoadingIndicator() {
    ============================================================= */
 document.addEventListener('DOMContentLoaded', () => {
   const store = initStore();
-  buildWelcomeTrackGrid();
 
-  // If the user already tapped "Let's Go" this session (e.g. version-check reload
-  // brought them back), skip the welcome screen entirely.
-  var welcomed = false;
-  try { welcomed = sessionStorage.getItem('ne_welcomed') === '1'; } catch(e) {}
-  if (welcomed) {
-    sessionStorage.removeItem('ne_welcomed');
-    var ws = el('welcome-screen');
-    if (ws) ws.style.display = 'none';
-    el('app-frame').classList.remove('hidden');
-    initApp();
-    updateHeroSubtitle();
-    return;
+  // App is always visible — no welcome screen gate.
+  // Mark welcome as done so settings stay initialized.
+  store.settings.welcomeDone = true;
+  saveStore(store);
+
+  // Initialize the app immediately
+  initApp();
+
+  // Show/hide floating Home button based on scroll position
+  var homeBtn = el('floating-home-btn');
+  if (homeBtn) {
+    var _lastScrollY = 0;
+    window.addEventListener('scroll', function() {
+      var y = window.pageYOffset || document.documentElement.scrollTop;
+      // Show button when scrolled past the top header area
+      if (y > 300) {
+        homeBtn.classList.remove('hidden-btn');
+      } else {
+        homeBtn.classList.add('hidden-btn');
+      }
+      _lastScrollY = y;
+    }, { passive: true });
   }
 
-  // Always scroll to top (hero) on load
-  window.scrollTo(0, 0);
-
-  // App frame stays hidden until "Let's Go" is tapped
-  el('app-frame').classList.add('hidden');
-
-  // Hide bottom tab bar when hero is in view
-  const tabBar = el('bottom-tab-bar');
-  if (tabBar) {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        tabBar.style.transform = entry.isIntersecting ? 'translateY(100%)' : 'translateY(0)';
-        tabBar.style.transition = 'transform 0.3s ease';
-      });
-    }, { threshold: 0.15 });
-    observer.observe(el('welcome-screen'));
+  // Check for version updates on load
+  if (navigator.onLine) {
+    fetch('version.json?_=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.v && d.v !== NE_APP_VERSION) {
+          neForceUpdate(d.v);
+        }
+      }).catch(function(){});
   }
-
-  // Pre-fill saved settings for returning users
-  if (store.settings.welcomeDone) {
-    const br = el('welcome-bankroll');
-    if (br) br.value = store.settings.startingBankroll || 1000;
-    // Restore track selection
-    const savedTrack = store.settings.activeTrack || 'AQU';
-    welcomeSelectedTrack = savedTrack;
-    document.querySelectorAll('.sar-aqu-btn').forEach(b => b.classList.remove('selected'));
-    const trackBtn = el('welcome-' + savedTrack.toLowerCase() + '-btn');
-    if (trackBtn) trackBtn.classList.add('selected');
-    // Restore data mode
-    const savedMode = store.settings.dataMode || 'live';
-    welcomeDataMode = savedMode;
-    el('mode-live').classList.toggle('active', savedMode === 'live');
-    el('mode-manual').classList.toggle('active', savedMode === 'manual');
-  }
-
-  // Update hero subtitle for current track selection
-  updateHeroSubtitle();
 });
 
 // Close drawer when clicking outside
