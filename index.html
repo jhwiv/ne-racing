@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0027';
+var NE_APP_VERSION = '20260415-0028';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -827,6 +827,41 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .class-same { color: var(--color-muted); }
 .bias-log-item { padding: 0.5rem; background: rgba(27,67,50,0.04); border-radius: var(--radius-sm); margin-bottom: 0.4rem; font-size: 0.8rem; }
 
+/* Score breakdown in Advice Engine */
+.score-breakdown { margin-top: 4px; padding: 6px 8px; background: rgba(27,67,50,0.04); border-radius: var(--radius-sm); }
+.score-breakdown-bars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 10px; }
+.score-breakdown-row { display: flex; align-items: center; gap: 4px; }
+.score-breakdown-label { font-size: 0.6rem; color: var(--color-muted); width: 55px; flex-shrink: 0; }
+.score-breakdown-track { flex: 1; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+.score-breakdown-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.score-breakdown-val { font-size: 0.6rem; font-family: var(--font-mono); width: 20px; text-align: right; color: var(--color-text); }
+.score-breakdown-meta { font-size: 0.6rem; color: var(--color-muted); margin-top: 3px; }
+
+/* Pace scenario box */
+.pace-scenario-box { margin-bottom: 0.75rem; padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.82rem; }
+.pace-scenario-box.lone-speed { background: rgba(27,67,50,0.08); border-left: 3px solid var(--color-racing-green); }
+.pace-scenario-box.hot-pace { background: rgba(193,18,31,0.08); border-left: 3px solid var(--color-negative); }
+.pace-scenario-box.moderate-pace { background: rgba(196,164,105,0.12); border-left: 3px solid var(--color-gold); }
+.pace-scenario-box.no-pace { background: rgba(0,0,0,0.04); border-left: 3px solid var(--color-muted); }
+.pace-type-count { display: inline-flex; align-items: center; gap: 3px; margin-right: 10px; font-size: 0.75rem; font-weight: 600; }
+.pace-type-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; color: #fff; }
+.pace-type-badge.e { background: #c1121f; }
+.pace-type-badge.p { background: var(--color-gold); }
+.pace-type-badge.s { background: var(--color-racing-green); }
+
+/* Speed figure color-coded bars */
+.sf-fig-highest { background: var(--color-racing-green) !important; }
+.sf-fig-lowest { background: #c1121f !important; }
+.sf-fig-mid { background: var(--color-gold) !important; }
+
+/* Live odds badge & MTP */
+.live-odds-badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); background: rgba(27,67,50,0.1); }
+.mtp-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #fff; }
+.mtp-badge.mtp-soon { background: #c1121f; animation: mtp-pulse 1.5s ease infinite; }
+.mtp-badge.mtp-near { background: var(--color-gold); color: #1b4332; }
+.mtp-badge.mtp-far { background: rgba(27,67,50,0.6); }
+@keyframes mtp-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
 /* =========================================================
    SETTINGS MODAL
    ========================================================= */
@@ -1381,16 +1416,16 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Pace Analysis -->
       <div class="hcp-tool">
         <h3>Pace Analysis</h3>
-        <p class="text-muted text-sm mb-2">Enter E1 (early), E2 (middle), LP (late) pace figures and running style per horse to identify pace scenarios.</p>
         <div id="pace-race-select-row" class="form-group">
           <label class="form-label">Race</label>
           <select id="pace-race-select" class="form-control form-control-sm" style="max-width:200px" onchange="renderPaceInputs()">
             <option value="">Select Race</option>
           </select>
         </div>
+        <div id="pace-auto-scenario"></div>
         <div id="pace-inputs"></div>
         <div id="pace-result" class="pace-result hidden"></div>
-        <button class="btn btn-primary btn-sm mt-1" onclick="analyzePace()">Analyze Pace</button>
+        <button class="btn btn-primary btn-sm mt-1" onclick="analyzePace()">Analyze Pace (Manual E1/E2/LP)</button>
       </div>
 
       <!-- Class Assessment -->
@@ -1811,6 +1846,8 @@ const CLASS_SCALE = { 'STK-G1': 100, 'STK-G2': 85, 'STK-G3': 72, 'STK-L': 62, 'A
 const CLASS_LABELS = { 'STK-G1': 'Stakes G1', 'STK-G2': 'Stakes G2', 'STK-G3': 'Stakes G3', 'STK-L': 'Stakes Listed', 'AOC': 'AOC', 'ALW': 'Allowance', 'MSW': 'MSW', 'MCL': 'Maiden Claiming', 'CLM': 'Claiming' };
 let livePollingInterval = null;
 let scratchPollingInterval = null;
+let oddsPollingInterval = null;
+let lastOddsData = {}; // { raceNum: { pp: prevOdds } } for movement detection
 let unviewedScratches = 0;
 let exoticMode = 'straight';
 let resultScope = 'track';
@@ -2315,11 +2352,33 @@ function buildRaceCardHTML(race) {
   const horses = race.horses || [];
   const typeLbl = CLASS_LABELS[race.type] || race.type || '';
   const eqbUrl = race.equibaseUrl || buildEquibaseUrl(race.num);
+  // MTP badge
+  let mtpHtml = '';
+  if (race._mtp != null && race._mtp >= 0) {
+    const mtp = race._mtp;
+    const mtpClass = mtp <= 5 ? 'mtp-soon' : mtp <= 15 ? 'mtp-near' : 'mtp-far';
+    mtpHtml = ` <span class="mtp-badge ${mtpClass}">${mtp} MTP</span>`;
+  } else if (race.postTime && race.postTime !== 'TBD' && loadedRaceDate === getTodayStr()) {
+    // Calculate MTP from post time
+    const ptMin = parsePostTimeToMinutes(race.postTime);
+    if (ptMin > 0) {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const mtp = ptMin - nowMin;
+      if (mtp > 0 && mtp <= 120) {
+        const mtpClass = mtp <= 5 ? 'mtp-soon' : mtp <= 15 ? 'mtp-near' : 'mtp-far';
+        mtpHtml = ` <span class="mtp-badge ${mtpClass}">${mtp} MTP</span>`;
+      }
+    }
+  }
+  // Live odds indicator
+  const hasLiveOdds = horses.some(h => h.liveOdds);
+  const liveIndicator = hasLiveOdds ? ' <span style="font-size:0.6rem;color:var(--color-positive);font-weight:700;letter-spacing:0.5px">LIVE</span>' : '';
   return `<div class="race-card-wrap" id="race-wrap-${race.id}">
     <div class="race-card-header" onclick="toggleRaceCard('${race.id}')" id="race-header-${race.id}">
       <span class="race-num">${String(race.num).padStart(2,'0')}</span>
       <div class="race-info">
-        <div class="race-title">${typeLbl} — ${race.distance || ''} ${race.surface ? '<span style="opacity:0.75">'+race.surface+'</span>' : ''}</div>
+        <div class="race-title">${typeLbl} — ${race.distance || ''} ${race.surface ? '<span style="opacity:0.75">'+race.surface+'</span>' : ''}${mtpHtml}${liveIndicator}</div>
         <div class="race-meta">${race.postTime ? 'Post: ' + race.postTime + ' &nbsp;|&nbsp; ' : ''}${race.purse && race.purse !== 'N/A' ? 'Purse: ' + (String(race.purse).startsWith('$') ? race.purse : '$' + Number(String(race.purse).replace(/[^0-9.]/g,'')).toLocaleString()) : ''} &nbsp;${race.updated ? '· Updated ' + race.updated : ''}${eqbUrl ? ' &nbsp;<a href="'+eqbUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:0.68rem;color:var(--color-gold);text-decoration:none">View on Equibase ↗</a>' : ''}</div>
       </div>
       <svg class="collapse-icon" id="collapse-icon-${race.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:18px;height:18px"><polyline points="6 9 12 15 18 9"/></svg>
@@ -2983,12 +3042,20 @@ function runAdviceEngine() {
     });
 
     // Calculate model probability and overlay for each horse
+    // Use live odds when available, fall back to morning line
     const sumScores = scored.reduce((sum, s) => sum + Math.max(s.score, 1), 0);
     scored.forEach(s => {
       s.modelProb = Math.max(s.score, 1) / sumScores;
       const mlOdds = parseOddsToNum(s.horse.ml);
-      s.impliedProb = mlOdds > 0 ? 1 / (mlOdds + 1) : 0;
+      const liveOdds = s.horse.liveOdds ? parseOddsToNum(s.horse.liveOdds) : 0;
+      // Prefer live odds for overlay calculation when available
+      const marketOdds = liveOdds > 0 ? liveOdds : mlOdds;
+      s.impliedProb = marketOdds > 0 ? 1 / (marketOdds + 1) : 0;
       s.overlay = s.impliedProb > 0 ? s.modelProb - s.impliedProb : 0;
+      // Also store ML-based overlay for comparison
+      s.mlImpliedProb = mlOdds > 0 ? 1 / (mlOdds + 1) : 0;
+      s.mlOverlay = s.mlImpliedProb > 0 ? s.modelProb - s.mlImpliedProb : 0;
+      s.usedLiveOdds = liveOdds > 0;
     });
 
     scored.sort((a,b) => b.score - a.score);
@@ -3041,12 +3108,24 @@ function runAdviceEngine() {
       else if (i === 0 && s.expertMatchCount >= 2) convictionBadge = ' <span class="badge-conviction">HIGH CONVICTION</span>';
       const equipBadge = s.horse.equipmentChanges ? ` <span class="badge-equip">${escHtml(s.horse.equipmentChanges)}</span>` : '';
 
+      // Live odds display in advice section
+      let oddsDisplay = ml ? '<span class="mono text-xs text-muted">ML: '+ml+'</span>' : '';
+      if (s.horse.liveOdds && s.usedLiveOdds) {
+        const liveNum = parseOddsToNum(s.horse.liveOdds);
+        let liveArrow = '', liveArrowStyle = '';
+        if (mlNum > 0 && liveNum > 0) {
+          if (liveNum < mlNum * 0.85) { liveArrow = ' &#9660;'; liveArrowStyle = 'color:var(--color-negative)'; }
+          else if (liveNum > mlNum * 1.2) { liveArrow = ' &#9650;'; liveArrowStyle = 'color:var(--color-positive)'; }
+        }
+        oddsDisplay += ` <span class="mono text-xs" style="margin-left:3px;font-weight:600">LIVE: ${s.horse.liveOdds}<span style="${liveArrowStyle}">${liveArrow}</span></span>`;
+      }
+
       let rationale = buildRationale(s, race, confidence, i);
 
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
-          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">'+ml+'</span>' : ''}${overlayPct} ${valueFlag}${convictionBadge}${equipBadge}</div>
+          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${oddsDisplay}${overlayPct} ${valueFlag}${convictionBadge}${equipBadge}</div>
           <div class="advice-rationale">${rationale}</div>
         </div>
         <div class="advice-score">${s.score.toFixed(0)}</div>
@@ -3964,11 +4043,16 @@ function renderAdviceEnginePanel() {
   const output = el('advice-output');
   if (!output) return;
 
+  // Run the advice engine first to ensure _advice is populated
+  if (!races.some(r => r._advice)) runAdviceEngine();
+
   const targetRaces = raceId === 'all' ? races : races.filter(r=>r.id===raceId);
   if (!targetRaces.length) {
-    output.innerHTML = '<div class="empty-state"><p>Add horses to races in Today\'s Card to generate advice.</p></div>';
+    output.innerHTML = '<div class="empty-state"><p>No races loaded. Load races from Today\'s Card first.</p></div>';
     return;
   }
+
+  const showBreakdown = raceId !== 'all'; // show detailed breakdown when a single race is selected
 
   let html = '';
   targetRaces.forEach(race => {
@@ -3978,32 +4062,106 @@ function renderAdviceEnginePanel() {
     html += `<div style="margin-bottom:1.25rem">
       <div style="font-family:var(--font-display);font-size:0.95rem;font-weight:600;margin-bottom:0.5rem;color:var(--color-racing-green)">Race ${race.num} — ${typeLbl}</div>`;
     const gap = scored.length > 1 ? scored[0].score - scored[1].score : 0;
-    const confidence = gap > 12 ? 'high' : gap > 5 ? 'medium' : 'low';
+    const topCompleteness = scored[0].completeness;
+    const fieldSize = scored.length;
+    let confidence;
+    if (gap > 12 && topCompleteness >= 0.70 && fieldSize >= 5) confidence = 'high';
+    else if (gap > 6 && topCompleteness >= 0.50) confidence = 'medium';
+    else confidence = 'low';
     html += buildConfidenceBar(confidence);
+
     scored.forEach((s,i) => {
       const grade = scoreToGrade(s.score);
       const gradeClass = gradeToClass(grade);
       const ml = s.horse.ml || '';
-      const mlNum = parseOddsToNum(ml);
-      const valueFlag = i < 3 && mlNum >= 5 ? '<span class="badge badge-burgundy" style="font-size:0.6rem;margin-left:4px">Value</span>' : '';
+      // Value overlay badges (same as Today tab)
+      let valueFlag = '';
+      if (s.overlay > 0.15) valueFlag = '<span class="badge-strong-value" style="margin-left:4px">Strong Value</span>';
+      else if (s.overlay > 0.08) valueFlag = '<span class="badge-value" style="margin-left:4px">Value</span>';
+      else if (s.overlay < -0.05) valueFlag = '<span class="badge-underlay" style="margin-left:4px">Underlay</span>';
+      const overlayPct = s.impliedProb > 0 ? (s.overlay > 0 ? `<span class="overlay-pct">+${(s.overlay * 100).toFixed(0)}%</span>` : `<span class="overlay-pct negative">${(s.overlay * 100).toFixed(0)}%</span>`) : '';
+      let convictionBadge = '';
+      if (i === 0 && s.expertMatchCount >= 4) convictionBadge = ' <span class="badge-lock">LOCK</span>';
+      else if (i === 0 && s.expertMatchCount >= 2) convictionBadge = ' <span class="badge-conviction">HIGH CONVICTION</span>';
+
       const rationale = buildRationale(s, race, confidence, i);
+
+      // Live odds display
+      const liveOdds = s.horse.liveOdds;
+      let liveOddsHtml = '';
+      if (liveOdds) {
+        const mlNum = parseOddsToNum(ml);
+        const liveNum = parseOddsToNum(liveOdds);
+        let arrow = '', arrowCls = '';
+        if (mlNum > 0 && liveNum > 0) {
+          if (liveNum < mlNum * 0.75) { arrow = '&#9660;'; arrowCls = 'color:var(--color-negative)'; }
+          else if (liveNum > mlNum * 1.33) { arrow = '&#9650;'; arrowCls = 'color:var(--color-positive)'; }
+        }
+        liveOddsHtml = ` <span class="mono text-xs" style="margin-left:4px">LIVE: ${liveOdds} <span style="${arrowCls}">${arrow}</span></span>`;
+      }
+
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
-          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">'+ml+'</span>' : ''} ${valueFlag}</div>
+          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">ML: '+ml+'</span>' : ''}${liveOddsHtml}${overlayPct} ${valueFlag}${convictionBadge}</div>
           <div class="advice-rationale">${rationale}</div>
+          ${showBreakdown ? buildScoreBreakdownHtml(s) : ''}
         </div>
         <div class="advice-score">${s.score.toFixed(0)}</div>
       </div>`;
     });
+
+    // Expert consensus section
+    const expertPicks = race.expertPicks || [];
+    if (expertPicks.length) {
+      html += `<div class="expert-consensus">
+        <div class="expert-label">Expert Picks</div>
+        <div class="expert-picks-list">${expertPicks.map(ep => `${ep.source}: <strong>#${ep.pick} ${escHtml(ep.horseName)}</strong>`).join(' &nbsp;·&nbsp; ')}</div>
+      </div>`;
+    }
+
+    // PASS recommendation
+    const isAutoPass = confidence === 'low' && scored[0].score < 60;
+    if (isAutoPass) {
+      html += `<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(193,18,31,0.08);border-radius:6px;font-size:0.8rem;color:var(--color-negative)"><strong>PASS</strong> — Low confidence and low scores. No clear edge in this race.</div>`;
+    }
+
     const suggestions = buildSuggestedBets(race, scored);
-    if (suggestions.length) {
+    if (suggestions.length && !isAutoPass) {
       html += `<div style="margin-top:0.5rem">${suggestions.map(s=>`<span class="suggested-bet-chip">${s}</span>`).join('')}</div>`;
     }
     html += '</div>';
   });
 
-  output.innerHTML = html || '<div class="empty-state"><p>No analysis available. Add speed figures and connections data.</p></div>';
+  output.innerHTML = html || '<div class="empty-state"><p>No analysis available. Load race data to generate advice.</p></div>';
+}
+
+function buildScoreBreakdownHtml(s) {
+  const components = [
+    { label: 'Speed (35%)', score: s.speedScore, weight: 0.35 },
+    { label: 'Class (20%)', score: s.classScore, weight: 0.20 },
+    { label: 'Pace (15%)', score: s.paceScore, weight: 0.15 },
+    { label: 'T/J (15%)', score: s.tjScore, weight: 0.15 },
+    { label: 'Bias (10%)', score: s.biasScore, weight: 0.10 },
+    { label: 'Fresh (5%)', score: s.freshnessScore, weight: 0.05 },
+  ];
+  const dataQual = Math.round(s.completeness * 100);
+  const modelPct = (s.modelProb * 100).toFixed(1);
+  return `<div class="score-breakdown">
+    <div class="score-breakdown-bars">
+      ${components.map(c => {
+        const weighted = (c.score * c.weight).toFixed(1);
+        const barW = Math.max(4, c.score);
+        const hue = c.score >= 70 ? '145' : c.score >= 50 ? '45' : '0';
+        return `<div class="score-breakdown-row">
+          <span class="score-breakdown-label">${c.label}</span>
+          <div class="score-breakdown-track"><div class="score-breakdown-fill" style="width:${barW}%;background:hsl(${hue},55%,42%)"></div></div>
+          <span class="score-breakdown-val">${c.score.toFixed(0)}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="score-breakdown-meta">Data: ${dataQual}% · Model: ${modelPct}%${s.expertMatchCount ? ' · ' + s.expertMatchCount + ' expert pick' + (s.expertMatchCount > 1 ? 's' : '') : ''}</div>
+  </div>`;
 }
 
 function updateHandicapSelects() {
@@ -4021,65 +4179,142 @@ function renderSpeedFigureChart() {
   const raceId = el('sf-race-select').value;
   const output = el('sf-chart-output');
   if (!output) return;
-  if (!raceId) { output.innerHTML = '<p class="text-muted text-sm">Select a race above.</p>'; return; }
+  if (!raceId) { output.innerHTML = '<p class="text-muted text-sm">Select a race above to visualize speed figures.</p>'; return; }
   const data = getTrackData();
   const race = (data.races||[]).find(r=>r.id===raceId);
   if (!race) return;
   const horses = (race.horses||[]).filter(h=>!h.scratched);
   if (!horses.length) { output.innerHTML = '<p class="text-muted text-sm">No entries in this race.</p>'; return; }
 
-  // Find max figure for scale
+  // Find global max/min across all horses for consistent scale
   const allFigs = horses.flatMap(h=>(h.speedFigs||[]).filter(f=>f!=null));
-  const maxFig = allFigs.length ? Math.max(...allFigs) : 100;
-  const minFig = allFigs.length ? Math.min(...allFigs) : 60;
-  const range = maxFig - minFig || 20;
+  if (!allFigs.length) { output.innerHTML = '<p class="text-muted text-sm">No speed figures available for this race.</p>'; return; }
+  const maxFig = Math.max(...allFigs);
+  const minFig = Math.min(...allFigs);
+  const globalHighest = maxFig;
+  const globalLowest = minFig;
 
-  let html = '';
-  horses.forEach(h => {
+  // Sort horses by average speed figure descending
+  const sorted = horses.map(h => {
+    const figs = (h.speedFigs || []).filter(f => f != null);
+    const avg = figs.length ? figs.reduce((a,b) => a+b, 0) / figs.length : 0;
+    return { horse: h, avg, figs };
+  }).sort((a,b) => b.avg - a.avg);
+
+  // Scale: bar width relative to maxFig, using min of (minFig - 10) as baseline
+  const scaleMin = Math.max(0, minFig - 10);
+  const scaleRange = maxFig - scaleMin || 1;
+
+  let html = `<div style="font-size:0.68rem;color:var(--color-muted);margin-bottom:6px;display:flex;gap:12px">
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--color-racing-green);vertical-align:-1px"></span> Highest</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--color-gold);vertical-align:-1px"></span> Middle</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#c1121f;vertical-align:-1px"></span> Lowest</span>
+    <span style="margin-left:auto">Scale: ${scaleMin}–${maxFig}</span>
+  </div>`;
+
+  sorted.forEach(({ horse: h, avg }) => {
     const figs = h.speedFigs || [null,null,null];
-    const validFigs = figs.filter(f=>f!=null);
-    const avg = validFigs.length ? (validFigs.reduce((a,b)=>a+b,0)/validFigs.length).toFixed(1) : '—';
+    const validFigs = figs.filter(f => f != null);
+    const avgStr = validFigs.length ? avg.toFixed(1) : '—';
+    const trend = validFigs.length >= 2 ? (validFigs[validFigs.length-1] - validFigs[0]) : 0;
+    const trendIcon = trend > 2 ? ' <span style="color:var(--color-positive)">&#9650;</span>' : trend < -2 ? ' <span style="color:var(--color-negative)">&#9660;</span>' : '';
+
     html += `<div class="sf-bar-wrap">
       <div class="sf-bar-label">
         <span>#${h.pp||''} ${escHtml(h.name)}</span>
-        <span class="mono text-xs text-muted">Avg: ${avg}</span>
+        <span class="mono text-xs text-muted">Avg: ${avgStr}${trendIcon}</span>
       </div>
-      <div class="sf-bar-track">
-        ${figs.map((f,i) => {
-          if (f == null) return `<div class="sf-bar-seg sf-seg-${i+1}" style="width:0;flex:1"></div>`;
-          const pct = range > 0 ? Math.max(5, ((f - minFig) / range) * 100) : 50;
-          return `<div class="sf-bar-seg sf-seg-${i+1}" style="width:${pct}%;flex:none">${f}</div>`;
+      <div style="display:flex;flex-direction:column;gap:2px">
+        ${figs.map((f, i) => {
+          if (f == null) return `<div style="display:flex;align-items:center;gap:4px;height:14px"><span class="text-xs text-muted" style="width:38px;font-size:0.6rem">${['Fig 1','Fig 2','Latest'][i]}</span><span class="text-xs text-muted">—</span></div>`;
+          const pct = Math.max(6, ((f - scaleMin) / scaleRange) * 100);
+          let bgColor;
+          if (f === globalHighest && validFigs.length > 1) bgColor = 'var(--color-racing-green)';
+          else if (f === globalLowest && validFigs.length > 1) bgColor = '#c1121f';
+          else if (f === Math.max(...validFigs)) bgColor = 'var(--color-racing-green)';
+          else if (f === Math.min(...validFigs)) bgColor = '#c1121f';
+          else bgColor = 'var(--color-gold)';
+          return `<div style="display:flex;align-items:center;gap:4px;height:14px">
+            <span class="text-xs text-muted" style="width:38px;font-size:0.6rem;flex-shrink:0">${['Fig 1','Fig 2','Latest'][i]}</span>
+            <div style="flex:1;background:#eee;border-radius:3px;height:12px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${bgColor};border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;transition:width 0.3s">
+                <span style="font-size:0.6rem;font-weight:700;color:#fff;font-family:var(--font-mono)">${f}</span>
+              </div>
+            </div>
+          </div>`;
         }).join('')}
       </div>
     </div>`;
   });
-  output.innerHTML = html || '<p class="text-muted text-sm">No speed figures entered.</p>';
+  output.innerHTML = html;
 }
 
 function renderPaceInputs() {
   const raceId = el('pace-race-select').value;
   const container = el('pace-inputs');
+  const scenarioBox = el('pace-auto-scenario');
   if (!container) return;
-  if (!raceId) { container.innerHTML = ''; return; }
+  if (!raceId) { container.innerHTML = ''; if (scenarioBox) scenarioBox.innerHTML = ''; return; }
   const data = getTrackData();
   const race = (data.races||[]).find(r=>r.id===raceId);
   if (!race) return;
   const horses = (race.horses||[]).filter(h=>!h.scratched);
-  if (!horses.length) { container.innerHTML = '<p class="text-muted text-sm">No entries.</p>'; return; }
+  if (!horses.length) { container.innerHTML = '<p class="text-muted text-sm">No entries.</p>'; if (scenarioBox) scenarioBox.innerHTML = ''; return; }
 
-  container.innerHTML = `<div class="entry-table-wrap"><table class="entry-table" style="min-width:420px">
-    <thead><tr><th>PP</th><th>Horse</th><th>E1</th><th>E2</th><th>LP</th><th>Style</th></tr></thead>
+  // Auto-generate pace scenario from running styles
+  if (scenarioBox) {
+    const eTypes = horses.filter(h => h.runningStyle === 'E' || h.runningStyle === 'EP');
+    const pTypes = horses.filter(h => h.runningStyle === 'P');
+    const sTypes = horses.filter(h => h.runningStyle === 'S' || h.runningStyle === 'SS');
+    const unknown = horses.filter(h => !h.runningStyle);
+
+    let scenario, scenarioClass, advice;
+    if (eTypes.length === 0) {
+      scenario = 'No Clear Pace';
+      scenarioClass = 'no-pace';
+      advice = 'No front-runner identified. Race shape is uncertain — versatile horses and pressers may benefit.';
+    } else if (eTypes.length === 1) {
+      scenario = 'LONE SPEED';
+      scenarioClass = 'lone-speed';
+      advice = `<strong>#${eTypes[0].pp} ${escHtml(eTypes[0].name)}</strong> is the only early speed. Lone speed in uncontested races wins at a high clip — strong handicapping angle. Closers need a hot pace to close into.`;
+    } else if (eTypes.length >= 3) {
+      scenario = 'Hot Pace';
+      scenarioClass = 'hot-pace';
+      advice = `${eTypes.length} speed horses (${eTypes.map(h => '#'+h.pp+' '+escHtml(h.name)).join(', ')}). Pace likely contested/hot. Advantage to closers${sTypes.length ? ' (' + sTypes.map(h => '#'+h.pp+' '+escHtml(h.name)).join(', ') + ')' : ''}.`;
+    } else {
+      scenario = 'Moderate Pace';
+      scenarioClass = 'moderate-pace';
+      advice = `Two speed horses (${eTypes.map(h => '#'+h.pp+' '+escHtml(h.name)).join(' vs ')}). Moderate pace — watch for one to clear early. Pressers and closers both live.`;
+    }
+
+    scenarioBox.innerHTML = `<div class="pace-scenario-box ${scenarioClass}">
+      <div style="font-weight:700;font-size:0.85rem;margin-bottom:4px">Pace Projection: ${scenario}</div>
+      <div style="margin-bottom:6px">${advice}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <span class="pace-type-count"><span class="pace-type-badge e">E</span> ${eTypes.length} early</span>
+        <span class="pace-type-count"><span class="pace-type-badge p">P</span> ${pTypes.length} presser${pTypes.length !== 1 ? 's' : ''}</span>
+        <span class="pace-type-count"><span class="pace-type-badge s">S</span> ${sTypes.length} closer${sTypes.length !== 1 ? 's' : ''}</span>
+        ${unknown.length ? `<span class="pace-type-count" style="color:var(--color-muted)">? ${unknown.length} unknown</span>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // Manual E1/E2/LP entry table (still available for power users)
+  container.innerHTML = `<details style="margin-top:0.5rem">
+    <summary class="text-sm text-muted" style="cursor:pointer;font-weight:600">Manual Pace Figures (E1/E2/LP)</summary>
+    <div class="entry-table-wrap" style="margin-top:0.5rem"><table class="entry-table" style="min-width:420px">
+    <thead><tr><th>PP</th><th>Horse</th><th>Style</th><th>E1</th><th>E2</th><th>LP</th></tr></thead>
     <tbody>
       ${horses.map(h=>`<tr>
         <td class="pp-cell">${h.pp||''}</td>
         <td><span class="font-semibold text-sm">${escHtml(h.name)}</span></td>
+        <td><span class="badge badge-muted" style="font-size:0.62rem">${h.runningStyle||'—'}</span></td>
         <td><input class="sf-input" type="number" id="pace-e1-${h.id}" inputmode="numeric" placeholder="—" value="${h.e1||''}"></td>
         <td><input class="sf-input" type="number" id="pace-e2-${h.id}" inputmode="numeric" placeholder="—" value="${h.e2||''}"></td>
         <td><input class="sf-input" type="number" id="pace-lp-${h.id}" inputmode="numeric" placeholder="—" value="${h.lp||''}"></td>
-        <td><span class="badge badge-muted" style="font-size:0.62rem">${h.runningStyle||'—'}</span></td>
       </tr>`).join('')}
     </tbody>
-  </table></div>`;
+  </table></div></details>`;
 }
 
 function analyzePace() {
@@ -4120,27 +4355,41 @@ function renderClassInputs() {
   const race = (data.races||[]).find(r=>r.id===raceId);
   if (!race) return;
   const horses = (race.horses||[]).filter(h=>!h.scratched);
-  const todayClassVal = CLASS_SCALE[race.type] || 40;
+  if (!horses.length) { container.innerHTML = '<p class="text-muted text-sm">No entries.</p>'; return; }
+  const todayClassVal = CLASS_SCALE[race.type] || CLASS_SCALE[mapRaceTypeToCode(race.type)] || 40;
+  const todayClassLabel = CLASS_LABELS[race.type] || race.type || 'Unknown';
 
-  container.innerHTML = `<div class="text-xs text-muted mb-1">Today's race: <strong>${CLASS_LABELS[race.type]||race.type}</strong> (class value: ${todayClassVal})</div>
-    <div class="entry-table-wrap"><table class="entry-table" style="min-width:320px">
-      <thead><tr><th>PP</th><th>Horse</th><th>Last Class</th><th>Assessment</th></tr></thead>
+  // Count class movements
+  let droppers = 0, risers = 0, same = 0;
+  horses.forEach(h => {
+    const lcVal = CLASS_SCALE[h.lastClass] || todayClassVal;
+    const diff = lcVal - todayClassVal;
+    if (diff > 0) droppers++;
+    else if (diff < 0) risers++;
+    else same++;
+  });
+
+  container.innerHTML = `<div class="text-xs text-muted mb-1">Today's race: <strong>${todayClassLabel}</strong> (value: ${todayClassVal}) · <span class="class-down">${droppers} dropping</span> · <span class="class-up">${risers} rising</span> · ${same} same</div>
+    <div class="entry-table-wrap"><table class="entry-table" style="min-width:400px">
+      <thead><tr><th>PP</th><th>Horse</th><th>Last Class</th><th>Current Class</th><th>Direction</th></tr></thead>
       <tbody>
         ${horses.map(h=>{
           const lc = h.lastClass || '';
+          const lcLabel = CLASS_LABELS[lc] || lc || '—';
           const lcVal = CLASS_SCALE[lc] || todayClassVal;
           const diff = lcVal - todayClassVal;
-          let arrow, label;
-          if (diff > 15) { arrow='<span class="class-arrow class-down">&#9660;</span>'; label='Dropping in class'; }
-          else if (diff > 0) { arrow='<span class="class-arrow class-down" style="opacity:0.6">&#9660;</span>'; label='Slight drop'; }
-          else if (diff === 0) { arrow='<span class="class-arrow class-same">&#8212;</span>'; label='Same class'; }
-          else if (diff < -15) { arrow='<span class="class-arrow class-up">&#9650;</span>'; label='Rising sharply'; }
-          else { arrow='<span class="class-arrow class-up" style="opacity:0.6">&#9650;</span>'; label='Slight rise'; }
-          return `<tr>
+          let arrow, label, rowStyle = '';
+          if (diff > 15) { arrow='<span class="class-arrow class-down">&#9660;</span>'; label='Drop'; rowStyle='background:rgba(27,67,50,0.06)'; }
+          else if (diff > 0) { arrow='<span class="class-arrow class-down" style="opacity:0.6">&#9660;</span>'; label='Slight Drop'; rowStyle='background:rgba(27,67,50,0.03)'; }
+          else if (diff === 0) { arrow='<span class="class-arrow class-same">&#8594;</span>'; label='Same'; }
+          else if (diff < -15) { arrow='<span class="class-arrow class-up">&#9650;</span>'; label='Rising'; rowStyle='background:rgba(193,18,31,0.04)'; }
+          else { arrow='<span class="class-arrow class-up" style="opacity:0.6">&#9650;</span>'; label='Slight Rise'; }
+          return `<tr style="${rowStyle}">
             <td class="pp-cell">${h.pp||''}</td>
             <td class="font-semibold">${escHtml(h.name)}</td>
-            <td class="text-sm">${CLASS_LABELS[lc]||lc||'—'}</td>
-            <td>${arrow} <span class="text-xs">${label}</span></td>
+            <td class="text-sm">${lcLabel}</td>
+            <td class="text-sm">${todayClassLabel}</td>
+            <td>${arrow} <span class="text-xs font-semibold">${label}</span></td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -4780,11 +5029,106 @@ function startLivePolling() {
     scratchPollingInterval = setInterval(fetchLiveScratches, 60 * 1000);
     fetchLiveScratches();
   }
+  // Live odds polling during race hours (11am-6pm ET)
+  startOddsPolling();
 }
 
 function stopLivePolling() {
   if (livePollingInterval) { clearInterval(livePollingInterval); livePollingInterval = null; }
   if (scratchPollingInterval) { clearInterval(scratchPollingInterval); scratchPollingInterval = null; }
+  if (oddsPollingInterval) { clearInterval(oddsPollingInterval); oddsPollingInterval = null; }
+}
+
+/** Check if it's within race hours (11am-6pm ET) */
+function isDuringRaceHours() {
+  const now = new Date();
+  // Convert to ET (UTC-5 or UTC-4 depending on DST)
+  const etStr = now.toLocaleString('en-US', { timeZone: 'America/New_York', hour12: false });
+  const etHour = parseInt(etStr.split(' ')[1].split(':')[0], 10);
+  return etHour >= 11 && etHour < 18;
+}
+
+/** Start/stop odds polling based on race hours and worker availability */
+function startOddsPolling() {
+  if (oddsPollingInterval) { clearInterval(oddsPollingInterval); oddsPollingInterval = null; }
+  if (!hasValidWorkerUrl()) return;
+  if (!isDuringRaceHours()) return;
+  // Only poll if viewing today's or current race date
+  if (loadedRaceDate && loadedRaceDate !== getTodayStr()) return;
+
+  fetchLiveOdds();
+  oddsPollingInterval = setInterval(() => {
+    if (isDuringRaceHours()) {
+      fetchLiveOdds();
+    } else {
+      clearInterval(oddsPollingInterval);
+      oddsPollingInterval = null;
+    }
+  }, 60 * 1000); // every 60 seconds
+}
+
+/** Fetch live odds for all races from the worker */
+async function fetchLiveOdds() {
+  const store = getStore();
+  const workerUrl = store && store.settings.workerUrl;
+  if (!workerUrl) return;
+
+  const code = getActiveTrack();
+  const date = loadedRaceDate || getTodayStr();
+  const data = getTrackData();
+  const races = data && data.races ? data.races : [];
+  if (!races.length) return;
+
+  let anyUpdated = false;
+
+  for (const race of races) {
+    try {
+      const url = `${workerUrl}/api/odds?track=${code}&date=${date}&race=${race.num}&_t=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const json = await res.json();
+      if (!json.odds || !json.odds.length || json.source === 'unavailable') continue;
+
+      const prevOdds = lastOddsData[race.num] || {};
+
+      json.odds.forEach(o => {
+        const horse = (race.horses || []).find(h => h.pp === o.pp || h.name === o.horseName);
+        if (horse && o.liveOdds && o.liveOdds !== 'N/A') {
+          const prevLive = horse.liveOdds;
+          horse.liveOdds = o.liveOdds;
+          // Track odds movement
+          if (prevLive) {
+            const prev = parseOddsToNum(prevLive);
+            const curr = parseOddsToNum(o.liveOdds);
+            if (prev > 0 && curr > 0) {
+              horse._oddsMovement = curr < prev * 0.85 ? 'dropping' : curr > prev * 1.2 ? 'drifting' : 'stable';
+            }
+          }
+          anyUpdated = true;
+        }
+      });
+
+      // Store MTP if available
+      if (json.mtp != null) {
+        race._mtp = json.mtp;
+      }
+
+      // Save previous odds for movement detection on next poll
+      const newPrevOdds = {};
+      json.odds.forEach(o => { newPrevOdds[o.pp] = o.liveOdds; });
+      lastOddsData[race.num] = newPrevOdds;
+
+    } catch (_) {
+      // Silent fail per race — don't break the loop
+    }
+  }
+
+  if (anyUpdated) {
+    saveTrackData(data);
+    renderTodayTab();
+    // Re-run advice engine to update overlay calculations with live odds
+    runAdviceEngine();
+  }
 }
 
 function showLiveUnavailable() {

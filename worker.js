@@ -596,17 +596,169 @@ function unescapeXml(str) {
  * @param {string} venue      — Human-readable venue name
  * @param {number} raceNumber — Race number (1-based)
  */
-function buildFreeOddsResponse(track, date, venue, raceNumber) {
+/**
+ * Attempts to fetch live win pool odds from NYRA's live odds page.
+ * Falls back to a graceful "unavailable" stub if fetching fails.
+ *
+ * NYRA exposes tote odds at predictable URLs during live racing hours.
+ * We try multiple sources and return whichever succeeds first.
+ *
+ * @param {string} track       — Equibase track code
+ * @param {string} date        — YYYY-MM-DD
+ * @param {string} venue       — Human-readable venue name
+ * @param {number} raceNumber  — Race number
+ */
+async function fetchFreeOdds(track, date, venue, raceNumber) {
+  // NYRA tracks: try fetching from NYRA's live tote data
+  const nyraTrackMap = {
+    AQU: 'aqueduct',
+    SAR: 'saratoga',
+    BEL: 'aqueduct',
+    BTP: 'belmont-park',
+  };
+
+  const nyraSlug = nyraTrackMap[track];
+  if (nyraSlug) {
+    try {
+      // NYRA provides a JSON odds feed during live racing
+      const nyraUrl = `https://www.nyra.com/api/odds/${nyraSlug}/race/${raceNumber}`;
+      const resp = await fetch(nyraUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'NE-Racing-Companion/1.0',
+        },
+        cf: { cacheTtl: 45 },
+      });
+
+      if (resp.ok) {
+        const nyraData = await resp.json();
+        if (nyraData && nyraData.runners && nyraData.runners.length) {
+          return {
+            track,
+            date,
+            venue,
+            raceNumber,
+            lastUpdated: new Date().toISOString(),
+            source: 'nyra',
+            mtp: nyraData.mtp || null,
+            odds: nyraData.runners.map(r => ({
+              pp: parseInt(r.program_number || r.post_position || 0, 10),
+              horseName: r.horse_name || r.name || 'Unknown',
+              liveOdds: r.odds || r.win_odds || 'N/A',
+              pool: r.win_pool ? Math.round(parseFloat(r.win_pool)) : null,
+            })),
+          };
+        }
+      }
+    } catch (_) {
+      // NYRA feed not available — try next source
+    }
+  }
+
+  // Equibase live odds (HTML scraping as fallback)
+  try {
+    const dateFormatted = date.replace(/-/g, '').slice(4) + date.slice(0, 4); // MMDDYYYY
+    const eqbUrl = `https://www.equibase.com/premium/eqbLiveOddsXMLDownload.cfm?tk=${track}&cy=USA&dt=${dateFormatted}&rn=${raceNumber}`;
+    const resp = await fetch(eqbUrl, {
+      headers: {
+        'Accept': 'text/xml, application/xml',
+        'User-Agent': 'NE-Racing-Companion/1.0',
+      },
+      cf: { cacheTtl: 45 },
+    });
+
+    if (resp.ok) {
+      const xml = await resp.text();
+      // Parse XML odds using regex (no DOMParser in Workers)
+      const odds = parseEquibaseOddsXml(xml, track, date, venue, raceNumber);
+      if (odds && odds.odds && odds.odds.length) {
+        return odds;
+      }
+    }
+  } catch (_) {
+    // Equibase odds not available
+  }
+
+  // All free sources exhausted — return graceful stub
   return {
     track,
     date,
     venue,
     raceNumber,
     lastUpdated: new Date().toISOString(),
-    source:  "unavailable",
-    message: "Live odds require a The Racing API subscription. " +
-             "Configure DATA_SOURCE=theracingapi and set API_KEY in Settings.",
+    source: 'unavailable',
+    message: 'Live odds are not available right now. Odds are only available during live racing hours.',
     odds: [],
+  };
+}
+
+/**
+ * Parse Equibase live odds XML feed.
+ * The Equibase XML format provides runners with program numbers and odds.
+ */
+function parseEquibaseOddsXml(xml, track, date, venue, raceNumber) {
+  if (!xml || !xml.includes('<')) {
+    return null;
+  }
+
+  const odds = [];
+  // Try to match runner entries with odds
+  const runnerRegex = /<Runner[^>]*>([\s\S]*?)<\/Runner>/gi;
+  let match;
+  while ((match = runnerRegex.exec(xml)) !== null) {
+    const block = match[1];
+    const ppMatch = block.match(/<ProgramNumber[^>]*>(\d+)<\/ProgramNumber>/i) ||
+                    block.match(/ProgramNumber="(\d+)"/i);
+    const nameMatch = block.match(/<HorseName[^>]*>([^<]+)<\/HorseName>/i) ||
+                      block.match(/HorseName="([^"]+)"/i);
+    const oddsMatch = block.match(/<Odds[^>]*>([^<]+)<\/Odds>/i) ||
+                      block.match(/Odds="([^"]+)"/i) ||
+                      block.match(/<WinOdds[^>]*>([^<]+)<\/WinOdds>/i);
+
+    if (ppMatch) {
+      odds.push({
+        pp: parseInt(ppMatch[1], 10),
+        horseName: nameMatch ? nameMatch[1].trim() : 'Unknown',
+        liveOdds: oddsMatch ? oddsMatch[1].trim() : 'N/A',
+        pool: null,
+      });
+    }
+  }
+
+  // Try simpler format: <Entry> elements
+  if (!odds.length) {
+    const entryRegex = /<Entry[^>]*>([\s\S]*?)<\/Entry>/gi;
+    while ((match = entryRegex.exec(xml)) !== null) {
+      const block = match[1];
+      const ppMatch = block.match(/<PP[^>]*>(\d+)<\/PP>/i) || block.match(/PP="(\d+)"/i);
+      const nameMatch = block.match(/<Name[^>]*>([^<]+)<\/Name>/i) || block.match(/Name="([^"]+)"/i);
+      const oddsMatch = block.match(/<Odds[^>]*>([^<]+)<\/Odds>/i) || block.match(/Odds="([^"]+)"/i);
+      if (ppMatch) {
+        odds.push({
+          pp: parseInt(ppMatch[1], 10),
+          horseName: nameMatch ? nameMatch[1].trim() : 'Unknown',
+          liveOdds: oddsMatch ? oddsMatch[1].trim() : 'N/A',
+          pool: null,
+        });
+      }
+    }
+  }
+
+  if (!odds.length) return null;
+
+  // Extract MTP if available
+  const mtpMatch = xml.match(/<MTP[^>]*>(\d+)<\/MTP>/i) || xml.match(/MTP="(\d+)"/i);
+  const mtp = mtpMatch ? parseInt(mtpMatch[1], 10) : null;
+
+  return {
+    track,
+    date,
+    venue,
+    raceNumber,
+    lastUpdated: new Date().toISOString(),
+    source: 'equibase',
+    mtp,
+    odds,
   };
 }
 
@@ -1078,10 +1230,27 @@ async function handleOdds(request, env, origin) {
     return jsonError("Invalid race number. Must be a positive integer.", 400, origin);
   }
 
-  // Free mode: return the stub immediately; no caching needed for a static stub
+  // Free mode: attempt to fetch live odds from NYRA/Equibase
   if (!usePaidSource(env)) {
-    const body = buildFreeOddsResponse(track, date, venue, raceNumber);
-    return jsonOk(body, origin, 0);
+    const cacheKeyFree = new Request(`https://ne-racing-cache/odds-free/${track}/${date}/${raceNumber}`);
+    const cachedFree = await readCache(cacheKeyFree);
+    if (cachedFree) return cachedFree;
+
+    try {
+      const body = await fetchFreeOdds(track, date, venue, raceNumber);
+      const ttl = body.source === 'unavailable' ? 0 : CACHE_TTL.odds;
+      const response = jsonOk(body, origin, ttl);
+      if (ttl > 0) await writeCache(cacheKeyFree, response);
+      return response;
+    } catch (_) {
+      return jsonOk({
+        track, date, venue, raceNumber,
+        lastUpdated: new Date().toISOString(),
+        source: 'unavailable',
+        message: 'Live odds fetch failed. Falling back to morning line.',
+        odds: [],
+      }, origin, 0);
+    }
   }
 
   // Paid mode: fetch from The Racing API
@@ -1298,7 +1467,7 @@ export default {
             activeSources: {
               entries:  dataSource === "theracingapi" ? "theracingapi"   : "github-pages-static",
               scratches: dataSource === "theracingapi" ? "theracingapi"  : "equibase-live",
-              odds:     dataSource === "theracingapi" ? "theracingapi"   : "unavailable",
+              odds:     dataSource === "theracingapi" ? "theracingapi"   : "nyra-equibase-free",
               results:  dataSource === "theracingapi" ? "theracingapi"   : "unavailable",
             },
             defaultTrack: env.DEFAULT_TRACK || "AQU",
