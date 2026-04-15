@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0720';
+var NE_APP_VERSION = '20260415-0725';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -5633,7 +5633,7 @@ function toggleRefSection(header) {
   const icon = header.querySelector('svg');
   if (!body) return;
   const hidden = body.classList.toggle('hidden');
-  if (icon) icon.style.transform = hidden ? 'rotate(-90deg)' : '';
+  if (icon) icon.style.transform = hidden ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
 
 /* =============================================================
