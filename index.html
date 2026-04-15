@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0700';
+var NE_APP_VERSION = '20260415-0710';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -795,6 +795,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .ref-section-header { padding: 0.75rem 1rem; background: rgba(27,67,50,0.06); border-bottom: 1px solid rgba(0,0,0,0.07); display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
 .ref-section-header h3 { font-size: 0.9rem; flex: 1; }
 .ref-section-body { padding: 1rem; }
+.ref-section-body .ref-section { margin: 0.25rem 0; border-radius: 6px; border: 1px solid rgba(0,0,0,0.06); }
+.ref-section-body .ref-section .ref-section-header { padding: 0.55rem 0.75rem; background: rgba(27,67,50,0.03); font-size: 0.88rem; }
+.ref-section-body .ref-section .ref-section-header h4 { font-family: var(--font-display); font-size: 0.88rem; margin: 0; flex: 1; color: var(--color-gold); font-weight: 600; }
+.ref-section-body .ref-section .ref-section-body { padding: 0.75rem; }
 .ref-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 0.85rem; }
 .ref-row:last-child { border-bottom: none; }
 .ref-row dt { font-weight: 600; color: var(--color-slate); flex: 0 0 120px; }
@@ -1914,58 +1918,95 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="ref-section-body hidden">
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:0 0 0.5rem;color:var(--color-gold)">How Parimutuel Betting Works</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>Horse racing uses parimutuel (pool) betting, NOT fixed-odds like sports betting</li>
-            <li>All bets go into a pool; the track takes its cut (called &ldquo;takeout,&rdquo; typically 15&ndash;25%)</li>
-            <li>Remaining money is split among winners proportional to how much they bet</li>
-            <li>This means odds change right up until post time as more bets come in</li>
-            <li>Morning Line (ML) odds are just estimates &mdash; they&rsquo;re the track handicapper&rsquo;s prediction of where the odds will land, not a guarantee</li>
-            <li>The tote board shows live odds that update every 60 seconds</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">The $2 Base Bet</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>Most bets at the track have a $2 minimum (some exotics allow $0.50 or $0.10)</li>
-            <li>When odds are listed as &ldquo;5-1,&rdquo; that means $5 profit per $1 wagered, so a $2 bet returns $12 ($10 profit + $2 stake)</li>
-            <li>Win pays the most, Place pays less, Show pays the least &mdash; but each is progressively easier to hit</li>
-            <li>Don&rsquo;t think of Show bets as &ldquo;bad&rdquo; &mdash; they&rsquo;re a lower-variance way to play a strong opinion</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Your First Day at the Track</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>Study the program or Daily Racing Form before betting &mdash; look at speed figures, jockey/trainer records, and recent form</li>
-            <li>Set a bankroll BEFORE you arrive and stick to it (this app helps with the 20% daily budget rule)</li>
-            <li>Start with straight Win bets on horses you have conviction on &mdash; exotics come later</li>
-            <li>Watch a few races before betting to observe the track surface and see which running styles are working</li>
-            <li>&ldquo;Chalk&rdquo; = the favorite. A &ldquo;bridge jumper&rdquo; bet is a large Show bet on a heavy favorite &mdash; low return but high hit rate</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Understanding Takeout</h4>
-          <p style="font-size:0.85rem;line-height:1.7;margin-bottom:0.75rem">Takeout varies by bet type and track:</p>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>Win/Place/Show: typically 15&ndash;17%</li>
-            <li>Exacta/Trifecta: typically 19&ndash;22%</li>
-            <li>Pick 4/5/6: typically 22&ndash;25%</li>
-          </ul>
-          <div class="banner banner-warning" style="font-size:0.82rem;padding:0.5rem 0.75rem;margin:0.5rem 0">Higher takeout = harder to profit long-term. You need horses that win MORE often than their odds imply to overcome the takeout. A 3-1 shot that wins 30% of the time is a good bet; a 3-1 shot that wins 20% is a bad bet &mdash; even if it wins today.</div>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Bankroll Management 101</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>The Kelly Criterion suggests betting a percentage proportional to your edge &mdash; but most recreational players should cap at 5% per bet</li>
-            <li>This app&rsquo;s 20% daily budget rule is designed to keep you in action across 4-5 bets per day</li>
-            <li>Never chase losses &mdash; if you lose your daily budget, you&rsquo;re done for the day</li>
-            <li>Track every bet (the Results tab does this for you) &mdash; review weekly to find patterns in what you&rsquo;re good at</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Common Beginner Mistakes</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li><strong>Betting every race:</strong> the best handicappers PASS more races than they play</li>
-            <li><strong>Only betting favorites:</strong> favorites win ~33% of the time but rarely at profitable odds</li>
-            <li><strong>Ignoring the odds:</strong> a great horse at 1-5 odds is usually a terrible bet; a decent horse at 8-1 can be excellent</li>
-            <li><strong>Over-boxing:</strong> a $2 Trifecta box with 6 horses costs $120 &mdash; know your cost before you click</li>
-            <li><strong>Emotional betting:</strong> never bet a horse because of its name, colors, or your &ldquo;gut feeling&rdquo; without data</li>
-          </ul>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>How Parimutuel Betting Works</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>Horse racing uses parimutuel (pool) betting, NOT fixed-odds like sports betting</li>
+                <li>All bets go into a pool; the track takes its cut (called &ldquo;takeout,&rdquo; typically 15&ndash;25%)</li>
+                <li>Remaining money is split among winners proportional to how much they bet</li>
+                <li>This means odds change right up until post time as more bets come in</li>
+                <li>Morning Line (ML) odds are just estimates &mdash; they&rsquo;re the track handicapper&rsquo;s prediction of where the odds will land, not a guarantee</li>
+                <li>The tote board shows live odds that update every 60 seconds</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>The $2 Base Bet</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>Most bets at the track have a $2 minimum (some exotics allow $0.50 or $0.10)</li>
+                <li>When odds are listed as &ldquo;5-1,&rdquo; that means $5 profit per $1 wagered, so a $2 bet returns $12 ($10 profit + $2 stake)</li>
+                <li>Win pays the most, Place pays less, Show pays the least &mdash; but each is progressively easier to hit</li>
+                <li>Don&rsquo;t think of Show bets as &ldquo;bad&rdquo; &mdash; they&rsquo;re a lower-variance way to play a strong opinion</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Your First Day at the Track</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>Study the program or Daily Racing Form before betting &mdash; look at speed figures, jockey/trainer records, and recent form</li>
+                <li>Set a bankroll BEFORE you arrive and stick to it (this app helps with the 20% daily budget rule)</li>
+                <li>Start with straight Win bets on horses you have conviction on &mdash; exotics come later</li>
+                <li>Watch a few races before betting to observe the track surface and see which running styles are working</li>
+                <li>&ldquo;Chalk&rdquo; = the favorite. A &ldquo;bridge jumper&rdquo; bet is a large Show bet on a heavy favorite &mdash; low return but high hit rate</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Understanding Takeout</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <p style="font-size:0.85rem;line-height:1.7;margin-bottom:0.75rem">Takeout varies by bet type and track:</p>
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>Win/Place/Show: typically 15&ndash;17%</li>
+                <li>Exacta/Trifecta: typically 19&ndash;22%</li>
+                <li>Pick 4/5/6: typically 22&ndash;25%</li>
+              </ul>
+              <div class="banner banner-warning" style="font-size:0.82rem;padding:0.5rem 0.75rem;margin:0.5rem 0">Higher takeout = harder to profit long-term. You need horses that win MORE often than their odds imply to overcome the takeout. A 3-1 shot that wins 30% of the time is a good bet; a 3-1 shot that wins 20% is a bad bet &mdash; even if it wins today.</div>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Bankroll Management 101</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>The Kelly Criterion suggests betting a percentage proportional to your edge &mdash; but most recreational players should cap at 5% per bet</li>
+                <li>This app&rsquo;s 20% daily budget rule is designed to keep you in action across 4-5 bets per day</li>
+                <li>Never chase losses &mdash; if you lose your daily budget, you&rsquo;re done for the day</li>
+                <li>Track every bet (the Results tab does this for you) &mdash; review weekly to find patterns in what you&rsquo;re good at</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Common Beginner Mistakes</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li><strong>Betting every race:</strong> the best handicappers PASS more races than they play</li>
+                <li><strong>Only betting favorites:</strong> favorites win ~33% of the time but rarely at profitable odds</li>
+                <li><strong>Ignoring the odds:</strong> a great horse at 1-5 odds is usually a terrible bet; a decent horse at 8-1 can be excellent</li>
+                <li><strong>Over-boxing:</strong> a $2 Trifecta box with 6 horses costs $120 &mdash; know your cost before you click</li>
+                <li><strong>Emotional betting:</strong> never bet a horse because of its name, colors, or your &ldquo;gut feeling&rdquo; without data</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1976,72 +2017,121 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="ref-section-body hidden">
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:0 0 0.5rem;color:var(--color-gold)">Expected Value (EV) and Overlay Theory</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>A bet has positive EV when the true win probability exceeds the implied probability of the tote odds</li>
-            <li>Implied probability = 1 / (decimal odds). At 4-1, implied probability = 20%. If you estimate the horse wins 28% of the time, that&rsquo;s an 8% overlay</li>
-            <li>This app&rsquo;s Advice Engine calculates overlay as: (modelProb - impliedProb) / impliedProb &mdash; values &gt; 0.08 (8% overlay) flag a horse as a &ldquo;Value Play&rdquo;</li>
-            <li>Professional bettors focus exclusively on overlay &mdash; they don&rsquo;t care if a horse &ldquo;wins,&rdquo; they care if it wins MORE OFTEN than the odds price in</li>
-            <li>Key insight: you can be profitable betting horses that lose 70% of the time, as long as the 30% wins pay enough to overcome losses + takeout</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Dutching and Spreading</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>Dutching: betting multiple horses in the same race, sized so that any winner returns the same profit</li>
-            <li>Formula: stake_i = (totalStake &times; impliedProb_i) / sum(impliedProbs) for all selected horses</li>
-            <li>Best applied when you can eliminate 40%+ of the field but can&rsquo;t narrow to one horse</li>
-            <li>Spreading in exotics: using a Key horse with multiple &ldquo;with&rdquo; horses rather than boxing, to reduce cost while keeping the high-probability horse anchored</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Pace Analysis Deep Dive</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>The single most predictive factor in route races (1 mile+): the pace scenario</li>
-            <li>Classify every horse as E (front-runner), EP (presser), P (mid-pack), S (closer), SS (deep closer)</li>
-            <li>Count the &ldquo;E&rdquo; and &ldquo;EP&rdquo; horses: 0-1 = slow pace (favors speed), 2 = moderate (honest), 3+ = hot pace (favors closers)</li>
-            <li>Lone speed is the most powerful angle in handicapping &mdash; a front-runner with no early challengers can dictate tempo and save energy</li>
-            <li>In sprint races (under 7f), pace is less decisive &mdash; raw speed figures dominate</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Trainer/Jockey Pattern Exploitation</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>Track trainer stats in specific situations: first-time starters, turf-to-dirt, layoff returns (60+ days), equipment changes (blinkers on/off)</li>
-            <li>Some trainers have 30%+ win rates in specific spots but 12% overall &mdash; the specific angle matters more than the overall number</li>
-            <li>Jockey/trainer combos that work together frequently often outperform either individual&rsquo;s stats</li>
-            <li>&ldquo;Barn moves&rdquo; (horse transfers to a new trainer) are high-value angles, especially when moving to a top barn</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Exotic Wagering Strategy</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li><strong>Exactas:</strong> Rarely box &mdash; instead, play two straight exactas if you have a strong opinion on the winner. $2 EX 3/5 + $2 EX 3/7 costs $4 and gives you a key position. Boxing 3-5-7 costs $12</li>
-            <li><strong>Trifectas:</strong> Key your strongest horse on top with 3-4 &ldquo;with&rdquo; horses underneath. Key cost = base &times; n &times; (n-1) where n = with-horses. Much cheaper than full box</li>
-            <li><strong>Pick 4/5/6:</strong> Use &ldquo;spread&rdquo; legs (many horses) in races with no standout, and &ldquo;single&rdquo; legs (one horse) in races with a strong opinion. The ideal ticket has 2-3 singles and 1-2 spread legs. A Pick 4 with singles of 1&times;1&times;4&times;6 = 24 combinations ($48 at $2) vs full spread 4&times;4&times;4&times;4 = 256 combinations ($512)</li>
-            <li><strong>Daily Doubles:</strong> The most underrated exotic. Lower takeout than Trifectas/Supers, and you only need two winners. Use them to create value when one leg has a clear standout</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Bankroll Management for Serious Players</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li><strong>Flat betting:</strong> Same amount every bet. Simple, prevents overexposure, but doesn&rsquo;t maximize edge</li>
-            <li><strong>Proportional betting:</strong> Bet a fixed % of current bankroll (e.g., 3%). Automatically scales down during losing streaks and up during winning streaks</li>
-            <li><strong>Kelly staking:</strong> Optimal bet size = (edge / odds). If you estimate 30% win probability at 4-1 odds: Kelly = (0.30 &times; 5 - 1) / (5 - 1) = 12.5% of bankroll. Most pros use &ldquo;fractional Kelly&rdquo; (half or quarter Kelly) to reduce variance</li>
-            <li><strong>Session management:</strong> Set stop-loss (e.g., -40% of daily bankroll) and stop-win (e.g., +100%) targets. When either hits, walk away</li>
-            <li>Track your ROI by bet type &mdash; most players find they&rsquo;re profitable in one or two bet types and losing in others. Double down on your strengths</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Reading Tote Board Patterns</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>&ldquo;Steam&rdquo; = odds dropping rapidly, usually indicating sharp (professional) money. Late steam on a non-obvious horse is the strongest signal</li>
-            <li>&ldquo;Drift&rdquo; = odds rising. Can mean insiders are NOT betting their own horse &mdash; a negative signal</li>
-            <li>Watch the late odds changes (final 2 minutes before post) &mdash; this is when sharp money tends to appear</li>
-            <li>Pool size matters: in small pools ($10-20K win pool), a single large bet can distort odds. In large pools ($200K+), significant moves more likely represent collective sharp action</li>
-          </ul>
-
-          <h4 style="font-family:var(--font-display);font-size:0.95rem;margin:1rem 0 0.5rem;color:var(--color-gold)">Mental Game</h4>
-          <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
-            <li>Results-oriented thinking is the enemy. A correct bet that loses is still a correct bet &mdash; evaluate process, not outcome</li>
-            <li>Keep a betting journal (beyond just results) &mdash; note WHY you made each bet. Review weekly to identify pattern biases</li>
-            <li>The concept of &ldquo;due&rdquo; doesn&rsquo;t exist in racing &mdash; each race is independent</li>
-            <li>Fatigue kills edge: your worst bets will come late in the card when you&rsquo;re tired and chasing. The 20% budget rule prevents this</li>
-          </ul>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Expected Value (EV) and Overlay Theory</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>A bet has positive EV when the true win probability exceeds the implied probability of the tote odds</li>
+                <li>Implied probability = 1 / (decimal odds). At 4-1, implied probability = 20%. If you estimate the horse wins 28% of the time, that&rsquo;s an 8% overlay</li>
+                <li>This app&rsquo;s Advice Engine calculates overlay as: (modelProb - impliedProb) / impliedProb &mdash; values &gt; 0.08 (8% overlay) flag a horse as a &ldquo;Value Play&rdquo;</li>
+                <li>Professional bettors focus exclusively on overlay &mdash; they don&rsquo;t care if a horse &ldquo;wins,&rdquo; they care if it wins MORE OFTEN than the odds price in</li>
+                <li>Key insight: you can be profitable betting horses that lose 70% of the time, as long as the 30% wins pay enough to overcome losses + takeout</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Dutching and Spreading</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>Dutching: betting multiple horses in the same race, sized so that any winner returns the same profit</li>
+                <li>Formula: stake_i = (totalStake &times; impliedProb_i) / sum(impliedProbs) for all selected horses</li>
+                <li>Best applied when you can eliminate 40%+ of the field but can&rsquo;t narrow to one horse</li>
+                <li>Spreading in exotics: using a Key horse with multiple &ldquo;with&rdquo; horses rather than boxing, to reduce cost while keeping the high-probability horse anchored</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Pace Analysis Deep Dive</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>The single most predictive factor in route races (1 mile+): the pace scenario</li>
+                <li>Classify every horse as E (front-runner), EP (presser), P (mid-pack), S (closer), SS (deep closer)</li>
+                <li>Count the &ldquo;E&rdquo; and &ldquo;EP&rdquo; horses: 0-1 = slow pace (favors speed), 2 = moderate (honest), 3+ = hot pace (favors closers)</li>
+                <li>Lone speed is the most powerful angle in handicapping &mdash; a front-runner with no early challengers can dictate tempo and save energy</li>
+                <li>In sprint races (under 7f), pace is less decisive &mdash; raw speed figures dominate</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Trainer/Jockey Pattern Exploitation</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>Track trainer stats in specific situations: first-time starters, turf-to-dirt, layoff returns (60+ days), equipment changes (blinkers on/off)</li>
+                <li>Some trainers have 30%+ win rates in specific spots but 12% overall &mdash; the specific angle matters more than the overall number</li>
+                <li>Jockey/trainer combos that work together frequently often outperform either individual&rsquo;s stats</li>
+                <li>&ldquo;Barn moves&rdquo; (horse transfers to a new trainer) are high-value angles, especially when moving to a top barn</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Exotic Wagering Strategy</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li><strong>Exactas:</strong> Rarely box &mdash; instead, play two straight exactas if you have a strong opinion on the winner. $2 EX 3/5 + $2 EX 3/7 costs $4 and gives you a key position. Boxing 3-5-7 costs $12</li>
+                <li><strong>Trifectas:</strong> Key your strongest horse on top with 3-4 &ldquo;with&rdquo; horses underneath. Key cost = base &times; n &times; (n-1) where n = with-horses. Much cheaper than full box</li>
+                <li><strong>Pick 4/5/6:</strong> Use &ldquo;spread&rdquo; legs (many horses) in races with no standout, and &ldquo;single&rdquo; legs (one horse) in races with a strong opinion. The ideal ticket has 2-3 singles and 1-2 spread legs. A Pick 4 with singles of 1&times;1&times;4&times;6 = 24 combinations ($48 at $2) vs full spread 4&times;4&times;4&times;4 = 256 combinations ($512)</li>
+                <li><strong>Daily Doubles:</strong> The most underrated exotic. Lower takeout than Trifectas/Supers, and you only need two winners. Use them to create value when one leg has a clear standout</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Bankroll Management for Serious Players</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li><strong>Flat betting:</strong> Same amount every bet. Simple, prevents overexposure, but doesn&rsquo;t maximize edge</li>
+                <li><strong>Proportional betting:</strong> Bet a fixed % of current bankroll (e.g., 3%). Automatically scales down during losing streaks and up during winning streaks</li>
+                <li><strong>Kelly staking:</strong> Optimal bet size = (edge / odds). If you estimate 30% win probability at 4-1 odds: Kelly = (0.30 &times; 5 - 1) / (5 - 1) = 12.5% of bankroll. Most pros use &ldquo;fractional Kelly&rdquo; (half or quarter Kelly) to reduce variance</li>
+                <li><strong>Session management:</strong> Set stop-loss (e.g., -40% of daily bankroll) and stop-win (e.g., +100%) targets. When either hits, walk away</li>
+                <li>Track your ROI by bet type &mdash; most players find they&rsquo;re profitable in one or two bet types and losing in others. Double down on your strengths</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Reading Tote Board Patterns</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>&ldquo;Steam&rdquo; = odds dropping rapidly, usually indicating sharp (professional) money. Late steam on a non-obvious horse is the strongest signal</li>
+                <li>&ldquo;Drift&rdquo; = odds rising. Can mean insiders are NOT betting their own horse &mdash; a negative signal</li>
+                <li>Watch the late odds changes (final 2 minutes before post) &mdash; this is when sharp money tends to appear</li>
+                <li>Pool size matters: in small pools ($10-20K win pool), a single large bet can distort odds. In large pools ($200K+), significant moves more likely represent collective sharp action</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ref-section">
+            <div class="ref-section-header" onclick="toggleRefSection(this)">
+              <h4>Mental Game</h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;transition:transform 0.2s;margin-left:auto;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ref-section-body hidden">
+              <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
+                <li>Results-oriented thinking is the enemy. A correct bet that loses is still a correct bet &mdash; evaluate process, not outcome</li>
+                <li>Keep a betting journal (beyond just results) &mdash; note WHY you made each bet. Review weekly to identify pattern biases</li>
+                <li>The concept of &ldquo;due&rdquo; doesn&rsquo;t exist in racing &mdash; each race is independent</li>
+                <li>Fatigue kills edge: your worst bets will come late in the card when you&rsquo;re tired and chasing. The 20% budget rule prevents this</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
