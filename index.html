@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0740';
+var NE_APP_VERSION = '20260415-0748';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1307,21 +1307,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .collapsible-content { overflow: hidden; transition: max-height 0.25s ease; }
 .collapsible-content.closed { max-height: 0 !important; }
 
-/* Floating Home button */
-#floating-home-btn {
-  position: fixed; bottom: 80px; right: 16px; z-index: 900;
-  background: var(--color-racing-green); color: var(--color-white);
-  border: 2px solid var(--color-gold); border-radius: 24px;
-  padding: 8px 16px; font-family: var(--font-display); font-size: 0.82rem;
-  font-weight: 600; letter-spacing: 0.03em; cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-  display: flex; align-items: center; gap: 6px;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-#floating-home-btn:active { transform: scale(0.94); }
-#floating-home-btn.hidden-btn { opacity: 0; pointer-events: none; transform: translateY(12px); }
-@media (min-width: 640px) { #floating-home-btn { bottom: 24px; right: 24px; } }
+
 </style>
 </head>
 <body>
@@ -2217,11 +2203,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     Saratoga Racing Companion 2026 — For personal use only. Not affiliated with NYRA, Saratoga Race Course, or any wagering platform. No real wagers are placed through this app. Betting suggestions are analysis based on available data — not financial advice and not a guarantee of results.
   </footer>
 
-<!-- FLOATING HOME BUTTON -->
-  <button id="floating-home-btn" class="hidden-btn" onclick="scrollToHome()" aria-label="Scroll to Today's Ticket">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-    Home
-  </button>
+
 
   <!-- BOTTOM TAB BAR -->
   <nav id="bottom-tab-bar" role="navigation" aria-label="Tab navigation">
@@ -2785,25 +2767,7 @@ function applyHeroBankroll(val) {
   updateBankrollBanner();
 }
 
-/* =============================================================
-   FLOATING HOME BUTTON
-   ============================================================= */
-function scrollToHome() {
-  var ticket = el('rec-bets-card');
-  var heading = el('today-heading');
-  // Make sure we're on the Today tab
-  switchTab('today');
-  // Give the tab switch a tick to render
-  setTimeout(function() {
-    var target = (ticket && !ticket.classList.contains('hidden')) ? ticket : heading || el('main-content');
-    if (target) {
-      var rect = target.getBoundingClientRect();
-      window.scrollTo({ top: rect.top + window.pageYOffset - 8, behavior: 'smooth' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, 50);
-}
+
 
 /* =============================================================
    APP INITIALIZATION
@@ -6395,21 +6359,7 @@ document.addEventListener('DOMContentLoaded', () => {
     heroObserver.observe(heroEl);
   }
 
-  // Show/hide floating Home button based on scroll position
-  var homeBtn = el('floating-home-btn');
-  if (homeBtn) {
-    var _lastScrollY = 0;
-    window.addEventListener('scroll', function() {
-      var y = window.pageYOffset || document.documentElement.scrollTop;
-      // Show button when scrolled past the top header area
-      if (y > 300) {
-        homeBtn.classList.remove('hidden-btn');
-      } else {
-        homeBtn.classList.add('hidden-btn');
-      }
-      _lastScrollY = y;
-    }, { passive: true });
-  }
+
 
   // Check for version updates on load
   if (navigator.onLine) {
