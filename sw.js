@@ -1,4 +1,4 @@
-var APP_VERSION = '20260415-0818';
+var APP_VERSION = '20260415-1745';
 
 // Self-destructing service worker.
 // If a browser still has a previous version of sw.js cached/registered,
