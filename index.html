@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260414-2355';
+var NE_APP_VERSION = '20260415-0027';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -631,8 +631,6 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 /* Add horse row */
 .add-horse-row { padding: 0.5rem 0.75rem; background: rgba(27,67,50,0.03); border-top: 1px dashed rgba(27,67,50,0.15); }
-.paste-import-area { padding: 0.75rem; background: rgba(27,67,50,0.03); border-top: 1px solid rgba(0,0,0,0.06); }
-.paste-import-area .form-label { font-size: 0.72rem; }
 
 /* Advice panel */
 .advice-panel { border-top: 2px dashed var(--color-gold); }
@@ -2341,7 +2339,6 @@ function buildRaceCardHTML(race) {
       </div>
       <div class="add-horse-row">
         <button class="btn btn-sm btn-outline" onclick="showAddHorseForm('${race.id}')">+ Add Horse</button>
-        <button class="btn btn-sm btn-ghost" style="margin-left:4px" onclick="togglePasteArea('${race.id}')">Paste / Import CSV</button>
         <button class="btn btn-sm btn-ghost" style="margin-left:4px;color:var(--color-negative)" onclick="deleteRace('${race.id}')">Delete Race</button>
       </div>
       <!-- Add horse form -->
@@ -2368,15 +2365,7 @@ function buildRaceCardHTML(race) {
           <button class="btn btn-ghost btn-sm" onclick="hideAddHorseForm('${race.id}')">Cancel</button>
         </div>
       </div>
-      <!-- Paste area -->
-      <div id="paste-area-${race.id}" class="paste-import-area hidden">
-        <label class="form-label">Paste CSV/TSV (PP, Horse, ML, Jockey, Trainer)</label>
-        <textarea class="form-control" rows="4" id="paste-text-${race.id}" placeholder="1,Bold Ruler,5-1,Velazquez,Pletcher&#10;2,Secretariat,3-1,Ortiz Jr.,Brown"></textarea>
-        <div style="margin-top:0.4rem;display:flex;gap:0.4rem">
-          <button class="btn btn-primary btn-sm" onclick="importPastedHorses('${race.id}')">Import</button>
-          <button class="btn btn-ghost btn-sm" onclick="togglePasteArea('${race.id}')">Cancel</button>
-        </div>
-      </div>
+
       <!-- Advice panel -->
       <div class="advice-panel">
         <div class="advice-panel-header" onclick="toggleAdvicePanelRace('${race.id}')">
@@ -2660,10 +2649,6 @@ function hideAddHorseForm(raceId) {
   const f = el('add-horse-form-' + raceId);
   if (f) f.classList.add('hidden');
 }
-function togglePasteArea(raceId) {
-  const a = el('paste-area-' + raceId);
-  if (a) a.classList.toggle('hidden');
-}
 
 function addHorse(raceId) {
   const name = el('nh-name-' + raceId).value.trim();
@@ -2702,37 +2687,6 @@ function addHorse(raceId) {
   showToast(name + ' added to Race #' + (race ? race.num : ''), 'success', 3000);
 }
 
-function importPastedHorses(raceId) {
-  const text = el('paste-text-' + raceId).value.trim();
-  if (!text) return;
-  const lines = text.split('\n');
-  const data = getTrackData();
-  const race = (data.races || []).find(r => r.id === raceId);
-  if (!race) return;
-  if (!race.horses) race.horses = [];
-  let added = 0;
-  lines.forEach(line => {
-    const parts = line.split(/[,\t]/).map(p => p.trim());
-    if (parts.length < 2) return;
-    const horse = {
-      id: generateId(),
-      pp: parseInt(parts[0]) || (race.horses.length + 1),
-      name: parts[1] || '',
-      ml: parts[2] || '',
-      jockey: parts[3] || '',
-      trainer: parts[4] || '',
-      lastClass: '', jockeyPct: 0, trainerPct: 0, runningStyle: '',
-      speedFigs: [null, null, null], wps: [], notes: '', scratched: false, liveOdds: null
-    };
-    if (horse.name) { race.horses.push(horse); added++; }
-  });
-  race.horses.sort((a,b) => (a.pp||0) - (b.pp||0));
-  race.updated = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  saveTrackData(data);
-  togglePasteArea(raceId);
-  renderTodayTab();
-  showToast(added + ' horses imported', 'success', 3000);
-}
 
 /* Horse field updates */
 function updateHorseSF(raceId, horseId, idx, val) {
