@@ -113,6 +113,10 @@ function neForceUpdate(newVersion) {
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
 <meta name="description" content="NE Racing Companion 2026 — Personal horse racing handicapping & bet tracking tool for the NYRA circuit.">
+<meta property="og:title" content="NE Racing Companion 2026">
+<meta property="og:description" content="Personal horse racing handicapping & bet tracking tool for the NYRA circuit — Saratoga & Aqueduct.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.railbirdai.com">
 <title>NE Racing Companion 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -252,6 +256,27 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
 .mode-toggle { display: flex; gap: 0; border: 1.5px solid rgba(255,255,255,0.2); border-radius: var(--radius-md); overflow: hidden; }
 .mode-btn { flex: 1; padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.6); cursor: pointer; background: transparent; transition: all 0.15s; text-align: center; border: none; }
 .mode-btn.active { background: var(--color-gold); color: var(--color-white); }
+/* Hero dismiss button */
+.hero-dismiss-btn {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  margin: 1rem auto 0; padding: 0.6rem 1.5rem;
+  background: var(--color-gold); color: var(--color-racing-green);
+  font-family: var(--font-body); font-size: 0.85rem; font-weight: 700;
+  border: none; border-radius: var(--radius-lg); cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+  letter-spacing: 0.02em;
+}
+.hero-dismiss-btn:hover { background: #d4b35a; transform: translateY(-1px); }
+.hero-dismiss-btn:active { transform: translateY(0); }
+/* Collapsed hero — shrinks to just the background image */
+#hero-screen.collapsed {
+  min-height: 0; height: 120px; padding: 0; overflow: hidden;
+  transition: height 0.4s ease, min-height 0.4s ease, padding 0.4s ease;
+}
+#hero-screen.collapsed .welcome-inner,
+#hero-screen.collapsed .hero-scroll-hint,
+#hero-screen.collapsed .hero-dismiss-btn { display: none; }
+#hero-screen.collapsed::before { background: linear-gradient(to bottom, rgba(27,67,50,0.3), rgba(27,67,50,0.7)); }
 .hero-scroll-hint {
   margin-top: 1rem; text-align: center; color: rgba(255,255,255,0.4);
   font-size: 0.75rem; animation: hero-bounce 2s ease-in-out infinite;
@@ -494,11 +519,32 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 @media (min-width: 768px) { .header-logo-text { display: block; } }
 .header-right { display: flex; align-items: center; gap: 0.5rem; }
 .sync-info { font-size: 0.7rem; color: var(--color-muted); font-family: var(--font-mono); display: none; }
-.live-odds-status { font-size: 0.6rem; font-family: var(--font-mono); font-weight: 700; letter-spacing: 0.5px; padding: 2px 6px; border-radius: var(--radius-sm); display: none; }
+.live-odds-status { font-size: 0.6rem; font-family: var(--font-mono); font-weight: 700; letter-spacing: 0.5px; padding: 2px 6px; border-radius: var(--radius-sm); display: none; cursor: pointer; position: relative; }
 .live-odds-status.off { background: rgba(141,153,174,0.15); color: var(--color-muted); }
 .live-odds-status.on { background: rgba(45,106,79,0.15); color: var(--color-positive); animation: livePulse 2s ease-in-out infinite; }
 @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
 @media (min-width: 768px) { .sync-info { display: block; } .live-odds-status { display: block; } }
+/* Live odds popover */
+.live-odds-popover {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 300;
+  width: 260px; padding: 0.75rem 1rem;
+  background: var(--color-white); color: var(--color-slate);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  font-family: var(--font-body); font-size: 0.78rem; font-weight: 400;
+  line-height: 1.5; letter-spacing: 0; text-transform: none;
+  pointer-events: auto;
+}
+.live-odds-popover::before {
+  content: ''; position: absolute; top: -6px; right: 16px;
+  width: 12px; height: 12px; background: var(--color-white);
+  transform: rotate(45deg); box-shadow: -1px -1px 2px rgba(0,0,0,0.06);
+}
+.live-odds-popover strong { color: var(--color-racing-green); }
+.live-odds-popover .popover-link {
+  display: inline-block; margin-top: 0.4rem; font-weight: 600;
+  color: var(--color-gold); cursor: pointer;
+}
+.live-odds-popover .popover-link:hover { text-decoration: underline; }
 .icon-btn { padding: 0.4rem; border-radius: var(--radius-sm); color: var(--color-muted); transition: all 0.15s; }
 .icon-btn:hover { background: rgba(27,67,50,0.08); color: var(--color-racing-green); }
 .icon-btn svg { width: 20px; height: 20px; display: block; }
@@ -1071,6 +1117,27 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .empty-state { text-align: center; padding: 2rem 1rem; color: var(--color-muted); }
 .empty-state svg { width: 48px; height: 48px; margin: 0 auto 0.75rem; opacity: 0.4; }
 .empty-state p { font-size: 0.88rem; }
+/* Onboarding empty-state cards */
+.onboarding-card {
+  background: linear-gradient(135deg, rgba(27,67,50,0.04), rgba(201,168,76,0.06));
+  border: 1px dashed rgba(201,168,76,0.35);
+  border-radius: var(--radius-lg); padding: 1.25rem 1rem;
+  text-align: left; color: var(--color-slate);
+}
+.onboarding-card .onboarding-title {
+  font-family: var(--font-display); font-size: 1rem; font-weight: 600;
+  color: var(--color-racing-green); margin-bottom: 0.5rem;
+}
+.onboarding-card .onboarding-steps {
+  font-size: 0.82rem; line-height: 1.7; margin: 0; padding-left: 1.25rem;
+  color: var(--color-slate);
+}
+.onboarding-card .onboarding-steps li { margin-bottom: 0.15rem; }
+.onboarding-card .onboarding-steps li strong { color: var(--color-racing-green); }
+.onboarding-card .onboarding-hint {
+  font-size: 0.75rem; color: var(--color-muted); margin-top: 0.6rem;
+  font-style: italic;
+}
 
 /* Recommended Bets Card */
 .rec-bets-card {
@@ -1274,6 +1341,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .desktop-mode-badge.sim { background: var(--color-racing-green); color: #D8F3DC; }
 .desktop-mode-badge.real { background: var(--color-gold); color: #1B4332; }
+.badge-info-icon { font-size: 0.55rem; opacity: 0.7; }
 
 /* Results mode filter */
 .results-mode-filter {
@@ -1409,6 +1477,67 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .collapsible-content { overflow: hidden; transition: max-height 0.25s ease; }
 .collapsible-content.closed { max-height: 0 !important; }
 
+/* =========================================================
+   RESPONSIVE DESKTOP LAYOUT (1024px+)
+   ========================================================= */
+@media (min-width: 1024px) {
+  /* Wider content area */
+  .tab-panel { max-width: 1200px; padding: 1.5rem 2.5rem 2rem; }
+
+  /* Today tab: two-column grid — races 60%, ticket sidebar 40% */
+  #tab-today {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto auto 1fr;
+    gap: 0 1.5rem;
+    align-items: start;
+  }
+  /* Date strip spans full width */
+  #tab-today .date-strip-wrap { grid-column: 1 / -1; }
+  #tab-today .banner { grid-column: 1 / -1; }
+  /* Ticket card sits in the right column, sticky */
+  #tab-today .rec-bets-card {
+    grid-column: 2; grid-row: 2 / 4;
+    position: sticky; top: calc(var(--header-height) + 1rem);
+    max-height: calc(100vh - var(--header-height) - 2rem);
+    overflow-y: auto;
+  }
+  /* Everything else (toolbar, form, races) flows in the left column */
+  #tab-today .top-picks-card { grid-column: 1; }
+  #tab-today .flex.items-center { grid-column: 1; }
+  #tab-today #add-race-form { grid-column: 1; }
+  #tab-today #races-container { grid-column: 1; }
+
+  /* Handicap tab: wider advice cards */
+  #tab-handicap .card { max-width: 100%; }
+
+  /* Bets tab: two-column layout for exotic builder */
+  #tab-bets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+    align-items: start;
+  }
+  #tab-bets > h2,
+  #tab-bets > .bankroll-banner,
+  #tab-bets > #budget-warning { grid-column: 1 / -1; }
+  #tab-bets > .section-title:first-of-type,
+  #tab-bets > #straight-bets-list,
+  #tab-bets > .flex.justify-between { grid-column: 1; }
+  #tab-bets > .exotic-builder { grid-column: 2; grid-row: 3 / 6; }
+  #tab-bets > .section-title:last-of-type,
+  #tab-bets > #exotic-bets-list { grid-column: 1 / -1; }
+
+  /* Results tab: wider layout */
+  #tab-results .card { max-width: 100%; }
+}
+
+/* Extra-wide screens: cap total width */
+@media (min-width: 1400px) {
+  .tab-panel { max-width: 1300px; }
+  #tab-today { grid-template-columns: 1fr 420px; }
+}
+
 
 </style>
 </head>
@@ -1471,6 +1600,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:0.5rem" id="mode-desc">Fetches race cards automatically on race days.</p>
     </div>
 
+    <button class="hero-dismiss-btn" onclick="dismissHero()" aria-label="Close onboarding and go to today's card">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px"><polyline points="6 9 12 15 18 9"/></svg>
+      Go to Today&rsquo;s Card
+    </button>
     <div class="hero-scroll-hint">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
       scroll down for today&rsquo;s card
@@ -1519,7 +1652,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     </nav>
 
     <div class="header-right">
-      <span class="live-odds-status" id="live-odds-status" title="Live tote odds feed status">LIVE ODDS: OFF</span>
+      <span class="live-odds-status" id="live-odds-status" title="Click for info about live odds" onclick="toggleLiveOddsPopover(event)">LIVE ODDS: OFF
+        <div class="live-odds-popover hidden" id="live-odds-popover">
+          <strong>Live Odds</strong> require a data worker.<br>
+          Configure your <span class="popover-link" onclick="event.stopPropagation();closeLiveOddsPopover();openSettings();">Worker URL in Settings</span> to enable real-time tote odds updates.
+        </div>
+      </span>
       <span class="sync-info" id="sync-time">Last synced: --:-- --</span>
       <button class="icon-btn" id="track-pill-btn" onclick="toggleTrackDrawer()" title="Switch track" aria-label="Switch track" aria-expanded="false">
         <span class="track-pill" id="track-pill-text">SAR — Saratoga</span>
@@ -1699,8 +1837,14 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Straight bets section -->
       <div class="section-title mt-2">Straight Bets</div>
       <div id="straight-bets-list">
-        <div class="empty-state" id="no-straight-bets">
-          <p>No straight bets yet. Use W/P/S buttons on horses in Today's Card.</p>
+        <div class="empty-state onboarding-card" id="no-straight-bets">
+          <div class="onboarding-title">Your bets will appear here</div>
+          <ol class="onboarding-steps">
+            <li>Go to <strong>Today's Card</strong> (Today tab)</li>
+            <li>Expand a race and review the horses</li>
+            <li>Use the <strong>W / P / S</strong> buttons to add Win, Place, or Show bets</li>
+          </ol>
+          <p class="onboarding-hint">Or use the Exotic Bets Builder below for multi-horse wagers.</p>
         </div>
       </div>
 
@@ -1760,7 +1904,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Locked exotic bets -->
       <div class="section-title mt-2">Locked Exotic Bets</div>
       <div id="exotic-bets-list">
-        <div class="empty-state" id="no-exotic-bets"><p>No exotic bets added yet.</p></div>
+        <div class="empty-state onboarding-card" id="no-exotic-bets">
+          <div class="onboarding-title">No exotic bets yet</div>
+          <p style="font-size:0.82rem;margin-bottom:0">Use the Exotic Bets Builder above to create Exactas, Trifectas, Pick 3s, and more.</p>
+        </div>
       </div>
     </section>
 
@@ -1982,7 +2129,15 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Bet history -->
       <div class="section-title">Bet History</div>
       <div id="results-list">
-        <div class="empty-state" id="no-results-msg"><p>No locked bets yet. Lock bets from the Bets tab.</p></div>
+        <div class="empty-state onboarding-card" id="no-results-msg">
+          <div class="onboarding-title">Track your performance here</div>
+          <ol class="onboarding-steps">
+            <li>Results appear after you <strong>lock bets</strong> and races are completed</li>
+            <li>Go to the <strong>Bets</strong> tab to start building your ticket</li>
+            <li>Use <strong>Check Results (Live)</strong> above to fetch official results</li>
+          </ol>
+          <p class="onboarding-hint">Your win/loss record, ROI, and bet history will be tracked automatically.</p>
+        </div>
       </div>
     </section>
 
@@ -2710,6 +2865,9 @@ function updateModeTabBadges() {
   var isSim = mode === 'simulate';
   var badgeText = isSim ? 'SIM' : 'REAL';
   var badgeCls = isSim ? 'sim' : 'real';
+  var tooltipText = isSim
+    ? 'Simulate Mode \u2014 bets are tracked but not placed. Switch to Real mode in Settings.'
+    : 'Real Mode \u2014 bets are tracked for real wagering. Switch to Simulate in Settings.';
 
   // Mobile bottom tab bar
   ['bets', 'results'].forEach(function(tab) {
@@ -2720,6 +2878,7 @@ function updateModeTabBadges() {
     var badge = document.createElement('span');
     badge.className = 'tab-mode-badge ' + badgeCls;
     badge.textContent = badgeText;
+    badge.title = tooltipText;
     btn.appendChild(badge);
   });
 
@@ -2731,7 +2890,8 @@ function updateModeTabBadges() {
     if (existing) existing.remove();
     var badge = document.createElement('span');
     badge.className = 'desktop-mode-badge ' + badgeCls;
-    badge.textContent = badgeText;
+    badge.innerHTML = badgeText + ' <span class="badge-info-icon">\u24D8</span>';
+    badge.title = tooltipText;
     btn.appendChild(badge);
   });
 }
@@ -2895,7 +3055,16 @@ function applyHeroBankroll(val) {
   updateBankrollBanner();
 }
 
-
+function dismissHero() {
+  var hero = el('hero-screen');
+  if (hero) {
+    hero.classList.add('collapsed');
+    try { sessionStorage.setItem('ne-hero-dismissed', '1'); } catch(e) {}
+    // Scroll main content into view
+    var main = el('main-content');
+    if (main) main.scrollIntoView({ behavior: 'smooth' });
+  }
+}
 
 /* =============================================================
    APP INITIALIZATION
@@ -5932,6 +6101,16 @@ function buildSettingsModal() {
   }
 }
 
+function toggleLiveOddsPopover(e) {
+  e.stopPropagation();
+  var pop = el('live-odds-popover');
+  if (pop) pop.classList.toggle('hidden');
+}
+function closeLiveOddsPopover() {
+  var pop = el('live-odds-popover');
+  if (pop) pop.classList.add('hidden');
+}
+
 function openSettings() {
   buildSettingsModal();
   var vEl = el('settings-app-version');
@@ -6614,6 +6793,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   updateHeroSubtitle();
 
+  // Restore hero dismissed state from session
+  try {
+    if (sessionStorage.getItem('ne-hero-dismissed') === '1') {
+      var h = el('hero-screen');
+      if (h) h.classList.add('collapsed');
+    }
+  } catch(e) {}
+
   // Hide bottom tab bar when hero is in view
   var heroEl = el('hero-screen');
   var tabBar = el('bottom-tab-bar');
@@ -6644,7 +6831,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Close drawer when clicking outside
+// Close drawer and popovers when clicking outside
 document.addEventListener('click', e => {
   const drawer = el('track-drawer');
   const btn = el('track-pill-btn');
@@ -6654,6 +6841,9 @@ document.addEventListener('click', e => {
       btn.setAttribute('aria-expanded', 'false');
     }
   }
+  // Close live odds popover on outside click
+  var oddsEl = el('live-odds-status');
+  if (oddsEl && !oddsEl.contains(e.target)) closeLiveOddsPopover();
 });
 
 // Keyboard ESC closes modals/drawer
