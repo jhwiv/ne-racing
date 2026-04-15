@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0100';
+var NE_APP_VERSION = '20260415-0200';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1009,6 +1009,110 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .workout-bullet { color: #F59E0B; font-weight: 700; }
 
 /* =========================================================
+   BET BUTTONS
+   ========================================================= */
+.btn-bet {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: var(--color-gold); color: #1B4332;
+  font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0.5rem 1rem; border-radius: var(--radius-sm); border: none;
+  cursor: pointer; text-decoration: none;
+  min-height: 44px; transition: background 0.15s, transform 0.1s;
+}
+.btn-bet:hover { background: #E8D48B; }
+.btn-bet:active { transform: scale(0.97); }
+.btn-bet-sm {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  background: transparent; color: var(--color-gold);
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+  padding: 0.3rem 0.65rem; border-radius: 20px;
+  border: 1.5px solid var(--color-gold); cursor: pointer; text-decoration: none;
+  min-height: 32px; transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.btn-bet-sm:hover { background: rgba(201,168,76,0.15); }
+.btn-bet-sm:active { transform: scale(0.97); }
+.btn-bet-outline {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: transparent; color: var(--color-gold);
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 0.45rem 0.85rem; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-gold); cursor: pointer; text-decoration: none;
+  min-height: 44px; transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.btn-bet-outline:hover { background: rgba(201,168,76,0.15); }
+.btn-bet-outline:active { transform: scale(0.97); }
+.bet-disclaimer {
+  font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; line-height: 1.4;
+  padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.06);
+}
+.advice-bet-pill {
+  display: inline-flex; align-items: center; gap: 0.2rem;
+  background: transparent; color: var(--color-gold);
+  font-size: 0.68rem; font-weight: 700;
+  padding: 0.2rem 0.55rem; border-radius: 14px;
+  border: 1.5px solid var(--color-gold); cursor: pointer; text-decoration: none;
+  min-height: 28px; transition: background 0.15s, transform 0.1s;
+  margin-left: 6px; vertical-align: middle;
+}
+.advice-bet-pill:hover { background: rgba(201,168,76,0.12); }
+.advice-bet-pill:active { transform: scale(0.97); }
+
+/* =========================================================
+   HANDICAPPER PROFILE CARDS
+   ========================================================= */
+.handicapper-cards { display: flex; flex-direction: column; gap: 1rem; }
+.handicapper-card {
+  background: var(--color-white); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm); overflow: hidden;
+  border-left: 4px solid var(--color-gold);
+}
+.handicapper-card-header {
+  background: var(--color-racing-green); color: var(--color-white);
+  padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;
+}
+.handicapper-card-header h4 {
+  font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; margin: 0;
+}
+.handicapper-card-header .hc-title { font-size: 0.72rem; color: rgba(255,255,255,0.6); margin-top: 2px; }
+.hc-badge {
+  display: inline-block; font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.08em; padding: 0.2rem 0.5rem; border-radius: 3px; white-space: nowrap;
+}
+.hc-badge-nyra { background: var(--color-gold); color: #1B4332; }
+.hc-badge-drf { background: #2563eb; color: #fff; }
+.hc-badge-independent { background: var(--color-burgundy); color: #fff; }
+.hc-badge-algorithmic { background: #0d9488; color: #fff; }
+.handicapper-card-body { padding: 0.85rem 1rem; }
+.handicapper-card-body p { font-size: 0.82rem; line-height: 1.55; color: var(--color-slate); margin-bottom: 0.5rem; }
+.hc-section-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--color-racing-green); margin-top: 0.6rem; margin-bottom: 0.25rem;
+}
+.hc-best-for {
+  font-size: 0.8rem; font-weight: 600; color: var(--color-gold);
+  font-style: italic; margin-top: 0.4rem;
+}
+.hc-link {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.78rem; font-weight: 600; color: var(--color-racing-green);
+  text-decoration: none; margin-top: 0.5rem;
+}
+.hc-link:hover { text-decoration: underline; }
+.consensus-explainer {
+  background: var(--color-racing-green); color: var(--color-white);
+  border-radius: var(--radius-md); padding: 1rem; margin-top: 1rem;
+  border: 1px solid rgba(201,168,76,0.25);
+}
+.consensus-explainer h4 {
+  font-family: var(--font-display); font-size: 0.95rem; color: var(--color-gold); margin: 0 0 0.6rem;
+}
+.consensus-explainer ul { margin: 0; padding-left: 1.2rem; }
+.consensus-explainer li {
+  font-size: 0.82rem; line-height: 1.6; margin-bottom: 0.35rem; color: rgba(255,255,255,0.85);
+}
+.consensus-explainer li strong { color: var(--color-gold); }
+
+/* =========================================================
    DISCLAIMER
    ========================================================= */
 #app-footer {
@@ -1616,6 +1720,15 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         <div class="ref-section-body" id="meet-schedule-body"></div>
       </div>
 
+      <!-- Expert Handicappers -->
+      <div class="ref-section">
+        <div class="ref-section-header" onclick="toggleRefSection(this)">
+          <h3>Expert Handicappers</h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:16px;height:16px;transition:transform 0.2s;margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="ref-section-body" id="handicapper-profiles-body"></div>
+      </div>
+
       <!-- Wager Types -->
       <div class="ref-section">
         <div class="ref-section-header" onclick="toggleRefSection(this)">
@@ -1761,6 +1874,17 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         <button class="mode-seg-btn" id="settings-mode-live" onclick="settingsSetMode('live')">Live Data (API)</button>
         <button class="mode-seg-btn active" id="settings-mode-manual" onclick="settingsSetMode('manual')">Manual Entry</button>
       </div>
+    </div>
+    <div class="settings-group">
+      <h4>Preferred Betting Platform</h4>
+      <select id="settings-betting-platform" class="form-control" onchange="saveBettingPlatform(this.value)">
+        <option value="nyrabets">NYRA Bets</option>
+        <option value="fanduel">FanDuel Racing</option>
+        <option value="tvg">TVG</option>
+        <option value="twinspires">TwinSpires</option>
+        <option value="draftkings">DraftKings Horse Racing</option>
+      </select>
+      <p class="text-xs text-muted" style="margin-top:0.35rem">Bet buttons will open this platform in a new tab.</p>
     </div>
     <div class="settings-group">
       <h4>Starting Bankroll</h4>
@@ -3137,10 +3261,11 @@ function runAdviceEngine() {
 
       let rationale = buildRationale(s, race, confidence, i);
 
+      const betPill = i === 0 && !isAutoPass ? ` <a class="advice-bet-pill" href="${buildBetUrl(race.num)}" target="_blank" rel="noopener">Bet &#8594;</a>` : '';
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
-          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${oddsDisplay}${overlayPct} ${valueFlag}${convictionBadge}${equipBadge}</div>
+          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${oddsDisplay}${overlayPct} ${valueFlag}${convictionBadge}${equipBadge}${betPill}</div>
           <div class="advice-rationale">${rationale}</div>
         </div>
         <div class="advice-score">${s.score.toFixed(0)}</div>
@@ -3415,6 +3540,7 @@ function updateTopPicksCard(allScores) {
       ${bbPayout ? '<div class="ticket-payout">' + bbPayout + '</div>' : ''}
       ${buildTicketConfidenceMeter(bbConf)}
       <div class="rec-bet-reason">"${reason}"</div>
+      <a class="btn-bet" href="${buildBetUrl(bestBetEntry.race.num)}" target="_blank" rel="noopener">BET NOW &#8594;</a>
     </div>`;
     ticketLines.push(`BEST BET — Race ${bestBetEntry.race.num}: #${bestBetEntry.horse.pp} ${bestBetEntry.horse.name} to WIN — $${suggestedAmt}${bbPayout ? ' (' + bbPayout + ')' : ''}`);
   }
@@ -3439,6 +3565,7 @@ function updateTopPicksCard(allScores) {
       ${vpPayout ? '<div class="ticket-payout">' + vpPayout + '</div>' : ''}
       ${buildTicketConfidenceMeter(vpConf)}
       <div class="rec-bet-reason">"${reason}"</div>
+      <a class="btn-bet-sm" href="${buildBetUrl(v.race.num)}" target="_blank" rel="noopener" style="margin-top:0.35rem">BET NOW &#8594;</a>
     </div>`;
     ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}${overlayStr}) — $2 EX Box with ${exPartner || '#2'}${vpPayout ? ' (' + vpPayout + ')' : ''}`);
   });
@@ -3461,6 +3588,7 @@ function updateTopPicksCard(allScores) {
       ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
       ${buildTicketConfidenceMeter(actConf)}
       <div class="rec-bet-reason">"${reason}"</div>
+      <a class="btn-bet-sm" href="${buildBetUrl(topAction.entry.race.num)}" target="_blank" rel="noopener" style="margin-top:0.35rem">BET NOW &#8594;</a>
     </div>`;
     ticketLines.push(`ACTION — Race ${topAction.entry.race.num}: #${topAction.entry.horse.pp} ${topAction.entry.horse.name} to WIN — $${actionAmt}${actPayout ? ' (' + actPayout + ')' : ''}`);
   }
@@ -3499,6 +3627,7 @@ function updateTopPicksCard(allScores) {
       <div class="ticket-exotic-tag">&#127922; Exotic of the Day</div>
       <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $2</div>
       <div class="ticket-exotic-reason">"${exReason}"</div>
+      <a class="btn-bet-outline" href="${buildBetUrl(exRaceNum)}" target="_blank" rel="noopener" style="margin-top:0.4rem">BET EXOTIC &#8594;</a>
     </div>`;
     exoticLine = `EXOTIC — EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $4 ($2 box) — ${exReason}`;
     ticketLines.push(exoticLine);
@@ -3516,6 +3645,7 @@ function updateTopPicksCard(allScores) {
   // Store ticket text for copy
   const ticketText = "TODAY'S TICKET \u2014 " + (track ? track.name : '') + ' ' + dateStr + '\n\n' + ticketLines.join('\n') + '\n\nEst. Cost: ' + fmt$(totalBetCost) + ' | Budget: ' + fmt$(dailyBudget);
   html += `<button class="copy-ticket-btn" onclick="copyTicket()">&#128203; Copy Ticket</button>`;
+  html += `<div class="bet-disclaimer">Opens external betting platform. You must have an active account to place wagers.</div>`;
 
   // Store on window for copy function
   window._ticketText = ticketText;
@@ -4084,6 +4214,7 @@ function renderAdviceEnginePanel() {
     else if (gap > 6 && topCompleteness >= 0.50) confidence = 'medium';
     else confidence = 'low';
     html += buildConfidenceBar(confidence);
+    const isAutoPassEarly = confidence === 'low' && scored[0].score < 60;
 
     scored.forEach((s,i) => {
       const grade = scoreToGrade(s.score);
@@ -4117,10 +4248,11 @@ function renderAdviceEnginePanel() {
         liveOddsHtml = ' <span class="mono text-xs text-muted" style="margin-left:4px">LIVE: &mdash;</span>';
       }
 
+      const hcBetPill = i === 0 && !isAutoPassEarly ? ` <a class="advice-bet-pill" href="${buildBetUrl(race.num)}" target="_blank" rel="noopener">Bet &#8594;</a>` : '';
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
-          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">ML: '+ml+'</span>' : ''}${liveOddsHtml}${overlayPct} ${valueFlag}${convictionBadge}</div>
+          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">ML: '+ml+'</span>' : ''}${liveOddsHtml}${overlayPct} ${valueFlag}${convictionBadge}${hcBetPill}</div>
           <div class="advice-rationale">${rationale}</div>
           ${showBreakdown ? buildScoreBreakdownHtml(s) : ''}
         </div>
@@ -4796,8 +4928,92 @@ function renderReferenceTab() {
   if (heading && track) heading.textContent = track.name + ' — Reference';
   renderTrackGuide();
   renderMeetSchedule();
+  renderHandicapperProfiles();
   renderOddsTable();
   renderGlossary();
+}
+
+function renderHandicapperProfiles() {
+  const body = el('handicapper-profiles-body');
+  if (!body) return;
+  var experts = [
+    {
+      name: 'Andy Serling',
+      title: 'Lead Racing Analyst, NYRA',
+      badge: 'NYRA Official', badgeClass: 'hc-badge-nyra',
+      bio: 'Former Wall Street trader turned NYRA\'s lead handicapper. Anchors the "Talking Horses" show and the "Across the Board" podcast. Known for deep form analysis, contrarian plays, and willingness to pass races without a clear edge. Published free daily picks for every NYRA card.',
+      methodology: 'Form-cycle analysis, pace interpretation, trainer pattern recognition. Tends to look for improving horses at value odds rather than chalking favorites.',
+      bestFor: 'Live longshots, trainer intent moves, routes and grass races',
+      link: 'https://www.nyra.com/aqueduct/racing/talking-horses/',
+      linkLabel: 'NYRA Talking Horses'
+    },
+    {
+      name: 'David Aragona',
+      title: 'Handicapper & Morning Line Oddsmaker, DRF / NYRA',
+      badge: 'NYRA Official', badgeClass: 'hc-badge-nyra',
+      bio: 'Daily Racing Form handicapper and official morning line oddsmaker for NYRA races. Creates the TimeformUS analysis published on NYRA\'s website. Deep expertise in pace analysis and speed figure interpretation using TimeformUS tools.',
+      methodology: 'TimeformUS pace figures (Early/Late ratings), speed figure analysis, pace projector models. Focus on how races unfold from a pace perspective \u2014 which horses benefit from the likely pace scenario.',
+      bestFor: 'Pace analysis, trip handicapping, surface/distance switches',
+      link: 'https://www.nyra.com/aqueduct/racing/timeformus/',
+      linkLabel: 'TimeformUS on NYRA'
+    },
+    {
+      name: 'DRF Consensus',
+      title: 'Multi-Handicapper Consensus, Daily Racing Form',
+      badge: 'DRF', badgeClass: 'hc-badge-drf',
+      bio: 'Aggregated picks from the entire DRF handicapping team. Uses a weighted scoring system: 5 points for first choice, 2 for second, 1 for third, 7 for best bet. When multiple professional handicappers converge on the same horse, the signal is stronger than any individual pick.',
+      methodology: 'Wisdom-of-crowds approach. 10\u201314 DRF handicappers independently submit their top selections, then scores are aggregated. Horses with high consensus scores across many experts tend to outperform.',
+      bestFor: 'Confirmation signal \u2014 strongest when consensus is decisive',
+      link: 'https://www.drf.com',
+      linkLabel: 'DRF Picks & Selections'
+    },
+    {
+      name: 'NY Racing Journal',
+      title: 'Independent NYRA-Focused Analysis',
+      badge: 'Independent', badgeClass: 'hc-badge-independent',
+      bio: 'Independent handicapping publication focused exclusively on New York racing (Aqueduct, Belmont, Saratoga). Provides race-by-race analysis, selections, and commentary for the NYRA circuit.',
+      methodology: 'Traditional handicapping with emphasis on New York racing patterns \u2014 trainer angles at specific tracks, jockey/trainer combo statistics, class analysis tailored to the NYRA circuit.',
+      bestFor: 'Deep NYRA-circuit specialization and local track knowledge',
+      link: 'https://nyracingjournal.com',
+      linkLabel: 'NY Racing Journal'
+    },
+    {
+      name: 'TimeformUS',
+      title: 'Algorithmic Performance Analysis',
+      badge: 'Algorithmic', badgeClass: 'hc-badge-algorithmic',
+      bio: 'TimeformUS provides computer-generated speed and pace figures that form the backbone of many professional handicappers\' analysis. Their ratings measure performance quality \u2014 not just raw speed \u2014 by accounting for pace, weight, race conditions, and competition quality.',
+      methodology: 'Proprietary algorithm combining pace figures (Early and Late ratings), speed figures, and running style analysis. The Finish Projector ranks horses based on confidence level. Adjusted fractions correct for track speed.',
+      bestFor: 'Pace projection, identifying compromised trips, surface suitability',
+      link: 'https://www.drf.com/timeformus',
+      linkLabel: 'TimeformUS via DRF'
+    }
+  ];
+
+  var html = '<div class="handicapper-cards">';
+  experts.forEach(function(ex) {
+    html += '<div class="handicapper-card">';
+    html += '<div class="handicapper-card-header"><div><h4>' + escHtml(ex.name) + '</h4><div class="hc-title">' + escHtml(ex.title) + '</div></div><span class="hc-badge ' + ex.badgeClass + '">' + escHtml(ex.badge) + '</span></div>';
+    html += '<div class="handicapper-card-body">';
+    html += '<p>' + escHtml(ex.bio) + '</p>';
+    html += '<div class="hc-section-label">Methodology</div>';
+    html += '<p style="margin-bottom:0">' + escHtml(ex.methodology) + '</p>';
+    html += '<div class="hc-best-for">' + escHtml(ex.bestFor) + '</div>';
+    html += '<a class="hc-link" href="' + ex.link + '" target="_blank" rel="noopener">' + escHtml(ex.linkLabel) + ' &#8599;</a>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+
+  // How Consensus Works section
+  html += '<div class="consensus-explainer">';
+  html += '<h4>How Consensus Works</h4>';
+  html += '<ul>';
+  html += '<li>When <strong>2+ experts</strong> agree on a horse, the advice engine adds <strong>+8</strong> to the composite score (Expert Consensus modifier).</li>';
+  html += '<li>When <strong>4+ experts</strong> agree, the horse earns a <strong>LOCK</strong> designation \u2014 the highest conviction level.</li>';
+  html += '<li>Expert picks are weighted equally \u2014 the model treats each source as one independent vote.</li>';
+  html += '</ul>';
+  html += '</div>';
+
+  body.innerHTML = html;
 }
 
 function renderTrackGuide() {
@@ -4931,6 +5147,8 @@ function openSettings() {
   buildSettingsModal();
   var vEl = el('settings-app-version');
   if (vEl) vEl.textContent = NE_APP_VERSION;
+  var bpEl = el('settings-betting-platform');
+  if (bpEl) bpEl.value = getBettingPlatform();
   el('settings-modal').classList.add('open');
   document.body.classList.add('no-scroll');
 }
@@ -4968,6 +5186,34 @@ function saveWorkerUrl() {
   const url = el('settings-worker-url').value.trim();
   setSetting('workerUrl', url);
   showToast('Worker URL saved', 'success', 2500);
+}
+
+/* Betting platform helpers */
+var BETTING_PLATFORMS = {
+  nyrabets:   { name: 'NYRA Bets',              base: 'https://www.nyrabets.com' },
+  fanduel:    { name: 'FanDuel Racing',          base: 'https://racing.fanduel.com' },
+  tvg:        { name: 'TVG',                     base: 'https://www.tvg.com' },
+  twinspires: { name: 'TwinSpires',              base: 'https://www.twinspires.com' },
+  draftkings: { name: 'DraftKings Horse Racing', base: 'https://www.draftkings.com/horse-racing' }
+};
+
+function saveBettingPlatform(val) {
+  setSetting('bettingPlatform', val);
+  showToast('Betting platform set to ' + (BETTING_PLATFORMS[val] || {}).name, 'success', 2500);
+}
+
+function getBettingPlatform() {
+  return getSetting('bettingPlatform') || 'nyrabets';
+}
+
+function buildBetUrl(raceNum) {
+  var platform = getBettingPlatform();
+  var info = BETTING_PLATFORMS[platform] || BETTING_PLATFORMS.nyrabets;
+  var track = getActiveTrack();
+  if (platform === 'nyrabets' && raceNum) {
+    return info.base + '/#/race/' + track + '/' + raceNum;
+  }
+  return info.base;
 }
 
 function exportData() {
