@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-0816';
+var NE_APP_VERSION = '20260415-0818';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2772,9 +2772,6 @@ function applyHeroBankroll(val) {
 /* =============================================================
    APP INITIALIZATION
    ============================================================= */
-// Guard: suppress auto-scroll on initial page load so the hero screen stays visible.
-var _initialLoad = true;
-
 function initApp() {
   const store = getStore();
   if (!store) return;
@@ -2821,8 +2818,6 @@ function updateHeaderTrack() {
    TAB SWITCHING
    ============================================================= */
 function switchTab(name) {
-  // User has navigated — allow auto-scroll from now on.
-  _initialLoad = false;
   // Hide all panels
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   // Deactivate all tab buttons (mobile + desktop)
@@ -2839,14 +2834,8 @@ function switchTab(name) {
   const dBtn = el('dnav-' + name);
   if (dBtn) dBtn.classList.add('active');
 
-  // Prevent applyRaceFocus from overriding our scroll target
-  window._suppressRaceFocusScroll = true;
-
   // Render tab-specific content
   renderTabContent(name);
-
-  // Allow race-focus scrolling again after the tab switch settles
-  setTimeout(function() { window._suppressRaceFocusScroll = false; }, 600);
 
   // Clear scratch badge when viewing Today
   if (name === 'today') {
@@ -3257,18 +3246,9 @@ function applyRaceFocus(races, activeIdx) {
     }
   });
 
-  // Scroll to active race (slight delay for DOM paint)
-  // Skip on initial page load (hero stays visible) and during tab switches
-  clearTimeout(window._raceFocusScrollTimer);
-  if (!_initialLoad && !window._suppressRaceFocusScroll) {
-    const activeRace = races[activeIdx];
-    if (activeRace) {
-      window._raceFocusScrollTimer = setTimeout(() => {
-        const activeWrap = el('race-wrap-' + activeRace.id);
-        if (activeWrap) activeWrap.scrollIntoView({ behavior: 'auto', block: 'start' });
-      }, 300);
-    }
-  }
+  // NOTE: No auto-scroll to active race. The user controls their own scroll
+  // position. Auto-scrolling was causing the page to snap away from the
+  // ticket card / hero on tab switches, page load, and live-data refreshes.
 }
 
 /* Race card collapse */
