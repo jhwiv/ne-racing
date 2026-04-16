@@ -6333,6 +6333,7 @@ function clearAllStraight() {
 function lockAllBets() {
   const data = getTrackData();
   const races = (data && data.races) ? data.races : [];
+  data.bets = data.bets || [];
   let locked = 0;
 
   races.forEach(race => {
@@ -6340,17 +6341,27 @@ function lockAllBets() {
       (horse.wps||[]).forEach(type => {
         const betId = `${race.id}_${horse.id}_${type}`;
         const amt = getStraightBetAmount(betId) || 2;
-        const bet = {
-          id: generateId(), date: getTodayStr(), raceNum: race.num,
-          type: type === 'W' ? 'Win' : type === 'P' ? 'Place' : 'Show',
-          selections: [horse.name], pp: [horse.pp],
-          amount: amt, result: null, payout: 0,
-          isBestBet: false, isValuePlay: false,
-          track: getActiveTrack(),
-          bettingMode: getBettingMode()
-        };
-        data.bets = data.bets || [];
-        data.bets.push(bet);
+        const betTypeName = type === 'W' ? 'Win' : type === 'P' ? 'Place' : 'Show';
+        // Check if this bet already exists in data.bets (from handleTicketBetClick)
+        const existing = data.bets.find(function(b) {
+          return String(b.raceNum) === String(race.num) && b.type === betTypeName &&
+            (b.selections || []).indexOf(horse.name) !== -1;
+        });
+        if (existing) {
+          // Update amount if changed on BETS tab
+          existing.amount = amt;
+        } else {
+          const bet = {
+            id: generateId(), date: getTodayStr(), raceNum: race.num,
+            type: betTypeName,
+            selections: [horse.name], pp: [horse.pp],
+            amount: amt, result: null, payout: 0,
+            isBestBet: false, isValuePlay: false,
+            track: getActiveTrack(),
+            bettingMode: getBettingMode()
+          };
+          data.bets.push(bet);
+        }
         locked++;
       });
       horse.wps = [];
@@ -7450,17 +7461,38 @@ function renderResultsList() {
   container.innerHTML = sorted.map(bet => {
     const isWin = bet.result === 'win';
     const isLoss = bet.result === 'loss';
+    const isPending = !bet.result;
     const modeBadge = bet.bettingMode === 'real'
       ? '<span class="badge-real" style="margin-left:4px">REAL</span>'
       : '<span class="badge-sim" style="margin-left:4px">SIM</span>';
+    // Result status badge
+    const resultBadge = isWin
+      ? '<span style="margin-left:4px;background:var(--color-positive);color:#fff;font-weight:700;padding:2px 8px;border-radius:4px;font-size:0.7rem;letter-spacing:0.03em">WIN</span>'
+      : isLoss
+      ? '<span style="margin-left:4px;background:var(--color-negative);color:#fff;font-weight:700;padding:2px 8px;border-radius:4px;font-size:0.7rem;letter-spacing:0.03em">LOSS</span>'
+      : '<span style="margin-left:4px;background:#e0e0e0;color:#666;font-weight:600;padding:2px 8px;border-radius:4px;font-size:0.7rem">PENDING</span>';
+    // P&L display for both wins and losses
+    const payout = parseFloat(bet.payout) || 0;
+    const wagered = parseFloat(bet.amount) || 0;
+    const pnl = isWin ? (payout - wagered) : isLoss ? -wagered : 0;
+    let pnlHtml = '';
+    if (isWin) {
+      pnlHtml = '<div class="mono text-sm font-bold" style="color:var(--color-positive)">+' + fmt$(payout - wagered) + '</div>';
+    } else if (isLoss) {
+      pnlHtml = '<div class="mono text-sm font-bold" style="color:var(--color-negative)">−' + fmt$(wagered) + '</div>';
+    }
     return `<div class="result-bet-item ${isWin?'win':isLoss?'loss':''}" id="rbi-${bet.id}">
       <div class="result-bet-top">
         <div>
           <span class="badge ${isWin?'badge-gold':isLoss?'badge-muted':'badge-muted'}" style="margin-right:4px">${bet.type||'BET'}</span>
           ${modeBadge}
-          <span class="font-semibold">${(bet.selections||[]).join(', ')}</span>
+          ${resultBadge}
+          <span class="font-semibold" style="display:block;margin-top:2px">${(bet.selections||[]).join(', ')}</span>
         </div>
-        <div class="mono font-bold">${fmt$(bet.amount)}</div>
+        <div style="text-align:right">
+          <div class="mono font-bold">${fmt$(wagered)}</div>
+          ${pnlHtml}
+        </div>
       </div>
       <div class="result-bet-meta">Race ${bet.raceNum||'—'} · ${bet.date||''}${bet.track ? ' · '+bet.track : ''}</div>
       <div class="result-controls">
@@ -7471,7 +7503,6 @@ function renderResultsList() {
         <span class="text-xs text-muted">Payout:</span>
         <input class="payout-input" type="number" value="${bet.payout||''}" placeholder="0.00" inputmode="decimal" min="0" step="0.01"
           onchange="setResultPayout('${bet.id}',this.value)" title="Total payout (including stake)">
-        ${isWin ? `<span class="mono text-sm text-positive">+${fmt$((parseFloat(bet.payout)||0)-(parseFloat(bet.amount)||0))}</span>` : ''}
         <button class="btn btn-danger btn-xs" onclick="deleteResultBet('${bet.id}')">Del</button>
       </div>
     </div>`;
@@ -8480,7 +8511,7 @@ async function fetchLiveResults() {
     const data = getTrackData();
     let updated = 0;
     results.forEach(r => {
-      const bet = (data.bets||[]).find(b => b.raceNum === r.raceNum && b.type === r.betType && (b.selections||[]).includes(r.horseName));
+      const bet = (data.bets||[]).find(b => String(b.raceNum) === String(r.raceNum) && b.type === r.betType && (b.selections||[]).includes(r.horseName));
       if (bet) {
         bet.result = r.result;
         if (r.payout) bet.payout = r.payout;
