@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0949';
+var NE_APP_VERSION = '20260416-1023';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2876,21 +2876,66 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   height: 1px; background: rgba(201,168,76,0.15); margin: 0.5rem 0;
 }
 
-/* --- Best Bet item: gold envelope wrapper --- */
-.rec-bet-item.best-bet-envelope {
-  background: linear-gradient(145deg, rgba(212,168,73,0.12), rgba(212,168,73,0.04));
-  border: 1px solid rgba(212,168,73,0.3);
-  border-radius: 8px;
-  padding: 0.65rem 0.55rem;
-  margin: 0 -0.55rem;
+/* --- Bet card type envelopes --- */
+.rec-bet-item.card-best {
+  background: linear-gradient(145deg, rgba(212,168,73,0.14), rgba(212,168,73,0.04));
+  border: 1.5px solid rgba(212,168,73,0.35);
+  border-radius: 10px;
+  padding: 0.75rem 0.65rem;
+  margin: 0 -0.25rem 8px;
+  box-shadow: 0 2px 12px rgba(212,168,73,0.12);
+}
+.rec-bet-item.card-value {
+  background: linear-gradient(145deg, rgba(74,222,128,0.08), rgba(74,222,128,0.02));
+  border: 1.5px solid rgba(74,222,128,0.25);
+  border-radius: 10px;
+  padding: 0.75rem 0.65rem;
+  margin: 0 -0.25rem 8px;
+}
+.rec-bet-item.card-action {
+  background: linear-gradient(145deg, rgba(14,165,233,0.08), rgba(14,165,233,0.02));
+  border: 1.5px solid rgba(14,165,233,0.25);
+  border-radius: 10px;
+  padding: 0.75rem 0.65rem;
+  margin: 0 -0.25rem 8px;
+}
+.rec-bet-item.card-pass {
+  background: rgba(255,255,255,0.02);
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  margin: 0 -0.25rem 8px;
+}
+.ticket-exotic.card-exotic {
+  background: linear-gradient(145deg, rgba(212,168,73,0.1), rgba(212,168,73,0.03));
+  border: 1.5px dashed rgba(212,168,73,0.35);
+  border-radius: 10px;
+  padding: 0.75rem 0.65rem;
+  margin: 8px -0.25rem;
 }
 
-/* --- Action Bet item styling --- */
-.rec-bet-item.action-bet-card {
-  border-left: 3px solid #0EA5E9;
-  padding-left: 0.5rem;
-  margin-left: -0.25rem;
+/* Card type explainer line */
+.card-explainer {
+  font-size: 0.65rem; color: rgba(255,255,255,0.45);
+  margin: 2px 0 6px; line-height: 1.3;
 }
+.card-best .card-explainer { color: rgba(212,168,73,0.65); }
+.card-value .card-explainer { color: rgba(74,222,128,0.55); }
+.card-action .card-explainer { color: rgba(14,165,233,0.55); }
+
+/* Strength stars */
+.strength-stars {
+  display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: middle;
+}
+.strength-star {
+  width: 10px; height: 10px; display: inline-block;
+}
+.strength-star.filled { color: var(--color-gold); }
+.strength-star.empty { color: rgba(255,255,255,0.12); }
+
+/* Remove old border-separator between cards (now using margin/radius) */
+.rec-bet-item + .rec-bet-item { border-top: none; }
+.rec-bet-item + .ticket-exotic { border-top: none; }
 
 /* --- Win streak badge --- */
 .win-streak-badge {
@@ -5622,6 +5667,17 @@ function buildSuggestedBets(race, scored) {
   return suggestions;
 }
 
+function buildStrengthStars(confidence) {
+  var n = confidence === 'high' ? 3 : confidence === 'medium' ? 2 : 1;
+  var h = '<span class="strength-stars">';
+  for (var i = 0; i < 3; i++) {
+    if (i < n) h += '<span class="strength-star filled">\u2605</span>';
+    else h += '<span class="strength-star empty">\u2605</span>';
+  }
+  h += '</span>';
+  return h;
+}
+
 function buildTicketConfidenceMeter(confidence) {
   const segs = 5;
   const filled = confidence === 'high' ? 4 : confidence === 'medium' ? 3 : 1;
@@ -5758,13 +5814,13 @@ function updateTopPicksCard(allScores) {
     const bbMlOdds = parseOddsToNum(bestBetEntry.horse.ml);
     const bbPayout = estimatePayoutRange(bbMlOdds, suggestedAmt);
     var bbDetailId = storeTicketDetail(bestBetEntry, bestBetEntry.race, 'best');
-    html += `<div class="rec-bet-item" data-detail-id="${bbDetailId}">
+    html += `<div class="rec-bet-item card-best" data-detail-id="${bbDetailId}">
       <span class="rec-bet-expand-hint">&#9660;</span>
-      <div class="rec-bet-tag rec-tag-best">&#127942; Best Bet</div>${convictionBadge}
+      <div class="rec-bet-tag rec-tag-best">&#127942; Best Bet</div>${convictionBadge}${buildStrengthStars(bbConf)}
+      <div class="card-explainer">Strongest edge on the card \u2014 our highest-conviction play</div>
       <div class="rec-bet-detail">Race ${bestBetEntry.race.num}: <strong>#${bestBetEntry.horse.pp} ${escHtml(bestBetEntry.horse.name).toUpperCase()}</strong> to WIN</div>
       <div class="rec-bet-amount">$${suggestedAmt} to Win</div>
       ${bbPayout ? '<div class="ticket-payout">' + bbPayout + '</div>' : ''}
-      ${buildTicketConfidenceMeter(bbConf)}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
       <button class="btn-bet" onclick="handleTicketBetClick(event, ${bestBetEntry.race.num}, '${escHtml(bestBetEntry.horse.name).replace(/'/g,"\\'")}', ${bestBetEntry.horse.pp}, 'Win', ${suggestedAmt}, 'best')">PLACE BET</button>
@@ -5786,13 +5842,13 @@ function updateTopPicksCard(allScores) {
     const vpMlOdds = parseOddsToNum(v.horse.ml);
     const vpPayout = vpMlOdds > 0 ? 'Potential return: $' + Math.round(4 * vpMlOdds * 0.85) + '\u2013$' + Math.round(4 * vpMlOdds * 1.15) + ' on $4 exacta' : '';
     var vpDetailId = storeTicketDetail(v, v.race, 'value');
-    html += `<div class="rec-bet-item" data-detail-id="${vpDetailId}">
+    html += `<div class="rec-bet-item card-value" data-detail-id="${vpDetailId}">
       <span class="rec-bet-expand-hint">&#9660;</span>
-      <div class="rec-bet-tag rec-tag-value">&#128176; Value Play</div>
+      <div class="rec-bet-tag rec-tag-value">&#128176; Value Play</div>${buildStrengthStars(vpConf)}
+      <div class="card-explainer">Odds are better than our model says \u2014 the market is underpricing this horse</div>
       <div class="rec-bet-detail">Race ${v.race.num}: <strong>#${v.horse.pp} ${escHtml(v.horse.name).toUpperCase()}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(${v.horse.ml || 'N/A'}${overlayStr})</span></div>
       <div class="rec-bet-amount">$2 EX Box with ${exPartner || '#2'}</div>
       ${vpPayout ? '<div class="ticket-payout">' + vpPayout + '</div>' : ''}
-      ${buildTicketConfidenceMeter(vpConf)}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
       <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}', ${v.horse.pp}, 'Exacta Box', 4, 'value')">PLACE BET</button>
@@ -5812,13 +5868,13 @@ function updateTopPicksCard(allScores) {
     const actMlOdds = parseOddsToNum(topAction.entry.horse.ml);
     const actPayout = estimatePayoutRange(actMlOdds, actionAmt);
     var actDetailId = storeTicketDetail(topAction.entry, topAction.entry.race, 'action');
-    html += `<div class="rec-bet-item" data-detail-id="${actDetailId}">
+    html += `<div class="rec-bet-item card-action" data-detail-id="${actDetailId}">
       <span class="rec-bet-expand-hint">&#9660;</span>
-      <div class="rec-bet-tag rec-tag-action">&#127919; Action Bet</div>
+      <div class="rec-bet-tag rec-tag-action">&#127919; Action Bet</div>${buildStrengthStars(actConf)}
+      <div class="card-explainer">Smaller-stake fun play \u2014 decent edge but not as strong as the Best Bet</div>
       <div class="rec-bet-detail">Race ${topAction.entry.race.num}: <strong>#${topAction.entry.horse.pp} ${escHtml(topAction.entry.horse.name).toUpperCase()}</strong> to WIN</div>
       <div class="rec-bet-amount">$${actionAmt} to Win</div>
       ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
-      ${buildTicketConfidenceMeter(actConf)}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
       <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${topAction.entry.race.num}, '${escHtml(topAction.entry.horse.name).replace(/'/g,"\\'")}', ${topAction.entry.horse.pp}, 'Win', ${actionAmt}, 'action')">PLACE BET</button>
@@ -5829,9 +5885,10 @@ function updateTopPicksCard(allScores) {
   // ── Pass Races ──
   if (passRaceNums.length) {
     passRaceNums.sort((a,b) => a - b);
-    html += `<div class="rec-bet-item">
+    html += `<div class="rec-bet-item card-pass">
       <div class="rec-bet-tag rec-tag-pass">&#9940; Pass</div>
-      <div class="pass-races-line">Races ${passRaceNums.join(', ')} — No clear edge, save bankroll</div>
+      <div class="card-explainer">Not enough edge to risk your bankroll here</div>
+      <div class="pass-races-line">Races ${passRaceNums.join(', ')} \u2014 Save bankroll</div>
     </div>`;
     ticketLines.push(`PASS — Races ${passRaceNums.join(', ')}`);
   }
@@ -5856,9 +5913,10 @@ function updateTopPicksCard(allScores) {
     if (ex1.score - ex2.score < 6) exReason = 'tight top-2 scores, strong exacta spot';
     else exReason = '#' + ex1.horse.pp + ' has clear edge, key over #' + ex2.horse.pp;
     totalBetCost += 4; // $2 box = $4
-    exoticHtml = `<div class="ticket-exotic">
+    exoticHtml = `<div class="ticket-exotic card-exotic">
       <div class="ticket-exotic-tag">&#127922; Exotic of the Day</div>
-      <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $2</div>
+      <div class="card-explainer">A bonus exacta pairing where the model sees a clear top-two</div>
+      <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} \u2014 $2</div>
       <div class="ticket-exotic-reason">"${exReason}"</div>
       <button class="btn-bet-outline" style="margin-top:0.4rem" onclick="handleTicketBetClick(event, ${exRaceNum}, '${escHtml(ex1.horse.name).replace(/'/g,"\\'")}/${escHtml(ex2.horse.name).replace(/'/g,"\\'")}', '${ex1.horse.pp}/${ex2.horse.pp}', 'Exacta Box', 4, 'exotic')">PLACE BET</button>
     </div>`;
