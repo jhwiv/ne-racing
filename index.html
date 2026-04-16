@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0534';
+var NE_APP_VERSION = '20260416-0540';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -6680,13 +6680,17 @@ document.addEventListener('keydown', e => {
 
 </script>
 <script>
-// No service worker registration — the SW caused stale cache issues on
-// Chrome iOS, Safari standalone, and other browsers. The app needs live
-// data, not offline support. Instead, unregister any leftover SWs from
-// previous versions to ensure they don't intercept requests.
+// Register the self-destructing service worker. This is INTENTIONAL:
+// If a user's browser has an old SW cached that intercepts requests and
+// serves stale HTML, simply calling unregister() from JS won't work —
+// because the old SW serves the old JS that doesn't have the unregister call.
+// By registering sw.js (which self-destructs on activate), the browser
+// sees a new SW, installs it, which then clears all caches and unregisters
+// itself. This is the ONLY way to kill a rogue cached service worker.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(regs) {
-    regs.forEach(function(r) { r.unregister(); });
+  navigator.serviceWorker.register('sw.js?v=20260416-0540').then(function(reg) {
+    // Force immediate update check
+    reg.update().catch(function(){});
   }).catch(function(){});
 }
 </script>
