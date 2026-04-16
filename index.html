@@ -170,6 +170,272 @@ function neForceUpdate(newVersion) {
     return race.horses.filter(function(h) { return !h.scratched; });
   }
 
+  // ── Exotic Bet Advice Engine ──
+  function parseOddsLocal(ml) {
+    if (!ml) return 99;
+    var s = String(ml).replace(/[^\d\/\-\.]/g, '');
+    if (s.indexOf('/') !== -1) { var p = s.split('/'); return parseFloat(p[0]) / parseFloat(p[1]); }
+    if (s.indexOf('-') !== -1) { var p = s.split('-'); return parseFloat(p[0]) / parseFloat(p[1]); }
+    return parseFloat(s) || 99;
+  }
+
+  function generateExoticAdvice() {
+    var bt = wizState.betType;
+    if (!bt) return [];
+    var tips = [];
+    var multi = isMultiRace(bt);
+    var leg0 = wizState.legs[0];
+    if (!leg0) return [];
+
+    // Helper: get horses with parsed odds for a leg
+    function horsesWithOdds(leg) {
+      return (leg.horses || []).map(function(h) {
+        return { pp: h.pp, name: h.name, odds: parseOddsLocal(h.ml), ml: h.ml || '?' };
+      }).sort(function(a, b) { return a.odds - b.odds; });
+    }
+
+    // Helper: get selected PPs for a context
+    function getSelectedPPs(key) {
+      return wizState.selections[key] || [];
+    }
+
+    if (!multi) {
+      // ── Single-race exotic advice (Exacta / Trifecta / Superfecta) ──
+      var allH = horsesWithOdds(leg0);
+      var mode = wizState.betMode;
+
+      if (mode === 'box') {
+        var boxSels = getSelectedPPs('box');
+        var selHorses = boxSels.map(function(pp) { return allH.find(function(h) { return h.pp === pp; }); }).filter(Boolean);
+
+        // 1. Box cost warning — suggest key mode
+        if ((bt.id === 'TRI' && boxSels.length >= 4) || (bt.id === 'SUPER' && boxSels.length >= 5) || (bt.id === 'EX' && boxSels.length >= 4)) {
+          var bestPick = selHorses.reduce(function(best, h) { return h.odds < best.odds ? h : best; }, selHorses[0]);
+          var keyCombos, boxCombos;
+          var n = boxSels.length;
+          var pos = bt.positions;
+          // Box combos = n! / (n-pos)!
+          boxCombos = 1; for (var i = 0; i < pos; i++) boxCombos *= (n - i);
+          // Key combos with best pick on top = (n-1)! / (n-1-(pos-1))!
+          keyCombos = 1; for (var i = 0; i < pos - 1; i++) keyCombos *= (n - 1 - i);
+          var savings = Math.round((1 - keyCombos / boxCombos) * 100);
+          if (savings > 15) {
+            tips.push({
+              icon: '💰',
+              headline: 'Key ' + bestPick.name + ' on top to save ' + savings + '%',
+              explanation: 'Boxing ' + n + ' horses in a ' + bt.name + ' costs ' + boxCombos + ' combos. Keying your strongest pick (#' + bestPick.pp + ' at ' + bestPick.ml + ') on top cuts it to ' + keyCombos + ' combos — same horses, lower cost.',
+              priority: 3
+            });
+          }
+        }
+
+        // 2. All favorites warning
+        if (selHorses.length >= 2 && selHorses.every(function(h) { return h.odds <= 4; })) {
+          var longshots = allH.filter(function(h) {
+            return h.odds >= 8 && boxSels.indexOf(h.pp) === -1;
+          }).slice(0, 2);
+          var lsNames = longshots.map(function(h) { return h.name + ' (' + h.ml + ')'; }).join(' or ');
+          tips.push({
+            icon: '⚠️',
+            headline: 'All chalk — payout will be small',
+            explanation: 'Every horse you picked is a favorite. This combination will be heavily bet. ' + (lsNames ? 'Swapping one for a price horse like ' + lsNames + ' could boost the payout significantly.' : 'Consider mixing in a longer shot.'),
+            priority: 4
+          });
+        }
+
+        // 3. Missing strong contender
+        var notSelected = allH.filter(function(h) {
+          return boxSels.indexOf(h.pp) === -1 && h.odds <= 4;
+        });
+        if (notSelected.length > 0 && selHorses.length >= 2) {
+          var miss = notSelected[0];
+          tips.push({
+            icon: '👀',
+            headline: miss.name + ' (' + miss.ml + ') is missing from your ticket',
+            explanation: 'One of the top contenders in this race isn\'t in your ' + bt.name + '. If they finish in the top ' + bt.positions + ', you\'ll miss the payout. Consider adding them.',
+            priority: 5,
+            action: { type: 'addBox', pp: miss.pp, name: miss.name }
+          });
+        }
+
+        // 4. Longshot bomb suggestion
+        if (selHorses.length >= 2 && selHorses.some(function(h) { return h.odds <= 3; }) && !selHorses.some(function(h) { return h.odds >= 12; })) {
+          var bomb = allH.filter(function(h) { return h.odds >= 12 && boxSels.indexOf(h.pp) === -1; })[0];
+          if (bomb) {
+            tips.push({
+              icon: '💎',
+              headline: 'Add ' + bomb.name + ' (' + bomb.ml + ') for a big-payout chance',
+              explanation: 'Including a longshot in the mix costs a little more but could turn a modest ' + bt.name + ' into a big score if they hit.',
+              priority: 2,
+              action: { type: 'addBox', pp: bomb.pp, name: bomb.name }
+            });
+          }
+        }
+
+      } else if (mode === 'straight') {
+        // 5. Heavy favorite on top
+        var topPP = (getSelectedPPs('pos_0') || [])[0];
+        if (topPP) {
+          var topH = allH.find(function(h) { return h.pp === topPP; });
+          if (topH && topH.odds <= 2) {
+            tips.push({
+              icon: '🔄',
+              headline: topH.name + ' is the heavy favorite — consider underneath',
+              explanation: bt.name + 's keying the chalk on top pay small. Using ' + topH.name + ' in 2nd and a price horse on top could pay 3-5x more.',
+              priority: 4
+            });
+          }
+        }
+
+      } else if (mode === 'key') {
+        // 6. Heavy favorite as key
+        if (wizState.keyHorse) {
+          var keyH = allH.find(function(h) { return h.pp === wizState.keyHorse; });
+          if (keyH && keyH.odds <= 1.5) {
+            tips.push({
+              icon: '🔄',
+              headline: keyH.name + ' is a heavy favorite to key',
+              explanation: 'Keying an odds-on favorite limits upside. Since ' + keyH.name + ' is likely to be in the mix regardless, keying a mid-odds horse with them underneath might pay better.',
+              priority: 3
+            });
+          }
+        }
+        // Missing contender in with-horses
+        var withSet = wizState.withHorses || [];
+        var notInWith = allH.filter(function(h) {
+          return h.pp !== wizState.keyHorse && withSet.indexOf(h.pp) === -1 && h.odds <= 4;
+        });
+        if (notInWith.length > 0) {
+          var miss = notInWith[0];
+          tips.push({
+            icon: '👀',
+            headline: miss.name + ' (' + miss.ml + ') isn\'t in your with-horses',
+            explanation: 'A top contender is missing from the underneath part of your key bet. Adding them covers another likely finisher.',
+            priority: 4,
+            action: { type: 'addWith', pp: miss.pp, name: miss.name }
+          });
+        }
+      }
+    } else {
+      // ── Multi-race exotic advice (DD, Pick 3/4/5/6) ──
+      var allLegs = wizState.legs;
+
+      // 1. Single entry leg risk
+      allLegs.forEach(function(leg, idx) {
+        var sels = getSelectedPPs(String(leg.raceNum));
+        if (sels.length === 1) {
+          var singleH = leg.horses.find(function(h) { return h.pp === sels[0]; });
+          var singleName = singleH ? singleH.name : '#' + sels[0];
+          var singleOdds = singleH ? parseOddsLocal(singleH.ml) : 99;
+          // Find a reasonable alternative
+          var ranked = horsesWithOdds(leg).filter(function(h) { return h.pp !== sels[0]; });
+          var alt = ranked[0];
+          if (singleOdds > 3 && alt) {
+            tips.push({
+              icon: '🎯',
+              headline: 'Leg ' + (idx + 1) + ': Singling ' + singleName + ' is risky',
+              explanation: singleName + ' (' + (singleH ? singleH.ml : '?') + ') is your only pick in Race ' + leg.raceNum + '. If they lose, the whole ticket is dead. Adding ' + alt.name + ' (' + alt.ml + ') as backup doubles this leg\'s cost but protects your entire bet.',
+              priority: 5,
+              action: { type: 'addLeg', raceNum: leg.raceNum, pp: alt.pp, name: alt.name }
+            });
+          }
+        }
+      });
+
+      // 2. Favorite-only in a leg
+      allLegs.forEach(function(leg, idx) {
+        var sels = getSelectedPPs(String(leg.raceNum));
+        if (sels.length === 1) {
+          var ranked = horsesWithOdds(leg);
+          var fav = ranked[0];
+          if (fav && sels[0] === fav.pp && fav.odds <= 2) {
+            var alt = ranked.length > 1 ? ranked[1] : null;
+            if (alt) {
+              tips.push({
+                icon: '⚡',
+                headline: 'Leg ' + (idx + 1) + ': Only the heavy favorite?',
+                explanation: fav.name + ' is odds-on in Race ' + leg.raceNum + ', but even strong favorites lose ~40% of the time. Adding ' + alt.name + ' (' + alt.ml + ') as insurance is cheap peace of mind.',
+                priority: 4,
+                action: { type: 'addLeg', raceNum: leg.raceNum, pp: alt.pp, name: alt.name }
+              });
+            }
+          }
+        }
+      });
+
+      // 3. Spreading wide in every leg
+      var allWide = allLegs.every(function(leg) {
+        return (getSelectedPPs(String(leg.raceNum)) || []).length >= 3;
+      });
+      if (allWide && allLegs.length >= 3) {
+        // Find leg with strongest opinion (most lopsided favorite)
+        var bestLeg = allLegs.reduce(function(best, leg, idx) {
+          var ranked = horsesWithOdds(leg);
+          if (ranked.length < 2) return best;
+          var gap = ranked[1].odds - ranked[0].odds;
+          if (gap > best.gap) return { gap: gap, idx: idx, fav: ranked[0] };
+          return best;
+        }, { gap: 0, idx: 0, fav: null });
+        if (bestLeg.fav) {
+          tips.push({
+            icon: '📉',
+            headline: 'Going wide everywhere is expensive',
+            explanation: 'You\'re spreading 3+ horses in every leg. Consider singling ' + bestLeg.fav.name + ' (' + bestLeg.fav.ml + ') in Leg ' + (bestLeg.idx + 1) + ' where the favorite stands out — it cuts total cost while keeping coverage where it matters.',
+            priority: 3
+          });
+        }
+      }
+    }
+
+    // Sort by priority (higher = more important) and return top 3
+    tips.sort(function(a, b) { return b.priority - a.priority; });
+    return tips.slice(0, 3);
+  }
+
+  // Apply an advice action
+  window.wizApplyAdvice = function(actionJson) {
+    try {
+      var action = JSON.parse(actionJson);
+      if (action.type === 'addBox') {
+        var sels = wizState.selections['box'] || [];
+        if (sels.indexOf(action.pp) === -1) sels.push(action.pp);
+        wizState.selections['box'] = sels;
+      } else if (action.type === 'addWith') {
+        if ((wizState.withHorses || []).indexOf(action.pp) === -1) {
+          wizState.withHorses = wizState.withHorses || [];
+          wizState.withHorses.push(action.pp);
+        }
+      } else if (action.type === 'addLeg') {
+        var sels = wizState.selections[String(action.raceNum)] || [];
+        if (sels.indexOf(action.pp) === -1) sels.push(action.pp);
+        wizState.selections[String(action.raceNum)] = sels;
+      }
+    } catch(e) {}
+    renderWizardStep();
+  };
+
+  function renderAdviceCard() {
+    var tips = generateExoticAdvice();
+    if (tips.length === 0) return '';
+    var h = '<div id="wiz-advice-card" style="margin:0.75rem 0;padding:0.75rem;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);border-radius:10px">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">';
+    h += '<span style="font-size:0.78rem;font-weight:700;color:#fbbf24;letter-spacing:0.5px">📊 SMART TIPS</span>';
+    h += '<span onclick="document.getElementById(\'wiz-advice-card\').style.display=\'none\'" style="font-size:0.7rem;color:rgba(255,255,255,0.4);cursor:pointer">Dismiss</span>';
+    h += '</div>';
+    tips.forEach(function(tip) {
+      h += '<div style="margin-bottom:0.6rem;padding-bottom:0.6rem;border-bottom:1px solid rgba(255,255,255,0.06)">';
+      h += '<div style="font-size:0.78rem;font-weight:600;color:rgba(255,255,255,0.9);margin-bottom:3px">' + tip.icon + ' ' + tip.headline + '</div>';
+      h += '<div style="font-size:0.68rem;color:rgba(255,255,255,0.5);line-height:1.4">' + tip.explanation + '</div>';
+      if (tip.action) {
+        h += '<button onclick="wizApplyAdvice(\'' + JSON.stringify(tip.action).replace(/'/g, "\\'") + '\')" style="margin-top:6px;padding:4px 12px;font-size:0.68rem;font-weight:600;background:rgba(251,191,36,0.2);color:#fbbf24;border:1px solid rgba(251,191,36,0.4);border-radius:6px;cursor:pointer">+ Add ' + (tip.action.name || 'Horse') + '</button>';
+      }
+      h += '</div>';
+    });
+    // Remove last border-bottom
+    h += '</div>';
+    return h;
+  }
+
   window.openBettingWizard = function() {
     wizState.step = 0;
     wizState.betType = null;
@@ -705,6 +971,9 @@ function neForceUpdate(newVersion) {
       h += '<div class="wizard-summary-row payout"><span class="ws-label">Est. Payout Range</span><span class="ws-val">$' + avgOdds.low + ' \u2013 $' + avgOdds.high + '</span></div>';
     }
     h += '</div>';
+
+    // Smart Tips advice card
+    h += renderAdviceCard();
 
     h += '<div class="wizard-btn-row">';
     h += '<button class="wizard-btn wizard-btn-back" onclick="wizBack()">\u2190 Edit</button>';
