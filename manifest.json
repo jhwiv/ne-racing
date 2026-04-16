@@ -3,6 +3,7 @@
   "short_name": "Railbird AI",
   "description": "Your personal horse racing handicapping & bet tracking tool.",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#FAF3E0",
   "theme_color": "#1B4332",
@@ -16,6 +17,12 @@
       "src": "icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "icons/apple-touch-icon.png",

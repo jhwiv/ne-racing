@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0925';
+var NE_APP_VERSION = '20260416-1253';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -53,12 +53,12 @@ function neForceUpdate(newVersion) {
       if (res.ok) return res.text();
       throw new Error('fetch failed');
     }).then(function(html) {
-      document.open();
-      document.write(html);
-      document.close();
+      // Navigate with cache-busting param (simpler and cross-browser safe)
+      var url = window.location.pathname + '?_v=' + (newVersion || Date.now());
+      window.location.replace(url);
     }).catch(function() {
       // Fallback: hard reload (may still hit CDN cache, but worth trying)
-      window.location.reload(true);
+      window.location.reload();
     });
   });
 }
@@ -212,7 +212,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 .text-negative { color: var(--color-negative); }
 .text-gold { color: var(--color-gold-text); }
 .text-sm { font-size: 0.8125rem; }
-.text-xs { font-size: 0.75rem; }
+.text-xs { font-size: 0.8125rem; }
 .text-lg { font-size: 1.0625rem; }
 .font-semibold { font-weight: 600; }
 .font-bold { font-weight: 700; }
@@ -302,6 +302,21 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
   cursor: pointer; transition: opacity 0.15s;
 }
 .a2hs-install-btn:hover { opacity: 0.9; }
+
+
+/* Gold section dividers */
+.rec-bet-item + .rec-bet-item { border-top: 1px solid rgba(201,168,76,0.20); }
+.rec-bet-item + .ticket-exotic { border-top: 2px dashed rgba(201,168,76,0.30); }
+.ticket-exotic { background: linear-gradient(135deg, rgba(27,67,50,0.03), rgba(201,168,76,0.06)); border-radius: var(--radius-md); padding: 1rem; margin-top: 0.5rem; }
+
+/* Follow All Expert Picks shimmer */
+.follow-picks-btn { position: relative; overflow: hidden; }
+.follow-picks-btn::after {
+  content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: followShimmer 3s ease-in-out infinite;
+}
+@keyframes followShimmer { 0%,100% { transform: translateX(0); } 50% { transform: translateX(400%); } }
 
 /* Tap to enter prompt */
 .hero-enter-prompt {
@@ -452,7 +467,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 
 /* WPS Quick-pick buttons */
 .wps-btn {
-  width: 28px; height: 24px; border-radius: var(--radius-sm);
+  width: 32px; height: 32px; min-height: 44px; border-radius: var(--radius-sm);
   font-size: 0.7rem; font-weight: 700; border: 1.5px solid;
   transition: all 0.12s; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -681,7 +696,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .date-strip-day .ds-month {
   font-family: var(--font-body);
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -734,13 +749,14 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 /* =========================================================
    RACE CARD
    ========================================================= */
-.race-card-wrap { margin-bottom: 1.25rem; contain: layout style; }
+.race-card-wrap { margin-bottom: 1.25rem; contain: layout style; border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 1px 4px rgba(27,67,50,0.08); border: 1px solid rgba(201,168,76,0.12); }
 .race-card-wrap.race-active { border-left: 3px solid var(--color-gold); box-shadow: 0 0 0 1px rgba(201,168,76,0.15), var(--shadow-md); border-radius: var(--radius-md); }
 .race-card-header {
-  background: #f5f0e6; color: var(--color-racing-green);
+  background: linear-gradient(135deg, #f5f0e6 0%, #faf6ec 100%); color: var(--color-racing-green);
   padding: 0.75rem 1rem; border-radius: var(--radius-md) var(--radius-md) 0 0;
   display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
   cursor: pointer;
+  border-bottom: 2px solid rgba(201,168,76,0.25);
 }
 .race-card-header.collapsed { border-radius: var(--radius-md); }
 .race-status-badge {
@@ -749,13 +765,18 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .badge-next { background: var(--color-gold); color: #fff; }
 .badge-live { background: var(--color-positive); color: #fff; animation: pulse-live 2s ease-in-out infinite; }
-.badge-complete { background: var(--color-muted); color: #fff; opacity: 0.6; }
+.badge-live::before { content: ''; display: inline-block; width: 6px; height: 6px; background: #fff; border-radius: 50%; margin-right: 3px; animation: pulse-dot 1s ease-in-out infinite; vertical-align: middle; }
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.badge-complete { background: var(--color-racing-green); color: var(--color-gold); opacity: 0.85; font-size: 0.55rem; }
 @keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
 .pulse-hint { animation: pulseHint 1.5s ease-in-out infinite; }
 @keyframes pulseHint { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 8px 2px rgba(201,168,76,0.5); } }
 .race-num {
-  font-family: var(--font-mono); font-size: 1.2rem; font-weight: 500;
-  color: var(--color-gold); min-width: 36px;
+  font-family: var(--font-mono); font-size: 0.95rem; font-weight: 700;
+  color: var(--color-gold); min-width: 32px; width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--color-racing-green); border-radius: 50%;
+  border: 2px solid rgba(201,168,76,0.35); flex-shrink: 0;
 }
 .race-info { flex: 1; min-width: 0; }
 .race-title { font-family: var(--font-display); font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1044,7 +1065,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 /* Live odds badge & MTP */
 .live-odds-badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); background: rgba(27,67,50,0.1); }
 .mtp-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #fff; }
-.mtp-badge.mtp-soon { background: linear-gradient(135deg, #c1121f, #e63946); animation: mtp-urgent 0.7s ease infinite; font-size: 0.7rem; padding: 3px 8px; }
+.mtp-badge.mtp-soon { background: linear-gradient(135deg, #c1121f, #e63946); animation: mtp-urgent 0.7s ease 5; font-size: 0.7rem; padding: 3px 8px; }
 .mtp-badge.mtp-near { background: linear-gradient(135deg, #D4A849, #E8B84B); color: #1b4332; animation: mtp-warm 2s ease infinite; }
 .mtp-badge.mtp-far { background: rgba(13,51,32,0.6); }
 @keyframes mtp-urgent { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } }
@@ -1497,11 +1518,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 /* --- Premium card styling --- */
 .card {
   border: 1px solid rgba(212,168,73,0.15);
-  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  transition: box-shadow 0.2s ease;
 }
-.card:active {
-  transform: scale(0.985);
-}
+/* .card:active transform removed — perf optimization */
 
 /* --- Richer recommended bets card --- */
 .rec-bets-card {
@@ -1548,12 +1567,38 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .confetti-piece {
   position: absolute; width: 8px; height: 8px; border-radius: 1px;
   animation: confettiFall 1.8s ease-in forwards;
+  will-change: transform, opacity; contain: strict;
 }
 @keyframes confettiFall {
   0% { transform: translateY(-20px) rotate(0deg) scale(1); opacity: 1; }
   80% { opacity: 1; }
   100% { transform: translateY(100vh) rotate(720deg) scale(0.3); opacity: 0; }
 }
+
+
+
+/* Will-change for modal backdrop performance */
+#settings-modal.open, #horse-modal.open, #bet-helper-popup.open { will-change: backdrop-filter; }
+/* Winner celebration overlay */
+#winner-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: radial-gradient(ellipse at center, rgba(27,67,50,0.92) 0%, rgba(10,35,24,0.97) 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+#winner-overlay.active { opacity: 1; pointer-events: auto; }
+.winner-trophy { font-size: 4rem; animation: winnerBounce 0.6s ease-out; }
+@keyframes winnerBounce { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 60% { transform: scale(1.3) rotate(5deg); } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+.winner-title { font-family: var(--font-display); font-size: clamp(1.8rem,5vw,2.5rem); color: var(--color-gold); margin: 0.5rem 0 0.25rem; text-align: center; text-shadow: 0 2px 12px rgba(0,0,0,0.3); animation: winnerFadeUp 0.5s 0.2s ease both; }
+.winner-horse { font-family: var(--font-display); font-size: 1.3rem; color: var(--color-white); opacity: 0.95; margin-bottom: 0.25rem; animation: winnerFadeUp 0.5s 0.3s ease both; }
+.winner-payout { font-family: var(--font-mono); font-size: 1.5rem; color: var(--color-gold); font-weight: 700; margin: 0.5rem 0; animation: winnerFadeUp 0.5s 0.4s ease both; }
+.winner-detail { font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 1.5rem; animation: winnerFadeUp 0.5s 0.5s ease both; }
+@keyframes winnerFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.winner-dismiss { background: var(--color-gold); color: var(--color-racing-green); border: none; padding: 0.75rem 2rem; border-radius: var(--radius-md); font-weight: 700; font-size: 1rem; cursor: pointer; animation: winnerFadeUp 0.5s 0.6s ease both; }
+.winner-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.winner-confetti-piece { position: absolute; width: 10px; height: 10px; border-radius: 2px; animation: winnerConfettiFall 2s ease-in forwards; }
+@keyframes winnerConfettiFall { 0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
 
 /* --- MTP countdown urgency --- */
 .mtp-urgent {
@@ -1693,6 +1738,17 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
      TOAST CONTAINER
      ============================================= -->
 <div id="toast-container" aria-live="polite"></div>
+<!-- Winner celebration overlay -->
+<div id="winner-overlay" onclick="dismissWinnerOverlay(event)">
+  <div class="winner-confetti" id="winner-confetti"></div>
+  <div class="winner-trophy" id="winner-trophy">🏆</div>
+  <div class="winner-title">WINNER!</div>
+  <div class="winner-horse" id="winner-horse-name"></div>
+  <div class="winner-payout" id="winner-payout-text"></div>
+  <div class="winner-detail" id="winner-detail-text"></div>
+  <button class="winner-dismiss" onclick="dismissWinnerOverlay(event)">Nice!</button>
+</div>
+
 
 <!-- =============================================
      WELCOME SCREEN
@@ -1703,7 +1759,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
      ============================================= -->
 <div id="hero-screen">
   <div id="hero-screen-bg">
-    <img id="hero-bg-img" src="images/hero-race-action.jpg" alt="Saratoga Race Course" loading="eager" fetchpriority="high">
+    <img id="hero-bg-img" src="" alt="Saratoga Race Course" data-default="images/hero-race-action.jpg">
   </div>
 
   <div class="hero-title-block">
@@ -1919,11 +1975,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
       <!-- Race cards container -->
       <div id="races-container">
-        <div class="empty-state" id="no-races-msg">
-          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><circle cx="32" cy="32" r="28" stroke-dasharray="4 4" opacity="0.3"/><path d="M20 42c2-6 8-12 12-12s10 6 12 12" stroke-width="2.5"/><circle cx="32" cy="22" r="4" fill="currentColor" opacity="0.4"/><path d="M18 46h28" stroke-width="2.5" stroke-linecap="round"/></svg>
-          <h4>Race day is loading...</h4>
-          <p>Entries will appear here once they're posted. Check back soon.</p>
-        </div>
+        <div class="empty-state" id="no-races-msg"><div style="text-align:center"><span class="loading-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-gold);animation:hero-pulse 1.5s ease-in-out infinite;margin-right:6px"></span>Loading today's card...</div></div>
       </div>
     </section>
 
@@ -2911,6 +2963,7 @@ function hasValidWorkerUrl() {
 }
 
 function showToast(msg, type = 'default', duration = 8000) {
+  msg = String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const container = el('toast-container');
   const div = document.createElement('div');
   const typeClass = {scratch:' scratch', success:' success', warning:' warning', danger:' danger'}[type] || '';
@@ -3108,7 +3161,7 @@ let deferredInstallPrompt = null; // for Android beforeinstallprompt
 
 function detectPlatform() {
   const ua = navigator.userAgent || '';
-  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/.test(ua);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
@@ -3442,11 +3495,31 @@ function buildRaceCardHTML(race) {
   // Live odds indicator
   const hasLiveOdds = horses.some(h => h.liveOdds);
   const liveIndicator = hasLiveOdds ? ' <span style="font-size:0.6rem;color:var(--color-positive);font-weight:700;letter-spacing:0.5px">LIVE</span>' : '';
+  // Race status badge (NEXT / LIVE NOW / OFFICIAL)
+  let statusBadge = '';
+  (function() {
+    if (race._result === 'official' || race._official) {
+      statusBadge = '<span class="race-status-badge badge-complete">OFFICIAL</span>';
+    } else if (race.postTime && race.postTime !== 'TBD') {
+      const isToday = !loadedRaceDate || loadedRaceDate === getTodayStr();
+      if (isToday) {
+        const ptMin = parsePostTimeToMinutes(race.postTime);
+        if (ptMin > 0) {
+          const now = new Date();
+          const nowMin = now.getHours() * 60 + now.getMinutes();
+          const diff = ptMin - nowMin;
+          if (diff <= 0 && diff > -30) statusBadge = '<span class="race-status-badge badge-live">LIVE NOW</span>';
+          else if (diff > 0 && diff <= 5) statusBadge = '<span class="race-status-badge badge-live">LIVE NOW</span>';
+        }
+      }
+    }
+  })();
+  // NEXT badge: applied during applyRaceFocus, not here
   return `<div class="race-card-wrap" id="race-wrap-${race.id}">
     <div class="race-card-header" onclick="toggleRaceCard('${race.id}')" id="race-header-${race.id}">
       <span class="race-num">${String(race.num).padStart(2,'0')}</span>
       <div class="race-info">
-        <div class="race-title">${typeLbl} — ${race.distance || ''} ${race.surface ? '<span style="opacity:0.75">'+race.surface+'</span>' : ''}${mtpHtml}${liveIndicator}</div>
+        <div class="race-title">${typeLbl} — ${race.distance || ''} ${race.surface ? '<span style="opacity:0.75">'+race.surface+'</span>' : ''}${mtpHtml}${statusBadge}${liveIndicator}</div>
         <div class="race-meta">${race.postTime ? 'Post: ' + race.postTime + ' &nbsp;|&nbsp; ' : ''}${race.purse && race.purse !== 'N/A' ? 'Purse: ' + (String(race.purse).startsWith('$') ? race.purse : '$' + Number(String(race.purse).replace(/[^0-9.]/g,'')).toLocaleString()) : ''} &nbsp;${race.updated ? '· Updated ' + race.updated : ''}${eqbUrl ? ' &nbsp;<a href="'+eqbUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:0.68rem;color:var(--color-gold);text-decoration:none">View on Equibase ↗</a>' : ''}</div>
       </div>
       <svg class="collapse-icon" id="collapse-icon-${race.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:18px;height:18px"><polyline points="6 9 12 15 18 9"/></svg>
@@ -4601,20 +4674,42 @@ function updateTopPicksCard(allScores) {
 }
 
 function buildTicketReason(s, race) {
-  const parts = [];
   const h = s.horse;
-  if (s.classScore > 65) parts.push('class dropper');
-  if (s.paceScore > 70 && (h.runningStyle === 'E' || h.runningStyle === 'EP')) parts.push('lone speed');
-  if (s.paceScore > 65 && (h.runningStyle === 'S' || h.runningStyle === 'SS')) parts.push('pace setup suits');
-  if (h.jockeyPct > 18 || h.trainerPct > 18) parts.push('hot connections');
-  if (h.equipmentChanges) parts.push(h.equipmentChanges.toLowerCase());
-  if (hasBulletWorkout(h)) parts.push('bullet work');
+  const figs = (h.speedFigs||[]).filter(f=>f!=null);
+  const style = h.runningStyle || '';
+  const expertNames = getExpertNames(race, h);
+  const jkyPct = parseFloat(h.jockeyPct) || 0;
+  const trnPct = parseFloat(h.trainerPct) || 0;
+  const ml = h.ml || '';
+
+  // Build a narrative "Why this horse" blurb
+  let opener = '';
+  if (figs.length && figs[figs.length-1] === Math.max(...figs) && figs.length > 1) {
+    opener = 'Coming off a career-best speed figure (' + figs[figs.length-1] + ')';
+  } else if (figs.length) {
+    opener = 'Last speed fig ' + figs[figs.length-1];
+  }
+
+  let edge = '';
+  if (s.classScore > 65) edge = 'dropping in class with an edge';
+  else if (s.paceScore > 70 && (style === 'E' || style === 'EP')) edge = 'lone speed in the field';
+  else if (s.paceScore > 65 && (style === 'S' || style === 'SS')) edge = 'pace setup favors closers';
+  else if (jkyPct > 18 || trnPct > 18) edge = 'hot connections firing';
+
+  let social = '';
+  if (expertNames.length >= 3) social = expertNames.length + ' expert sources agree';
+  else if (expertNames.length >= 2) social = 'Backed by ' + expertNames.join(' & ');
+  else if (expertNames.length === 1) social = expertNames[0] + ' pick';
+
+  let freshness = '';
   if (h.lastRaceDate) {
     const daysSince = Math.floor((new Date() - new Date(h.lastRaceDate + 'T12:00:00')) / 86400000);
-    if (daysSince >= 14 && daysSince <= 28) parts.push('fresh');
+    if (daysSince >= 14 && daysSince <= 28) freshness = 'fresh (' + daysSince + 'd)';
   }
-  if (!parts.length) parts.push('top-rated');
-  return parts.join(', ');
+
+  // Compose narrative
+  const parts = [opener, edge, social, freshness].filter(Boolean);
+  return parts.length ? parts.join(', ') : 'Solid profile — check the numbers';
 }
 
 function copyTicket() {
@@ -5227,6 +5322,12 @@ function removeExoticBet(betId) {
 
 function updateBankrollBanner() {
   const store = getStore();
+  // Show prompt instead of $0 values when bankroll not configured
+  var banner = el('bet-bankroll-banner');
+  if (banner && (!store || !store.settings || !store.settings.startingBankroll || store.settings.startingBankroll <= 0)) {
+    banner.innerHTML = '<div style="width:100%;text-align:center;padding:0.75rem;font-size:0.85rem;color:var(--color-muted)">Set your <a href="#" onclick="openSettings();return false" style="color:var(--color-gold);text-decoration:underline;font-weight:600">starting bankroll</a> to enable budget tracking</div>';
+    return;
+  }
   if (!store) return;
   const starting = store.settings.startingBankroll || 1000;
   const data = getTrackData();
@@ -5897,11 +5998,19 @@ function setResultBet(betId, result) {
   const data = getTrackData();
   const bet = (data.bets||[]).find(b=>b.id===betId);
   if (bet) {
+    const wasWin = bet.result === 'win';
     bet.result = bet.result === result ? null : result;
     saveTrackData(data);
     renderResultsTab();
     // Task 7: Update accuracy tracking
     updateAccuracyTracking();
+    // Show winner celebration when marking a bet as WIN (not when toggling off)
+    if (result === 'win' && bet.result === 'win' && !wasWin) {
+      const horseName = (bet.selections || []).join(', ');
+      const payout = parseFloat(bet.payout) || 0;
+      const profit = payout > 0 ? payout - (parseFloat(bet.amount) || 0) : 0;
+      showWinnerOverlay(horseName, profit, bet.raceNum, bet.type);
+    }
   }
 }
 
@@ -6260,7 +6369,14 @@ function forceRefresh() {
   neForceUpdate(NE_APP_VERSION);
 }
 
-function settingsChangeTrack(code) { /* applied on close */ }
+function settingsChangeTrack(code) {
+  setSetting('activeTrack', code);
+  updateHeaderTrack();
+  selectedCalendarDate = null;
+  dateStripAnchor = null;
+  buildDateStrip();
+  fetchLiveEntries();
+}
 
 // Data mode is hardcoded to 'live' — manual entry removed
 
@@ -6751,7 +6867,19 @@ async function fetchLiveEntries() {
     }
   }
 
-  if (!result) { loadedRaceDate = null; hideLoadingIndicator(); showLiveUnavailable(); return; }
+  if (!result) {
+    loadedRaceDate = null; hideLoadingIndicator();
+    // Offline fallback: render cached data if available
+    var cachedData = getTrackData();
+    if (cachedData && cachedData.races && cachedData.races.length) {
+      loadedRaceDate = getTodayStr();
+      renderTodayTab();
+      showToast('Offline — showing last loaded data', 'warning', 5000);
+    } else {
+      showLiveUnavailable();
+    }
+    return;
+  }
 
   hideLoadingIndicator();
   hideLiveUnavailable();
@@ -6920,7 +7048,7 @@ function fireConfetti() {
   var container = document.getElementById('confetti-container');
   if (!container) return;
   var colors = ['#D4A849', '#0D3320', '#10B981', '#C1121F', '#FFFFFF', '#6B1D2A'];
-  for (var i = 0; i < 35; i++) {
+  for (var i = 0; i < 20; i++) {
     var piece = document.createElement('div');
     piece.className = 'confetti-piece';
     piece.style.left = (Math.random() * 100) + '%';
@@ -6975,15 +7103,15 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
 (function() {
   var origRenderTodayTab = typeof renderTodayTab === 'function' ? renderTodayTab : null;
   if (!origRenderTodayTab) return;
+  var hasGlowed = false;
   renderTodayTab = function() {
     origRenderTodayTab.apply(this, arguments);
     var card = document.getElementById('rec-bets-card');
-    if (card && !card.classList.contains('hidden')) {
-      card.classList.remove('glow-entrance');
-      void card.offsetWidth;
+    if (card && !card.classList.contains('hidden') && !hasGlowed) {
       card.classList.add('glow-entrance');
+      hasGlowed = true;
     }
-    updateQuickPickVisibility();
+    if (typeof updateQuickPickVisibility === 'function') updateQuickPickVisibility();
   };
 })();
 
@@ -7012,6 +7140,51 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
    PUSH TO 9/10 — JS ADDITIONS
    ============================================================= */
 
+
+// --- Winner celebration overlay ---
+function showWinnerOverlay(horseName, payout, raceNum, betType) {
+  var overlay = el('winner-overlay');
+  if (!overlay) return;
+  var nameEl = el('winner-horse-name');
+  var payoutEl = el('winner-payout-text');
+  var detailEl = el('winner-detail-text');
+  if (nameEl) nameEl.textContent = horseName || 'Your Pick';
+  if (payoutEl) payoutEl.textContent = payout > 0 ? '+$' + Number(payout).toFixed(2) : '';
+  if (detailEl) detailEl.textContent = 'Race ' + (raceNum || '') + ' · ' + (betType || 'Win');
+
+  // Spawn confetti
+  var confettiEl = el('winner-confetti');
+  if (confettiEl) {
+    confettiEl.innerHTML = '';
+    var colors = ['#D4A849','#E8B84B','#C9A84C','#fff','#1B4332','#e63946','#457b9d'];
+    for (var i = 0; i < 60; i++) {
+      var piece = document.createElement('div');
+      piece.className = 'winner-confetti-piece';
+      piece.style.left = Math.random() * 100 + '%';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDelay = (Math.random() * 1.5) + 's';
+      piece.style.width = (6 + Math.random() * 8) + 'px';
+      piece.style.height = (6 + Math.random() * 8) + 'px';
+      confettiEl.appendChild(piece);
+    }
+  }
+
+  overlay.classList.add('active');
+
+  // Auto-dismiss after 5 seconds
+  clearTimeout(window._winnerTimeout);
+  window._winnerTimeout = setTimeout(function() {
+    overlay.classList.remove('active');
+  }, 5000);
+}
+
+function dismissWinnerOverlay(e) {
+  if (e) e.stopPropagation();
+  var overlay = el('winner-overlay');
+  if (overlay) overlay.classList.remove('active');
+  clearTimeout(window._winnerTimeout);
+}
+
 // --- Rotating hero images ---
 (function() {
   var heroImages = [
@@ -7022,7 +7195,7 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
   ];
   var img = document.getElementById('hero-bg-img');
   if (!img) return;
-  // Pick a random image each load
+  // Pick a random image each load (src starts empty to avoid double-fetch)
   var idx = Math.floor(Math.random() * heroImages.length);
   img.src = heroImages[idx];
   // Only selected image loads; others load on-demand on next visit
@@ -7076,7 +7249,11 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
   // Run on load
   styleBetItems();
   // Observe mutations to catch dynamic rendering
-  var observer = new MutationObserver(function() { styleBetItems(); });
+  var debounceTimer;
+  var observer = new MutationObserver(function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(styleBetItems, 50);
+  });
   var recCard = document.getElementById('rec-bets-card');
   if (recCard) observer.observe(recCard, { childList: true, subtree: true });
   // Also run on tab switch
@@ -7129,5 +7306,6 @@ document.addEventListener('keydown', e => {
 
 </script>
 
+<div id="confetti-container"></div>
 </body>
 </html>
