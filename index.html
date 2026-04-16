@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0700';
+var NE_APP_VERSION = '20260416-0720';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1638,7 +1638,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 <!-- =============================================
      HERO SCREEN (full-screen, tap to enter)
      ============================================= -->
-<div id="hero-screen" onclick="heroTapEnter(event)">
+<div id="hero-screen">
   <div id="hero-screen-bg">
     <img src="images/hero-saratoga.jpg" alt="Saratoga Race Course grandstand" loading="eager" fetchpriority="high">
   </div>
@@ -1659,9 +1659,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     </div>
   </div>
 
+  <!-- Scroll indicator -->
   <div class="hero-enter-prompt" id="hero-enter-prompt">
-    <div class="hero-enter-text">Tap anywhere to enter</div>
-    <div class="hero-enter-chevron">
+    <div class="hero-enter-chevron" style="animation: hero-pulse 2.5s ease-in-out infinite;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
   </div>
@@ -3128,12 +3128,7 @@ window.addEventListener('beforeinstallprompt', function(e) {
   initA2HSBanner();
 });
 
-function heroTapEnter(e) {
-  // Don't scroll if user clicked the dismiss button or install button
-  if (e.target.closest('.a2hs-dismiss') || e.target.closest('.a2hs-install-btn')) return;
-  var appFrame = el('app-frame');
-  if (appFrame) appFrame.scrollIntoView({ behavior: 'smooth' });
-}
+// heroTapEnter removed — hero is always visible, user scrolls naturally
 
 
 
@@ -6816,6 +6811,9 @@ document.addEventListener('DOMContentLoaded', () => {
   store.settings.welcomeDone = true;
   saveStore(store);
 
+  // Always start at the hero screen
+  window.scrollTo(0, 0);
+
   // Initialize the app immediately
   initApp();
 
@@ -6930,23 +6928,9 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
   };
 })();
 
-// --- Hero screen one-time only ---
-(function() {
-  var heroEl = document.getElementById('hero-screen');
-  if (!heroEl) return;
-  var seen = false;
-  try { seen = localStorage.getItem('ne-hero-seen') === '1'; } catch(e){}
-  if (seen) {
-    heroEl.classList.add('hero-hidden');
-  } else {
-    // First visit: auto-dismiss after 1.5s
-    setTimeout(function() {
-      heroEl.classList.add('hero-fadeout');
-      try { localStorage.setItem('ne-hero-seen', '1'); } catch(e){}
-      setTimeout(function() { heroEl.classList.add('hero-hidden'); }, 800);
-    }, 1500);
-  }
-})();
+// --- Hero screen: always visible, user scrolls past it ---
+// No auto-dismiss, no localStorage gate. Hero shows every time.
+// The IntersectionObserver in bootstrap handles hiding/showing the tab bar.
 
 // --- Enhanced lockAllBets with confetti ---
 (function() {
@@ -6998,7 +6982,7 @@ document.addEventListener('keydown', e => {
 // sees a new SW, installs it, which then clears all caches and unregisters
 // itself. This is the ONLY way to kill a rogue cached service worker.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=20260416-0700').then(function(reg) {
+  navigator.serviceWorker.register('sw.js?v=20260416-0720').then(function(reg) {
     // Force immediate update check
     reg.update().catch(function(){});
   }).catch(function(){});
