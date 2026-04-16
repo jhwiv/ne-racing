@@ -1115,8 +1115,9 @@ function neForceUpdate(newVersion) {
     // Re-render bets tab
     setTimeout(function() {
       if (typeof renderLockedExotics === 'function') renderLockedExotics();
+      if (typeof renderTodaysLockedBets === 'function') renderTodaysLockedBets();
       if (typeof updateBankrollBanner === 'function') updateBankrollBanner();
-      var list = document.getElementById('exotic-bets-list');
+      var list = document.getElementById('todays-locked-bets-list');
       if (list) list.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 50);
   };
@@ -3033,22 +3034,23 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 /* Wizard launch button */
 .wizard-launch-btn {
-  width: 100%; margin-top: 0.75rem; padding: 0.75rem;
-  background: linear-gradient(135deg, rgba(212,168,73,0.15), rgba(212,168,73,0.08));
-  border: 1.5px solid rgba(212,168,73,0.35);
-  border-radius: 12px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; margin-top: 0.75rem; padding: 1.1rem 1rem;
+  background: linear-gradient(135deg, rgba(212,168,73,0.22), rgba(212,168,73,0.10));
+  border: 2px solid rgba(212,168,73,0.5);
+  border-radius: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: flex-start; gap: 14px;
   transition: all 0.2s ease;
   position: relative; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(212,168,73,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
 }
-.wizard-launch-btn:active { transform: scale(0.98); }
-.wizard-launch-btn .wl-icon { font-size: 1.3rem; }
+.wizard-launch-btn:active { transform: scale(0.97); }
+.wizard-launch-btn .wl-icon { font-size: 2rem; flex-shrink: 0; }
 .wizard-launch-btn .wl-text {
-  font-family: var(--font-display); font-size: 0.9rem; font-weight: 700;
-  color: var(--color-gold);
+  font-family: var(--font-display); font-size: 1.1rem; font-weight: 800;
+  color: var(--color-gold); letter-spacing: 0.3px;
 }
 .wizard-launch-btn .wl-sub {
-  font-size: 0.62rem; color: rgba(255,255,255,0.65);
+  font-size: 0.72rem; color: rgba(255,255,255,0.65); margin-top: 2px;
 }
 .wizard-launch-btn::after {
   content: ''; position: absolute; top: 0; left: -100%;
@@ -3732,12 +3734,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Exotic Bet Builder — single entry point -->
       <div style="padding: 0 0.15rem">
         <button class="wizard-launch-btn" onclick="openBettingWizard()">
-          <span class="wl-icon">&#x1F3B0;</span>
-          <div>
+          <span class="wl-icon">🎰</span>
+          <div style="flex:1">
             <div class="wl-text">Build Exotic Bet</div>
-            <div class="wl-sub">Exactas, Trifectas, Supers, Pick 3/4/5/6</div>
+            <div class="wl-sub">Exactas · Trifectas · Superfectas · Pick 3/4/5/6</div>
           </div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--color-gold);flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--color-gold);flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
         </button>
       </div>
 
@@ -3749,6 +3751,13 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
           <p>Build your exotics above and lock them in.</p>
         </div>
       </div>
+
+      <!-- All locked bets for today -->
+      <div class="section-title mt-2" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Today's Locked Bets</span>
+        <span id="today-locked-count" style="font-size:0.7rem;font-weight:400;color:rgba(255,255,255,0.4)"></span>
+      </div>
+      <div id="todays-locked-bets-list"></div>
     </section>
 
     <!-- ===== TAB 3: HANDICAPPING ===== -->
@@ -6638,6 +6647,7 @@ function renderAdviceForRace() {
 function renderBetsTab() {
   renderStraightBets();
   renderLockedExotics();
+  renderTodaysLockedBets();
   updateBankrollBanner();
 }
 
@@ -6744,6 +6754,7 @@ function lockAllBets() {
           const bet = {
             id: generateId(), date: getTodayStr(), raceNum: race.num,
             type: betTypeName,
+            horse: horse.name,
             selections: [horse.name], pp: [horse.pp],
             amount: amt, result: null, payout: 0,
             isBestBet: false, isValuePlay: false,
@@ -6761,6 +6772,7 @@ function lockAllBets() {
   straightBetAmounts = {};
   try { localStorage.removeItem('ne_straightBetAmounts'); } catch(e) {}
   renderStraightBets();
+  renderTodaysLockedBets();
   showToast(locked + ' bet' + (locked !== 1 ? 's' : '') + ' locked to Results', 'success', 4000);
   updateBankrollBanner();
 }
@@ -6839,6 +6851,92 @@ function removeExoticBet(betId) {
   data.bets = (data.bets||[]).filter(b=>b.id!==betId);
   saveTrackData(data);
   renderLockedExotics();
+  renderTodaysLockedBets();
+}
+
+function renderTodaysLockedBets() {
+  var container = el('todays-locked-bets-list');
+  var countEl = el('today-locked-count');
+  if (!container) return;
+  var data = getTrackData();
+  var bets = (data && data.bets) ? data.bets : [];
+
+  // Filter to today's bets
+  var today = new Date().toISOString().slice(0, 10);
+  var todayBets = bets.filter(function(b) {
+    if (!b.date) return true; // no date = assume today
+    return String(b.date).indexOf(today) === 0 || String(b.date).indexOf(today.replace(/-/g, '')) !== -1;
+  });
+
+  if (countEl) countEl.textContent = todayBets.length ? todayBets.length + ' bet' + (todayBets.length !== 1 ? 's' : '') : '';
+
+  if (!todayBets.length) {
+    container.innerHTML = '<div style="text-align:center;padding:1rem;font-size:0.78rem;color:rgba(255,255,255,0.35)">No locked bets yet today. Place bets from Today\'s Card and lock them in.</div>';
+    return;
+  }
+
+  // Sort by race number
+  todayBets.sort(function(a, b) { return (parseInt(a.raceNum) || 0) - (parseInt(b.raceNum) || 0); });
+
+  var totalWagered = 0;
+  var html = '';
+  todayBets.forEach(function(bet) {
+    var amt = parseFloat(bet.cost || bet.amount) || 0;
+    totalWagered += amt;
+    var result = bet.result || 'pending';
+    var resultBadge = '';
+    var payout = parseFloat(bet.payout) || 0;
+    if (result === 'win') {
+      resultBadge = '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.65rem;font-weight:700;background:rgba(74,222,128,0.2);color:#4ade80">WIN</span>';
+    } else if (result === 'loss') {
+      resultBadge = '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.65rem;font-weight:700;background:rgba(239,68,68,0.2);color:#ef4444">LOSS</span>';
+    } else if (result === 'scratch') {
+      resultBadge = '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.65rem;font-weight:700;background:rgba(156,163,175,0.2);color:#9ca3af">SCRATCH</span>';
+    } else {
+      resultBadge = '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.65rem;font-weight:700;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4)">PENDING</span>';
+    }
+
+    var typeLabel = bet.isExotic ? (bet.type || 'Exotic') : (bet.type || 'Win');
+    var horseName = bet.isExotic ? (bet.formula || bet.horse || '') : (bet.horse || (bet.selections && bet.selections[0]) || '');
+    var plLine = '';
+    if (result === 'win' && payout > 0) {
+      plLine = '<span style="color:#4ade80;font-weight:700;font-size:0.82rem">+$' + payout.toFixed(2) + '</span>';
+    } else if (result === 'loss') {
+      plLine = '<span style="color:#ef4444;font-weight:600;font-size:0.82rem">&minus;$' + amt.toFixed(2) + '</span>';
+    }
+
+    html += '<div style="padding:0.6rem 0.75rem;margin-bottom:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+    html += '<span style="font-size:0.68rem;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(212,168,73,0.15);color:var(--color-gold)">' + escHtml(typeLabel) + '</span>';
+    html += resultBadge;
+    html += '</div>';
+    html += '<div style="font-size:0.85rem;font-weight:600;color:rgba(255,255,255,0.9);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(horseName) + '</div>';
+    html += '<div style="font-size:0.68rem;color:rgba(255,255,255,0.4);margin-top:1px">R' + (bet.raceNum || '?') + ' &middot; ' + (bet.track || 'AQU') + '</div>';
+    html += '</div>';
+    html += '<div style="text-align:right;flex-shrink:0">';
+    html += '<div style="font-size:0.9rem;font-weight:700;color:rgba(255,255,255,0.85)">$' + amt.toFixed(2) + '</div>';
+    if (plLine) html += '<div style="margin-top:2px">' + plLine + '</div>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+  });
+
+  // Summary row
+  var wins = todayBets.filter(function(b) { return b.result === 'win'; });
+  var losses = todayBets.filter(function(b) { return b.result === 'loss'; });
+  var totalPayout = todayBets.reduce(function(s, b) { return s + (parseFloat(b.payout) || 0); }, 0);
+  var net = totalPayout - totalWagered;
+  var netColor = net >= 0 ? '#4ade80' : '#ef4444';
+  var netSign = net >= 0 ? '+' : '';
+
+  html += '<div style="margin-top:8px;padding:0.6rem 0.75rem;background:rgba(255,255,255,0.04);border-radius:10px;display:flex;justify-content:space-between;align-items:center;font-size:0.78rem">';
+  html += '<div style="color:rgba(255,255,255,0.5)">' + todayBets.length + ' bets &middot; ' + wins.length + 'W ' + losses.length + 'L &middot; $' + totalWagered.toFixed(2) + ' wagered</div>';
+  html += '<div style="font-weight:700;color:' + netColor + '">' + netSign + '$' + Math.abs(net).toFixed(2) + '</div>';
+  html += '</div>';
+
+  container.innerHTML = html;
 }
 
 function updateBankrollBanner() {
