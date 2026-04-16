@@ -772,9 +772,10 @@ const EQUIBASE_MOBILE_BASE = "https://mobile.equibase.com/html/results";
 /**
  * Fetches race results from the Equibase mobile site for free-mode users.
  *
- * 1. Fetches the race list page to discover available race numbers.
- * 2. Fetches each individual race result page in parallel.
- * 3. Parses simple HTML to extract finisher positions, names, and payouts.
+ * Strategy: The race list page (resultsAQU20260416.html) often returns 404
+ * or empty, so we iterate individual race URLs (race 01 through 12) directly.
+ * We try the list page first as a quick discovery mechanism, then fall back
+ * to probing individual race URLs.
  *
  * @param {string} track — Equibase track code (e.g. "AQU")
  * @param {string} date  — YYYY-MM-DD
@@ -782,47 +783,39 @@ const EQUIBASE_MOBILE_BASE = "https://mobile.equibase.com/html/results";
  */
 async function fetchFreeResults(track, date, venue) {
   const yyyymmdd = date.replace(/-/g, "");
-  const listUrl = `${EQUIBASE_MOBILE_BASE}${track}${yyyymmdd}.html`;
 
-  const listRes = await fetch(listUrl, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; RacingCompanion/1.0)",
-      Accept: "text/html",
-    },
-  });
+  // Try the list page first for race number discovery
+  let raceNumbers = [];
+  try {
+    const listUrl = `${EQUIBASE_MOBILE_BASE}${track}${yyyymmdd}.html`;
+    const listRes = await fetch(listUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; RacingCompanion/1.0)",
+        Accept: "text/html",
+      },
+    });
 
-  if (!listRes.ok) {
-    // No results page — races may not have run yet
-    return {
-      track, date, venue,
-      lastUpdated: new Date().toISOString(),
-      source: "equibase",
-      races: [],
-    };
+    if (listRes.ok) {
+      const listHtml = await listRes.text();
+      const linkPattern = new RegExp(
+        `results${track}${yyyymmdd}(\\d{2})\\.html`, "gi"
+      );
+      let linkMatch;
+      while ((linkMatch = linkPattern.exec(listHtml)) !== null) {
+        const num = parseInt(linkMatch[1], 10);
+        if (!raceNumbers.includes(num)) raceNumbers.push(num);
+      }
+    }
+  } catch (_) {
+    // List page failed — we'll iterate individually
   }
 
-  const listHtml = await listRes.text();
-
-  // Extract race numbers from links like resultsAQU2026041001.html
-  const linkPattern = new RegExp(
-    `results${track}${yyyymmdd}(\\d{2})\\.html`, "gi"
-  );
-  const raceNumbers = [];
-  let linkMatch;
-  while ((linkMatch = linkPattern.exec(listHtml)) !== null) {
-    const num = parseInt(linkMatch[1], 10);
-    if (!raceNumbers.includes(num)) raceNumbers.push(num);
-  }
-  raceNumbers.sort((a, b) => a - b);
-
+  // If list page didn't yield results, iterate races 1-12 directly
   if (!raceNumbers.length) {
-    return {
-      track, date, venue,
-      lastUpdated: new Date().toISOString(),
-      source: "equibase",
-      races: [],
-    };
+    for (let i = 1; i <= 12; i++) raceNumbers.push(i);
   }
+
+  raceNumbers.sort((a, b) => a - b);
 
   // Fetch each individual race result in parallel
   const racePromises = raceNumbers.map(async (raceNum) => {
@@ -858,6 +851,11 @@ async function fetchFreeResults(track, date, venue) {
 /**
  * Parses an individual Equibase mobile race result HTML page.
  *
+ * Extracts:
+ *   - Full finishing order with WPS payouts per horse
+ *   - Exotic payouts (Exacta, Trifecta, Superfecta, DD, Pick 3/4/5/6, Quinella)
+ *   - Scratched horses
+ *
  * Expected structure:
  *   <table bgcolor="#008000">...<b>04/10/2026 Race 1 - Starter Allowance</b>...</table>
  *   <table width="100%">
@@ -865,6 +863,8 @@ async function fetchFreeResults(track, date, venue) {
  *     <tr><td>4 Grace and Grit  $3.66 $2.94</td></tr>    (2nd: PP Name $Place $Show)
  *     <tr><td>2 Racing Colors   $3.58</td></tr>           (3rd: PP Name $Show)
  *   </table>
+ *   ... exotic payouts like "Exacta (1-5) $9.85", "Trifecta (1-5-4) $11.62" ...
+ *   ... scratched horses listed as "Scratched: Vivienna" or similar ...
  *
  * @param {string} html    — Raw HTML from the race result page
  * @param {number} raceNum — The race number (fallback if parsing header fails)
@@ -922,14 +922,81 @@ function parseEquibaseRaceResult(html, raceNum) {
     }
 
     results.push(entry);
-    if (position >= 3) break; // Only need top 3
+  }
+
+  // Also capture finishers listed without payouts (4th+)
+  // Pattern: rows with just PP and horse name, no dollar signs
+  const alsoRanPattern = /<tr[^>]*>\s*<td[^>]*>\s*(\d+)\s+([^$<]{2,}?)\s*<\/td>\s*<\/tr>/gi;
+  let alsoRanMatch;
+  while ((alsoRanMatch = alsoRanPattern.exec(html)) !== null) {
+    const pp = parseInt(alsoRanMatch[1], 10);
+    const horseName = alsoRanMatch[2].trim();
+    // Skip if we already captured this horse (has payouts)
+    if (results.some(r => r.pp === pp)) continue;
+    // Skip if it looks like exotic payout text
+    if (/exacta|trifecta|superfecta|daily|pick|quinella/i.test(horseName)) continue;
+    position++;
+    results.push({ position, pp, horseName });
   }
 
   if (!results.length) return null;
 
+  // ── Parse exotic payouts ──────────────────────────────────────────────────
+  // Look for patterns like "Exacta (1-5) $9.85" or "Trifecta 1-5-4 $11.62"
+  // Also handles "Daily Double", "Pick 3", "Pick 4", etc.
+  const exotics = [];
+  const exoticTypes = [
+    { pattern: /(?:Super(?:fecta)?)\s*(?:\()?(\d[\d\-/,]+\d)(?:\))?\s*\$?([\d,]+\.?\d*)/gi, type: 'superfecta' },
+    { pattern: /(?:Tri(?:fecta)?)\s*(?:\()?(\d[\d\-/,]+\d)(?:\))?\s*\$?([\d,]+\.?\d*)/gi, type: 'trifecta' },
+    { pattern: /(?:Exacta)\s*(?:\()?(\d[\d\-/,]+\d)(?:\))?\s*\$?([\d,]+\.?\d*)/gi, type: 'exacta' },
+    { pattern: /(?:Quinella)\s*(?:\()?(\d[\d\-/,]+\d)(?:\))?\s*\$?([\d,]+\.?\d*)/gi, type: 'quinella' },
+    { pattern: /(?:Daily\s*Double|DD)\s*(?:\()?(\d[\d\-/,]+\d)(?:\))?\s*\$?([\d,]+\.?\d*)/gi, type: 'daily_double' },
+    { pattern: /(?:Pick\s*3|P3)\s*(?:\()?(\d[\d\-/,]+\d)(?:\))?\s*\$?([\d,]+\.?\d*)/gi, type: 'pick3' },
+    { pattern: /(?:Pick\s*4|P4)\s*(?:\()?(\d[\d\-/,]+\d)(?:\))?\s*\$?([\d,]+\.?\d*)/gi, type: 'pick4' },
+    { pattern: /(?:Pick\s*5|P5)\s*(?:\()?(\d[\d\-/,]+\d)(?:\))?\s*\$?([\d,]+\.?\d*)/gi, type: 'pick5' },
+    { pattern: /(?:Pick\s*6|P6)\s*(?:\()?(\d[\d\-/,]+\d)(?:\))?\s*\$?([\d,]+\.?\d*)/gi, type: 'pick6' },
+  ];
+
+  for (const { pattern, type } of exoticTypes) {
+    let exMatch;
+    while ((exMatch = pattern.exec(html)) !== null) {
+      const combo = exMatch[1].replace(/[/,]/g, '-');
+      const payout = parseFloat(exMatch[2].replace(/,/g, ''));
+      if (!isNaN(payout) && payout > 0) {
+        // Avoid duplicate entries
+        if (!exotics.some(e => e.type === type && e.combo === combo)) {
+          exotics.push({ type, combo, payout });
+        }
+      }
+    }
+  }
+
+  // ── Parse scratches ───────────────────────────────────────────────────────
+  // Look for "Scratched" or "SCR" followed by horse names
+  const scratches = [];
+  const scratchPatterns = [
+    /[Ss]cratched?:?\s*([^<\n]+)/g,
+    /SCR[:\s]+([^<\n]+)/g,
+  ];
+  for (const sp of scratchPatterns) {
+    let scrMatch;
+    while ((scrMatch = sp.exec(html)) !== null) {
+      const names = scrMatch[1].split(/[,;]/).map(n => n.trim()).filter(Boolean);
+      names.forEach(name => {
+        // Clean up program numbers if present (e.g., "5 - Vivienna")
+        const cleaned = name.replace(/^\d+\s*[-–]\s*/, '').trim();
+        if (cleaned && !scratches.includes(cleaned)) {
+          scratches.push(cleaned);
+        }
+      });
+    }
+  }
+
   return {
     raceNumber,
     results,
+    exotics,
+    scratches,
     official: true,
   };
 }

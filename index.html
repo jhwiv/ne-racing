@@ -1509,6 +1509,18 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .badge-live::before { content: ''; display: inline-block; width: 6px; height: 6px; background: #fff; border-radius: 50%; margin-right: 3px; animation: pulse-dot 1s ease-in-out infinite; vertical-align: middle; }
 @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 .badge-complete { background: var(--color-racing-green); color: var(--color-gold); opacity: 0.85; font-size: 0.55rem; }
+/* Inline race result strip on Today tab */
+.race-inline-result {
+  margin-top: 4px; padding: 4px 8px; border-radius: 4px;
+  background: rgba(16,185,129,0.08); border-left: 3px solid var(--color-positive);
+  font-size: 0.72rem; line-height: 1.4; display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+}
+.inline-result-badge {
+  background: var(--color-racing-green); color: #fff; font-weight: 700; font-size: 0.6rem;
+  padding: 1px 5px; border-radius: 3px; letter-spacing: 0.06em;
+}
+.inline-result-winner { font-weight: 700; color: var(--color-racing-green); }
+.inline-result-place, .inline-result-show { color: var(--color-muted); font-size: 0.68rem; }
 @keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
 .pulse-hint { position: relative; }
 .pulse-hint::after {
@@ -1702,8 +1714,28 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .wl-btn { padding: 0.25rem 0.6rem; font-size: 0.78rem; font-weight: 700; background: transparent; color: var(--color-muted); border: none; cursor: pointer; transition: all 0.12s; }
 .wl-btn.win-active { background: var(--color-positive); color: #fff; }
 .wl-btn.loss-active { background: var(--color-negative); color: #fff; }
+/* De-emphasize W/L buttons when bet is already auto-resolved */
+.manual-override.de-emphasized { opacity: 0.4; transform: scale(0.85); }
+.manual-override.de-emphasized:hover { opacity: 0.8; }
+.result-resolved .payout-input { opacity: 0.7; }
+.result-resolved .payout-input:focus { opacity: 1; }
 
 /* Bankroll stats grid */
+/* Today's P&L Hero */
+.todays-pnl-hero {
+  text-align: center; padding: 1.25rem 1rem; margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--color-racing-green), #1a5c3a);
+  border-radius: var(--radius-lg); color: #fff;
+}
+.pnl-hero-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; opacity: 0.8; margin-bottom: 0.25rem; font-weight: 600; }
+.pnl-hero-value { font-family: var(--font-mono); font-size: 2.2rem; font-weight: 800; line-height: 1.1; }
+.pnl-hero-value.pnl-positive { color: #4ade80; }
+.pnl-hero-value.pnl-negative { color: #f87171; }
+.pnl-hero-value.pnl-zero { color: rgba(255,255,255,0.7); }
+.pnl-hero-sub { font-size: 0.75rem; opacity: 0.85; margin-top: 0.35rem; font-weight: 500; }
+/* Scratch badge */
+.badge-scratch { background: #fbbf24; color: #78350f; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; letter-spacing: 0.03em; }
+
 .bankroll-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
 @media (min-width: 480px) { .bankroll-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 640px) { .bankroll-grid { grid-template-columns: repeat(4, 1fr); } }
@@ -3593,6 +3625,13 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         <button class="filter-btn" onclick="setResultsModeFilter('real')">Real</button>
       </div>
 
+      <!-- Today's P&L Hero -->
+      <div class="todays-pnl-hero" id="todays-pnl-hero">
+        <div class="pnl-hero-label">Today's P&amp;L</div>
+        <div class="pnl-hero-value" id="res-today-pnl">$0.00</div>
+        <div class="pnl-hero-sub" id="res-today-record"></div>
+      </div>
+
       <!-- Bankroll stats -->
       <div class="bankroll-grid" id="bankroll-grid">
         <div class="bankroll-stat"><div class="stat-label">Starting</div><div class="stat-value" id="res-starting">$0</div></div>
@@ -3607,7 +3646,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
       <!-- Sparkline -->
       <div class="sparkline-wrap">
-        <h3>Daily P&amp;L</h3>
+        <h3>Cumulative P&amp;L</h3>
         <svg id="sparkline-svg" viewBox="0 0 400 60" preserveAspectRatio="none" aria-label="Daily P&L sparkline"></svg>
         <div id="sparkline-empty" class="text-muted text-sm" style="text-align:center;padding:0.5rem">No daily data yet</div>
       </div>
@@ -4777,7 +4816,8 @@ function initApp() {
   // Start live polling
   startLivePolling();
 
-  // Start results auto-polling if there are unresolved bets
+  // Resolve bets from cached results on load, then start polling
+  resolveFromCachedResults();
   startResultsPolling();
 
   // Load accuracy tracking data
@@ -5007,12 +5047,46 @@ function buildRaceCardHTML(race) {
     }
   })();
   // NEXT badge: applied during applyRaceFocus, not here
+  // ── Inline result strip for finished races ──
+  let inlineResultHtml = '';
+  if (race._resultData && race._resultData.results && race._resultData.results.length) {
+    const rd = race._resultData;
+    const winner = rd.results.find(r => r.position === 1);
+    const second = rd.results.find(r => r.position === 2);
+    const third = rd.results.find(r => r.position === 3);
+    let winInfo = winner ? winner.horseName : '';
+    if (winner && winner.winPayout) winInfo += ' ($' + winner.winPayout.toFixed(2) + ')';
+    let placeInfo = '';
+    if (second) placeInfo = second.horseName;
+    if (second && second.placePayout) placeInfo += ' ($' + second.placePayout.toFixed(2) + ')';
+    let showInfo = '';
+    if (third) showInfo = third.horseName;
+    if (third && third.showPayout) showInfo += ' ($' + third.showPayout.toFixed(2) + ')';
+    // Check if user has bets on this race and show W/L indicators
+    const data = getTrackData();
+    const raceBets = (data.bets || []).filter(b => parseInt(b.raceNum, 10) === race.num && b.date === getTodayStr());
+    let userBetHtml = '';
+    raceBets.forEach(function(b) {
+      const sel = Array.isArray(b.selections) ? b.selections[0] : '';
+      if (b.result === 'win') userBetHtml += ' <span style="color:var(--color-positive);font-weight:700;font-size:0.7rem">&#10003; ' + sel + '</span>';
+      else if (b.result === 'loss') userBetHtml += ' <span style="color:var(--color-negative);font-weight:700;font-size:0.7rem">&#10007; ' + sel + '</span>';
+      else if (b.result === 'scratch') userBetHtml += ' <span style="color:#92400e;font-weight:700;font-size:0.7rem">SCR ' + sel + '</span>';
+    });
+    inlineResultHtml = '<div class="race-inline-result">'
+      + '<span class="inline-result-badge">FINAL</span> '
+      + '<span class="inline-result-winner">' + winInfo + '</span>'
+      + (placeInfo ? '<span class="inline-result-place"> / ' + placeInfo + '</span>' : '')
+      + (showInfo ? '<span class="inline-result-show"> / ' + showInfo + '</span>' : '')
+      + userBetHtml
+      + '</div>';
+  }
   return `<div class="race-card-wrap" id="race-wrap-${race.id}">
     <div class="race-card-header" onclick="toggleRaceCard('${race.id}')" id="race-header-${race.id}">
       <span class="race-num">${String(race.num).padStart(2,'0')}</span>
       <div class="race-info">
         <div class="race-title">${typeLbl} — ${race.distance || ''} ${race.surface ? '<span style="opacity:0.75">'+race.surface+'</span>' : ''}${mtpHtml}${statusBadge}${liveIndicator}</div>
         <div class="race-meta">${race.postTime ? 'Post: ' + race.postTime + ' &nbsp;|&nbsp; ' : ''}${race.purse && race.purse !== 'N/A' ? 'Purse: ' + (String(race.purse).startsWith('$') ? race.purse : '$' + Number(String(race.purse).replace(/[^0-9.]/g,'')).toLocaleString()) : ''} &nbsp;${race.updated ? '· Updated ' + race.updated : ''}${eqbUrl ? ' &nbsp;<a href="'+eqbUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:0.68rem;color:var(--color-gold);text-decoration:none">View on Equibase ↗</a>' : ''}</div>
+        ${inlineResultHtml}
       </div>
       <svg class="collapse-icon" id="collapse-icon-${race.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:18px;height:18px"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
@@ -7027,20 +7101,50 @@ function renderBankrollStats() {
   if (!store) return;
   const starting = store.settings.startingBankroll || 1000;
   const bets = getResultsBets();
-  const wagered = bets.reduce((s,b) => s+(parseFloat(b.isExotic ? (b.cost||b.amount) : b.amount)||0), 0);
-  const returned = bets.reduce((s,b) => s+(parseFloat(b.payout)||0), 0);
+  // Exclude scratched bets from wagered (they're refunded)
+  const activeBets = bets.filter(b => b.result !== 'scratch');
+  const scratchedBets = bets.filter(b => b.result === 'scratch');
+  const wagered = activeBets.reduce((s,b) => s+(parseFloat(b.isExotic ? (b.cost||b.amount) : b.amount)||0), 0);
+  const returned = activeBets.reduce((s,b) => s+(parseFloat(b.payout)||0), 0);
   const netPnl = returned - wagered;
   const current = starting + netPnl;
-  const wins = bets.filter(b => b.result === 'win').length;
-  const winRate = bets.length ? (wins / bets.length * 100) : 0;
+  const wins = activeBets.filter(b => b.result === 'win').length;
+  const resolved = activeBets.filter(b => b.result === 'win' || b.result === 'loss').length;
+  const winRate = resolved ? (wins / resolved * 100) : 0;
   const roi = wagered > 0 ? ((netPnl / wagered) * 100) : 0;
+
+  // Today's P&L hero
+  const today = getTodayStr();
+  const todayBets = activeBets.filter(b => b.date === today);
+  const todayWagered = todayBets.reduce((s,b) => s+(parseFloat(b.isExotic ? (b.cost||b.amount) : b.amount)||0), 0);
+  const todayReturned = todayBets.reduce((s,b) => s+(parseFloat(b.payout)||0), 0);
+  const todayPnl = todayReturned - todayWagered;
+  const todayWins = todayBets.filter(b => b.result === 'win').length;
+  const todayResolved = todayBets.filter(b => b.result === 'win' || b.result === 'loss').length;
+  const todayPending = todayBets.filter(b => !b.result).length;
+
+  var pnlEl = el('res-today-pnl');
+  if (pnlEl) {
+    var sign = todayPnl >= 0 ? '+' : '';
+    pnlEl.textContent = sign + fmt$(todayPnl);
+    pnlEl.className = 'pnl-hero-value ' + (todayPnl > 0 ? 'pnl-positive' : todayPnl < 0 ? 'pnl-negative' : 'pnl-zero');
+  }
+  var subEl = el('res-today-record');
+  if (subEl) {
+    var parts = [];
+    parts.push(todayWins + '/' + todayResolved + ' wins');
+    if (todayWagered > 0) parts.push(fmt$(todayWagered) + ' wagered');
+    if (todayReturned > 0) parts.push(fmt$(todayReturned) + ' returned');
+    if (todayPending > 0) parts.push(todayPending + ' pending');
+    subEl.textContent = parts.join(' · ');
+  }
 
   setEl('res-starting', fmt$(starting));
   setElVal('res-current', fmt$(current), current >= starting ? 'stat-positive' : 'stat-negative');
   setEl('res-wagered', fmt$(wagered));
   setEl('res-returned', fmt$(returned));
   setElVal('res-pnl', fmt$(netPnl), netPnl >= 0 ? 'stat-positive' : 'stat-negative');
-  setEl('res-winrate', fmtPct(winRate));
+  setEl('res-winrate', wins + '/' + resolved + ' (' + fmtPct(winRate) + ')');
   setElVal('res-roi', fmtPct(roi), roi >= 0 ? 'stat-positive' : 'stat-negative');
   setEl('res-count', String(bets.length));
 }
@@ -7070,7 +7174,11 @@ function renderSparkline() {
   }
   if (emptyEl) emptyEl.classList.add('hidden');
 
-  const pnls = dates.map(d => byDate[d].returned - byDate[d].wagered);
+  const dailyPnls = dates.map(d => byDate[d].returned - byDate[d].wagered);
+  // Show cumulative P&L across bets
+  const pnls = [];
+  let cumPnl = 0;
+  dailyPnls.forEach(function(p) { cumPnl += p; pnls.push(cumPnl); });
   const minPnl = Math.min(0, ...pnls);
   const maxPnl = Math.max(0, ...pnls);
   const range = maxPnl - minPnl || 10;
@@ -7148,6 +7256,7 @@ function renderResultsList() {
   container.innerHTML = sorted.map(bet => {
     const isWin = bet.result === 'win';
     const isLoss = bet.result === 'loss';
+    const isScratch = bet.result === 'scratch';
     const isPending = !bet.result;
     const modeBadge = bet.bettingMode === 'real'
       ? '<span class="badge-real" style="margin-left:4px">REAL</span>'
@@ -7157,6 +7266,8 @@ function renderResultsList() {
       ? '<span style="margin-left:4px;background:var(--color-positive);color:#fff;font-weight:700;padding:2px 8px;border-radius:4px;font-size:0.7rem;letter-spacing:0.03em">WIN</span>'
       : isLoss
       ? '<span style="margin-left:4px;background:var(--color-negative);color:#fff;font-weight:700;padding:2px 8px;border-radius:4px;font-size:0.7rem;letter-spacing:0.03em">LOSS</span>'
+      : isScratch
+      ? '<span class="badge-scratch" style="margin-left:4px">SCRATCHED</span>'
       : '<span style="margin-left:4px;background:#e0e0e0;color:#666;font-weight:600;padding:2px 8px;border-radius:4px;font-size:0.7rem">PENDING</span>';
     // P&L display — use cost for exotic bets, amount for straight bets
     const wagered = parseFloat(bet.isExotic ? (bet.cost || bet.amount) : bet.amount) || 0;
@@ -7165,7 +7276,9 @@ function renderResultsList() {
     if (isWin) {
       pnlHtml = '<div class="mono text-sm font-bold" style="color:var(--color-positive)">+' + fmt$(payout - wagered) + '</div>';
     } else if (isLoss) {
-      pnlHtml = '<div class="mono text-sm font-bold" style="color:var(--color-negative)">−' + fmt$(wagered) + '</div>';
+      pnlHtml = '<div class="mono text-sm font-bold" style="color:var(--color-negative)">\u2212' + fmt$(wagered) + '</div>';
+    } else if (isScratch) {
+      pnlHtml = '<div class="mono text-sm" style="color:#92400e">Refund ' + fmt$(wagered) + '</div>';
     }
     // Format selections — handle both array (straight) and object (exotic)
     var selectionsText = '';
@@ -7197,10 +7310,10 @@ function renderResultsList() {
         </div>
       </div>
       <div class="result-bet-meta">Race ${bet.raceNum||'—'} · ${bet.date||''}${bet.track ? ' · '+bet.track : ''}</div>
-      <div class="result-controls">
-        <div class="win-loss-toggle">
-          <button class="wl-btn ${isWin?'win-active':''}" onclick="setResultBet('${bet.id}','win')">W</button>
-          <button class="wl-btn ${isLoss?'loss-active':''}" onclick="setResultBet('${bet.id}','loss')">L</button>
+      <div class="result-controls ${isPending ? '' : 'result-resolved'}">
+        <div class="win-loss-toggle manual-override ${isPending ? '' : 'de-emphasized'}">
+          <button class="wl-btn ${isWin?'win-active':''}" onclick="setResultBet('${bet.id}','win')" title="Manual override: mark as win">W</button>
+          <button class="wl-btn ${isLoss?'loss-active':''}" onclick="setResultBet('${bet.id}','loss')" title="Manual override: mark as loss">L</button>
         </div>
         <span class="text-xs text-muted">Payout:</span>
         <input class="payout-input" type="number" value="${payout||''}" placeholder="0.00" inputmode="decimal" min="0" step="0.01"
@@ -8265,39 +8378,302 @@ function fuzzyHorseMatch(a, b) {
   return false;
 }
 
-async function fetchLiveResults() {
-  const store = getStore();
-  const workerUrl = store && store.settings.workerUrl;
-  if (!workerUrl) { showToast('Live results require a Worker URL. Check Settings.', 'danger', 4000); return; }
-  const code = getActiveTrack();
-  const today = getTodayStr();
+// ═══════════════════════════════════════════════════════════════════════════
+// RESULTS CACHE — persist fetched results in localStorage by date+track
+// ═══════════════════════════════════════════════════════════════════════════
+var RESULTS_CACHE_KEY = 'ne-racing-results-cache';
+
+function getResultsCache() {
   try {
-    const res = await fetch(`${workerUrl}/api/results?track=${code}&date=${today}&_t=${Date.now()}`, { cache: 'no-store' });
+    var raw = localStorage.getItem(RESULTS_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+
+function saveResultsCache(cache) {
+  try { localStorage.setItem(RESULTS_CACHE_KEY, JSON.stringify(cache)); } catch(e) {}
+}
+
+function getCachedResults(track, date) {
+  var cache = getResultsCache();
+  var key = track + '_' + date;
+  return (cache[key] && cache[key].races) ? cache[key].races : [];
+}
+
+function setCachedResults(track, date, races) {
+  var cache = getResultsCache();
+  var key = track + '_' + date;
+  if (!cache[key]) cache[key] = {};
+  cache[key].races = races;
+  cache[key].lastUpdated = new Date().toISOString();
+  saveResultsCache(cache);
+}
+
+function getCachedRaceNumbers(track, date) {
+  var cached = getCachedResults(track, date);
+  return cached.map(function(r) { return r.raceNumber; });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTO-RESOLUTION ENGINE — resolves straight + exotic bets from Equibase
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resolves a single-race exotic bet against race results.
+ * Returns { result: 'win'|'loss', payout: number } or null if can't resolve.
+ */
+function resolveExoticBet(bet, raceResult) {
+  var betType = (bet.type || '').toUpperCase();
+  var mode = bet.mode || 'box';
+  var selections = bet.selections || {};
+  var finishOrder = (raceResult.results || []).sort(function(a, b) { return a.position - b.position; });
+  var exotics = raceResult.exotics || [];
+  var scratches = raceResult.scratches || [];
+
+  // Get the number of positions needed for each exotic type
+  var positionsNeeded = { EX: 2, TRI: 3, SUPER: 4 };
+  var needed = positionsNeeded[betType];
+  if (!needed) return null; // Multi-race exotics handled separately
+
+  if (finishOrder.length < needed) return null; // Not enough finishers
+
+  // Extract actual finishing PPs for the required positions
+  var actualPPs = [];
+  for (var i = 0; i < needed; i++) {
+    if (!finishOrder[i]) return null;
+    actualPPs.push(String(finishOrder[i].pp));
+  }
+
+  // Check if bet is a winner based on mode
+  var isWinner = false;
+
+  if (mode === 'straight') {
+    // Straight: exact order match — selections keyed by position index
+    isWinner = true;
+    for (var p = 0; p < needed; p++) {
+      var selNames = selections['pos_' + p] || selections[p] || [];
+      if (!selNames.length) { isWinner = false; break; }
+      // Check if any selected horse in this position matches the actual finisher
+      var actualHorse = finishOrder[p];
+      var matched = selNames.some(function(selName) {
+        return fuzzyHorseMatch(selName, actualHorse.horseName) ||
+               String(selName).replace('#', '') === String(actualHorse.pp);
+      });
+      if (!matched) { isWinner = false; break; }
+    }
+  } else if (mode === 'key') {
+    // Key: key horse must be in 1st, others fill remaining positions
+    var keyNames = selections['key'] || selections[0] || [];
+    var withNames = selections['with'] || selections[1] || [];
+    if (!keyNames.length) return null;
+    // Key horse must be 1st
+    var keyMatchesFirst = keyNames.some(function(kn) {
+      return fuzzyHorseMatch(kn, finishOrder[0].horseName) ||
+             String(kn).replace('#', '') === String(finishOrder[0].pp);
+    });
+    if (!keyMatchesFirst) { isWinner = false; }
+    else {
+      // With horses must fill remaining positions (any order for key bets)
+      isWinner = true;
+      for (var w = 1; w < needed; w++) {
+        var actualH = finishOrder[w];
+        var withMatched = withNames.some(function(wn) {
+          return fuzzyHorseMatch(wn, actualH.horseName) ||
+                 String(wn).replace('#', '') === String(actualH.pp);
+        });
+        if (!withMatched) { isWinner = false; break; }
+      }
+    }
+  } else {
+    // Box: all selected horses must be in the top N positions (any order)
+    var boxSelections = [];
+    // Gather all selected horse names from all position keys
+    Object.keys(selections).forEach(function(k) {
+      var val = selections[k];
+      if (Array.isArray(val)) val.forEach(function(v) { boxSelections.push(v); });
+      else if (val) boxSelections.push(val);
+    });
+    // For a box to win, each of the top N finishers must match one of our selections
+    if (boxSelections.length >= needed) {
+      isWinner = true;
+      for (var b = 0; b < needed; b++) {
+        var finisher = finishOrder[b];
+        var boxMatched = boxSelections.some(function(sn) {
+          return fuzzyHorseMatch(sn, finisher.horseName) ||
+                 String(sn).replace('#', '') === String(finisher.pp);
+        });
+        if (!boxMatched) { isWinner = false; break; }
+      }
+    }
+  }
+
+  if (isWinner) {
+    // Try to find the exotic payout from Equibase data
+    var exTypeMap = { EX: 'exacta', TRI: 'trifecta', SUPER: 'superfecta' };
+    var exTypeName = exTypeMap[betType];
+    var exoticPayout = exotics.find(function(e) { return e.type === exTypeName; });
+    var basePayout = exoticPayout ? exoticPayout.payout : 0;
+    // Scale payout by wager (Equibase shows per-$2 base, or per-$1 for some)
+    var baseWager = parseFloat(bet.amount) || 2;
+    var payoutAmount = basePayout > 0 ? Math.round(basePayout * baseWager / 2 * 100) / 100 : 0;
+    return { result: 'win', payout: payoutAmount > 0 ? payoutAmount : Math.round(baseWager * 10 * 100) / 100 };
+  }
+
+  return { result: 'loss', payout: 0 };
+}
+
+/**
+ * Resolves multi-race exotic bets (DD, Pick 3/4/5/6).
+ * Returns { result: 'win'|'loss'|null, payout: number } — null means not all legs resolved yet.
+ */
+function resolveMultiRaceBet(bet, allRaceResults) {
+  var betType = (bet.type || '').toUpperCase();
+  var legMap = { DD: 2, P3: 3, P4: 4, P5: 5, P6: 6 };
+  var numLegs = legMap[betType];
+  if (!numLegs) return null;
+
+  var raceNums = String(bet.raceNum).split(',').map(function(n) { return parseInt(n, 10); });
+  if (raceNums.length < numLegs) return null;
+
+  var selections = bet.selections || {};
+  var allResolved = true;
+  var allCorrect = true;
+
+  for (var leg = 0; leg < numLegs; leg++) {
+    var rn = raceNums[leg];
+    var raceResult = allRaceResults.find(function(r) { return r.raceNumber === rn; });
+    if (!raceResult || !raceResult.results || !raceResult.results.length) {
+      allResolved = false;
+      continue;
+    }
+    var winner = raceResult.results.find(function(f) { return f.position === 1; });
+    if (!winner) { allResolved = false; continue; }
+
+    // Get selected horses for this leg
+    var legSelections = selections[leg] || selections[String(rn)] || selections['pos_' + leg] || [];
+    if (!Array.isArray(legSelections)) legSelections = [legSelections];
+
+    var legCorrect = legSelections.some(function(selName) {
+      return fuzzyHorseMatch(selName, winner.horseName) ||
+             String(selName).replace('#', '') === String(winner.pp);
+    });
+    if (!legCorrect) allCorrect = false;
+  }
+
+  if (!allResolved) return null; // Not all legs finished yet
+
+  if (allCorrect) {
+    var exotics = [];
+    // Look for the exotic payout in the last leg's results
+    var lastRaceResult = allRaceResults.find(function(r) { return r.raceNumber === raceNums[numLegs - 1]; });
+    if (lastRaceResult && lastRaceResult.exotics) exotics = lastRaceResult.exotics;
+    var exTypeMap = { DD: 'daily_double', P3: 'pick3', P4: 'pick4', P5: 'pick5', P6: 'pick6' };
+    var exPayout = exotics.find(function(e) { return e.type === exTypeMap[betType]; });
+    var baseWager = parseFloat(bet.amount) || 2;
+    var payoutAmount = exPayout ? Math.round(exPayout.payout * baseWager / 2 * 100) / 100 : 0;
+    return { result: 'win', payout: payoutAmount > 0 ? payoutAmount : Math.round(baseWager * 20 * 100) / 100 };
+  }
+
+  return { result: 'loss', payout: 0 };
+}
+
+async function fetchLiveResults() {
+  var store = getStore();
+  var workerUrl = store && store.settings.workerUrl;
+  if (!workerUrl) { showToast('Live results require a Worker URL. Check Settings.', 'danger', 4000); return; }
+  var code = getActiveTrack();
+  var today = getTodayStr();
+
+  // Get already-resolved race numbers from cache to skip re-fetching
+  var cachedRaces = getCachedResults(code, today);
+
+  try {
+    var res = await fetch(workerUrl + '/api/results?track=' + code + '&date=' + today + '&_t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const body = await res.json();
-    const races = body && body.races ? body.races : [];
-    if (!races.length) {
+    var body = await res.json();
+    var freshRaces = body && body.races ? body.races : [];
+    if (!freshRaces.length && !cachedRaces.length) {
       showToast('No results available yet for ' + code, 'default', 3000);
       return;
     }
-    const data = getTrackData();
-    const bets = (data.bets || []).filter(function(b) { return !b.isExotic; });
-    let updated = 0;
+
+    // Merge fresh results with cached — fresh takes precedence
+    var mergedMap = {};
+    cachedRaces.forEach(function(r) { mergedMap[r.raceNumber] = r; });
+    freshRaces.forEach(function(r) { mergedMap[r.raceNumber] = r; });
+    var allRaces = Object.values(mergedMap).sort(function(a, b) { return a.raceNumber - b.raceNumber; });
+
+    // Update cache
+    setCachedResults(code, today, allRaces);
+
+    // Store results on race objects for Today tab inline display
+    var data = getTrackData();
+    allRaces.forEach(function(rr) {
+      var race = (data.races || []).find(function(r) { return r.num === rr.raceNumber; });
+      if (race) {
+        race._resultData = rr;
+        race._result = 'official';
+        race._official = true;
+      }
+    });
+
+    // ── Resolve straight bets (Win/Place/Show) ──
+    var bets = data.bets || [];
+    var updated = 0;
+
     bets.forEach(function(bet) {
-      // Only process unresolved bets for today
-      if (bet.result) return;
+      if (bet.result) return; // Already resolved
       if (bet.date && bet.date !== today) return;
-      const raceResult = races.find(function(r) { return r.raceNumber === parseInt(bet.raceNum, 10); });
+
+      var raceNum = parseInt(bet.raceNum, 10);
+      var raceResult = allRaces.find(function(r) { return r.raceNumber === raceNum; });
       if (!raceResult || !raceResult.results || !raceResult.results.length) return;
-      const betHorse = normalizeHorseName(bet.selections && bet.selections[0]);
+
+      // Check for scratched horse
+      if (!bet.isExotic && Array.isArray(bet.selections) && bet.selections[0]) {
+        var betHorseName = bet.selections[0];
+        var scratches = raceResult.scratches || [];
+        var isScratch = scratches.some(function(s) { return fuzzyHorseMatch(s, betHorseName); });
+        if (isScratch) {
+          bet.result = 'scratch';
+          bet.payout = parseFloat(bet.isExotic ? (bet.cost || bet.amount) : bet.amount) || 0; // Refund
+          updated++;
+          return;
+        }
+      }
+
+      if (bet.isExotic) {
+        // Single-race exotic (EX, TRI, SUPER)
+        if (['EX', 'TRI', 'SUPER'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+          var exResult = resolveExoticBet(bet, raceResult);
+          if (exResult) {
+            bet.result = exResult.result;
+            bet.payout = exResult.payout;
+            updated++;
+          }
+        }
+        // Multi-race exotic (DD, P3, P4, P5, P6)
+        else if (['DD', 'P3', 'P4', 'P5', 'P6'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+          var multiResult = resolveMultiRaceBet(bet, allRaces);
+          if (multiResult) {
+            bet.result = multiResult.result;
+            bet.payout = multiResult.payout;
+            updated++;
+          }
+        }
+        return;
+      }
+
+      // Straight bet resolution
+      var betHorse = normalizeHorseName(bet.selections && bet.selections[0]);
       if (!betHorse) return;
-      const betType = (bet.type || '').toLowerCase();
-      // Find matching finisher by fuzzy horse name match
-      const matchedFinisher = raceResult.results.find(function(f) {
+      var betType = (bet.type || '').toLowerCase();
+
+      var matchedFinisher = raceResult.results.find(function(f) {
         return fuzzyHorseMatch(f.horseName, betHorse);
       });
+
       if (betType === 'win') {
-        // Win bet: horse must finish 1st
         if (matchedFinisher && matchedFinisher.position === 1 && matchedFinisher.winPayout) {
           bet.result = 'win';
           bet.payout = Math.round(matchedFinisher.winPayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
@@ -8307,7 +8683,6 @@ async function fetchLiveResults() {
         }
         updated++;
       } else if (betType === 'place') {
-        // Place bet: horse must finish 1st or 2nd
         if (matchedFinisher && matchedFinisher.position <= 2 && matchedFinisher.placePayout) {
           bet.result = 'win';
           bet.payout = Math.round(matchedFinisher.placePayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
@@ -8317,7 +8692,6 @@ async function fetchLiveResults() {
         }
         updated++;
       } else if (betType === 'show') {
-        // Show bet: horse must finish 1st, 2nd, or 3rd
         if (matchedFinisher && matchedFinisher.position <= 3 && matchedFinisher.showPayout) {
           bet.result = 'win';
           bet.payout = Math.round(matchedFinisher.showPayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
@@ -8328,30 +8702,46 @@ async function fetchLiveResults() {
         updated++;
       }
     });
+
     if (updated) {
       saveTrackData(data);
       renderResultsTab();
-      renderStraightBets();
+      if (typeof renderStraightBets === 'function') renderStraightBets();
+      updateAccuracyTracking();
+
+      // Show winner celebration for any newly won bets
+      bets.forEach(function(bet) {
+        if (bet.result === 'win' && bet._justResolved) {
+          var horseName = Array.isArray(bet.selections) ? bet.selections.join(', ') : (bet.formula || bet.type);
+          var profit = (parseFloat(bet.payout) || 0) - (parseFloat(bet.isExotic ? (bet.cost || bet.amount) : bet.amount) || 0);
+          showWinnerOverlay(horseName, profit, bet.raceNum, bet.type);
+        }
+      });
+    } else {
+      // Even if no bets updated, save race results for Today tab
+      saveTrackData(data);
     }
-    const racesResolved = races.length;
-    const pending = bets.filter(function(b) { return !b.result; }).length;
+
+    // Render Today tab to show inline results
+    renderTodayTab();
+
+    var racesResolved = allRaces.length;
+    var pending = bets.filter(function(b) { return !b.result; }).length;
     if (updated > 0) {
-      showToast(updated + ' bet(s) resolved from ' + racesResolved + ' race result(s)' + (pending > 0 ? ' \u2014 ' + pending + ' still pending' : ''), 'success', 4000);
-    } else if (racesResolved > 0) {
-      showToast(racesResolved + ' race result(s) loaded \u2014 no matching unresolved bets', 'default', 3000);
+      showToast(updated + ' bet(s) auto-resolved from ' + racesResolved + ' race result(s)' + (pending > 0 ? ' \u2014 ' + pending + ' still pending' : ''), 'success', 4000);
     }
   } catch(e) {
     showToast('Error fetching results: ' + e.message, 'danger', 4000);
   }
 }
 
-/* ── Auto-polling for results every 3 minutes ── */
+/* ── Auto-polling for results every 2.5 minutes ── */
 var _resultsPollingTimer = null;
-var RESULTS_POLL_INTERVAL = 3 * 60 * 1000; // 3 minutes
+var RESULTS_POLL_INTERVAL = 150 * 1000; // 2.5 minutes
 
 function hasUnresolvedBets() {
   var data = getTrackData();
-  var bets = (data && data.bets || []).filter(function(b) { return !b.isExotic; });
+  var bets = (data && data.bets || []);
   var today = getTodayStr();
   return bets.some(function(b) { return !b.result && (!b.date || b.date === today); });
 }
@@ -8359,6 +8749,8 @@ function hasUnresolvedBets() {
 function startResultsPolling() {
   stopResultsPolling();
   if (!hasUnresolvedBets()) return;
+  // Fetch immediately on start, then poll
+  fetchLiveResults();
   _resultsPollingTimer = setInterval(function() {
     if (!document.hidden && hasUnresolvedBets()) {
       fetchLiveResults();
@@ -8372,6 +8764,76 @@ function stopResultsPolling() {
   if (_resultsPollingTimer) {
     clearInterval(_resultsPollingTimer);
     _resultsPollingTimer = null;
+  }
+}
+
+// On app load, also resolve bets from cached results
+function resolveFromCachedResults() {
+  var code = getActiveTrack();
+  var today = getTodayStr();
+  var cached = getCachedResults(code, today);
+  if (!cached.length) return;
+
+  var data = getTrackData();
+  var bets = (data.bets || []).filter(function(b) { return !b.result && (!b.date || b.date === today); });
+  if (!bets.length) return;
+
+  var updated = 0;
+  bets.forEach(function(bet) {
+    if (bet.result) return;
+    var raceNum = parseInt(bet.raceNum, 10);
+    var raceResult = cached.find(function(r) { return r.raceNumber === raceNum; });
+    if (!raceResult || !raceResult.results || !raceResult.results.length) return;
+
+    if (!bet.isExotic && Array.isArray(bet.selections) && bet.selections[0]) {
+      var scratches = raceResult.scratches || [];
+      var isScratch = scratches.some(function(s) { return fuzzyHorseMatch(s, bet.selections[0]); });
+      if (isScratch) {
+        bet.result = 'scratch';
+        bet.payout = parseFloat(bet.amount) || 0;
+        updated++;
+        return;
+      }
+    }
+
+    if (bet.isExotic) {
+      if (['EX', 'TRI', 'SUPER'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+        var exResult = resolveExoticBet(bet, raceResult);
+        if (exResult) { bet.result = exResult.result; bet.payout = exResult.payout; updated++; }
+      } else if (['DD', 'P3', 'P4', 'P5', 'P6'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+        var multiResult = resolveMultiRaceBet(bet, cached);
+        if (multiResult) { bet.result = multiResult.result; bet.payout = multiResult.payout; updated++; }
+      }
+      return;
+    }
+
+    var betHorse = normalizeHorseName(bet.selections && bet.selections[0]);
+    if (!betHorse) return;
+    var betType = (bet.type || '').toLowerCase();
+    var matchedFinisher = raceResult.results.find(function(f) { return fuzzyHorseMatch(f.horseName, betHorse); });
+
+    if (betType === 'win') {
+      if (matchedFinisher && matchedFinisher.position === 1 && matchedFinisher.winPayout) {
+        bet.result = 'win'; bet.payout = Math.round(matchedFinisher.winPayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
+      } else { bet.result = 'loss'; bet.payout = 0; }
+      updated++;
+    } else if (betType === 'place') {
+      if (matchedFinisher && matchedFinisher.position <= 2 && matchedFinisher.placePayout) {
+        bet.result = 'win'; bet.payout = Math.round(matchedFinisher.placePayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
+      } else { bet.result = 'loss'; bet.payout = 0; }
+      updated++;
+    } else if (betType === 'show') {
+      if (matchedFinisher && matchedFinisher.position <= 3 && matchedFinisher.showPayout) {
+        bet.result = 'win'; bet.payout = Math.round(matchedFinisher.showPayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
+      } else { bet.result = 'loss'; bet.payout = 0; }
+      updated++;
+    }
+  });
+
+  if (updated) {
+    saveTrackData(data);
+    if (typeof renderResultsTab === 'function') renderResultsTab();
+    if (typeof renderStraightBets === 'function') renderStraightBets();
   }
 }
 
