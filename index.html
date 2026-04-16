@@ -3034,32 +3034,42 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 /* Wizard launch button */
 .wizard-launch-btn {
-  width: 100%; margin-top: 0.75rem; padding: 1.1rem 1rem;
-  background: linear-gradient(135deg, rgba(212,168,73,0.22), rgba(212,168,73,0.10));
-  border: 2px solid rgba(212,168,73,0.5);
+  width: 100%; margin-top: 0.75rem; padding: 1.2rem 1.1rem;
+  background: linear-gradient(135deg, #D4A849 0%, #B8912E 50%, #9A7B2F 100%);
+  border: none;
   border-radius: 14px; cursor: pointer;
   display: flex; align-items: center; justify-content: flex-start; gap: 14px;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   position: relative; overflow: hidden;
-  box-shadow: 0 4px 20px rgba(212,168,73,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+  box-shadow: 0 6px 24px rgba(212,168,73,0.35), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.25);
 }
-.wizard-launch-btn:active { transform: scale(0.97); }
-.wizard-launch-btn .wl-icon { font-size: 2rem; flex-shrink: 0; }
+.wizard-launch-btn:active { transform: scale(0.97); box-shadow: 0 2px 12px rgba(212,168,73,0.3); }
+.wizard-launch-btn .wl-icon {
+  width: 44px; height: 44px; flex-shrink: 0;
+  background: rgba(13,51,32,0.85); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.wizard-launch-btn .wl-icon svg { width: 24px; height: 24px; }
 .wizard-launch-btn .wl-text {
-  font-family: var(--font-display); font-size: 1.1rem; font-weight: 800;
-  color: var(--color-gold); letter-spacing: 0.3px;
+  font-family: var(--font-display); font-size: 1.05rem; font-weight: 800;
+  color: #0F1A14; letter-spacing: 0.2px;
 }
 .wizard-launch-btn .wl-sub {
-  font-size: 0.72rem; color: rgba(255,255,255,0.65); margin-top: 2px;
+  font-size: 0.7rem; color: rgba(15,26,20,0.6); margin-top: 2px; font-weight: 500;
+}
+.wizard-launch-btn .wl-chevron {
+  width: 28px; height: 28px; flex-shrink: 0;
+  background: rgba(13,51,32,0.2); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
 }
 .wizard-launch-btn::after {
   content: ''; position: absolute; top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(212,168,73,0.12), transparent);
-  animation: wizLaunchShimmer 3s ease-in-out infinite;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: wizLaunchShimmer 3.5s ease-in-out infinite;
 }
 @keyframes wizLaunchShimmer {
-  0% { left: -100%; } 50% { left: 100%; } 100% { left: 100%; }
+  0% { left: -60%; } 40% { left: 110%; } 100% { left: 110%; }
 }
 
 /* --- Expandable bet card details panel --- */
@@ -3734,12 +3744,18 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Exotic Bet Builder — single entry point -->
       <div style="padding: 0 0.15rem">
         <button class="wizard-launch-btn" onclick="openBettingWizard()">
-          <span class="wl-icon">🎰</span>
+          <div class="wl-icon">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#D4A849" stroke="#D4A849" stroke-width="1" stroke-linejoin="round"/>
+            </svg>
+          </div>
           <div style="flex:1">
             <div class="wl-text">Build Exotic Bet</div>
             <div class="wl-sub">Exactas · Trifectas · Superfectas · Pick 3/4/5/6</div>
           </div>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--color-gold);flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
+          <div class="wl-chevron">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F1A14" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
         </button>
       </div>
 
