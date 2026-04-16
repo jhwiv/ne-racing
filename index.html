@@ -7008,10 +7008,10 @@ function getResultsBets() {
   if (resultScope === 'all') {
     const store = getStore();
     if (!store) return [];
-    bets = Object.values(store.tracks).flatMap(t => (t.bets||[]).filter(b=>!b.isExotic));
+    bets = Object.values(store.tracks).flatMap(t => (t.bets||[]));
   } else {
     const data = getTrackData();
-    bets = (data && data.bets ? data.bets : []).filter(b=>!b.isExotic);
+    bets = (data && data.bets ? data.bets : []);
   }
   // Apply betting mode filter
   if (resultsModeFilter === 'sim') {
@@ -7027,7 +7027,7 @@ function renderBankrollStats() {
   if (!store) return;
   const starting = store.settings.startingBankroll || 1000;
   const bets = getResultsBets();
-  const wagered = bets.reduce((s,b) => s+(parseFloat(b.amount)||0), 0);
+  const wagered = bets.reduce((s,b) => s+(parseFloat(b.isExotic ? (b.cost||b.amount) : b.amount)||0), 0);
   const returned = bets.reduce((s,b) => s+(parseFloat(b.payout)||0), 0);
   const netPnl = returned - wagered;
   const current = starting + netPnl;
@@ -7057,7 +7057,7 @@ function renderSparkline() {
   const byDate = {};
   bets.forEach(b => {
     if (!byDate[b.date]) byDate[b.date] = { wagered: 0, returned: 0 };
-    byDate[b.date].wagered += parseFloat(b.amount)||0;
+    byDate[b.date].wagered += parseFloat(b.isExotic ? (b.cost||b.amount) : b.amount)||0;
     byDate[b.date].returned += parseFloat(b.payout)||0;
   });
   const dates = Object.keys(byDate).sort();
@@ -7101,7 +7101,7 @@ function renderBetTypeBreakdown() {
     if (!byType[t]) byType[t] = { count:0, wins:0, wagered:0, returned:0 };
     byType[t].count++;
     if (b.result === 'win') byType[t].wins++;
-    byType[t].wagered += parseFloat(b.amount)||0;
+    byType[t].wagered += parseFloat(b.isExotic ? (b.cost||b.amount) : b.amount)||0;
     byType[t].returned += parseFloat(b.payout)||0;
   });
   const tbody = el('breakdown-body');
@@ -7136,7 +7136,7 @@ function renderResultsList() {
   const noMsg = el('no-results-msg');
   if (!container) return;
 
-  const sorted = [...bets].sort((a,b) => (b.date||'').localeCompare(a.date||'') || (b.raceNum||0)-(a.raceNum||0));
+  const sorted = [...bets].sort((a,b) => (b.date||'').localeCompare(a.date||'') || (String(b.raceNum)||'0').localeCompare(String(a.raceNum)||'0', undefined, {numeric:true}));
 
   if (!sorted.length) {
     container.innerHTML = '';
@@ -7158,23 +7158,38 @@ function renderResultsList() {
       : isLoss
       ? '<span style="margin-left:4px;background:var(--color-negative);color:#fff;font-weight:700;padding:2px 8px;border-radius:4px;font-size:0.7rem;letter-spacing:0.03em">LOSS</span>'
       : '<span style="margin-left:4px;background:#e0e0e0;color:#666;font-weight:600;padding:2px 8px;border-radius:4px;font-size:0.7rem">PENDING</span>';
-    // P&L display for both wins and losses
+    // P&L display — use cost for exotic bets, amount for straight bets
+    const wagered = parseFloat(bet.isExotic ? (bet.cost || bet.amount) : bet.amount) || 0;
     const payout = parseFloat(bet.payout) || 0;
-    const wagered = parseFloat(bet.amount) || 0;
-    const pnl = isWin ? (payout - wagered) : isLoss ? -wagered : 0;
     let pnlHtml = '';
     if (isWin) {
       pnlHtml = '<div class="mono text-sm font-bold" style="color:var(--color-positive)">+' + fmt$(payout - wagered) + '</div>';
     } else if (isLoss) {
       pnlHtml = '<div class="mono text-sm font-bold" style="color:var(--color-negative)">−' + fmt$(wagered) + '</div>';
     }
+    // Format selections — handle both array (straight) and object (exotic)
+    var selectionsText = '';
+    if (Array.isArray(bet.selections)) {
+      selectionsText = bet.selections.join(', ');
+    } else if (bet.selections && typeof bet.selections === 'object') {
+      var parts = [];
+      Object.keys(bet.selections).forEach(function(key) {
+        var val = bet.selections[key];
+        if (Array.isArray(val)) parts.push(val.join('/'));
+        else parts.push(String(val));
+      });
+      selectionsText = parts.join(' / ');
+    }
+    // Type label — uppercase for exotic types
+    var typeLabel = bet.type || 'BET';
+    if (bet.isExotic) typeLabel = typeLabel.toUpperCase().replace(/_/g, ' ');
     return `<div class="result-bet-item ${isWin?'win':isLoss?'loss':''}" id="rbi-${bet.id}">
       <div class="result-bet-top">
         <div>
-          <span class="badge ${isWin?'badge-gold':isLoss?'badge-muted':'badge-muted'}" style="margin-right:4px">${bet.type||'BET'}</span>
+          <span class="badge ${isWin?'badge-gold':isLoss?'badge-muted':'badge-muted'}" style="margin-right:4px">${typeLabel}</span>
           ${modeBadge}
           ${resultBadge}
-          <span class="font-semibold" style="display:block;margin-top:2px">${(bet.selections||[]).join(', ')}</span>
+          <span class="font-semibold" style="display:block;margin-top:2px">${selectionsText}</span>
         </div>
         <div style="text-align:right">
           <div class="mono font-bold">${fmt$(wagered)}</div>
@@ -7188,7 +7203,7 @@ function renderResultsList() {
           <button class="wl-btn ${isLoss?'loss-active':''}" onclick="setResultBet('${bet.id}','loss')">L</button>
         </div>
         <span class="text-xs text-muted">Payout:</span>
-        <input class="payout-input" type="number" value="${bet.payout||''}" placeholder="0.00" inputmode="decimal" min="0" step="0.01"
+        <input class="payout-input" type="number" value="${payout||''}" placeholder="0.00" inputmode="decimal" min="0" step="0.01"
           onchange="setResultPayout('${bet.id}',this.value)" title="Total payout (including stake)">
         <button class="btn btn-danger btn-xs" onclick="deleteResultBet('${bet.id}')">Del</button>
       </div>
@@ -7199,27 +7214,78 @@ function renderResultsList() {
 function setResultBet(betId, result) {
   const data = getTrackData();
   const bet = (data.bets||[]).find(b=>b.id===betId);
-  if (bet) {
-    const wasWin = bet.result === 'win';
-    bet.result = bet.result === result ? null : result;
-    saveTrackData(data);
-    renderResultsTab();
-    // Task 7: Update accuracy tracking
-    updateAccuracyTracking();
-    // Show winner celebration when marking a bet as WIN (not when toggling off)
-    if (result === 'win' && bet.result === 'win' && !wasWin) {
-      const horseName = (bet.selections || []).join(', ');
-      const payout = parseFloat(bet.payout) || 0;
-      const profit = payout > 0 ? payout - (parseFloat(bet.amount) || 0) : 0;
-      showWinnerOverlay(horseName, profit, bet.raceNum, bet.type);
+  if (!bet) return;
+
+  const wasWin = bet.result === 'win';
+  // Toggle: tap same result again to unset
+  bet.result = bet.result === result ? null : result;
+
+  // When marking as WIN and no payout entered yet, auto-calculate from ML odds
+  if (bet.result === 'win' && (!bet.payout || bet.payout <= 0)) {
+    var wagered = parseFloat(bet.isExotic ? (bet.cost||bet.amount) : bet.amount) || 2;
+    var mlOdds = lookupMlOdds(bet);
+    if (mlOdds > 0) {
+      bet.payout = Math.round(wagered * (mlOdds + 1) * 100) / 100;
+    } else {
+      // Default to 2x wagered as a reasonable placeholder
+      bet.payout = Math.round(wagered * 2 * 100) / 100;
     }
   }
+
+  // When marking as LOSS, set payout to 0
+  if (bet.result === 'loss') {
+    bet.payout = 0;
+  }
+
+  // When un-setting result (toggle off), clear auto-calculated payout
+  if (!bet.result) {
+    bet.payout = 0;
+  }
+
+  saveTrackData(data);
+  renderResultsTab();
+  // Also update BETS tab if visible
+  if (typeof renderStraightBets === 'function') renderStraightBets();
+  // Task 7: Update accuracy tracking
+  updateAccuracyTracking();
+  // Show winner celebration when marking a bet as WIN (not when toggling off)
+  if (result === 'win' && bet.result === 'win' && !wasWin) {
+    var horseName = Array.isArray(bet.selections) ? bet.selections.join(', ') : (bet.formula || bet.type || 'Exotic bet');
+    const payout = parseFloat(bet.payout) || 0;
+    const profit = payout > 0 ? payout - (parseFloat(bet.isExotic ? (bet.cost||bet.amount) : bet.amount) || 0) : 0;
+    showWinnerOverlay(horseName, profit, bet.raceNum, bet.type);
+  }
+}
+
+// Look up morning-line odds for a bet from the race data
+function lookupMlOdds(bet) {
+  // Exotic bets don't have simple ML odds
+  if (bet.isExotic) return 0;
+  var data = getTrackData();
+  var races = (data && data.races) || [];
+  var race = races.find(function(r) { return String(r.num) === String(bet.raceNum); });
+  if (!race) return 0;
+  var horseName = (Array.isArray(bet.selections) && bet.selections[0]) || '';
+  if (!horseName) return 0;
+  var horse = (race.horses || []).find(function(h) {
+    return fuzzyHorseMatch(h.name, horseName);
+  });
+  if (!horse || !horse.ml) return 0;
+  return parseOddsToNum(horse.ml);
 }
 
 function setResultPayout(betId, val) {
   const data = getTrackData();
   const bet = (data.bets||[]).find(b=>b.id===betId);
-  if (bet) { bet.payout = parseFloat(val)||0; saveTrackData(data); renderBankrollStats(); renderBetTypeBreakdown(); }
+  if (bet) {
+    bet.payout = parseFloat(val)||0;
+    // If user enters a payout > 0 and no result set, auto-mark as win
+    if (bet.payout > 0 && !bet.result) {
+      bet.result = 'win';
+    }
+    saveTrackData(data);
+    renderResultsTab();
+  }
 }
 
 function deleteResultBet(betId) {
@@ -8185,7 +8251,18 @@ async function fetchLiveScratches() {
 }
 
 function normalizeHorseName(name) {
-  return (name || '').trim().toLowerCase();
+  return (name || '').trim().toLowerCase()
+    .replace(/[.']/g, '')       // strip periods and apostrophes
+    .replace(/\s+/g, ' ');      // collapse whitespace
+}
+
+function fuzzyHorseMatch(a, b) {
+  var na = normalizeHorseName(a);
+  var nb = normalizeHorseName(b);
+  if (na === nb) return true;
+  // One name contained in the other (handles "B Thedonald" vs "B. Thedonald")
+  if (na.length > 2 && nb.length > 2 && (na.includes(nb) || nb.includes(na))) return true;
+  return false;
 }
 
 async function fetchLiveResults() {
@@ -8217,7 +8294,7 @@ async function fetchLiveResults() {
       const betType = (bet.type || '').toLowerCase();
       // Find matching finisher by fuzzy horse name match
       const matchedFinisher = raceResult.results.find(function(f) {
-        return normalizeHorseName(f.horseName) === betHorse;
+        return fuzzyHorseMatch(f.horseName, betHorse);
       });
       if (betType === 'win') {
         // Win bet: horse must finish 1st
