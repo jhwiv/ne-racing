@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-1331';
+var NE_APP_VERSION = '20260416-0949';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -127,6 +127,653 @@ function neForceUpdate(newVersion) {
       .catch(function() {});
   }
 })();
+// ═══════════════════════════════════════════════════
+// BETTING WIZARD — AI-guided exotic bet builder
+// ═══════════════════════════════════════════════════
+(function() {
+  var wizState = {
+    step: 0,
+    betType: null,
+    baseWager: 1,
+    legs: [],       // [{raceId, raceNum, horses: [{pp, name, score, ml, selected}]}]
+    selections: {}, // raceId -> [pp, pp, ...]
+    totalSteps: 3
+  };
+
+  var BET_TYPES = [
+    { id: 'TRI', name: 'Trifecta', icon: '\uD83C\uDFC7', desc: 'Pick the top 3 in exact order', legs: 1, minPick: 3, payoutRange: '50x – 500x', minBase: 0.5 },
+    { id: 'SUPER', name: 'Superfecta', icon: '\uD83D\uDC8E', desc: 'Pick the top 4 in exact order', legs: 1, minPick: 4, payoutRange: '200x – 5,000x', minBase: 0.1 },
+    { id: 'DD', name: 'Daily Double', icon: '\u2728', desc: 'Pick winners of 2 consecutive races', legs: 2, minPick: 1, payoutRange: '10x – 100x', minBase: 1 },
+    { id: 'P4', name: 'Pick 4', icon: '\uD83D\uDD25', desc: 'Pick winners of 4 consecutive races', legs: 4, minPick: 1, payoutRange: '100x – 10,000x', minBase: 0.5 }
+  ];
+
+  window.openBettingWizard = function() {
+    wizState.step = 0;
+    wizState.betType = null;
+    wizState.baseWager = 1;
+    wizState.legs = [];
+    wizState.selections = {};
+    renderWizardStep();
+    var ov = document.getElementById('wizard-overlay');
+    if (ov) ov.classList.add('active');
+    // W4 fix: iOS Safari scroll lock
+    wizState._savedScrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = -wizState._savedScrollY + 'px';
+    document.body.style.width = '100%';
+    // W1 fix: focus management
+    setTimeout(function() {
+      var first = ov && ov.querySelector('button:not([aria-label="Close wizard"]), [tabindex]');
+      if (first) first.focus();
+    }, 400);
+  };
+
+  window.closeWizard = function() {
+    var ov = document.getElementById('wizard-overlay');
+    if (ov) ov.classList.remove('active');
+    // W4 fix: restore scroll position
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, wizState._savedScrollY || 0);
+  };
+
+  window.wizardOverlayClick = function(e) {
+    if (e.target.id === 'wizard-overlay') closeWizard();
+  };
+
+  function getAllScoredRaces() {
+    // Access the global allScores from the advice engine
+    // We need raceMap with scored horses
+    var scores = window._lastAllScores || [];
+    if (!scores.length) return {};
+    var map = {};
+    scores.forEach(function(s) {
+      if (!map[s.race.id]) map[s.race.id] = { race: s.race, horses: [] };
+      map[s.race.id].horses.push(s);
+    });
+    // Sort horses by score desc within each race
+    Object.values(map).forEach(function(r) {
+      r.horses.sort(function(a, b) { return b.score - a.score; });
+    });
+    return map;
+  }
+
+  function getRacesForBetType(betType) {
+    var raceMap = getAllScoredRaces();
+    var races = Object.values(raceMap);
+    races.sort(function(a, b) { return a.race.num - b.race.num; });
+
+    if (betType.legs === 1) {
+      // For trifecta/super, pick the race with the best top horse or most interesting spread
+      // Return all races, user picks one in the leg step
+      return races;
+    } else {
+      // Multi-race: find consecutive sequences
+      return races;
+    }
+  }
+
+  function buildRecommendedLegs(betType) {
+    var raceMap = getAllScoredRaces();
+    var races = Object.values(raceMap);
+    races.sort(function(a, b) { return a.race.num - b.race.num; });
+    var legs = [];
+
+    if (betType.id === 'TRI' || betType.id === 'SUPER') {
+      // Find the race with the highest top score and enough entries
+      var bestRace = null;
+      var bestScore = -1;
+      races.forEach(function(r) {
+        var minEntries = betType.id === 'SUPER' ? 6 : 5;
+        if (r.horses.length >= minEntries && r.horses[0].score > bestScore) {
+          bestScore = r.horses[0].score;
+          bestRace = r;
+        }
+      });
+      if (!bestRace && races.length) bestRace = races[0];
+      if (bestRace) {
+        var numPick = betType.id === 'SUPER' ? 5 : 4;
+        var recs = bestRace.horses.slice(0, numPick).map(function(h) { return h.horse.pp; });
+        legs.push({
+          raceId: bestRace.race.id,
+          raceNum: bestRace.race.num,
+          raceInfo: bestRace.race,
+          horses: bestRace.horses,
+          recommended: recs
+        });
+      }
+    } else {
+      // Multi-race: find best starting point for consecutive races
+      var numLegs = betType.legs;
+      var bestStart = 0;
+      var bestAvgScore = -1;
+      for (var i = 0; i <= races.length - numLegs; i++) {
+        // Check if consecutive
+        var consecutive = true;
+        var totalScore = 0;
+        for (var j = 0; j < numLegs; j++) {
+          totalScore += races[i + j].horses[0].score;
+          if (j > 0 && races[i + j].race.num !== races[i + j - 1].race.num + 1) {
+            consecutive = false; break;
+          }
+        }
+        if (consecutive && totalScore / numLegs > bestAvgScore) {
+          bestAvgScore = totalScore / numLegs;
+          bestStart = i;
+        }
+      }
+      // If no consecutive found, just take first N
+      for (var k = 0; k < numLegs && bestStart + k < races.length; k++) {
+        var r = races[bestStart + k];
+        // For multi-race: recommend 1-2 per leg (single strong picks = singles, spread for weaker legs)
+        var topScore = r.horses[0].score;
+        var gap = r.horses.length > 1 ? r.horses[0].score - r.horses[1].score : 99;
+        var numRec;
+        if (gap > 12 && topScore >= 65) numRec = 1;  // strong single
+        else if (gap > 6) numRec = 2;
+        else numRec = 3;  // spread leg
+        var recs = r.horses.slice(0, numRec).map(function(h) { return h.horse.pp; });
+        legs.push({
+          raceId: r.race.id,
+          raceNum: r.race.num,
+          raceInfo: r.race,
+          horses: r.horses,
+          recommended: recs
+        });
+      }
+    }
+    return legs;
+  }
+
+  function renderWizardStep() {
+    var body = document.getElementById('wizard-body');
+    var progress = document.getElementById('wizard-progress');
+    var title = document.getElementById('wizard-title');
+    var subtitle = document.getElementById('wizard-subtitle');
+    if (!body) return;
+
+    // Progress dots
+    var dots = '';
+    for (var i = 0; i < wizState.totalSteps; i++) {
+      var cls = i < wizState.step ? 'done' : i === wizState.step ? 'current' : '';
+      dots += '<div class="wizard-progress-dot ' + cls + '"></div>';
+    }
+    progress.innerHTML = dots;
+
+    if (wizState.step === 0) renderStep0(body, title, subtitle);
+    else if (wizState.step === 1) renderStep1(body, title, subtitle);
+    else if (wizState.step === 2) renderStep2(body, title, subtitle);
+  }
+
+  // Step 0: Choose bet type
+  function renderStep0(body, title, subtitle) {
+    title.innerHTML = '&#x2728; Bet Builder Wizard';
+    subtitle.textContent = 'Choose your exotic bet type';
+
+    var h = '';
+    h += '<div class="wizard-type-grid">';
+    BET_TYPES.forEach(function(bt) {
+      var sel = wizState.betType && wizState.betType.id === bt.id ? ' selected' : '';
+      h += '<div class="wizard-type-card' + sel + '" onclick="wizSelectType(\'' + bt.id + '\')">';
+      h += '<div class="wt-icon">' + bt.icon + '</div>';
+      h += '<div class="wt-name">' + bt.name + '</div>';
+      h += '<div class="wt-desc">' + bt.desc + '</div>';
+      h += '<div class="wt-payout">' + bt.payoutRange + '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+
+    h += '<div class="wizard-info-card">';
+    h += '<span class="wi-icon">\uD83E\uDDE0</span>';
+    h += '<span class="wi-text">The AI will analyze today\u2019s card and recommend the <strong>highest-value combinations</strong> based on model scores, class movement, pace scenarios, and expert consensus.</span>';
+    h += '</div>';
+
+    h += '<div class="wizard-btn-row">';
+    h += '<button class="wizard-btn wizard-btn-back" onclick="closeWizard()">Cancel</button>';
+    h += '<button class="wizard-btn wizard-btn-next" id="wiz-next-0" ' + (wizState.betType ? '' : 'disabled') + ' onclick="wizNext()">Next \u2192</button>';
+    h += '</div>';
+
+    body.innerHTML = h;
+  }
+
+  window.wizSelectType = function(typeId) {
+    wizState.betType = BET_TYPES.find(function(bt) { return bt.id === typeId; });
+    // Set default wager
+    wizState.baseWager = wizState.betType.minBase >= 1 ? 2 : wizState.betType.minBase === 0.5 ? 1 : 0.5;
+    renderWizardStep();
+  };
+
+  // Step 1: Pick horses per leg
+  function renderStep1(body, title, subtitle) {
+    var bt = wizState.betType;
+    title.innerHTML = bt.icon + ' Build Your ' + bt.name;
+
+    // Build legs if not yet
+    if (!wizState.legs.length) {
+      wizState.legs = buildRecommendedLegs(bt);
+      // Auto-select recommended picks
+      wizState.selections = {};
+      wizState.legs.forEach(function(leg) {
+        wizState.selections[leg.raceId] = leg.recommended.slice();
+      });
+    }
+
+    // B2 fix: guard against no race data
+    if (!wizState.legs.length) {
+      subtitle.textContent = '';
+      body.innerHTML = '<div class="wizard-info-card" style="margin-top:1rem">' +
+        '<span class="wi-icon">\u26A0\uFE0F</span>' +
+        '<span class="wi-text">No scored races available yet. Go to <strong>Today\u2019s Card</strong> and wait for the advice engine to finish loading, then come back.</span>' +
+        '</div>' +
+        '<div class="wizard-btn-row">' +
+        '<button class="wizard-btn wizard-btn-back" onclick="wizBack()">\u2190 Back</button>' +
+        '</div>';
+      return;
+    }
+
+    if (bt.legs === 1) {
+      subtitle.textContent = 'Select your horses — AI picks highlighted in gold';
+    } else {
+      subtitle.textContent = 'Review each leg — singles and spreads auto-optimized';
+    }
+
+    var h = '';
+
+    // Wager stepper
+    h += '<div style="text-align:center;margin-bottom:0.5rem">';
+    h += '<div style="font-size:0.65rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Base Wager</div>';
+    h += '<div class="wizard-stepper">';
+    h += '<button onclick="wizAdjustWager(-1)">\u2212</button>';
+    h += '<div class="stepper-val">$' + wizState.baseWager.toFixed(wizState.baseWager % 1 ? 2 : 0) + '</div>';
+    h += '<button onclick="wizAdjustWager(1)">+</button>';
+    h += '</div></div>';
+
+    wizState.legs.forEach(function(leg, legIdx) {
+      var legLabel = bt.legs === 1 ? 'Race ' + leg.raceNum : 'Leg ' + (legIdx + 1);
+      var raceDesc = '';
+      if (leg.raceInfo) {
+        var ri = leg.raceInfo;
+        var parts = ['R' + ri.num];
+        if (ri.distance) parts.push(ri.distance);
+        if (ri.surface) parts.push(ri.surface);
+        var cl = typeof CLASS_LABELS !== 'undefined' ? CLASS_LABELS[ri.type] : null;
+        if (cl) parts.push(cl);
+        raceDesc = parts.join(' \u00B7 ');
+      }
+
+      h += '<div class="wizard-leg-card">';
+      h += '<div class="wizard-leg-header">';
+      h += '<span class="wizard-leg-num">' + legLabel + '</span>';
+      h += '<span class="wizard-leg-race">' + raceDesc + '</span>';
+      h += '</div>';
+
+      // Show if single or spread recommendation
+      var numRec = leg.recommended.length;
+      var stratLabel = '';
+      if (bt.legs > 1) {
+        if (numRec === 1) stratLabel = '<span style="font-size:0.55rem;background:rgba(74,222,128,0.15);color:#4ADE80;padding:2px 6px;border-radius:4px;font-weight:600;margin-left:4px">SINGLE</span>';
+        else stratLabel = '<span style="font-size:0.55rem;background:rgba(245,158,11,0.15);color:#FBBF24;padding:2px 6px;border-radius:4px;font-weight:600;margin-left:4px">SPREAD x' + numRec + '</span>';
+        h += stratLabel;
+      }
+
+      h += '<div class="wizard-horse-grid">';
+      leg.horses.forEach(function(s, hIdx) {
+        var pp = s.horse.pp;
+        var name = s.horse.name || 'Horse ' + pp;
+        var shortName = name.length > 10 ? name.substring(0, 10) + '\u2026' : name;
+        var isRec = leg.recommended.indexOf(pp) !== -1;
+        var isSel = wizState.selections[leg.raceId] && wizState.selections[leg.raceId].indexOf(pp) !== -1;
+        var cls = 'wizard-horse-pill';
+        if (isRec) cls += ' ai-pick';
+        if (isSel) cls += ' selected';
+        h += '<div class="' + cls + '" onclick="wizToggleHorse(\'' + leg.raceId + '\',' + pp + ')">';
+        h += '<span class="pill-pp">#' + pp + '</span>';
+        h += '<span>' + escHtml(shortName) + '</span>';
+        h += '<span class="pill-score">' + Math.round(s.score) + '</span>';
+        if (isRec && hIdx < 3) h += '<span class="pill-ai-tag">AI</span>';
+        h += '</div>';
+      });
+      h += '</div></div>';
+    });
+
+    // Live cost display
+    var cost = calcWizardCost();
+    h += '<div class="wizard-summary">';
+    h += '<div class="wizard-summary-row"><span class="ws-label">Combinations</span><span class="ws-val" id="wiz-combos">' + cost.combos + '</span></div>';
+    h += '<div class="wizard-summary-row"><span class="ws-label">Base Wager</span><span class="ws-val">$' + wizState.baseWager.toFixed(wizState.baseWager % 1 ? 2 : 0) + '</span></div>';
+    h += '<div class="wizard-summary-divider"></div>';
+    h += '<div class="wizard-summary-row"><span class="ws-label">Total Cost</span><span class="ws-val" id="wiz-cost">$' + cost.total.toFixed(2) + '</span></div>';
+    h += '</div>';
+
+    var canProceed = wizState.legs.every(function(leg) {
+      var sels = wizState.selections[leg.raceId] || [];
+      return sels.length >= bt.minPick;
+    });
+
+    h += '<div class="wizard-btn-row">';
+    h += '<button class="wizard-btn wizard-btn-back" onclick="wizBack()">\u2190 Back</button>';
+    h += '<button class="wizard-btn wizard-btn-next" ' + (canProceed ? '' : 'disabled') + ' onclick="wizNext()">Review \u2192</button>';
+    h += '</div>';
+
+    body.innerHTML = h;
+  }
+
+  window.wizToggleHorse = function(raceId, pp) {
+    if (!wizState.selections[raceId]) wizState.selections[raceId] = [];
+    var arr = wizState.selections[raceId];
+    var idx = arr.indexOf(pp);
+    if (idx !== -1) arr.splice(idx, 1);
+    else arr.push(pp);
+    renderWizardStep();
+  };
+
+  window.wizAdjustWager = function(dir) {
+    var bt = wizState.betType;
+    var step = bt.minBase < 0.5 ? 0.1 : bt.minBase < 1 ? 0.5 : 1;
+    wizState.baseWager = Math.max(bt.minBase, Math.round((wizState.baseWager + dir * step) * 100) / 100);
+    if (wizState.baseWager > 20) wizState.baseWager = 20;
+    renderWizardStep();
+  };
+
+  function calcWizardCost() {
+    var bt = wizState.betType;
+    var combos = 1;
+    if (bt.id === 'TRI' || bt.id === 'SUPER') {
+      var sels = wizState.selections[wizState.legs[0] ? wizState.legs[0].raceId : ''] || [];
+      var n = sels.length;
+      // Box: permutations
+      var minPick = bt.id === 'SUPER' ? 4 : 3;
+      if (n >= minPick) {
+        // nPr = n! / (n - minPick)!
+        combos = 1;
+        for (var i = 0; i < minPick; i++) combos *= (n - i);
+      } else {
+        combos = 0;
+      }
+    } else {
+      // Multi-race: multiply selections per leg
+      wizState.legs.forEach(function(leg) {
+        var sels = wizState.selections[leg.raceId] || [];
+        combos *= Math.max(sels.length, 1);
+      });
+    }
+    return { combos: combos, total: combos * wizState.baseWager };
+  }
+
+  // Step 2: Review & Lock
+  function renderStep2(body, title, subtitle) {
+    var bt = wizState.betType;
+    title.innerHTML = '\u2705 Review Your ' + bt.name;
+    subtitle.textContent = 'Confirm and lock this bet';
+
+    var cost = calcWizardCost();
+    var h = '';
+
+    // Ticket summary
+    h += '<div style="margin:0.5rem 0">';
+    wizState.legs.forEach(function(leg, legIdx) {
+      var sels = wizState.selections[leg.raceId] || [];
+      var legLabel = bt.legs === 1 ? 'Race ' + leg.raceNum : 'Leg ' + (legIdx + 1) + ' (R' + leg.raceNum + ')';
+      h += '<div class="wizard-leg-card">';
+      h += '<div class="wizard-leg-header">';
+      h += '<span class="wizard-leg-num">' + legLabel + '</span>';
+      h += '</div>';
+      h += '<div class="wizard-horse-grid">';
+      sels.forEach(function(pp) {
+        var horse = leg.horses.find(function(s) { return s.horse.pp === pp; });
+        var name = horse ? horse.horse.name : '#' + pp;
+        h += '<div class="wizard-horse-pill selected">';
+        h += '<span class="pill-pp">#' + pp + '</span>';
+        h += '<span>' + escHtml(name) + '</span>';
+        h += '</div>';
+      });
+      h += '</div></div>';
+    });
+    h += '</div>';
+
+    // Payout estimate
+    var avgOdds = estimateWizardPayout();
+
+    h += '<div class="wizard-summary">';
+    h += '<div class="wizard-summary-row"><span class="ws-label">Bet Type</span><span class="ws-val">' + bt.name + ' Box</span></div>';
+    h += '<div class="wizard-summary-row"><span class="ws-label">Combinations</span><span class="ws-val">' + cost.combos + '</span></div>';
+    h += '<div class="wizard-summary-row"><span class="ws-label">Base Wager</span><span class="ws-val">$' + wizState.baseWager.toFixed(wizState.baseWager % 1 ? 2 : 0) + '</span></div>';
+    h += '<div class="wizard-summary-divider"></div>';
+    h += '<div class="wizard-summary-row"><span class="ws-label">Total Cost</span><span class="ws-val" style="font-size:1.05rem">$' + cost.total.toFixed(2) + '</span></div>';
+    if (avgOdds.low > 0) {
+      h += '<div class="wizard-summary-divider"></div>';
+      h += '<div class="wizard-summary-row payout"><span class="ws-label">Est. Payout Range</span><span class="ws-val">$' + avgOdds.low + ' \u2013 $' + avgOdds.high + '</span></div>';
+    }
+    h += '</div>';
+
+    h += '<div class="wizard-info-card">';
+    h += '<span class="wi-icon">\uD83C\uDFB0</span>';
+    h += '<span class="wi-text">This bet is locked into your bet slip. ';
+    if (bt.id === 'SUPER') h += '<strong>Superfectas</strong> are the biggest payoffs on the board \u2014 even small wagers can hit for thousands.';
+    else if (bt.id === 'TRI') h += '<strong>Trifectas</strong> offer excellent payoffs when you can narrow the field with data.';
+    else if (bt.id === 'P4') h += '<strong>Pick 4s</strong> build massive value across multiple races with AI-guided singles.';
+    else h += '<strong>Daily Doubles</strong> are the best-kept secret \u2014 lower takeout than most exotics.';
+    h += '</span></div>';
+
+    h += '<div class="wizard-btn-row">';
+    h += '<button class="wizard-btn wizard-btn-back" onclick="wizBack()">\u2190 Edit</button>';
+    h += '<button class="wizard-btn wizard-btn-lock" onclick="wizLockBet()">\uD83D\uDD12 Lock This Bet</button>';
+    h += '</div>';
+
+    body.innerHTML = h;
+  }
+
+  function estimateWizardPayout() {
+    var bt = wizState.betType;
+    var cost = calcWizardCost();
+    if (cost.combos === 0) return { low: 0, high: 0 };
+
+    // Rough payout multiplier estimates based on bet type
+    var minMult, maxMult;
+    if (bt.id === 'SUPER') { minMult = 100; maxMult = 3000; }
+    else if (bt.id === 'TRI') { minMult = 30; maxMult = 500; }
+    else if (bt.id === 'P4') { minMult = 50; maxMult = 5000; }
+    else { minMult = 8; maxMult = 80; } // DD
+
+    // Adjust by number of combos (more combos = lower effective payout per combo but higher hit chance)
+    // Show per-base-wager payout
+    var low = Math.round(wizState.baseWager * minMult);
+    var high = Math.round(wizState.baseWager * maxMult);
+    return { low: low, high: high };
+  }
+
+  window.wizNext = function() {
+    wizState.step++;
+    if (wizState.step > wizState.totalSteps - 1) wizState.step = wizState.totalSteps - 1;
+    renderWizardStep();
+    // Scroll sheet to top
+    var sheet = document.querySelector('.wizard-sheet');
+    if (sheet) sheet.scrollTop = 0;
+  };
+
+  window.wizBack = function() {
+    wizState.step--;
+    if (wizState.step < 0) wizState.step = 0;
+    renderWizardStep();
+  };
+
+  window.wizLockBet = function() {
+    var bt = wizState.betType;
+    var cost = calcWizardCost();
+
+    // Build the exotic bet and add to the bet slip
+    var betDesc = '';
+    wizState.legs.forEach(function(leg, i) {
+      var sels = wizState.selections[leg.raceId] || [];
+      if (bt.legs === 1) {
+        betDesc += bt.name + ' Box R' + leg.raceNum + ': ' + sels.map(function(pp) { return '#' + pp; }).join('/');
+      } else {
+        if (i > 0) betDesc += ' / ';
+        betDesc += 'R' + leg.raceNum + ': ' + sels.map(function(pp) { return '#' + pp; }).join(',');
+      }
+    });
+
+    // Add to exotic bets list (reuse existing exotic bet infrastructure)
+    var exoticBets = window._exoticBets || [];
+    exoticBets.push({
+      type: bt.id,
+      label: bt.name,
+      desc: betDesc,
+      cost: cost.total,
+      base: wizState.baseWager,
+      combos: cost.combos,
+      source: 'wizard',
+      legs: wizState.legs.map(function(leg) {
+        return {
+          raceNum: leg.raceNum,
+          raceId: leg.raceId,
+          selections: (wizState.selections[leg.raceId] || []).slice()
+        };
+      })
+    });
+    window._exoticBets = exoticBets;
+
+    // Render into the locked exotic bets list
+    renderLockedExoticBets();
+
+    // Update committed amount
+    updateBankrollDisplay();
+
+    // Close wizard with success animation
+    closeWizard();
+
+    // Flash success notification
+    showWizardToast(bt.icon + ' ' + bt.name + ' locked! $' + cost.total.toFixed(2) + ' \u2014 ' + cost.combos + ' combos');
+
+    // Switch to bets tab to show the locked bet
+    if (typeof switchTab === 'function') switchTab('bets');
+    // Re-render wizard bets AFTER switchTab's renderBetsTab completes
+    setTimeout(function() {
+      renderLockedExoticBets();
+      var list = document.getElementById('exotic-bets-list');
+      if (list) list.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  };
+
+  function renderLockedExoticBets() {
+    var list = document.getElementById('exotic-bets-list');
+    var noMsg = document.getElementById('no-exotic-bets');
+    var bets = window._exoticBets || [];
+    if (!list) return;
+
+    if (!bets.length) {
+      if (noMsg) noMsg.style.display = '';
+      return;
+    }
+    if (noMsg) noMsg.style.display = 'none';
+
+    var existingWizardBets = list.querySelectorAll('.wizard-locked-bet');
+    existingWizardBets.forEach(function(el) { el.remove(); });
+
+    bets.forEach(function(bet, idx) {
+      if (bet.source !== 'wizard') return;
+      var div = document.createElement('div');
+      div.className = 'exotic-bet-locked wizard-locked-bet';
+      div.style.cssText = 'background:rgba(212,168,73,0.08);border:1px solid rgba(212,168,73,0.2);border-radius:10px;padding:0.65rem 0.75rem;margin-bottom:8px;position:relative';
+      var h = '';
+      h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">';
+      h += '<span style="font-size:0.7rem;font-weight:700;color:var(--color-gold);text-transform:uppercase;letter-spacing:0.05em">\uD83E\uDDD9 Wizard \u2014 ' + escHtml(bet.label) + '</span>';
+      h += '<button style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:0.8rem;cursor:pointer;padding:2px 6px" onclick="removeWizardBet(' + idx + ')">\u2715</button>';
+      h += '</div>';
+      h += '<div style="font-size:0.82rem;font-weight:600;color:rgba(255,255,255,0.9)">' + escHtml(bet.desc) + '</div>';
+      h += '<div style="display:flex;gap:0.75rem;margin-top:6px;font-size:0.72rem;font-family:var(--font-mono)">';
+      h += '<span style="color:rgba(255,255,255,0.5)">' + bet.combos + ' combos</span>';
+      h += '<span style="color:var(--color-gold);font-weight:700">$' + bet.cost.toFixed(2) + '</span>';
+      h += '</div>';
+      div.innerHTML = h;
+      list.appendChild(div);
+    });
+  }
+
+  window.removeWizardBet = function(idx) {
+    var bets = window._exoticBets || [];
+    bets.splice(idx, 1);
+    window._exoticBets = bets;
+    renderLockedExoticBets();
+    updateBankrollDisplay();
+  };
+
+  function updateBankrollDisplay() {
+    // Update the committed amount in the bankroll banner
+    var committed = 0;
+    (window._exoticBets || []).forEach(function(b) { committed += b.cost; });
+    // Also add straight bets if any
+    var committedEl = document.getElementById('bb-committed');
+    if (committedEl) {
+      var existing = parseFloat(committedEl.textContent.replace(/[^0-9.]/g, '')) || 0;
+      // Don't override, just refresh if we can
+    }
+  }
+
+  function showWizardToast(msg) {
+    var toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:10000;background:linear-gradient(135deg,#1A3328,#162B1F);border:1px solid rgba(212,168,73,0.4);color:#fff;padding:0.65rem 1.1rem;border-radius:12px;font-size:0.82rem;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.3s ease;font-family:var(--font-body)';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    requestAnimationFrame(function() { toast.style.opacity = '1'; });
+    setTimeout(function() {
+      toast.style.opacity = '0';
+      setTimeout(function() { toast.remove(); }, 300);
+    }, 3000);
+  }
+
+  // Expose allScores for the wizard — deferred because updateTopPicksCard defined later
+  function wrapUpdateTopPicks() {
+    if (typeof window.updateTopPicksCard !== 'function') return;
+    if (window._wizWrappedTopPicks) return;
+    window._wizWrappedTopPicks = true;
+    var orig = window.updateTopPicksCard;
+    window.updateTopPicksCard = function(allScores) {
+      window._lastAllScores = allScores;
+      var result = orig.call(this, allScores);
+      // Inject wizard CTA into ticket after render
+      setTimeout(injectTicketWizardBtn, 50);
+      return result;
+    };
+  }
+
+  // Add wizard CTA button inside Today's Ticket
+  function injectTicketWizardBtn() {
+    var recCard = document.getElementById('rec-bets-card');
+    if (!recCard) return;
+    if (recCard.querySelector('.wizard-ticket-cta')) return;
+    var copyBtn = recCard.querySelector('.copy-ticket-btn');
+    if (!copyBtn) return;
+
+    var cta = document.createElement('button');
+    cta.className = 'wizard-launch-btn wizard-ticket-cta';
+    cta.style.marginTop = '0.5rem';
+    cta.innerHTML = '<span class="wl-icon">\uD83E\uDDD9</span><div><div class="wl-text">Build a Big Payout Bet</div><div class="wl-sub">Trifectas, Supers, Pick 4s with AI picks</div></div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--color-gold);flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>';
+    cta.onclick = function() { openBettingWizard(); };
+    copyBtn.parentNode.insertBefore(cta, copyBtn.nextSibling);
+  }
+
+  // Deferred init: wait for DOM + other scripts
+  function wizDeferredInit() {
+    wrapUpdateTopPicks();
+    // Watch for ticket renders
+    var recBets = document.getElementById('rec-bets-content');
+    if (recBets) {
+      new MutationObserver(function() { injectTicketWizardBtn(); }).observe(recBets, { childList: true });
+    }
+    injectTicketWizardBtn();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(wizDeferredInit, 500); });
+  } else {
+    setTimeout(wizDeferredInit, 500);
+  }
+
+})();
+// --- End Betting Wizard ---
+
+
 </script>
 <meta name="theme-color" content="#1B4332">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -136,7 +783,11 @@ function neForceUpdate(newVersion) {
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
-<meta name="description" content="NE Racing Companion 2026 — Personal horse racing handicapping & bet tracking tool for the NYRA circuit.">
+<meta name="description" content="Railbird AI — Personal horse racing handicapping &amp; bet tracking for the Saratoga NYRA circuit.">
+<meta property="og:title" content="Railbird AI — Saratoga Racing Companion">
+<meta property="og:description" content="Personal horse racing handicapping &amp; bet tracking for the NYRA circuit.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <title>Railbird AI — Saratoga Racing Companion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -144,7 +795,8 @@ function neForceUpdate(newVersion) {
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-paddock-bright.webp">
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-winners-circle.webp">
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-grandstand.webp">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap"></noscript>
 <style>
 /* =========================================================
    CSS CUSTOM PROPERTIES
@@ -569,9 +1221,6 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .sar-aqu-btn:hover:not(.selected) { background: rgba(255,255,255,0.08); }
 .sar-aqu-drawer { padding: 0.25rem 0; }
 /* Override sar-aqu styles inside the white track drawer */
-#track-drawer 
-#track-drawer 
-#track-drawer 
 #track-drawer .sar-aqu-btn:hover:not(.selected) { background: rgba(27,67,50,0.06); color: var(--color-slate); }
 
 /* =========================================================
@@ -1710,7 +2359,404 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   animation: winCelebrate 1.2s ease-out;
 }
 
+/* --- Betting Wizard --- */
+#wizard-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.85); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
+  -webkit-overflow-scrolling: touch;
+}
+#wizard-overlay.active { opacity: 1; pointer-events: auto; }
+.wizard-sheet {
+  width: 100%; max-width: 420px; max-height: 92vh;
+  background: linear-gradient(165deg, #0F1A14 0%, #162B1F 40%, #1A3328 100%);
+  border-radius: 20px 20px 0 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  padding: 0 0 env(safe-area-inset-bottom, 0);
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
+}
+#wizard-overlay.active .wizard-sheet { transform: translateY(0); }
+
+.wizard-handle {
+  width: 40px; height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.2); margin: 10px auto 0;
+}
+.wizard-header {
+  padding: 1rem 1.25rem 0.5rem; text-align: center;
+}
+.wizard-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.3rem; margin: 0;
+  background: linear-gradient(135deg, #D4A849, #E8C86A, #D4A849);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.wizard-header p {
+  font-size: 0.75rem; color: rgba(255,255,255,0.5); margin: 0.25rem 0 0;
+}
+
+.wizard-progress {
+  display: flex; gap: 4px; padding: 0 1.25rem; margin: 0.75rem 0;
+}
+.wizard-progress-dot {
+  flex: 1; height: 3px; border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  transition: background 0.3s ease;
+}
+.wizard-progress-dot.done { background: var(--color-gold); }
+.wizard-progress-dot.current {
+  background: linear-gradient(90deg, var(--color-gold), rgba(212,168,73,0.4));
+}
+
+.wizard-body { padding: 0 1.25rem 1.25rem; }
+
+/* Step 1: Bet type selector */
+.wizard-type-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0.75rem 0;
+}
+.wizard-type-card {
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 0.8rem 0.6rem;
+  text-align: center; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.wizard-type-card:active { transform: scale(0.97); }
+.wizard-type-card.selected {
+  border-color: var(--color-gold);
+  background: rgba(212,168,73,0.1);
+  box-shadow: 0 0 20px rgba(212,168,73,0.15);
+}
+.wizard-type-card .wt-icon { font-size: 1.6rem; margin-bottom: 4px; }
+.wizard-type-card .wt-name {
+  font-family: var(--font-display); font-size: 0.9rem; font-weight: 700;
+  color: #fff;
+}
+.wizard-type-card .wt-desc {
+  font-size: 0.62rem; color: rgba(255,255,255,0.45); margin-top: 2px;
+  line-height: 1.35;
+}
+.wizard-type-card .wt-payout {
+  font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700;
+  color: var(--color-gold); margin-top: 6px;
+}
+
+/* Step 2: Race/Leg selector for multi-race */
+.wizard-leg-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; padding: 0.6rem 0.75rem;
+  margin-bottom: 8px;
+}
+.wizard-leg-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.wizard-leg-num {
+  font-family: var(--font-display); font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-gold);
+}
+.wizard-leg-race {
+  font-size: 0.65rem; color: rgba(255,255,255,0.45);
+}
+.wizard-horse-grid {
+  display: flex; flex-wrap: wrap; gap: 5px;
+}
+.wizard-horse-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0.3rem 0.55rem; border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  font-size: 0.72rem; color: rgba(255,255,255,0.7);
+  cursor: pointer; transition: all 0.2s ease;
+  user-select: none; -webkit-user-select: none;
+}
+.wizard-horse-pill:active { transform: scale(0.95); }
+.wizard-horse-pill.selected {
+  border-color: rgba(74,222,128,0.5);
+  background: rgba(74,222,128,0.12);
+  color: #4ADE80; font-weight: 600;
+}
+.wizard-horse-pill.ai-pick {
+  border-color: rgba(212,168,73,0.4);
+  background: rgba(212,168,73,0.08);
+  color: #D4A849;
+}
+.wizard-horse-pill.ai-pick.selected {
+  border-color: rgba(74,222,128,0.5);
+  background: rgba(74,222,128,0.12);
+  color: #4ADE80;
+}
+.wizard-horse-pill .pill-pp {
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.78rem;
+}
+.wizard-horse-pill .pill-score {
+  font-family: var(--font-mono); font-size: 0.58rem;
+  padding: 1px 4px; border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+}
+.wizard-horse-pill .pill-ai-tag {
+  font-size: 0.5rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--color-gold);
+}
+
+/* Wizard info cards */
+.wizard-info-card {
+  background: rgba(212,168,73,0.08);
+  border: 1px solid rgba(212,168,73,0.2);
+  border-radius: 10px; padding: 0.6rem 0.75rem;
+  margin: 0.75rem 0; display: flex; align-items: flex-start; gap: 8px;
+}
+.wizard-info-card .wi-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+.wizard-info-card .wi-text {
+  font-size: 0.72rem; color: rgba(255,255,255,0.7); line-height: 1.4;
+}
+.wizard-info-card .wi-text strong { color: var(--color-gold); }
+
+/* Step 3: Cost + payout summary */
+.wizard-summary {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 0.75rem; margin: 0.75rem 0;
+}
+.wizard-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.25rem 0;
+}
+.wizard-summary-row .ws-label {
+  font-size: 0.7rem; color: rgba(255,255,255,0.45);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.wizard-summary-row .ws-val {
+  font-family: var(--font-mono); font-size: 0.9rem; font-weight: 700;
+  color: #fff;
+}
+.wizard-summary-row.payout .ws-val {
+  color: var(--color-gold); font-size: 1.05rem;
+}
+.wizard-summary-divider {
+  height: 1px; background: rgba(255,255,255,0.06); margin: 0.35rem 0;
+}
+
+/* Wizard buttons */
+.wizard-btn-row {
+  display: flex; gap: 8px; margin-top: 1rem; padding-bottom: 0.5rem;
+}
+.wizard-btn {
+  flex: 1; padding: 0.75rem; border-radius: 12px;
+  font-family: var(--font-display); font-size: 0.85rem;
+  font-weight: 700; text-align: center;
+  border: none; cursor: pointer; transition: all 0.2s ease;
+}
+.wizard-btn:active { transform: scale(0.97); }
+.wizard-btn-back {
+  background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.wizard-btn-next {
+  background: linear-gradient(135deg, #D4A849, #C49A3C);
+  color: #0F1A14;
+  box-shadow: 0 4px 16px rgba(212,168,73,0.3);
+}
+.wizard-btn-next:disabled {
+  opacity: 0.35; pointer-events: none;
+}
+.wizard-btn-lock {
+  background: linear-gradient(135deg, #4ADE80, #22C55E);
+  color: #0F1A14;
+  box-shadow: 0 4px 16px rgba(74,222,128,0.3);
+}
+
+/* Wager amount stepper */
+.wizard-stepper {
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  margin: 0.5rem 0;
+}
+.wizard-stepper button {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  color: #fff; font-size: 1.2rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s;
+}
+.wizard-stepper button:active { background: rgba(255,255,255,0.12); }
+.wizard-stepper .stepper-val {
+  font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700;
+  color: #fff; min-width: 50px; text-align: center;
+}
+
+/* Sparkle animation for lock */
+@keyframes wizardSparkle {
+  0% { transform: scale(0) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1.5) rotate(180deg); opacity: 0; }
+}
+.wizard-sparkle {
+  position: absolute; width: 12px; height: 12px;
+  background: var(--color-gold); border-radius: 2px;
+  animation: wizardSparkle 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+/* Wizard launch button */
+.wizard-launch-btn {
+  width: 100%; margin-top: 0.75rem; padding: 0.75rem;
+  background: linear-gradient(135deg, rgba(212,168,73,0.15), rgba(212,168,73,0.08));
+  border: 1.5px solid rgba(212,168,73,0.35);
+  border-radius: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.2s ease;
+  position: relative; overflow: hidden;
+}
+.wizard-launch-btn:active { transform: scale(0.98); }
+.wizard-launch-btn .wl-icon { font-size: 1.3rem; }
+.wizard-launch-btn .wl-text {
+  font-family: var(--font-display); font-size: 0.9rem; font-weight: 700;
+  color: var(--color-gold);
+}
+.wizard-launch-btn .wl-sub {
+  font-size: 0.62rem; color: rgba(255,255,255,0.65);
+}
+.wizard-launch-btn::after {
+  content: ''; position: absolute; top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212,168,73,0.12), transparent);
+  animation: wizLaunchShimmer 3s ease-in-out infinite;
+}
+@keyframes wizLaunchShimmer {
+  0% { left: -100%; } 50% { left: 100%; } 100% { left: 100%; }
+}
+
 /* --- Expandable bet card details panel --- */
+/* Race context header inside expanded card */
+.detail-race-ctx {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0.65rem;
+  padding: 0.45rem 0.55rem;
+  background: rgba(255,255,255,0.05); border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.detail-race-chip {
+  font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: rgba(255,255,255,0.55);
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.detail-race-chip .chip-val {
+  color: rgba(255,255,255,0.85); font-weight: 600;
+}
+
+/* Edge donut (model prob vs field) */
+.detail-edge-donut { text-align: center; margin-bottom: 0.5rem; }
+.detail-edge-donut svg { width: 72px; height: 72px; }
+.edge-track { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 8; }
+.edge-fill { fill: none; stroke-width: 8; stroke-linecap: round; }
+.edge-label { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; fill: #fff; }
+.edge-sublabel { font-family: var(--font-body); font-size: 0.35rem; fill: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* Stat row: two or three stat cards in a row */
+.detail-stat-row {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  gap: 6px; margin-bottom: 0.55rem;
+}
+.detail-stat-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px; padding: 0.4rem 0.35rem; text-align: center;
+}
+.detail-stat-card .stat-val {
+  font-family: var(--font-mono); font-size: 0.95rem; font-weight: 700; color: #fff;
+  line-height: 1.2;
+}
+.detail-stat-card .stat-label {
+  font-size: 0.55rem; color: rgba(255,255,255,0.4); text-transform: uppercase;
+  letter-spacing: 0.06em; margin-top: 2px;
+}
+.detail-stat-card.positive .stat-val { color: #4ADE80; }
+.detail-stat-card.negative .stat-val { color: #EF4444; }
+.detail-stat-card.gold .stat-val { color: #D4A849; }
+.detail-stat-card.highlight {
+  border-color: rgba(74,222,128,0.3); background: rgba(74,222,128,0.06);
+}
+
+/* Class movement visual */
+.detail-class-move {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 0.55rem;
+  padding: 0.35rem 0.5rem;
+  background: rgba(255,255,255,0.04); border-radius: 8px;
+  font-size: 0.72rem; color: rgba(255,255,255,0.7);
+}
+.class-arrow { font-size: 1rem; font-weight: 700; }
+.class-arrow.drop { color: #4ADE80; }
+.class-arrow.rise { color: #F59E0B; }
+.class-arrow.same { color: rgba(255,255,255,0.3); }
+.class-label-from { color: rgba(255,255,255,0.45); }
+.class-label-to { color: rgba(255,255,255,0.85); font-weight: 600; }
+
+/* Workout pills */
+.detail-workouts { margin-bottom: 0.55rem; }
+.detail-workouts-title {
+  font-size: 0.6rem; color: rgba(255,255,255,0.4); text-transform: uppercase;
+  letter-spacing: 0.06em; font-weight: 600; margin-bottom: 5px;
+}
+.workout-pill {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px; padding: 0.2rem 0.45rem; margin: 0 3px 3px 0;
+  font-size: 0.62rem; color: rgba(255,255,255,0.6);
+  font-family: var(--font-mono);
+}
+.workout-pill.bullet {
+  border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.1);
+  color: #FBBF24;
+}
+.workout-pill .wo-bolt { color: #F59E0B; }
+
+/* Field position bar */
+.detail-field-rank {
+  margin-bottom: 0.55rem; padding: 0.35rem 0;
+}
+.field-rank-bar {
+  height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px;
+  position: relative; margin-top: 4px;
+}
+.field-rank-marker {
+  position: absolute; top: -3px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #D4A849; border: 2px solid rgba(255,255,255,0.3);
+  transition: left 0.5s ease;
+}
+.field-rank-labels {
+  display: flex; justify-content: space-between;
+  font-size: 0.55rem; color: rgba(255,255,255,0.3);
+  margin-top: 6px;
+}
+
+/* Odds movement */
+.detail-odds-move {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.65rem; font-weight: 600; margin-left: 6px;
+}
+.odds-move-drop { color: #4ADE80; }
+.odds-move-drift { color: #EF4444; }
+.odds-move-stable { color: rgba(255,255,255,0.3); }
+
+/* Data completeness mini ring */
+.detail-completeness {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 0.5rem;
+  font-size: 0.65rem; color: rgba(255,255,255,0.5);
+}
+.completeness-ring svg { width: 24px; height: 24px; }
+.comp-track { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 3; }
+.comp-fill { fill: none; stroke-width: 3; stroke-linecap: round; }
+
+/* Score + edge side-by-side hero section */
+.detail-hero-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 1.5rem; margin-bottom: 0.65rem;
+}
+
 .rec-bet-item { cursor: pointer; position: relative; transition: background 0.2s ease; }
 .rec-bet-item:active { background: rgba(255,255,255,0.03); }
 .rec-bet-expand-hint {
@@ -2225,6 +3271,18 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         </div>
         <div id="exotic-builder-body"></div>
         <div class="cost-display" id="exotic-cost-display">Select horses to calculate cost</div>
+      </div>
+
+      <!-- Wizard launch button -->
+      <div style="padding: 0 0.15rem">
+        <button class="wizard-launch-btn" onclick="openBettingWizard()">
+          <span class="wl-icon">&#x1F9D9;</span>
+          <div>
+            <div class="wl-text">Bet Builder Wizard</div>
+            <div class="wl-sub">AI-guided exotic bets with big payouts</div>
+          </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--color-gold);flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
       </div>
 
       <!-- Locked exotic bets -->
@@ -4586,6 +5644,10 @@ function estimatePayoutRange(mlOdds, betAmount) {
 function updateTopPicksCard(allScores) {
   _ticketDetailData = {};
   _ticketDetailCounter = 0;
+  // W6 fix: clear stale expanded card renders
+  document.querySelectorAll('.rec-bet-details[data-rendered]').forEach(function(el) {
+    el.removeAttribute('data-rendered'); el.innerHTML = '';
+  });
   // Hide legacy top-picks card
   el('top-picks-card').classList.add('hidden');
 
@@ -5512,6 +6574,8 @@ function updateBankrollBanner() {
       });
     });
   });
+  // W5 fix: include wizard exotic bets in committed amount
+  (window._exoticBets || []).forEach(function(b) { committed += b.cost || 0; });
   const remaining = budget - committed;
 
   if (el('bb-bankroll')) el('bb-bankroll').textContent = fmt$(current);
@@ -7441,32 +8505,62 @@ function buildExpandedDetails(s, race, betType) {
   var h = s.horse;
   var score = s.score || 0;
   var figs = (h.speedFigs || []).filter(function(f) { return f != null; });
-
   var html = '';
 
-  // ── Score Gauge (SVG radial) ──
-  var radius = 36;
-  var circumference = 2 * Math.PI * radius;
-  var pct = Math.min(score, 100) / 100;
-  var offset = circumference * (1 - pct);
-  var gaugeColor = score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low';
-  html += '<div class="detail-score-gauge">';
-  html += '<svg viewBox="0 0 90 90">';
-  html += '<circle class="gauge-track" cx="45" cy="45" r="' + radius + '"/>';
-  html += '<circle class="gauge-fill ' + gaugeColor + '" cx="45" cy="45" r="' + radius + '" stroke-dasharray="' + circumference.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '" transform="rotate(-90 45 45)"/>';
-  html += '<text class="gauge-score" x="45" y="48" text-anchor="middle" dominant-baseline="middle">' + score.toFixed(0) + '</text>';
-  html += '<text class="gauge-label" x="45" y="62" text-anchor="middle">COMPOSITE</text>';
-  html += '</svg>';
+  // ── Race Context Header ──
+  var classLabels = typeof CLASS_LABELS !== 'undefined' ? CLASS_LABELS : {};
+  var raceClass = classLabels[race.type] || race.type || '';
+  var purseStr = race.purse && race.purse !== 'N/A' ? (String(race.purse).startsWith('$') ? race.purse : '$' + Number(String(race.purse).replace(/[^0-9.]/g,'')).toLocaleString()) : '';
+  html += '<div class="detail-race-ctx">';
+  html += '<span class="detail-race-chip">R<span class="chip-val">' + race.num + '</span></span>';
+  if (race.distance) html += '<span class="detail-race-chip"><span class="chip-val">' + race.distance + '</span></span>';
+  if (race.surface) html += '<span class="detail-race-chip"><span class="chip-val">' + race.surface + '</span></span>';
+  if (raceClass) html += '<span class="detail-race-chip"><span class="chip-val">' + raceClass + '</span></span>';
+  if (race.postTime) html += '<span class="detail-race-chip">Post <span class="chip-val">' + race.postTime + '</span></span>';
+  if (purseStr) html += '<span class="detail-race-chip">Purse <span class="chip-val">' + purseStr + '</span></span>';
   html += '</div>';
+
+  // ── Hero Row: Score Gauge + Edge Donut side by side ──
+  html += '<div class="detail-hero-row">';
+
+  // Score Gauge (radial)
+  var radius = 32;
+  var circ = 2 * Math.PI * radius;
+  var pct = Math.min(score, 100) / 100;
+  var offset = circ * (1 - pct);
+  var gc = score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low';
+  html += '<div class="detail-score-gauge" style="margin-bottom:0">';
+  html += '<svg viewBox="0 0 80 80" style="width:80px;height:80px">';
+  html += '<circle class="gauge-track" cx="40" cy="40" r="' + radius + '"/>';
+  html += '<circle class="gauge-fill ' + gc + '" cx="40" cy="40" r="' + radius + '" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '" transform="rotate(-90 40 40)"/>';
+  html += '<text class="gauge-score" x="40" y="43" text-anchor="middle" dominant-baseline="middle">' + score.toFixed(0) + '</text>';
+  html += '<text class="gauge-label" x="40" y="56" text-anchor="middle">SCORE</text>';
+  html += '</svg></div>';
+
+  // Edge Donut (model probability vs field)
+  var mp = s.modelProb || 0;
+  var edgeR = 28;
+  var edgeCirc = 2 * Math.PI * edgeR;
+  var edgeOffset = edgeCirc * (1 - mp);
+  var edgeColor = mp > 0.25 ? '#4ADE80' : mp > 0.15 ? '#D4A849' : '#EF4444';
+  html += '<div class="detail-edge-donut">';
+  html += '<svg viewBox="0 0 72 72">';
+  html += '<circle class="edge-track" cx="36" cy="36" r="' + edgeR + '"/>';
+  html += '<circle class="edge-fill" cx="36" cy="36" r="' + edgeR + '" stroke="' + edgeColor + '" stroke-dasharray="' + edgeCirc.toFixed(1) + '" stroke-dashoffset="' + edgeOffset.toFixed(1) + '" transform="rotate(-90 36 36)"/>';
+  html += '<text class="edge-label" x="36" y="38" text-anchor="middle" dominant-baseline="middle">' + (mp * 100).toFixed(0) + '%</text>';
+  html += '<text class="edge-sublabel" x="36" y="50" text-anchor="middle">Win Prob</text>';
+  html += '</svg></div>';
+
+  html += '</div>'; // end hero row
 
   // ── Factor Breakdown Bars ──
   var factors = [
-    { key: 'speed', label: 'Speed', val: s.speedScore || 0, weight: '35%' },
-    { key: 'class', label: 'Class', val: s.classScore || 0, weight: '20%' },
-    { key: 'pace', label: 'Pace', val: s.paceScore || 0, weight: '15%' },
-    { key: 'tj', label: 'T/J', val: s.tjScore || 0, weight: '15%' },
-    { key: 'bias', label: 'Bias', val: s.biasScore || 0, weight: '10%' },
-    { key: 'fresh', label: 'Fresh', val: s.freshnessScore || 0, weight: '5%' }
+    { key: 'speed', label: 'Speed', val: s.speedScore || 0 },
+    { key: 'class', label: 'Class', val: s.classScore || 0 },
+    { key: 'pace', label: 'Pace', val: s.paceScore || 0 },
+    { key: 'tj', label: 'T/J', val: s.tjScore || 0 },
+    { key: 'bias', label: 'Bias', val: s.biasScore || 0 },
+    { key: 'fresh', label: 'Fresh', val: s.freshnessScore || 0 }
   ];
   html += '<div class="detail-factors">';
   factors.forEach(function(f) {
@@ -7502,46 +8596,91 @@ function buildExpandedDetails(s, race, betType) {
       var cls = i === points.length - 1 ? 'sparkline-dot latest' : 'sparkline-dot';
       var r = i === points.length - 1 ? 4 : 2.5;
       html += '<circle class="' + cls + '" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r + '"/>';
-      // Label for first and last
       if (i === 0 || i === points.length - 1) {
         html += '<text class="sparkline-label" x="' + p.x.toFixed(1) + '" y="' + (p.y - 6).toFixed(1) + '" text-anchor="middle">' + p.val + '</text>';
       }
     });
-    html += '</svg>';
-    html += '</div>';
+    html += '</svg></div>';
   }
 
   html += '<div class="detail-section-divider"></div>';
 
-  // ── Odds & Value Cards ──
+  // ── Class Movement Visual ──
+  var classScale = typeof CLASS_SCALE !== 'undefined' ? CLASS_SCALE : {};
+  var raceClassVal = classScale[race.type] || 40;
+  var lastClassVal = classScale[h.lastClass] || raceClassVal;
+  var classDiff = lastClassVal - raceClassVal;
+  var lastClassLabel = (typeof CLASS_LABELS !== 'undefined' ? CLASS_LABELS[h.lastClass] : null) || h.lastClass || '';
+  var curClassLabel = (typeof CLASS_LABELS !== 'undefined' ? CLASS_LABELS[race.type] : null) || race.type || '';
+  if (lastClassLabel && curClassLabel) {
+    var arrowCls = classDiff > 5 ? 'drop' : classDiff < -5 ? 'rise' : 'same';
+    var arrowChar = classDiff > 5 ? '\u2193' : classDiff < -5 ? '\u2191' : '\u2192';
+    var moveWord = classDiff > 5 ? 'Dropping in class' : classDiff < -5 ? 'Rising in class' : 'Same level';
+    html += '<div class="detail-class-move">';
+    html += '<span class="class-arrow ' + arrowCls + '">' + arrowChar + '</span>';
+    html += '<span class="class-label-from">' + lastClassLabel + '</span>';
+    html += '<span style="color:rgba(255,255,255,0.25)">\u2192</span>';
+    html += '<span class="class-label-to">' + curClassLabel + '</span>';
+    html += '<span style="margin-left:auto;font-size:0.6rem;color:rgba(255,255,255,0.4)">' + moveWord + '</span>';
+    html += '</div>';
+  }
+
+  // ── Odds & Value Stat Cards ──
   var ml = h.ml || '';
   var liveOdds = h.liveOdds || '';
-  var modelProbPct = s.modelProb ? (s.modelProb * 100).toFixed(0) : '—';
-  var impliedProbPct = s.impliedProb ? (s.impliedProb * 100).toFixed(0) : '—';
+  var modelProbPct = s.modelProb ? (s.modelProb * 100).toFixed(0) : '\u2014';
+  var impliedProbPct = s.impliedProb ? (s.impliedProb * 100).toFixed(0) : '\u2014';
   var overlayPct = s.overlay ? (s.overlay * 100).toFixed(0) : '0';
-  var overlayClass = s.overlay > 0.05 ? 'value-positive' : s.overlay < -0.05 ? 'value-negative' : '';
+  var overlayClass = s.overlay > 0.05 ? 'positive' : s.overlay < -0.05 ? 'negative' : '';
+  var edgeHighlight = s.overlay > 0.08 ? ' highlight' : '';
 
-  html += '<div class="detail-odds-row">';
-  html += '<div class="detail-odds-card"><div class="odds-val">' + (ml || '—') + '</div><div class="odds-label">Morning Line</div></div>';
-  html += '<div class="detail-odds-card"><div class="odds-val">' + (liveOdds || '—') + '</div><div class="odds-label">Live Odds</div></div>';
-  html += '<div class="detail-odds-card"><div class="odds-val">' + modelProbPct + '%</div><div class="odds-label">Our Model</div></div>';
-  html += '<div class="detail-odds-card ' + overlayClass + '"><div class="odds-val">' + (s.overlay > 0 ? '+' : '') + overlayPct + '%</div><div class="odds-label">Edge</div></div>';
+  // Odds movement indicator
+  var oddsMove = h._oddsMovement || '';
+  var oddsMoveHtml = '';
+  if (oddsMove === 'dropping') oddsMoveHtml = '<span class="detail-odds-move odds-move-drop">\u25BC Money coming in</span>';
+  else if (oddsMove === 'drifting') oddsMoveHtml = '<span class="detail-odds-move odds-move-drift">\u25B2 Drifting</span>';
+
+  html += '<div class="detail-stat-row">';
+  html += '<div class="detail-stat-card"><div class="stat-val">' + (ml || '\u2014') + '</div><div class="stat-label">ML</div></div>';
+  html += '<div class="detail-stat-card"><div class="stat-val">' + (liveOdds || '\u2014') + '</div><div class="stat-label">Live' + oddsMoveHtml + '</div></div>';
+  html += '<div class="detail-stat-card"><div class="stat-val">' + modelProbPct + '%</div><div class="stat-label">Our Model</div></div>';
+  html += '<div class="detail-stat-card ' + overlayClass + edgeHighlight + '"><div class="stat-val">' + (s.overlay > 0 ? '+' : '') + overlayPct + '%</div><div class="stat-label">Edge</div></div>';
   html += '</div>';
+
+  // ── Field Position Bar ──
+  var raceAdvice = race._advice || [];
+  var fieldSize = raceAdvice.length;
+  var rank = 0;
+  for (var ri = 0; ri < raceAdvice.length; ri++) {
+    if (raceAdvice[ri].horse && raceAdvice[ri].horse.id === h.id) { rank = ri + 1; break; }
+  }
+  if (fieldSize > 1 && rank > 0) {
+    var rankPct = ((rank - 1) / (fieldSize - 1)) * 100;
+    var markerLeft = Math.max(2, Math.min(98, 100 - rankPct));
+    html += '<div class="detail-field-rank">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:0.6rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Field Position</span>';
+    html += '<span style="font-size:0.72rem;font-weight:700;color:#D4A849">#' + rank + ' of ' + fieldSize + '</span>';
+    html += '</div>';
+    html += '<div class="field-rank-bar"><div class="field-rank-marker" style="left:calc(' + markerLeft.toFixed(0) + '% - 6px)"></div></div>';
+    html += '<div class="field-rank-labels"><span>Last</span><span>1st</span></div>';
+    html += '</div>';
+  }
 
   // ── Pace Scenario ──
   var style = h.runningStyle || '';
   var styleNames = { 'E': 'Early Speed', 'EP': 'Presser', 'S': 'Stalker', 'SS': 'Deep Closer' };
   var styleName = styleNames[style] || style || 'Unknown';
-  var paceIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
+  var paceIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
   html += '<div class="detail-pace-pill">' + paceIcon + ' ' + styleName + '</div>';
 
   // ── Expert Picks Visual ──
   var expertPicks = race.expertPicks || [];
   if (expertPicks.length) {
     html += '<div class="detail-experts">';
-    html += '<div class="detail-experts-title">Expert Sources</div>';
+    html += '<div class="detail-experts-title">Expert Sources (' + s.expertMatchCount + '/' + expertPicks.length + ' agree)</div>';
     expertPicks.forEach(function(ep) {
-      var match = (ep.pick === h.pp || ep.horseName === h.name);
+      var match = (String(ep.pick) === String(h.pp) || ep.horseName === h.name);
       if (match) {
         html += '<span class="detail-expert-chip"><span class="chip-check">\u2713</span> ' + escHtml(ep.source.replace('NYRA - ', '')) + '</span>';
       } else {
@@ -7551,19 +8690,51 @@ function buildExpandedDetails(s, race, betType) {
     html += '</div>';
   }
 
-  // ── Jockey & Trainer Stats ──
+  // ── Jockey & Trainer + Freshness + Data Completeness ──
   var jkyPct = parseFloat(h.jockeyPct) || 0;
   var trnPct = parseFloat(h.trainerPct) || 0;
-  if (h.jockey || h.trainer) {
-    html += '<div class="detail-odds-row" style="margin-top:0.35rem">';
-    if (h.jockey) {
-      html += '<div class="detail-odds-card"><div class="odds-val">' + jkyPct.toFixed(0) + '%</div><div class="odds-label">' + escHtml(h.jockey) + '</div></div>';
-    }
-    if (h.trainer) {
-      html += '<div class="detail-odds-card"><div class="odds-val">' + trnPct.toFixed(0) + '%</div><div class="odds-label">' + escHtml(h.trainer) + '</div></div>';
-    }
+  html += '<div class="detail-stat-row">';
+  if (h.jockey) html += '<div class="detail-stat-card' + (jkyPct >= 18 ? ' gold' : '') + '"><div class="stat-val">' + jkyPct.toFixed(0) + '%</div><div class="stat-label">' + escHtml(h.jockey) + '</div></div>';
+  if (h.trainer) html += '<div class="detail-stat-card' + (trnPct >= 18 ? ' gold' : '') + '"><div class="stat-val">' + trnPct.toFixed(0) + '%</div><div class="stat-label">' + escHtml(h.trainer) + '</div></div>';
+  // Freshness
+  if (h.lastRaceDate) {
+    var daysSince = Math.floor((new Date() - new Date(h.lastRaceDate + 'T12:00:00')) / 86400000);
+    var freshClass = (daysSince >= 14 && daysSince <= 28) ? ' positive' : daysSince > 60 ? ' negative' : '';
+    html += '<div class="detail-stat-card' + freshClass + '"><div class="stat-val">' + daysSince + 'd</div><div class="stat-label">Since Last</div></div>';
+  }
+  html += '</div>';
+
+  // ── Workouts ──
+  if (h.workouts && h.workouts.length) {
+    html += '<div class="detail-workouts">';
+    html += '<div class="detail-workouts-title">Recent Workouts</div>';
+    h.workouts.slice(0, 4).forEach(function(w) {
+      var isBullet = w.note === 'Bullet' || (w.rank && w.rank.startsWith('1/'));
+      html += '<span class="workout-pill' + (isBullet ? ' bullet' : '') + '">';
+      if (isBullet) html += '<span class="wo-bolt">\u26A1</span> ';
+      html += (w.distance || '') + ' ' + (w.time || '') + ' ' + (w.surface || '');
+      if (w.rank) html += ' <span style="opacity:0.6">(' + w.rank + ')</span>';
+      html += '</span>';
+    });
     html += '</div>';
   }
+
+  // ── Equipment Change ──
+  if (h.equipmentChanges) {
+    html += '<div style="margin-bottom:0.4rem"><span class="badge-equip" style="font-size:0.68rem">\u2699 ' + escHtml(h.equipmentChanges) + '</span></div>';
+  }
+
+  // ── Data Completeness ──
+  var comp = s.completeness || 0;
+  var compPct = Math.round(comp * 100);
+  var compR = 9;
+  var compCirc = 2 * Math.PI * compR;
+  var compOffset = compCirc * (1 - comp);
+  var compColor = comp >= 0.7 ? '#4ADE80' : comp >= 0.5 ? '#D4A849' : '#EF4444';
+  html += '<div class="detail-completeness">';
+  html += '<div class="completeness-ring"><svg viewBox="0 0 24 24"><circle class="comp-track" cx="12" cy="12" r="' + compR + '"/><circle class="comp-fill" cx="12" cy="12" r="' + compR + '" stroke="' + compColor + '" stroke-dasharray="' + compCirc.toFixed(1) + '" stroke-dashoffset="' + compOffset.toFixed(1) + '" transform="rotate(-90 12 12)"/></svg></div>';
+  html += '<span>Data completeness: ' + compPct + '% (' + Math.round(comp * 7) + '/7 data points)</span>';
+  html += '</div>';
 
   return html;
 }
@@ -7678,10 +8849,12 @@ document.addEventListener('click', e => {
 // Keyboard ESC closes modals/drawer
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    const wizOv = el('wizard-overlay');
     const settingsModal = el('settings-modal');
     const horseModal = el('horse-modal');
     const drawer = el('track-drawer');
-    if (settingsModal && settingsModal.classList.contains('open')) closeSettings();
+    if (wizOv && wizOv.classList.contains('active')) closeWizard();
+    else if (settingsModal && settingsModal.classList.contains('open')) closeSettings();
     else if (horseModal && horseModal.classList.contains('open')) closeHorseModal();
     else if (drawer && drawer.classList.contains('open')) toggleTrackDrawer();
   }
@@ -7690,5 +8863,18 @@ document.addEventListener('keydown', e => {
 </script>
 
 <div id="confetti-container"></div>
+<!-- Betting Wizard Overlay -->
+<div id="wizard-overlay" role="dialog" aria-modal="true" aria-labelledby="wizard-title" onclick="wizardOverlayClick(event)">
+  <div class="wizard-sheet" onclick="event.stopPropagation()">
+    <div class="wizard-handle"></div>
+    <div class="wizard-header" style="position:relative">
+      <button onclick="closeWizard()" aria-label="Close wizard" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);font-size:1.2rem;cursor:pointer;padding:4px 8px;z-index:1">&#x2715;</button>
+      <h2 id="wizard-title">&#x2728; Bet Builder Wizard</h2>
+      <p id="wizard-subtitle">Build high-payout exotic bets with AI guidance</p>
+    </div>
+    <div class="wizard-progress" id="wizard-progress"></div>
+    <div class="wizard-body" id="wizard-body"></div>
+  </div>
+</div>
 </body>
 </html>
