@@ -21,11 +21,16 @@
   .warn { color: #FFC107; }
   .btn { display: block; width: 100%; padding: 14px; margin-top: 1rem; background: #C9A84C; color: #1B4332; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; }
   .btn:active { opacity: 0.8; }
-  #log { margin-top: 1rem; font-size: 12px; opacity: 0.6; white-space: pre-wrap; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; }
+  .btn-go { background: #4CAF50; color: white; font-size: 1.2rem; padding: 18px; }
+  #log { margin-top: 1rem; font-size: 12px; opacity: 0.8; white-space: pre-wrap; max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; }
+  .auto-fix-banner { background: #FF5252; color: white; padding: 12px; border-radius: 8px; margin-bottom: 1rem; font-weight: 600; text-align: center; }
+  .auto-fix-banner.done { background: #4CAF50; }
 </style>
 </head>
 <body>
-<h1>Railbird AI — Diagnostic</h1>
+<h1>Railbird AI — Diagnostic v2</h1>
+
+<div id="auto-fix-banner" class="auto-fix-banner" style="display:none;"></div>
 
 <div class="section" id="versions"></div>
 <div class="section" id="sw-status"></div>
@@ -33,20 +38,104 @@
 <div class="section" id="browser-info"></div>
 
 <button class="btn" id="nuke-btn">NUCLEAR RESET — Clear Everything</button>
-<button class="btn" style="background:#FAF3E0; margin-top:0.5rem;" id="go-btn">Go to App →</button>
+<button class="btn btn-go" id="go-btn" style="margin-top:0.5rem;">Open Fresh App →</button>
 
 <div id="log"></div>
 
 <script>
-var log = document.getElementById('log');
-function addLog(msg) { log.textContent += msg + '\n'; }
+var logEl = document.getElementById('log');
+function addLog(msg) {
+  var ts = new Date().toLocaleTimeString();
+  logEl.textContent += '[' + ts + '] ' + msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
 
-// 1. VERSION CHECK
-(async function() {
+// AUTO-FIX: Immediately try to clean up stale state
+(async function autoFix() {
+  var banner = document.getElementById('auto-fix-banner');
+  banner.style.display = 'block';
+  banner.textContent = 'Auto-fixing stale cache...';
+  addLog('=== AUTO-FIX STARTED ===');
+
+  var fixed = [];
+
+  // 1. Register the self-destructing sw.js (forces browser to check for updates)
+  if ('serviceWorker' in navigator) {
+    try {
+      // updateViaCache: 'none' tells browser to ALWAYS fetch sw.js from network
+      var reg = await navigator.serviceWorker.register('sw.js?_v=' + Date.now(), {
+        updateViaCache: 'none'
+      });
+      addLog('Registered self-destructing SW (will clear caches on activate)');
+
+      // If there's already an active SW, force it to update
+      if (reg.waiting) {
+        addLog('New SW waiting — sending skip message');
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      // Force update check
+      try {
+        await reg.update();
+        addLog('Forced SW update check');
+      } catch(e) { addLog('SW update check: ' + e.message); }
+
+      fixed.push('SW registered');
+    } catch(e) {
+      addLog('SW register failed: ' + e.message);
+    }
+
+    // Also directly unregister all existing SWs as a backup
+    try {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      for (var i = 0; i < regs.length; i++) {
+        await regs[i].unregister();
+        addLog('Unregistered SW: ' + regs[i].scope);
+      }
+      if (regs.length > 0) fixed.push(regs.length + ' SW(s) unregistered');
+    } catch(e) { addLog('SW unregister error: ' + e.message); }
+  }
+
+  // 2. Clear all Cache Storage
+  if ('caches' in window) {
+    try {
+      var keys = await caches.keys();
+      for (var j = 0; j < keys.length; j++) {
+        await caches.delete(keys[j]);
+        addLog('Deleted cache: ' + keys[j]);
+      }
+      if (keys.length > 0) fixed.push(keys.length + ' cache(s) cleared');
+    } catch(e) { addLog('Cache clear error: ' + e.message); }
+  }
+
+  // 3. Clear localStorage version markers
+  try {
+    localStorage.removeItem('ne-racing-version');
+    localStorage.removeItem('ne-racing-reload-count');
+    addLog('Cleared version markers from localStorage');
+    fixed.push('localStorage cleaned');
+  } catch(e) {}
+
+  if (fixed.length > 0) {
+    banner.textContent = 'Auto-fixed: ' + fixed.join(', ');
+    banner.className = 'auto-fix-banner done';
+  } else {
+    banner.textContent = 'Nothing to fix — browser state is clean';
+    banner.className = 'auto-fix-banner done';
+  }
+  addLog('=== AUTO-FIX COMPLETE ===\n');
+
+  // Now run diagnostics
+  await runDiagnostics();
+})();
+
+async function runDiagnostics() {
+  addLog('=== DIAGNOSTICS ===');
+
+  // 1. VERSION CHECK
   var vSection = document.getElementById('versions');
   vSection.innerHTML = '<h2>Version Check</h2>';
 
-  // Fetch version.json from server (bypass all caches)
   var serverVersion = 'FAILED';
   try {
     var r = await fetch('version.json?_nocache=' + Date.now(), { cache: 'no-store' });
@@ -54,7 +143,6 @@ function addLog(msg) { log.textContent += msg + '\n'; }
     serverVersion = d.v;
   } catch(e) { addLog('version.json fetch failed: ' + e.message); }
 
-  // Get baked-in version from index.html (would need to fetch it)
   var htmlVersion = 'CHECKING...';
   try {
     var r2 = await fetch('index.html?_nocache=' + Date.now(), { cache: 'no-store' });
@@ -63,10 +151,20 @@ function addLog(msg) { log.textContent += msg + '\n'; }
     htmlVersion = m ? m[1] : 'NOT FOUND';
   } catch(e) { htmlVersion = 'FETCH FAILED'; addLog('index.html fetch failed: ' + e.message); }
 
-  var match = serverVersion === htmlVersion;
-  vSection.innerHTML += '<div class="row"><span class="label">version.json (server)</span><span class="value">' + serverVersion + '</span></div>';
-  vSection.innerHTML += '<div class="row"><span class="label">index.html (server)</span><span class="value">' + htmlVersion + '</span></div>';
-  vSection.innerHTML += '<div class="row"><span class="label">Versions match?</span><span class="value ' + (match ? 'ok' : 'bad') + '">' + (match ? 'YES' : 'NO — MISMATCH') + '</span></div>';
+  var swVersion = 'CHECKING...';
+  try {
+    var r3 = await fetch('sw.js?_nocache=' + Date.now(), { cache: 'no-store' });
+    var swText = await r3.text();
+    var m2 = swText.match(/APP_VERSION\s*=\s*'([^']+)'/);
+    swVersion = m2 ? m2[1] : 'NOT FOUND';
+  } catch(e) { swVersion = 'FETCH FAILED'; addLog('sw.js fetch failed: ' + e.message); }
+
+  var allMatch = serverVersion === htmlVersion && htmlVersion === swVersion;
+  vSection.innerHTML += '<div class="row"><span class="label">version.json</span><span class="value">' + serverVersion + '</span></div>';
+  vSection.innerHTML += '<div class="row"><span class="label">index.html</span><span class="value">' + htmlVersion + '</span></div>';
+  vSection.innerHTML += '<div class="row"><span class="label">sw.js</span><span class="value">' + swVersion + '</span></div>';
+  vSection.innerHTML += '<div class="row"><span class="label">All match?</span><span class="value ' + (allMatch ? 'ok' : 'bad') + '">' + (allMatch ? 'YES ✓' : 'NO — MISMATCH') + '</span></div>';
+  addLog('Versions: json=' + serverVersion + ' html=' + htmlVersion + ' sw=' + swVersion);
 
   // 2. SERVICE WORKER STATUS
   var swSection = document.getElementById('sw-status');
@@ -74,24 +172,16 @@ function addLog(msg) { log.textContent += msg + '\n'; }
 
   if ('serviceWorker' in navigator) {
     var regs = await navigator.serviceWorker.getRegistrations();
-    swSection.innerHTML += '<div class="row"><span class="label">Registered SWs</span><span class="value ' + (regs.length === 0 ? 'ok' : 'bad') + '">' + regs.length + '</span></div>';
+    swSection.innerHTML += '<div class="row"><span class="label">Registered SWs</span><span class="value ' + (regs.length === 0 ? 'ok' : 'bad') + '">' + regs.length + (regs.length === 0 ? ' ✓' : '') + '</span></div>';
     for (var i = 0; i < regs.length; i++) {
       var reg = regs[i];
       swSection.innerHTML += '<div class="row"><span class="label">SW #' + (i+1) + ' scope</span><span class="value">' + reg.scope + '</span></div>';
-      swSection.innerHTML += '<div class="row"><span class="label">SW #' + (i+1) + ' state</span><span class="value">' + (reg.active ? reg.active.state : 'no active worker') + '</span></div>';
-      // Try to get SW script URL
-      if (reg.active && reg.active.scriptURL) {
-        swSection.innerHTML += '<div class="row"><span class="label">SW #' + (i+1) + ' script</span><span class="value">' + reg.active.scriptURL + '</span></div>';
-      }
+      swSection.innerHTML += '<div class="row"><span class="label">SW #' + (i+1) + ' state</span><span class="value">' + (reg.active ? reg.active.state : 'no active') + '</span></div>';
     }
-    // Check controller
     var ctrl = navigator.serviceWorker.controller;
-    swSection.innerHTML += '<div class="row"><span class="label">Controlling SW?</span><span class="value ' + (ctrl ? 'bad' : 'ok') + '">' + (ctrl ? 'YES — intercepting requests' : 'NO — browser fetches directly') + '</span></div>';
-    if (ctrl) {
-      swSection.innerHTML += '<div class="row"><span class="label">Controller script</span><span class="value bad">' + ctrl.scriptURL + '</span></div>';
-    }
+    swSection.innerHTML += '<div class="row"><span class="label">Controlling SW?</span><span class="value ' + (ctrl ? 'bad' : 'ok') + '">' + (ctrl ? 'YES — intercepting' : 'NO ✓') + '</span></div>';
   } else {
-    swSection.innerHTML += '<div class="row"><span class="label">Support</span><span class="value ok">Not supported (no SW issues possible)</span></div>';
+    swSection.innerHTML += '<div class="row"><span class="label">Support</span><span class="value ok">Not supported (no SW issues)</span></div>';
   }
 
   // 3. CACHE STORAGE
@@ -99,69 +189,58 @@ function addLog(msg) { log.textContent += msg + '\n'; }
   cacheSection.innerHTML = '<h2>Cache Storage</h2>';
   if ('caches' in window) {
     var keys = await caches.keys();
-    cacheSection.innerHTML += '<div class="row"><span class="label">Cache entries</span><span class="value ' + (keys.length === 0 ? 'ok' : 'warn') + '">' + keys.length + '</span></div>';
+    cacheSection.innerHTML += '<div class="row"><span class="label">Cache entries</span><span class="value ' + (keys.length === 0 ? 'ok' : 'warn') + '">' + keys.length + (keys.length === 0 ? ' ✓' : '') + '</span></div>';
     for (var j = 0; j < keys.length; j++) {
       var cache = await caches.open(keys[j]);
       var cacheKeys = await cache.keys();
       cacheSection.innerHTML += '<div class="row"><span class="label">' + keys[j] + '</span><span class="value">' + cacheKeys.length + ' items</span></div>';
     }
-  } else {
-    cacheSection.innerHTML += '<div class="row"><span class="label">Support</span><span class="value ok">Not supported</span></div>';
   }
 
   // 4. BROWSER INFO
   var browserSection = document.getElementById('browser-info');
   browserSection.innerHTML = '<h2>Browser</h2>';
-  var ua = navigator.userAgent;
   var isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-  browserSection.innerHTML += '<div class="row"><span class="label">Standalone PWA?</span><span class="value ' + (isStandalone ? 'warn' : 'ok') + '">' + (isStandalone ? 'YES' : 'NO') + '</span></div>';
-  browserSection.innerHTML += '<div class="row"><span class="label">localStorage items</span><span class="value">' + localStorage.length + '</span></div>';
+  browserSection.innerHTML += '<div class="row"><span class="label">Standalone PWA?</span><span class="value ' + (isStandalone ? 'warn' : 'ok') + '">' + (isStandalone ? 'YES — delete home icon and re-add' : 'NO ✓') + '</span></div>';
   var storedVer = localStorage.getItem('ne-racing-version');
-  browserSection.innerHTML += '<div class="row"><span class="label">Stored version</span><span class="value ' + (storedVer === serverVersion ? 'ok' : 'bad') + '">' + (storedVer || 'none') + '</span></div>';
-  browserSection.innerHTML += '<div class="row"><span class="label">User Agent</span><span class="value" style="font-size:10px">' + ua + '</span></div>';
-})();
+  browserSection.innerHTML += '<div class="row"><span class="label">localStorage version</span><span class="value">' + (storedVer || 'none (clean)') + '</span></div>';
+  browserSection.innerHTML += '<div class="row"><span class="label">User Agent</span><span class="value" style="font-size:10px">' + navigator.userAgent + '</span></div>';
+
+  addLog('=== DIAGNOSTICS COMPLETE ===');
+}
 
 // NUCLEAR RESET
 document.getElementById('nuke-btn').addEventListener('click', async function() {
-  addLog('Starting nuclear reset...');
-  
-  // 1. Unregister all SWs
+  addLog('=== MANUAL NUCLEAR RESET ===');
+
   if ('serviceWorker' in navigator) {
     var regs = await navigator.serviceWorker.getRegistrations();
     for (var i = 0; i < regs.length; i++) {
       await regs[i].unregister();
       addLog('Unregistered SW: ' + regs[i].scope);
     }
-    addLog('All SWs unregistered');
   }
 
-  // 2. Clear all caches
   if ('caches' in window) {
     var keys = await caches.keys();
     for (var j = 0; j < keys.length; j++) {
       await caches.delete(keys[j]);
       addLog('Deleted cache: ' + keys[j]);
     }
-    addLog('All caches deleted');
   }
 
-  // 3. Clear storage
   localStorage.clear();
   sessionStorage.clear();
-  addLog('Storage cleared');
+  addLog('All storage cleared');
 
-  // 4. Wait for cleanup
-  await new Promise(r => setTimeout(r, 2000));
-  
-  addLog('DONE — refreshing page to show updated status...');
-  setTimeout(function() {
-    window.location.reload(true);
-  }, 1000);
+  await new Promise(function(r) { setTimeout(r, 1500); });
+  addLog('DONE — reloading in 1s...');
+  setTimeout(function() { window.location.reload(true); }, 1000);
 });
 
 // GO TO APP
 document.getElementById('go-btn').addEventListener('click', function() {
-  window.location.href = './index.html?_v=' + Date.now();
+  window.location.href = './?_purge=' + Date.now();
 });
 </script>
 </body>
