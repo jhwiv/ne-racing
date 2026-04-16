@@ -2061,6 +2061,50 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .advice-bet-pill:hover { background: rgba(201,168,76,0.12); }
 .advice-bet-pill:active { transform: scale(0.97); }
 
+/* Bet amount picker popup */
+.bet-amount-picker-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 9998;
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+.bet-amount-picker {
+  background: var(--color-white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 1.25rem 1rem 1.5rem; width: 100%; max-width: 420px;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.bet-amount-picker h4 { margin: 0 0 0.25rem; font-size: 0.95rem; font-weight: 700; }
+.bet-amount-picker .picker-sub { font-size: 0.78rem; color: var(--color-muted); margin-bottom: 0.75rem; }
+.bet-quick-amounts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+.bet-quick-btn {
+  padding: 0.5rem 0.9rem; border-radius: var(--radius-sm); border: 1.5px solid #e0e0e0;
+  font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+  background: var(--color-white); cursor: pointer; transition: all 0.15s;
+  min-width: 52px; text-align: center;
+}
+.bet-quick-btn:hover, .bet-quick-btn.active { background: var(--color-racing-green); color: #fff; border-color: var(--color-racing-green); }
+.bet-custom-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+.bet-custom-row label { font-size: 0.78rem; font-weight: 600; color: var(--color-muted); white-space: nowrap; }
+.bet-custom-row input {
+  flex: 1; padding: 0.45rem 0.6rem; border: 1.5px solid #e0e0e0;
+  border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.9rem;
+  text-align: right; max-width: 120px;
+}
+.bet-custom-row input:focus { outline: none; border-color: var(--color-racing-green); }
+.bet-picker-actions { display: flex; gap: 0.5rem; }
+.bet-picker-actions .btn { flex: 1; }
+
+/* Quick-select chips on BETS tab straight bet entries */
+.bet-quick-chips { display: flex; gap: 3px; flex-wrap: wrap; width: 100%; margin-top: 4px; }
+.bet-chip {
+  padding: 2px 7px; border-radius: 10px; border: 1px solid #e0e0e0;
+  font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+  background: var(--color-white); cursor: pointer; transition: all 0.12s;
+  color: var(--color-muted);
+}
+.bet-chip:hover, .bet-chip.active { background: var(--color-racing-green); color: #fff; border-color: var(--color-racing-green); }
+
 /* =========================================================
    HANDICAPPER PROFILE CARDS
    ========================================================= */
@@ -2985,6 +3029,29 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
      TOAST CONTAINER
      ============================================= -->
 <div id="toast-container" aria-live="polite"></div>
+<!-- Bet amount picker popup -->
+<div id="bet-amount-picker-overlay" class="bet-amount-picker-overlay hidden" onclick="closeBetAmountPicker(event)">
+  <div class="bet-amount-picker" onclick="event.stopPropagation()">
+    <h4 id="bet-picker-title">Set Bet Amount</h4>
+    <div class="picker-sub" id="bet-picker-sub"></div>
+    <div class="bet-quick-amounts" id="bet-picker-quick">
+      <button class="bet-quick-btn" onclick="pickBetAmount(2)">$2</button>
+      <button class="bet-quick-btn" onclick="pickBetAmount(5)">$5</button>
+      <button class="bet-quick-btn" onclick="pickBetAmount(10)">$10</button>
+      <button class="bet-quick-btn" onclick="pickBetAmount(20)">$20</button>
+      <button class="bet-quick-btn" onclick="pickBetAmount(50)">$50</button>
+      <button class="bet-quick-btn" onclick="pickBetAmount(100)">$100</button>
+    </div>
+    <div class="bet-custom-row">
+      <label>Custom $</label>
+      <input type="number" id="bet-picker-custom" min="0.5" step="0.5" inputmode="decimal" placeholder="Amount" onkeydown="if(event.key==='Enter'){confirmBetAmount()}">
+    </div>
+    <div class="bet-picker-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeBetAmountPicker()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmBetAmount()">Add to Bet Slip</button>
+    </div>
+  </div>
+</div>
 <!-- Winner celebration overlay -->
 <div id="winner-overlay" onclick="dismissWinnerOverlay(event)">
   <div class="winner-confetti" id="winner-confetti"></div>
@@ -4339,9 +4406,29 @@ function updateTicketBetButtons() {
 function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, betTag) {
   e.preventDefault();
   var mode = getBettingMode();
+
+  // Map bet type to WPS code and sync to horse.wps so BETS tab sees it
+  var wpsCode = betType === 'Win' ? 'W' : betType === 'Place' ? 'P' : betType === 'Show' ? 'S' : null;
+  var data = getTrackData();
+
+  if (wpsCode) {
+    var race = (data.races || []).find(function(r) { return r.num === raceNum; });
+    if (race) {
+      var horse = (race.horses || []).find(function(h) { return h.pp == horsePp; });
+      if (horse) {
+        if (!horse.wps) horse.wps = [];
+        if (horse.wps.indexOf(wpsCode) === -1) {
+          horse.wps.push(wpsCode);
+        }
+        // Store the chosen amount for this bet
+        var betId = race.id + '_' + horse.id + '_' + wpsCode;
+        saveStraightBetAmount(betId, amount);
+      }
+    }
+  }
+
   if (mode === 'simulate') {
     // Add bet to internal bet slip
-    var data = getTrackData();
     data.bets = data.bets || [];
     var bet = {
       id: generateId(),
@@ -4365,7 +4452,6 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     checkBankrollOverrun();
   } else {
     // Real mode: open external platform + also track internally
-    var data = getTrackData();
     data.bets = data.bets || [];
     var bet = {
       id: generateId(),
@@ -4390,6 +4476,55 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     showToast('Opened ' + platformName + ' — don\'t forget to log your result', 'success', 3000);
     checkBankrollOverrun();
   }
+}
+
+/* ── Bet Amount Picker (Bug 2 fix) ── */
+var _pendingBet = null;
+var _pickedAmount = 2;
+
+function openBetAmountPicker(e, raceNum, horseName, horsePp, betType, betTag) {
+  e.preventDefault();
+  _pendingBet = { raceNum: raceNum, horseName: horseName, horsePp: horsePp, betType: betType, betTag: betTag };
+  _pickedAmount = 2;
+  var sub = el('bet-picker-sub');
+  if (sub) sub.textContent = betType + ' — #' + horsePp + ' ' + horseName + ' (R' + raceNum + ')';
+  var custom = el('bet-picker-custom');
+  if (custom) custom.value = '';
+  // Highlight default $2 button
+  document.querySelectorAll('#bet-picker-quick .bet-quick-btn').forEach(function(b) {
+    b.classList.toggle('active', b.textContent === '$2');
+  });
+  el('bet-amount-picker-overlay').classList.remove('hidden');
+}
+
+function pickBetAmount(amt) {
+  _pickedAmount = amt;
+  var custom = el('bet-picker-custom');
+  if (custom) custom.value = '';
+  document.querySelectorAll('#bet-picker-quick .bet-quick-btn').forEach(function(b) {
+    b.classList.toggle('active', b.textContent === '$' + amt);
+  });
+}
+
+function confirmBetAmount() {
+  var custom = el('bet-picker-custom');
+  var amt = (custom && custom.value) ? parseFloat(custom.value) : _pickedAmount;
+  if (!amt || amt < 0.5) amt = 2;
+  closeBetAmountPicker();
+  if (_pendingBet) {
+    // Create a synthetic event for handleTicketBetClick
+    handleTicketBetClick(
+      { preventDefault: function(){} },
+      _pendingBet.raceNum, _pendingBet.horseName, _pendingBet.horsePp,
+      _pendingBet.betType, amt, _pendingBet.betTag
+    );
+    _pendingBet = null;
+  }
+}
+
+function closeBetAmountPicker(e) {
+  el('bet-amount-picker-overlay').classList.add('hidden');
+  if (e && e.target && e.target.id === 'bet-amount-picker-overlay') _pendingBet = null;
 }
 
 function setResultsModeFilter(filter) {
@@ -5530,7 +5665,7 @@ function runAdviceEngine() {
 
       const betPill = i === 0 && !isAutoPass ? (getBettingMode() === 'real'
         ? ` <a class="advice-bet-pill" href="${buildBetUrl(race.num)}" target="_blank" rel="noopener">Bet &#8594;</a>`
-        : ` <button class="advice-bet-pill" onclick="handleTicketBetClick(event, ${race.num}, '${escHtml(s.horse.name).replace(/'/g,"\\'")}', ${s.horse.pp}, 'Win', 2, 'action')">+ Bet Slip</button>`) : '';
+        : ` <button class="advice-bet-pill" onclick="openBetAmountPicker(event, ${race.num}, '${escHtml(s.horse.name).replace(/'/g,"\\'")}', ${s.horse.pp}, 'Win', 'action')">+ Bet Slip</button>`) : '';
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
@@ -5830,7 +5965,7 @@ function updateTopPicksCard(allScores) {
       ${bbPayout ? '<div class="ticket-payout">' + bbPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
-      <button class="btn-bet" onclick="handleTicketBetClick(event, ${bestBetEntry.race.num}, '${escHtml(bestBetEntry.horse.name).replace(/'/g,"\\'")}', ${bestBetEntry.horse.pp}, 'Win', ${suggestedAmt}, 'best')">${_betBtnLabel}</button>
+      <button class="btn-bet" onclick="openBetAmountPicker(event, ${bestBetEntry.race.num}, '${escHtml(bestBetEntry.horse.name).replace(/'/g,"\\'")}', ${bestBetEntry.horse.pp}, 'Win', 'best')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`BEST BET — Race ${bestBetEntry.race.num}: #${bestBetEntry.horse.pp} ${bestBetEntry.horse.name} to WIN — $${suggestedAmt}${bbPayout ? ' (' + bbPayout + ')' : ''}`);
   }
@@ -5858,7 +5993,7 @@ function updateTopPicksCard(allScores) {
       ${vpPayout ? '<div class="ticket-payout">' + vpPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
-      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}', ${v.horse.pp}, 'Exacta Box', 4, 'value')">${_betBtnLabel}</button>
+      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}', ${v.horse.pp}, 'Exacta Box', 'value')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}${overlayStr}) — $2 EX Box with ${exPartner || '#2'}${vpPayout ? ' (' + vpPayout + ')' : ''}`);
   });
@@ -5884,7 +6019,7 @@ function updateTopPicksCard(allScores) {
       ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
-      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${topAction.entry.race.num}, '${escHtml(topAction.entry.horse.name).replace(/'/g,"\\'")}', ${topAction.entry.horse.pp}, 'Win', ${actionAmt}, 'action')">${_betBtnLabel}</button>
+      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${topAction.entry.race.num}, '${escHtml(topAction.entry.horse.name).replace(/'/g,"\\'")}', ${topAction.entry.horse.pp}, 'Win', 'action')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`ACTION — Race ${topAction.entry.race.num}: #${topAction.entry.horse.pp} ${topAction.entry.horse.name} to WIN — $${actionAmt}${actPayout ? ' (' + actPayout + ')' : ''}`);
   }
@@ -5925,7 +6060,7 @@ function updateTopPicksCard(allScores) {
       <div class="card-explainer">A bonus exacta pairing where the model sees a clear top-two</div>
       <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} \u2014 $2</div>
       <div class="ticket-exotic-reason">"${exReason}"</div>
-      <button class="btn-bet-outline" style="margin-top:0.4rem" onclick="handleTicketBetClick(event, ${exRaceNum}, '${escHtml(ex1.horse.name).replace(/'/g,"\\'")}/${escHtml(ex2.horse.name).replace(/'/g,"\\'")}', '${ex1.horse.pp}/${ex2.horse.pp}', 'Exacta Box', 4, 'exotic')">${_betBtnLabel}</button>
+      <button class="btn-bet-outline" style="margin-top:0.4rem" onclick="openBetAmountPicker(event, ${exRaceNum}, '${escHtml(ex1.horse.name).replace(/'/g,"\\'")}/${escHtml(ex2.horse.name).replace(/'/g,"\\'")}', '${ex1.horse.pp}/${ex2.horse.pp}', 'Exacta Box', 'exotic')">${_betBtnLabel}</button>
     </div>`;
     exoticLine = `EXOTIC — EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $4 ($2 box) — ${exReason}`;
     ticketLines.push(exoticLine);
@@ -6091,10 +6226,13 @@ function renderStraightBets() {
           <span class="bet-slip-horse">R${race.num} · #${horse.pp||''} ${escHtml(horse.name)} <span class="text-xs text-muted">${horse.ml||''}</span></span>
           <span class="text-xs text-muted">$</span>
           <input class="bet-amount-input" type="number" value="${amt}" min="0.5" step="0.5" inputmode="decimal"
-            onchange="saveStraightBetAmount('${betId}', this.value); updateBankrollBanner()">
+            onchange="saveStraightBetAmount('${betId}', this.value); updateBankrollBanner(); renderStraightBets()">
           <button class="remove-bet-btn" onclick="removeStraightBet('${race.id}','${horse.id}','${type}')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
+          <div class="bet-quick-chips">
+            ${[2,5,10,20,50,100].map(v => '<button class="bet-chip' + (amt === v ? ' active' : '') + '" onclick="saveStraightBetAmount(\'' + betId + '\',' + v + '); updateBankrollBanner(); renderStraightBets()">$' + v + '</button>').join('')}
+          </div>
           ${scratchWarn}
         </div>`;
       });
@@ -6741,7 +6879,7 @@ function renderAdviceEnginePanel() {
 
       const hcBetPill = i === 0 && !isAutoPassEarly ? (getBettingMode() === 'real'
         ? ` <a class="advice-bet-pill" href="${buildBetUrl(race.num)}" target="_blank" rel="noopener">Bet &#8594;</a>`
-        : ` <button class="advice-bet-pill" onclick="handleTicketBetClick(event, ${race.num}, '${escHtml(s.horse.name).replace(/'/g,"\\'")}', ${s.horse.pp}, 'Win', 2, 'action')">+ Bet Slip</button>`) : '';
+        : ` <button class="advice-bet-pill" onclick="openBetAmountPicker(event, ${race.num}, '${escHtml(s.horse.name).replace(/'/g,"\\'")}', ${s.horse.pp}, 'Win', 'action')">+ Bet Slip</button>`) : '';
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
