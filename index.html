@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-1253';
+var NE_APP_VERSION = '20260416-1255';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -140,6 +140,7 @@ function neForceUpdate(newVersion) {
 <title>NE Racing Companion 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="image" type="image/webp" href="images/hero-race-action.webp">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
 /* =========================================================
@@ -241,6 +242,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
   width: 100%; height: 100%;
   object-fit: cover; object-position: center 35%;
   display: block;
+  will-change: filter, transform;
 }
 #hero-screen::before {
   content: '';
@@ -1759,7 +1761,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
      ============================================= -->
 <div id="hero-screen">
   <div id="hero-screen-bg">
-    <img id="hero-bg-img" src="" alt="Saratoga Race Course" data-default="images/hero-race-action.jpg">
+    <img id="hero-bg-img" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBVt7Q5UBy7D5eaG0052x/Oe/oKoK8ysIjMRJwwVkHWrK38sUIZXEkfOexGKcarQpUkyRtKkDEZU496KlW58xQyxoQe+7rRVe2aF7JGbJF5snzOxHqeTQ0S5KkvtYcbF4Prx+dTCfylGQTzTmuXIwPlPsK4OZmtyskICgOkuR6UUr3ALHO7NFVzSFc//9k=" alt="Saratoga Race Course" style="filter:blur(20px);transform:scale(1.1);transition:filter 0.4s ease,transform 0.4s ease;">
   </div>
 
   <div class="hero-title-block">
@@ -7185,20 +7187,35 @@ function dismissWinnerOverlay(e) {
   clearTimeout(window._winnerTimeout);
 }
 
-// --- Rotating hero images ---
+// --- Rotating hero images (optimized: blur placeholder → WebP/JPG fade-in) ---
 (function() {
-  var heroImages = [
-    'images/hero-race-action.jpg',
-    'images/hero-paddock-bright.jpg',
-    'images/hero-winners-circle.jpg',
-    'images/hero-grandstand.jpg'
-  ];
+  var heroKeys = ['hero-race-action', 'hero-paddock-bright', 'hero-winners-circle', 'hero-grandstand'];
+  var placeholders = {
+    'hero-race-action': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBVt7Q5UBy7D5eaG0052x/Oe/oKoK8ysIjMRJwwVkHWrK38sUIZXEkfOexGKcarQpUkyRtKkDEZU496KlW58xQyxoQe+7rRVe2aF7JGbJF5snzOxHqeTQ0S5KkvtYcbF4Prx+dTCfylGQTzTmuXIwPlPsK4OZmtyskICgOkuR6UUr3ALHO7NFVzSFc//9k=',
+    'hero-paddock-bright': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCAq8beY655wO/HbNWkuCSPJ+VeMnH50y1tmCArgMEBIK7ePXNQwz4Kb4jGoXIP97PeuOULmppO0CNh8hsf3qKz/kl+ZJcjoeM0VPsx3LdmriUCSTJPGNmM/WqlxbebJ8zMCoAGB6k1FHKWOBkEd6uRW0ZjL8ttIBzxVubS1JTuV7KSKCN0kUod5O3BOKKkfyQcBX/Fs/0oo9r5BY//2Q==',
+    'hero-winners-circle': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCvZ3c1uwbbyeuOP/rVpW2rb2WN1/hO5+4P09Kz/tATZ5kBRSQMgk/XFSwsXmLSMJ0xgSKnzEe9c72ubW10L8mpBWwpBFFZbwgnPOO2SvP50VnyvuaaditcSb4gChLkbw2cfpTLGV0hkA6gbgDxyKbKu2DaTkrwPfnvUCSOu4cYI2mtbXRN7MVrqVmzlsdsnJophf6/nRWmhld9z//Z',
+    'hero-grandstand': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAANABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCOGaXGZbdW99+KsiW3/wCeLn6EGqLHLbDn5TjOeeuKeLdUQOSW3DpnpUurOK3K9nGWyLQubcji1c/gP8aKpkDPBf8A77NFT7eYvY+R/9k='
+  };
   var img = document.getElementById('hero-bg-img');
   if (!img) return;
-  // Pick a random image each load (src starts empty to avoid double-fetch)
-  var idx = Math.floor(Math.random() * heroImages.length);
-  img.src = heroImages[idx];
-  // Only selected image loads; others load on-demand on next visit
+  var idx = Math.floor(Math.random() * heroKeys.length);
+  var key = heroKeys[idx];
+  // Show blur placeholder instantly
+  img.src = placeholders[key];
+  // Detect WebP support and load full image
+  var useWebP = (document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0);
+  var ext = useWebP ? '.webp' : '.jpg';
+  var fullSrc = 'images/' + key + ext;
+  var loader = new Image();
+  loader.onload = function() {
+    img.src = fullSrc;
+    // Remove blur once the full image is painted
+    requestAnimationFrame(function() {
+      img.style.filter = 'none';
+      img.style.transform = 'scale(1)';
+    });
+  };
+  loader.src = fullSrc;
 })();
 
 // --- Win celebration on setResultBet ---
