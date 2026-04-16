@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0902';
+var NE_APP_VERSION = '20260416-0908';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -3191,7 +3191,19 @@ window.addEventListener('beforeinstallprompt', function(e) {
   initA2HSBanner();
 });
 
-// heroTapEnter removed — hero is always visible, user scrolls naturally
+// Click/tap on hero scrolls past it to the app content
+(function() {
+  var hero = document.getElementById('hero-screen');
+  if (!hero) return;
+  hero.addEventListener('click', function(e) {
+    // Don't dismiss if tapping A2HS banner buttons
+    if (e.target.closest('.a2hs-banner')) return;
+    var appFrame = document.getElementById('app-frame');
+    if (appFrame) {
+      appFrame.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+})();
 
 
 
@@ -6874,16 +6886,19 @@ document.addEventListener('DOMContentLoaded', () => {
   store.settings.welcomeDone = true;
   saveStore(store);
 
-  // Always start at the hero screen
-  window.scrollTo(0, 0);
-
   // Initialize the app immediately
   initApp();
 
   // Initialize Add to Home Screen banner
   initA2HSBanner();
 
-  // Bottom tab bar stays visible at all times (including hero screen)
+  // Always start at the hero screen — must run after initApp/buildDateStrip
+  // which can trigger scrollIntoView via requestAnimationFrame
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      window.scrollTo(0, 0);
+    });
+  });
 
 
 });
