@@ -1,31 +1,49 @@
-var APP_VERSION = '20260416-0540';
+var APP_VERSION = '20260416-0555';
 
-// Self-destructing service worker.
-// If a browser still has a previous version of sw.js cached/registered,
-// this new version will install, activate, clear all caches, and
-// immediately unregister itself — leaving zero SW interference.
-// This is intentional: the app no longer uses a service worker.
+// SELF-DESTRUCTING SERVICE WORKER v3
+// Purpose: Replace ANY previously-cached service worker.
+// On install: skip waiting (take over immediately).
+// On activate: nuke all caches, claim all tabs, reload them, then unregister.
+// On fetch: pass everything straight to the network (never serve from cache).
 
-self.addEventListener('install', function() {
+self.addEventListener('install', function(event) {
+  // Force this SW to become the active SW immediately,
+  // even if an older SW is currently controlling pages
   self.skipWaiting();
 });
 
-self.addEventListener('activate', function(e) {
-  e.waitUntil(
-    // Delete all caches left behind by previous SW versions
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    // Step 1: Delete every cache
     caches.keys().then(function(keys) {
       return Promise.all(keys.map(function(k) { return caches.delete(k); }));
-    }).then(function() {
-      // Take control of all clients
+    })
+    .then(function() {
+      // Step 2: Take control of all open tabs/windows
       return self.clients.claim();
-    }).then(function() {
-      // Unregister this SW — it's no longer needed
+    })
+    .then(function() {
+      // Step 3: Tell every open tab to reload with fresh content
+      return self.clients.matchAll({ type: 'window' });
+    })
+    .then(function(clients) {
+      clients.forEach(function(client) {
+        client.postMessage({ type: 'SW_CACHE_CLEARED', version: APP_VERSION });
+        // Navigate to force a full reload
+        if (client.url && client.navigate) {
+          client.navigate(client.url);
+        }
+      });
+    })
+    .then(function() {
+      // Step 4: Unregister this SW — we don't want ANY service worker
       return self.registration.unregister();
     })
   );
 });
 
-// Pass through all fetch requests — never intercept, never cache
-self.addEventListener('fetch', function() {
-  // Do nothing — let the browser handle the request normally
+// CRITICAL: Pass ALL requests to network. respondWith(fetch()) ensures
+// the browser does NOT use any cached response from a previous SW.
+self.addEventListener('fetch', function(event) {
+  event.respondWith(fetch(event.request));
 });

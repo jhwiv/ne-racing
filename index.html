@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0540';
+var NE_APP_VERSION = '20260416-0555';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -102,6 +102,24 @@ function neForceUpdate(newVersion) {
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible') checkVersion();
   });
+
+  // Listen for messages from the self-destructing service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'SW_CACHE_CLEARED') {
+        // SW cleared all caches — reload to get fresh content
+        window.location.reload(true);
+      }
+    });
+
+    // ALWAYS register sw.js on every page load.
+    // This ensures the browser checks for updates to sw.js.
+    // If a stale old SW is controlling the page, the browser will see
+    // the new sw.js is different and install it, which triggers the
+    // self-destruct sequence (clear caches, unregister, reload).
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+      .catch(function() {});
+  }
 })();
 </script>
 <meta name="theme-color" content="#1B4332">
