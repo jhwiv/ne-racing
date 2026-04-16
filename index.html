@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0918';
+var NE_APP_VERSION = '20260416-0925';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -245,7 +245,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 #hero-screen::before {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(to bottom, rgba(27,67,50,0.25) 0%, rgba(27,67,50,0.50) 35%, rgba(27,67,50,0.55) 50%, rgba(27,67,50,0.65) 70%, rgba(27,67,50,0.82) 100%);
+  background: linear-gradient(to bottom, rgba(27,67,50,0.10) 0%, rgba(27,67,50,0.25) 30%, rgba(27,67,50,0.35) 50%, rgba(27,67,50,0.50) 70%, rgba(27,67,50,0.72) 100%);
   z-index: 1;
 }
 #hero-screen > * { position: relative; z-index: 2; }
@@ -1703,7 +1703,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
      ============================================= -->
 <div id="hero-screen">
   <div id="hero-screen-bg">
-    <img id="hero-bg-img" src="images/hero-saratoga.jpg" alt="Saratoga Race Course" loading="eager" fetchpriority="high">
+    <img id="hero-bg-img" src="images/hero-race-action.jpg" alt="Saratoga Race Course" loading="eager" fetchpriority="high">
   </div>
 
   <div class="hero-title-block">
@@ -7015,10 +7015,10 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
 // --- Rotating hero images ---
 (function() {
   var heroImages = [
-    'images/hero-saratoga.jpg',
-    'images/hero-paddock.jpg',
-    'images/hero-winners.jpg',
-    'images/hero-morning.jpg'
+    'images/hero-race-action.jpg',
+    'images/hero-paddock-bright.jpg',
+    'images/hero-winners-circle.jpg',
+    'images/hero-grandstand.jpg'
   ];
   var img = document.getElementById('hero-bg-img');
   if (!img) return;
