@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0908';
+var NE_APP_VERSION = '20260416-0918';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -3412,27 +3412,33 @@ function buildRaceCardHTML(race) {
   const horses = race.horses || [];
   const typeLbl = CLASS_LABELS[race.type] || race.type || '';
   const eqbUrl = race.equibaseUrl || buildEquibaseUrl(race.num);
-  // MTP badge
+  // MTP badge — show for any race with a future post time today
   let mtpHtml = '';
-  if (race._mtp != null && race._mtp >= 0) {
-    const mtp = race._mtp;
-    const mtpClass = mtp <= 5 ? 'mtp-soon' : mtp <= 15 ? 'mtp-near' : 'mtp-far';
-    const mtpLabel = mtp >= 60 ? Math.floor(mtp/60) + 'h ' + (mtp%60) + 'm' : mtp + ' MTP';
-    mtpHtml = ` <span class="mtp-badge ${mtpClass}">MTP: ${mtpLabel}</span>`;
-  } else if (race.postTime && race.postTime !== 'TBD' && loadedRaceDate === getTodayStr()) {
-    // Calculate MTP from post time
-    const ptMin = parsePostTimeToMinutes(race.postTime);
-    if (ptMin > 0) {
-      const now = new Date();
-      const nowMin = now.getHours() * 60 + now.getMinutes();
-      const mtp = ptMin - nowMin;
-      if (mtp > 0) {
-        const mtpClass = mtp <= 5 ? 'mtp-soon' : mtp <= 15 ? 'mtp-near' : 'mtp-far';
-        const mtpLabel = mtp >= 60 ? Math.floor(mtp/60) + 'h ' + (mtp%60) + 'm' : mtp + ' MTP';
-        mtpHtml = ` <span class="mtp-badge ${mtpClass}">MTP: ${mtpLabel}</span>`;
+  (function() {
+    let mtp = null;
+    // Priority 1: live MTP from API
+    if (race._mtp != null && race._mtp >= 0) {
+      mtp = race._mtp;
+    }
+    // Priority 2: calculate from post time (always, if today or loadedRaceDate matches)
+    if (mtp == null && race.postTime && race.postTime !== 'TBD') {
+      const isToday = !loadedRaceDate || loadedRaceDate === getTodayStr();
+      if (isToday) {
+        const ptMin = parsePostTimeToMinutes(race.postTime);
+        if (ptMin > 0) {
+          const now = new Date();
+          const nowMin = now.getHours() * 60 + now.getMinutes();
+          const diff = ptMin - nowMin;
+          if (diff > 0) mtp = diff;
+        }
       }
     }
-  }
+    if (mtp != null && mtp >= 0) {
+      const mtpClass = mtp <= 5 ? 'mtp-soon' : mtp <= 15 ? 'mtp-near' : 'mtp-far';
+      const mtpLabel = mtp >= 60 ? Math.floor(mtp/60) + 'h ' + (mtp%60) + 'm' : mtp + ' MTP';
+      mtpHtml = ` <span class="mtp-badge ${mtpClass}">MTP: ${mtpLabel}</span>`;
+    }
+  })();
   // Live odds indicator
   const hasLiveOdds = horses.some(h => h.liveOdds);
   const liveIndicator = hasLiveOdds ? ' <span style="font-size:0.6rem;color:var(--color-positive);font-weight:700;letter-spacing:0.5px">LIVE</span>' : '';
@@ -7084,23 +7090,16 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
 })();
 
 // --- MTP live countdown ticker ---
+// Re-renders the today tab every 60s so MTP badges stay accurate
 (function() {
-  function updateAllMtpBadges() {
-    document.querySelectorAll('.mtp-badge').forEach(function(badge) {
-      var text = badge.textContent || '';
-      var match = text.match(/(\d+)\s*MTP/);
-      if (!match) return;
-      var mtp = parseInt(match[1]);
-      badge.classList.remove('mtp-soon', 'mtp-near', 'mtp-far');
-      if (mtp <= 5) badge.classList.add('mtp-soon');
-      else if (mtp <= 15) badge.classList.add('mtp-near');
-      else badge.classList.add('mtp-far');
-    });
-  }
-  // Refresh every 30 seconds
-  setInterval(updateAllMtpBadges, 30000);
-  // Initial run
-  setTimeout(updateAllMtpBadges, 1000);
+  setInterval(function() {
+    if (typeof renderTodayTab === 'function') {
+      var activePanel = document.querySelector('.tab-panel.active');
+      if (activePanel && activePanel.id === 'tab-today') {
+        renderTodayTab();
+      }
+    }
+  }, 60000);
 })();
 
 
