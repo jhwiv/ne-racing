@@ -4441,6 +4441,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     saveTrackData(data);
     showToast('Updated bet: $' + amount + ' ' + betType + ' #' + horsePp + ' ' + horseName + ' R' + raceNum, 'success', 3000);
     updateBankrollBanner();
+    renderStraightBets();
     checkBankrollOverrun();
   } else if (mode === 'simulate') {
     // Add bet to internal bet slip
@@ -4463,6 +4464,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     saveTrackData(data);
     showToast('Added to bet slip: $' + amount + ' ' + betType + ' #' + horsePp + ' ' + horseName + ' R' + raceNum, 'success', 3000);
     updateBankrollBanner();
+    renderStraightBets();
     checkBankrollOverrun();
   } else {
     // Real mode: open external platform + also track internally
@@ -4487,6 +4489,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     var platformName = (BETTING_PLATFORMS[platform] || {}).name || 'betting platform';
     window.open(buildBetUrl(raceNum), '_blank', 'noopener');
     showToast('Opened ' + platformName + ' — don\'t forget to log your result', 'success', 3000);
+    renderStraightBets();
     checkBankrollOverrun();
   }
 }
@@ -6298,9 +6301,9 @@ function renderStraightBets() {
   checkBudgetWarning(total);
 }
 
-let straightBetAmounts = {};
+let straightBetAmounts = (function() { try { return JSON.parse(localStorage.getItem('ne_straightBetAmounts') || '{}'); } catch(e) { return {}; } })();
 function getStraightBetAmount(betId) { return straightBetAmounts[betId]; }
-function saveStraightBetAmount(betId, val) { straightBetAmounts[betId] = parseFloat(val) || 2; }
+function saveStraightBetAmount(betId, val) { straightBetAmounts[betId] = parseFloat(val) || 2; try { localStorage.setItem('ne_straightBetAmounts', JSON.stringify(straightBetAmounts)); } catch(e) {} }
 
 function removeStraightBet(raceId, horseId, type) {
   const data = getTrackData();
@@ -6323,6 +6326,7 @@ function clearAllStraight() {
   });
   saveTrackData(data);
   straightBetAmounts = {};
+  try { localStorage.removeItem('ne_straightBetAmounts'); } catch(e) {}
   renderStraightBets();
 }
 
@@ -6354,6 +6358,7 @@ function lockAllBets() {
   });
   saveTrackData(data);
   straightBetAmounts = {};
+  try { localStorage.removeItem('ne_straightBetAmounts'); } catch(e) {}
   renderStraightBets();
   showToast(locked + ' bet' + (locked !== 1 ? 's' : '') + ' locked to Results', 'success', 4000);
   updateBankrollBanner();
