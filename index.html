@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-1023';
+var NE_APP_VERSION = '20260416-1136';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -4220,6 +4220,10 @@ function hasValidWorkerUrl() {
 function showToast(msg, type = 'default', duration = 8000) {
   msg = String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const container = el('toast-container');
+  if (!container) return;
+  // Limit visible toasts to 3 max — remove oldest if over limit
+  var existing = container.querySelectorAll('.toast');
+  if (existing.length >= 3) existing[0].remove();
   const div = document.createElement('div');
   const typeClass = {scratch:' scratch', success:' success', warning:' warning', danger:' danger'}[type] || '';
   div.className = 'toast' + typeClass;
@@ -8219,11 +8223,12 @@ async function fetchLiveEntries() {
   renderTodayTab();
 }
 
+var _scratchInitialLoadDone = false;
 async function fetchLiveScratches() {
   const code = getActiveTrack();
   const today = getTodayStr();
   const url = getScratchesUrl(code, today);
-  if (!url) return; // No scratches source available
+  if (!url) return;
   try {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return;
@@ -8232,6 +8237,7 @@ async function fetchLiveScratches() {
     if (!scratches.length) return;
     const data = getTrackData();
     let newScratches = 0;
+    var scratchNames = [];
     scratches.forEach(s => {
       const raceNum = s.raceNumber || s.raceNum;
       const race = (data.races||[]).find(r => r.num === raceNum);
@@ -8240,14 +8246,29 @@ async function fetchLiveScratches() {
       const horse = (race.horses||[]).find(h => h.pp === s.pp || h.name === horseName);
       if (horse && !horse.scratched) {
         horse.scratched = true;
-        const reason = s.reason ? ' (' + s.reason + ')' : '';
-        showToast(new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + ' — Race ' + race.num + ': #' + horse.pp + ' ' + horse.name + ' scratched' + reason, 'scratch');
         newScratches++;
+        // Only show individual toasts for new scratches discovered AFTER initial load
+        if (_scratchInitialLoadDone) {
+          const reason = s.reason ? ' (' + s.reason + ')' : '';
+          showToast(new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + ' \u2014 Race ' + race.num + ': #' + horse.pp + ' ' + horse.name + ' scratched' + reason, 'scratch');
+        } else {
+          scratchNames.push('R' + race.num + ' #' + horse.pp);
+        }
       }
     });
-    if (newScratches) { unviewedScratches += newScratches; updateScratchBadge(); saveTrackData(data); renderTodayTab(); }
+    if (newScratches) {
+      unviewedScratches += newScratches;
+      updateScratchBadge();
+      saveTrackData(data);
+      renderTodayTab();
+    }
+    // On initial load, show a single summary toast instead of spamming one per horse
+    if (!_scratchInitialLoadDone && scratchNames.length) {
+      showToast('\u26A0\uFE0F ' + scratchNames.length + ' horse' + (scratchNames.length > 1 ? 's' : '') + ' scratched today \u2014 tap any race to see details', 'scratch', 5000);
+    }
+    _scratchInitialLoadDone = true;
     updateSyncTime();
-  } catch(e) { /* silent fail */ }
+  } catch(e) { _scratchInitialLoadDone = true; }
 }
 
 async function fetchLiveResults() {
