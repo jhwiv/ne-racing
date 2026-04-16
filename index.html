@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0720';
+var NE_APP_VERSION = '20260416-0750';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -902,8 +902,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   box-shadow: var(--shadow-sm); padding: 0.75rem 1rem;
   margin-bottom: 0.6rem; border-left: 4px solid var(--color-muted);
 }
-.result-bet-item.win { border-left-color: var(--color-gold); }
-.result-bet-item.loss { border-left-color: var(--color-muted); }
+.result-bet-item.win { border-left: 4px solid var(--color-gold); background: linear-gradient(135deg, #FFFDF5, #FFF8E7); box-shadow: var(--shadow-md), 0 0 12px rgba(212,168,73,0.15); }
+.result-bet-item.loss { border-left-color: var(--color-muted); opacity: 0.65; }
 .result-bet-top { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: space-between; }
 .result-bet-meta { font-size: 0.72rem; color: var(--color-muted); margin-top: 3px; }
 .result-controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
@@ -1025,10 +1025,11 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 /* Live odds badge & MTP */
 .live-odds-badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); background: rgba(27,67,50,0.1); }
 .mtp-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #fff; }
-.mtp-badge.mtp-soon { background: #c1121f; animation: mtp-pulse 1.5s ease infinite; }
-.mtp-badge.mtp-near { background: var(--color-gold); color: #1b4332; }
-.mtp-badge.mtp-far { background: rgba(27,67,50,0.6); }
-@keyframes mtp-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+.mtp-badge.mtp-soon { background: linear-gradient(135deg, #c1121f, #e63946); animation: mtp-urgent 0.7s ease infinite; font-size: 0.7rem; padding: 3px 8px; }
+.mtp-badge.mtp-near { background: linear-gradient(135deg, #D4A849, #E8B84B); color: #1b4332; animation: mtp-warm 2s ease infinite; }
+.mtp-badge.mtp-far { background: rgba(13,51,32,0.6); }
+@keyframes mtp-urgent { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } }
+@keyframes mtp-warm { 0%,100% { opacity: 1; } 50% { opacity: 0.75; } }
 
 /* =========================================================
    SETTINGS MODAL
@@ -1138,11 +1139,11 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   text-transform: uppercase; letter-spacing: 0.1em;
   padding: 0.15rem 0.45rem; border-radius: 3px; margin-bottom: 4px;
 }
-.rec-tag-best { background: var(--color-gold); color: #1B4332; }
+.rec-tag-best { background: linear-gradient(135deg, #D4A849, #E8D48B); color: #1B4332; font-size: 0.65rem; }
 .rec-tag-value { background: rgba(201,168,76,0.2); color: var(--color-gold); border: 1px solid rgba(201,168,76,0.4); }
 .rec-tag-pass { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
 .rec-tag-play { background: rgba(201,168,76,0.15); color: var(--color-gold); border: 1px solid rgba(201,168,76,0.3); }
-.rec-tag-action { background: rgba(45,106,79,0.3); color: #52B788; border: 1px solid rgba(82,183,136,0.4); }
+.rec-tag-action { background: rgba(6,95,120,0.25); color: #0EA5E9; border: 1px solid rgba(14,165,233,0.4); }
 .badge-conviction { background: #1B4332; color: #C9A84C; font-size: 0.6rem; font-weight: 800; padding: 0.15rem 0.45rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
 .badge-lock { background: linear-gradient(135deg, #C9A84C, #E8D48B); color: #1B4332; font-size: 0.6rem; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.06em; box-shadow: 0 1px 4px rgba(201,168,76,0.4); }
 .badge-strong-value { background: #1B4332; color: #D8F3DC; font-size: 0.6rem; font-weight: 700; padding: 0.15rem 0.4rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -1607,6 +1608,49 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   display: none !important;
 }
 
+
+/* --- Win celebration on result card --- */
+@keyframes winCelebrate {
+  0% { box-shadow: var(--shadow-md); }
+  30% { box-shadow: var(--shadow-md), 0 0 24px rgba(212,168,73,0.5), 0 0 48px rgba(212,168,73,0.2); }
+  100% { box-shadow: var(--shadow-md), 0 0 12px rgba(212,168,73,0.15); }
+}
+.result-bet-item.win.celebrate {
+  animation: winCelebrate 1.2s ease-out;
+}
+
+/* --- Best Bet item: gold envelope wrapper --- */
+.rec-bet-item.best-bet-envelope {
+  background: linear-gradient(145deg, rgba(212,168,73,0.12), rgba(212,168,73,0.04));
+  border: 1px solid rgba(212,168,73,0.3);
+  border-radius: 8px;
+  padding: 0.65rem 0.55rem;
+  margin: 0 -0.55rem;
+}
+
+/* --- Action Bet item styling --- */
+.rec-bet-item.action-bet-card {
+  border-left: 3px solid #0EA5E9;
+  padding-left: 0.5rem;
+  margin-left: -0.25rem;
+}
+
+/* --- Win streak badge --- */
+.win-streak-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: linear-gradient(135deg, var(--color-gold), #E8D48B);
+  color: #1B4332; font-size: 0.68rem; font-weight: 800;
+  padding: 0.2rem 0.5rem; border-radius: 20px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  box-shadow: 0 2px 8px rgba(212,168,73,0.3);
+}
+
+/* --- Loss encouragement nudge --- */
+.loss-nudge {
+  font-size: 0.72rem; color: var(--color-muted); font-style: italic;
+  margin-top: 4px;
+}
+
 /* --- Bottom tab bar premium styling --- */
 #bottom-tab-bar {
   border-top: 1px solid rgba(212,168,73,0.15);
@@ -1640,7 +1684,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
      ============================================= -->
 <div id="hero-screen">
   <div id="hero-screen-bg">
-    <img src="images/hero-saratoga.jpg" alt="Saratoga Race Course grandstand" loading="eager" fetchpriority="high">
+    <img id="hero-bg-img" src="images/hero-saratoga.jpg" alt="Saratoga Race Course" loading="eager" fetchpriority="high">
   </div>
 
   <div class="hero-title-block">
@@ -6948,6 +6992,113 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
 })();
 
 
+
+/* =============================================================
+   PUSH TO 9/10 — JS ADDITIONS
+   ============================================================= */
+
+// --- Rotating hero images ---
+(function() {
+  var heroImages = [
+    'images/hero-saratoga.jpg',
+    'images/hero-paddock.jpg',
+    'images/hero-winners.jpg',
+    'images/hero-morning.jpg'
+  ];
+  var img = document.getElementById('hero-bg-img');
+  if (!img) return;
+  // Pick a random image each load
+  var idx = Math.floor(Math.random() * heroImages.length);
+  img.src = heroImages[idx];
+  // Preload others for smooth experience
+  heroImages.forEach(function(src) {
+    var preload = new Image();
+    preload.src = src;
+  });
+})();
+
+// --- Win celebration on setResultBet ---
+(function() {
+  var origSetResult = typeof setResultBet === 'function' ? setResultBet : null;
+  if (!origSetResult) return;
+  setResultBet = function(betId, result) {
+    // Get current state before toggling
+    var data = getTrackData();
+    var bet = (data.bets||[]).find(function(b) { return b.id === betId; });
+    var wasWin = bet && bet.result === 'win';
+    var willBeWin = result === 'win' && !wasWin;
+
+    // Call original
+    origSetResult(betId, result);
+
+    // If we just set a WIN, celebrate
+    if (willBeWin) {
+      var card = document.getElementById('rbi-' + betId);
+      if (card) {
+        card.classList.add('celebrate');
+        setTimeout(function() { card.classList.remove('celebrate'); }, 1500);
+      }
+      fireConfetti();
+      showToast('Winner! \u{1F3C6}', 'success', 2000);
+    }
+  };
+})();
+
+// --- Add best-bet-envelope and action-bet-card classes via MutationObserver ---
+(function() {
+  function styleBetItems() {
+    // Best Bet items
+    document.querySelectorAll('.rec-tag-best').forEach(function(tag) {
+      var item = tag.closest('.rec-bet-item');
+      if (item && !item.classList.contains('best-bet-envelope')) {
+        item.classList.add('best-bet-envelope');
+      }
+    });
+    // Action Bet items
+    document.querySelectorAll('.rec-tag-action').forEach(function(tag) {
+      var item = tag.closest('.rec-bet-item');
+      if (item && !item.classList.contains('action-bet-card')) {
+        item.classList.add('action-bet-card');
+      }
+    });
+  }
+  // Run on load
+  styleBetItems();
+  // Observe mutations to catch dynamic rendering
+  var observer = new MutationObserver(function() { styleBetItems(); });
+  var recCard = document.getElementById('rec-bets-card');
+  if (recCard) observer.observe(recCard, { childList: true, subtree: true });
+  // Also run on tab switch
+  var origSwitch = typeof switchTab === 'function' ? switchTab : null;
+  if (origSwitch) {
+    switchTab = function(name) {
+      origSwitch(name);
+      if (name === 'today') setTimeout(styleBetItems, 100);
+    };
+  }
+})();
+
+// --- MTP live countdown ticker ---
+(function() {
+  function updateAllMtpBadges() {
+    document.querySelectorAll('.mtp-badge').forEach(function(badge) {
+      var text = badge.textContent || '';
+      var match = text.match(/(\d+)\s*MTP/);
+      if (!match) return;
+      var mtp = parseInt(match[1]);
+      badge.classList.remove('mtp-soon', 'mtp-near', 'mtp-far');
+      if (mtp <= 5) badge.classList.add('mtp-soon');
+      else if (mtp <= 15) badge.classList.add('mtp-near');
+      else badge.classList.add('mtp-far');
+    });
+  }
+  // Refresh every 30 seconds
+  setInterval(updateAllMtpBadges, 30000);
+  // Initial run
+  setTimeout(updateAllMtpBadges, 1000);
+})();
+
+
 // Close drawer when clicking outside
 document.addEventListener('click', e => {
   const drawer = el('track-drawer');
@@ -6982,7 +7133,7 @@ document.addEventListener('keydown', e => {
 // sees a new SW, installs it, which then clears all caches and unregisters
 // itself. This is the ONLY way to kill a rogue cached service worker.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=20260416-0720').then(function(reg) {
+  navigator.serviceWorker.register('sw.js?v=20260416-0750').then(function(reg) {
     // Force immediate update check
     reg.update().catch(function(){});
   }).catch(function(){});
