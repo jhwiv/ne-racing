@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0610';
+var NE_APP_VERSION = '20260416-0700';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -131,9 +131,9 @@ function neForceUpdate(newVersion) {
    CSS CUSTOM PROPERTIES
    ========================================================= */
 :root {
-  --color-racing-green: #1B4332;
+  --color-racing-green: #0D3320;
   --color-cream: #FAF3E0;
-  --color-gold: #C9A84C;
+  --color-gold: #D4A849;
   --color-burgundy: #6B1D2A;
   --color-slate: #2D3436;
   --color-white: #FFFFFF;
@@ -145,9 +145,11 @@ function neForceUpdate(newVersion) {
   --color-burgundy-light: #F5C6CB;
   --color-amber: #E67E22;
   --color-amber-light: #FDEBD0;
+  --color-emerald: #10B981;
+  --color-emerald-light: #D1FAE5;
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
-  --shadow-lg: 0 10px 30px rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08);
+  --shadow-lg: 0 12px 36px rgba(0,0,0,0.18), 0 6px 12px rgba(0,0,0,0.1);
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -169,7 +171,7 @@ body {
   font-size: 15px;
   line-height: 1.6;
   color: var(--color-slate);
-  background: var(--color-cream);
+  background: linear-gradient(170deg, #FBF6EE 0%, #F5EDE0 50%, #F0E8D8 100%);
   min-height: 100dvh;
   overflow-x: hidden;
 }
@@ -186,8 +188,8 @@ ul, ol { list-style: none; }
    ========================================================= */
 h1, h2, h3, .display { font-family: var(--font-display); }
 h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700; line-height: 1.2; }
-h2 { font-size: clamp(1.2rem, 3vw, 1.6rem); font-weight: 600; line-height: 1.3; }
-h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
+h2 { font-size: clamp(1.3rem, 3vw, 1.7rem); font-weight: 700; line-height: 1.3; }
+h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 .mono { font-family: var(--font-mono); }
 .text-muted { color: var(--color-muted); }
 .text-positive { color: var(--color-positive); }
@@ -846,7 +848,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .bet-slip-item.straight { border-left-color: var(--color-racing-green); }
 .bet-slip-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.06em; min-width: 35px; }
-.bet-slip-horse { font-weight: 600; font-size: 0.88rem; flex: 1; min-width: 100px; }
+.bet-slip-horse { font-weight: 700; font-size: 0.95rem; flex: 1; min-width: 100px; }
 .bet-amount-input {
   width: 64px; padding: 0.3rem 0.5rem; border: 1.5px solid #e0e0e0;
   border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.82rem;
@@ -1454,6 +1456,172 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .collapsible-content.closed { max-height: 0 !important; }
 
 
+
+/* =========================================================
+   DESIGN OVERHAUL — PREMIUM UPGRADES
+   ========================================================= */
+
+/* --- Gold accent underlines on section titles --- */
+.section-title {
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+.section-title::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0;
+  width: 40px; height: 3px;
+  background: linear-gradient(90deg, var(--color-gold), transparent);
+  border-radius: 2px;
+}
+
+/* --- Premium card styling --- */
+.card {
+  border: 1px solid rgba(212,168,73,0.15);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+.card:active {
+  transform: scale(0.985);
+}
+
+/* --- Richer recommended bets card --- */
+.rec-bets-card {
+  border: 1.5px solid rgba(212,168,73,0.35);
+  background: linear-gradient(145deg, #0D3320, #0F4029);
+  box-shadow: var(--shadow-lg), 0 0 20px rgba(212,168,73,0.08);
+}
+
+/* --- Tab fade-in animation --- */
+.tab-panel.active {
+  animation: tabFadeIn 0.25s ease-out;
+}
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Best Bet glow entrance --- */
+@keyframes bestBetGlow {
+  0% { box-shadow: var(--shadow-lg); }
+  40% { box-shadow: var(--shadow-lg), 0 0 24px rgba(212,168,73,0.4); }
+  100% { box-shadow: var(--shadow-lg), 0 0 20px rgba(212,168,73,0.08); }
+}
+.rec-bets-card.glow-entrance {
+  animation: bestBetGlow 1.5s ease-out;
+}
+
+/* --- Bet lock shimmer --- */
+@keyframes betLockShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.bet-slip-item.shimmer {
+  background-image: linear-gradient(90deg, transparent 30%, rgba(212,168,73,0.15) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: betLockShimmer 0.8s ease-out;
+}
+
+/* --- Confetti container --- */
+#confetti-container {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 9999; overflow: hidden;
+}
+.confetti-piece {
+  position: absolute; width: 8px; height: 8px; border-radius: 1px;
+  animation: confettiFall 1.8s ease-in forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-20px) rotate(0deg) scale(1); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg) scale(0.3); opacity: 0; }
+}
+
+/* --- MTP countdown urgency --- */
+.mtp-urgent {
+  color: var(--color-negative) !important;
+  font-weight: 700 !important;
+  animation: mtp-pulse 0.8s ease-in-out infinite !important;
+}
+.mtp-soon {
+  color: var(--color-amber) !important;
+  font-weight: 600 !important;
+}
+
+/* --- Quick Pick button --- */
+.quick-pick-btn {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(135deg, var(--color-gold) 0%, #0D3320 100%);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1rem; font-weight: 700;
+  border: 1.5px solid rgba(212,168,73,0.5);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 16px rgba(212,168,73,0.3);
+  cursor: pointer;
+  position: relative; overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.1s;
+  margin-bottom: 1rem;
+}
+.quick-pick-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(212,168,73,0.3);
+}
+@keyframes quickPickShimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+.quick-pick-btn .shimmer-sweep {
+  position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  pointer-events: none;
+}
+.quick-pick-btn.activated .shimmer-sweep {
+  animation: quickPickShimmer 0.6s ease-out;
+}
+
+/* --- Upgraded empty states --- */
+.empty-state {
+  text-align: center; padding: 2.5rem 1.5rem; color: var(--color-muted);
+}
+.empty-state svg { width: 56px; height: 56px; margin: 0 auto 1rem; opacity: 0.5; }
+.empty-state h4 {
+  font-family: var(--font-display);
+  font-size: 1rem; font-weight: 600;
+  color: var(--color-slate); margin-bottom: 0.4rem;
+}
+.empty-state p { font-size: 0.88rem; margin-bottom: 0.75rem; }
+.empty-state .btn {
+  margin-top: 0.5rem;
+}
+
+/* --- Hero auto-dismiss --- */
+#hero-screen.hero-fadeout {
+  animation: heroFadeOut 0.8s ease-out forwards;
+}
+@keyframes heroFadeOut {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-30px); }
+}
+#hero-screen.hero-hidden {
+  display: none !important;
+}
+
+/* --- Bottom tab bar premium styling --- */
+#bottom-tab-bar {
+  border-top: 1px solid rgba(212,168,73,0.15);
+}
+
+/* --- Race number badge styling --- */
+.race-num-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; min-width: 36px;
+  background: var(--color-racing-green);
+  color: var(--color-gold);
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem;
+  border-radius: 50%; border: 2px solid rgba(212,168,73,0.4);
+}
+
 </style>
 </head>
 <body>
@@ -1680,11 +1848,18 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         </div>
       </div>
 
+      <!-- Quick Pick Button -->
+      <button class="quick-pick-btn" id="quick-pick-btn" onclick="quickPickAll()" style="display:none">
+        <span class="shimmer-sweep"></span>
+        &#127942; Follow All Expert Picks
+      </button>
+
       <!-- Race cards container -->
       <div id="races-container">
         <div class="empty-state" id="no-races-msg">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-          <p>No races yet for today.<br>Click <strong>Add Race</strong> to get started.</p>
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><circle cx="32" cy="32" r="28" stroke-dasharray="4 4" opacity="0.3"/><path d="M20 42c2-6 8-12 12-12s10 6 12 12" stroke-width="2.5"/><circle cx="32" cy="22" r="4" fill="currentColor" opacity="0.4"/><path d="M18 46h28" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <h4>Race day is loading...</h4>
+          <p>Entries will appear here once they're posted. Check back soon.</p>
         </div>
       </div>
     </section>
@@ -1721,7 +1896,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="section-title mt-2">Straight Bets</div>
       <div id="straight-bets-list">
         <div class="empty-state" id="no-straight-bets">
-          <p>No straight bets yet. Use W/P/S buttons on horses in Today's Card.</p>
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><rect x="12" y="8" width="40" height="48" rx="4" opacity="0.3"/><line x1="20" y1="22" x2="44" y2="22" stroke-width="2.5" stroke-linecap="round"/><line x1="20" y1="32" x2="38" y2="32" stroke-width="2" stroke-linecap="round" opacity="0.5"/><line x1="20" y1="40" x2="34" y2="40" stroke-width="2" stroke-linecap="round" opacity="0.3"/><circle cx="44" cy="44" r="10" fill="none" stroke-width="2.5"/><path d="M41 44l3 3 5-6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h4>Ready to play?</h4>
+          <p>Head to Today's Card and tap a horse to place your first bet.</p>
+          <button class="btn btn-primary btn-sm" onclick="switchTab('today')">Go to Today's Card</button>
         </div>
       </div>
 
@@ -1781,7 +1959,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Locked exotic bets -->
       <div class="section-title mt-2">Locked Exotic Bets</div>
       <div id="exotic-bets-list">
-        <div class="empty-state" id="no-exotic-bets"><p>No exotic bets added yet.</p></div>
+        <div class="empty-state" id="no-exotic-bets">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="16" width="48" height="32" rx="4" opacity="0.3"/><path d="M22 28h20M22 36h14" stroke-width="2.5" stroke-linecap="round"/><circle cx="48" cy="20" r="8" fill="none" stroke-width="2.5"/><text x="48" y="24" text-anchor="middle" font-size="10" font-weight="bold" fill="currentColor">$</text></svg>
+          <p>Build your exotics above and lock them in.</p>
+        </div>
       </div>
     </section>
 
@@ -1959,7 +2140,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
             </thead>
             <tbody id="breakdown-body"></tbody>
           </table>
-          <div id="breakdown-empty" class="empty-state hidden"><p>No results data yet.</p></div>
+          <div id="breakdown-empty" class="empty-state hidden"><p>Bet results will fill this table as you lock and resolve bets.</p></div>
         </div>
       </div>
 
@@ -2003,7 +2184,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <!-- Bet history -->
       <div class="section-title">Bet History</div>
       <div id="results-list">
-        <div class="empty-state" id="no-results-msg"><p>No locked bets yet. Lock bets from the Bets tab.</p></div>
+        <div class="empty-state" id="no-results-msg">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" opacity="0.3" fill="currentColor"/><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" stroke-width="2.5"/></svg>
+          <h4>Your scoreboard awaits</h4>
+          <p>Lock in some bets and let's see how you do.</p>
+          <button class="btn btn-primary btn-sm" onclick="switchTab('bets')">Go to Bets</button>
+        </div>
       </div>
     </section>
 
@@ -2984,6 +3170,9 @@ function initApp() {
 
   // Initialize betting mode UI
   syncBettingModeUI();
+
+  // Show Quick Pick button if expert picks are available
+  setTimeout(function() { if (typeof updateQuickPickVisibility === 'function') updateQuickPickVisibility(); }, 500);
 }
 
 function updateHeaderTrack() {
@@ -6663,6 +6852,118 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+
+
+/* =============================================================
+   DESIGN OVERHAUL — JS FUNCTIONS
+   ============================================================= */
+
+// --- Confetti burst ---
+function fireConfetti() {
+  var container = document.getElementById('confetti-container');
+  if (!container) return;
+  var colors = ['#D4A849', '#0D3320', '#10B981', '#C1121F', '#FFFFFF', '#6B1D2A'];
+  for (var i = 0; i < 35; i++) {
+    var piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = (Math.random() * 100) + '%';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDelay = (Math.random() * 0.5) + 's';
+    piece.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+    piece.style.width = (6 + Math.random() * 6) + 'px';
+    piece.style.height = (6 + Math.random() * 6) + 'px';
+    container.appendChild(piece);
+  }
+  setTimeout(function() { container.innerHTML = ''; }, 2500);
+}
+
+// --- Quick Pick: click all PLACE BET buttons in the ticket ---
+function quickPickAll() {
+  var card = document.getElementById('rec-bets-card');
+  if (!card || card.classList.contains('hidden')) {
+    showToast('No expert picks available yet', 'warning');
+    return;
+  }
+  var betBtns = card.querySelectorAll('.btn-bet');
+  if (!betBtns.length) {
+    showToast('No expert picks available yet', 'warning');
+    return;
+  }
+  var count = 0;
+  betBtns.forEach(function(b) {
+    b.click();
+    count++;
+  });
+  if (count > 0) {
+    showToast(count + ' expert picks added to bet slip!', 'success');
+    var btn = document.getElementById('quick-pick-btn');
+    if (btn) { btn.classList.add('activated'); setTimeout(function() { btn.classList.remove('activated'); }, 800); }
+    fireConfetti();
+  }
+}
+
+// --- Show Quick Pick button when recommendations exist ---
+function updateQuickPickVisibility() {
+  var btn = document.getElementById('quick-pick-btn');
+  if (!btn) return;
+  var card = document.getElementById('rec-bets-card');
+  var hasRecs = card && !card.classList.contains('hidden') && card.querySelectorAll('.btn-bet').length > 0;
+  btn.style.display = hasRecs ? 'flex' : 'none';
+}
+
+// --- Shimmer effect on bet placement ---
+var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet : null;
+
+// --- Best Bet glow on ticket render ---
+(function() {
+  var origRenderTodayTab = typeof renderTodayTab === 'function' ? renderTodayTab : null;
+  if (!origRenderTodayTab) return;
+  renderTodayTab = function() {
+    origRenderTodayTab.apply(this, arguments);
+    var card = document.getElementById('rec-bets-card');
+    if (card && !card.classList.contains('hidden')) {
+      card.classList.remove('glow-entrance');
+      void card.offsetWidth;
+      card.classList.add('glow-entrance');
+    }
+    updateQuickPickVisibility();
+  };
+})();
+
+// --- Hero screen one-time only ---
+(function() {
+  var heroEl = document.getElementById('hero-screen');
+  if (!heroEl) return;
+  var seen = false;
+  try { seen = localStorage.getItem('ne-hero-seen') === '1'; } catch(e){}
+  if (seen) {
+    heroEl.classList.add('hero-hidden');
+  } else {
+    // First visit: auto-dismiss after 1.5s
+    setTimeout(function() {
+      heroEl.classList.add('hero-fadeout');
+      try { localStorage.setItem('ne-hero-seen', '1'); } catch(e){}
+      setTimeout(function() { heroEl.classList.add('hero-hidden'); }, 800);
+    }, 1500);
+  }
+})();
+
+// --- Enhanced lockAllBets with confetti ---
+(function() {
+  var origLockAll = typeof lockAllBets === 'function' ? lockAllBets : null;
+  if (!origLockAll) return;
+  lockAllBets = function() {
+    origLockAll.apply(this, arguments);
+    fireConfetti();
+    // Add shimmer to all bet items
+    document.querySelectorAll('.bet-slip-item').forEach(function(el) {
+      el.classList.add('shimmer');
+      setTimeout(function() { el.classList.remove('shimmer'); }, 1000);
+    });
+  };
+})();
+
+
 // Close drawer when clicking outside
 document.addEventListener('click', e => {
   const drawer = el('track-drawer');
@@ -6697,7 +6998,7 @@ document.addEventListener('keydown', e => {
 // sees a new SW, installs it, which then clears all caches and unregisters
 // itself. This is the ONLY way to kill a rogue cached service worker.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=20260416-0540').then(function(reg) {
+  navigator.serviceWorker.register('sw.js?v=20260416-0700').then(function(reg) {
     // Force immediate update check
     reg.update().catch(function(){});
   }).catch(function(){});
