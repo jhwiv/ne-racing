@@ -4412,9 +4412,10 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
   var data = getTrackData();
 
   if (wpsCode) {
-    var race = (data.races || []).find(function(r) { return r.num === raceNum; });
+    // Use String() coercion to avoid strict-equality type mismatch (num may be number or string)
+    var race = (data.races || []).find(function(r) { return String(r.num) === String(raceNum); });
     if (race) {
-      var horse = (race.horses || []).find(function(h) { return h.pp == horsePp; });
+      var horse = (race.horses || []).find(function(h) { return String(h.pp) === String(horsePp); });
       if (horse) {
         if (!horse.wps) horse.wps = [];
         if (horse.wps.indexOf(wpsCode) === -1) {
@@ -4427,9 +4428,22 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     }
   }
 
-  if (mode === 'simulate') {
+  // Check for existing duplicate bet (same race, horse/selections, and bet type)
+  data.bets = data.bets || [];
+  var existingBet = data.bets.find(function(b) {
+    return String(b.raceNum) === String(raceNum) && b.type === betType &&
+      JSON.stringify(b.selections) === JSON.stringify([horseName]);
+  });
+
+  if (existingBet) {
+    // Update amount on the existing bet instead of creating a duplicate
+    existingBet.amount = amount;
+    saveTrackData(data);
+    showToast('Updated bet: $' + amount + ' ' + betType + ' #' + horsePp + ' ' + horseName + ' R' + raceNum, 'success', 3000);
+    updateBankrollBanner();
+    checkBankrollOverrun();
+  } else if (mode === 'simulate') {
     // Add bet to internal bet slip
-    data.bets = data.bets || [];
     var bet = {
       id: generateId(),
       date: getTodayStr(),
@@ -4452,7 +4466,6 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     checkBankrollOverrun();
   } else {
     // Real mode: open external platform + also track internally
-    data.bets = data.bets || [];
     var bet = {
       id: generateId(),
       date: getTodayStr(),
@@ -4655,11 +4668,45 @@ window.addEventListener('beforeinstallprompt', function(e) {
 
 
 /* =============================================================
+   DEDUPLICATION — merge duplicate bets on load
+   ============================================================= */
+function deduplicateBets() {
+  var data = getTrackData();
+  if (!data || !data.bets || data.bets.length < 2) return;
+
+  var seen = {};
+  var deduped = [];
+  data.bets.forEach(function(bet) {
+    var key = String(bet.raceNum) + '|' + (bet.selections || []).join(',') + '|' + bet.type;
+    if (seen[key]) {
+      // Keep the higher amount (or sum — using max here to avoid inflating totals)
+      if (bet.amount > seen[key].amount) seen[key].amount = bet.amount;
+      // Preserve result/payout if the duplicate had one resolved
+      if (bet.result && !seen[key].result) {
+        seen[key].result = bet.result;
+        seen[key].payout = bet.payout;
+      }
+    } else {
+      seen[key] = bet;
+      deduped.push(bet);
+    }
+  });
+
+  if (deduped.length < data.bets.length) {
+    data.bets = deduped;
+    saveTrackData(data);
+  }
+}
+
+/* =============================================================
    APP INITIALIZATION
    ============================================================= */
 function initApp() {
   const store = getStore();
   if (!store) return;
+
+  // One-time dedup pass to clean up any duplicate bets from prior sessions
+  deduplicateBets();
 
   updateHeaderTrack();
   buildDateStrip();
