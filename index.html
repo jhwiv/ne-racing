@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0850';
+var NE_APP_VERSION = '20260416-0902';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -232,6 +232,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
   box-sizing: border-box;
   overflow: hidden;
   cursor: pointer;
+  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
 }
 #hero-screen-bg {
   position: absolute; inset: 0; z-index: 0;
@@ -249,7 +250,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 }
 #hero-screen > * { position: relative; z-index: 2; }
 #hero-screen > #hero-screen-bg { position: absolute; inset: 0; z-index: 0; }
-#hero-screen > .hero-enter-prompt { position: absolute; bottom: 2rem; left: 0; right: 0; }
+#hero-screen > .hero-enter-prompt { position: absolute; bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 1rem); left: 0; right: 0; }
 
 /* Hero title block */
 .hero-title-block { text-align: center; padding: 0 1.5rem; margin-bottom: 1rem; }
@@ -304,7 +305,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 
 /* Tap to enter prompt */
 .hero-enter-prompt {
-  position: absolute; bottom: 2rem; left: 0; right: 0;
+  position: absolute; bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 1rem); left: 0; right: 0;
   text-align: center; z-index: 2;
   animation: hero-pulse 2.5s ease-in-out infinite;
 }
@@ -6882,18 +6883,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize Add to Home Screen banner
   initA2HSBanner();
 
-  // Hide bottom tab bar when hero is in view
-  var heroEl = el('hero-screen');
-  var tabBar = el('bottom-tab-bar');
-  if (heroEl && tabBar) {
-    var heroObserver = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        tabBar.style.transform = entry.isIntersecting ? 'translateY(100%)' : 'translateY(0)';
-        tabBar.style.transition = 'transform 0.3s ease';
-      });
-    }, { threshold: 0.15 });
-    heroObserver.observe(heroEl);
-  }
+  // Bottom tab bar stays visible at all times (including hero screen)
 
 
 });

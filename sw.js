@@ -1,4 +1,4 @@
-var APP_VERSION = '20260416-0850';
+var APP_VERSION = '20260416-0902';
 
 // SELF-DESTRUCTING SERVICE WORKER v4
 // Purpose: Replace ANY previously-cached service worker.
