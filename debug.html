@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Railbird AI — Debug</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, sans-serif; background: #1B4332; color: #FAF3E0; padding: 1rem; font-size: 14px; }
+  h1 { font-size: 1.2rem; margin-bottom: 1rem; color: #C9A84C; }
+  .section { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+  .section h2 { font-size: 0.95rem; color: #C9A84C; margin-bottom: 0.5rem; }
+  .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .label { opacity: 0.7; }
+  .value { font-weight: 600; text-align: right; max-width: 60%; word-break: break-all; }
+  .ok { color: #4CAF50; }
+  .bad { color: #FF5252; }
+  .warn { color: #FFC107; }
+  .btn { display: block; width: 100%; padding: 14px; margin-top: 1rem; background: #C9A84C; color: #1B4332; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; }
+  .btn:active { opacity: 0.8; }
+  #log { margin-top: 1rem; font-size: 12px; opacity: 0.6; white-space: pre-wrap; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Railbird AI — Diagnostic</h1>
+
+<div class="section" id="versions"></div>
+<div class="section" id="sw-status"></div>
+<div class="section" id="cache-status"></div>
+<div class="section" id="browser-info"></div>
+
+<button class="btn" id="nuke-btn">NUCLEAR RESET — Clear Everything</button>
+<button class="btn" style="background:#FAF3E0; margin-top:0.5rem;" id="go-btn">Go to App →</button>
+
+<div id="log"></div>
+
+<script>
+var log = document.getElementById('log');
+function addLog(msg) { log.textContent += msg + '\n'; }
+
+// 1. VERSION CHECK
+(async function() {
+  var vSection = document.getElementById('versions');
+  vSection.innerHTML = '<h2>Version Check</h2>';
+
+  // Fetch version.json from server (bypass all caches)
+  var serverVersion = 'FAILED';
+  try {
+    var r = await fetch('version.json?_nocache=' + Date.now(), { cache: 'no-store' });
+    var d = await r.json();
+    serverVersion = d.v;
+  } catch(e) { addLog('version.json fetch failed: ' + e.message); }
+
+  // Get baked-in version from index.html (would need to fetch it)
+  var htmlVersion = 'CHECKING...';
+  try {
+    var r2 = await fetch('index.html?_nocache=' + Date.now(), { cache: 'no-store' });
+    var html = await r2.text();
+    var m = html.match(/NE_APP_VERSION\s*=\s*'([^']+)'/);
+    htmlVersion = m ? m[1] : 'NOT FOUND';
+  } catch(e) { htmlVersion = 'FETCH FAILED'; addLog('index.html fetch failed: ' + e.message); }
+
+  var match = serverVersion === htmlVersion;
+  vSection.innerHTML += '<div class="row"><span class="label">version.json (server)</span><span class="value">' + serverVersion + '</span></div>';
+  vSection.innerHTML += '<div class="row"><span class="label">index.html (server)</span><span class="value">' + htmlVersion + '</span></div>';
+  vSection.innerHTML += '<div class="row"><span class="label">Versions match?</span><span class="value ' + (match ? 'ok' : 'bad') + '">' + (match ? 'YES' : 'NO — MISMATCH') + '</span></div>';
+
+  // 2. SERVICE WORKER STATUS
+  var swSection = document.getElementById('sw-status');
+  swSection.innerHTML = '<h2>Service Worker</h2>';
+
+  if ('serviceWorker' in navigator) {
+    var regs = await navigator.serviceWorker.getRegistrations();
+    swSection.innerHTML += '<div class="row"><span class="label">Registered SWs</span><span class="value ' + (regs.length === 0 ? 'ok' : 'bad') + '">' + regs.length + '</span></div>';
+    for (var i = 0; i < regs.length; i++) {
+      var reg = regs[i];
+      swSection.innerHTML += '<div class="row"><span class="label">SW #' + (i+1) + ' scope</span><span class="value">' + reg.scope + '</span></div>';
+      swSection.innerHTML += '<div class="row"><span class="label">SW #' + (i+1) + ' state</span><span class="value">' + (reg.active ? reg.active.state : 'no active worker') + '</span></div>';
+      // Try to get SW script URL
+      if (reg.active && reg.active.scriptURL) {
+        swSection.innerHTML += '<div class="row"><span class="label">SW #' + (i+1) + ' script</span><span class="value">' + reg.active.scriptURL + '</span></div>';
+      }
+    }
+    // Check controller
+    var ctrl = navigator.serviceWorker.controller;
+    swSection.innerHTML += '<div class="row"><span class="label">Controlling SW?</span><span class="value ' + (ctrl ? 'bad' : 'ok') + '">' + (ctrl ? 'YES — intercepting requests' : 'NO — browser fetches directly') + '</span></div>';
+    if (ctrl) {
+      swSection.innerHTML += '<div class="row"><span class="label">Controller script</span><span class="value bad">' + ctrl.scriptURL + '</span></div>';
+    }
+  } else {
+    swSection.innerHTML += '<div class="row"><span class="label">Support</span><span class="value ok">Not supported (no SW issues possible)</span></div>';
+  }
+
+  // 3. CACHE STORAGE
+  var cacheSection = document.getElementById('cache-status');
+  cacheSection.innerHTML = '<h2>Cache Storage</h2>';
+  if ('caches' in window) {
+    var keys = await caches.keys();
+    cacheSection.innerHTML += '<div class="row"><span class="label">Cache entries</span><span class="value ' + (keys.length === 0 ? 'ok' : 'warn') + '">' + keys.length + '</span></div>';
+    for (var j = 0; j < keys.length; j++) {
+      var cache = await caches.open(keys[j]);
+      var cacheKeys = await cache.keys();
+      cacheSection.innerHTML += '<div class="row"><span class="label">' + keys[j] + '</span><span class="value">' + cacheKeys.length + ' items</span></div>';
+    }
+  } else {
+    cacheSection.innerHTML += '<div class="row"><span class="label">Support</span><span class="value ok">Not supported</span></div>';
+  }
+
+  // 4. BROWSER INFO
+  var browserSection = document.getElementById('browser-info');
+  browserSection.innerHTML = '<h2>Browser</h2>';
+  var ua = navigator.userAgent;
+  var isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  browserSection.innerHTML += '<div class="row"><span class="label">Standalone PWA?</span><span class="value ' + (isStandalone ? 'warn' : 'ok') + '">' + (isStandalone ? 'YES' : 'NO') + '</span></div>';
+  browserSection.innerHTML += '<div class="row"><span class="label">localStorage items</span><span class="value">' + localStorage.length + '</span></div>';
+  var storedVer = localStorage.getItem('ne-racing-version');
+  browserSection.innerHTML += '<div class="row"><span class="label">Stored version</span><span class="value ' + (storedVer === serverVersion ? 'ok' : 'bad') + '">' + (storedVer || 'none') + '</span></div>';
+  browserSection.innerHTML += '<div class="row"><span class="label">User Agent</span><span class="value" style="font-size:10px">' + ua + '</span></div>';
+})();
+
+// NUCLEAR RESET
+document.getElementById('nuke-btn').addEventListener('click', async function() {
+  addLog('Starting nuclear reset...');
+  
+  // 1. Unregister all SWs
+  if ('serviceWorker' in navigator) {
+    var regs = await navigator.serviceWorker.getRegistrations();
+    for (var i = 0; i < regs.length; i++) {
+      await regs[i].unregister();
+      addLog('Unregistered SW: ' + regs[i].scope);
+    }
+    addLog('All SWs unregistered');
+  }
+
+  // 2. Clear all caches
+  if ('caches' in window) {
+    var keys = await caches.keys();
+    for (var j = 0; j < keys.length; j++) {
+      await caches.delete(keys[j]);
+      addLog('Deleted cache: ' + keys[j]);
+    }
+    addLog('All caches deleted');
+  }
+
+  // 3. Clear storage
+  localStorage.clear();
+  sessionStorage.clear();
+  addLog('Storage cleared');
+
+  // 4. Wait for cleanup
+  await new Promise(r => setTimeout(r, 2000));
+  
+  addLog('DONE — refreshing page to show updated status...');
+  setTimeout(function() {
+    window.location.reload(true);
+  }, 1000);
+});
+
+// GO TO APP
+document.getElementById('go-btn').addEventListener('click', function() {
+  window.location.href = './index.html?_v=' + Date.now();
+});
+</script>
+</body>
+</html>
