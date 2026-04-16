@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-1321';
+var NE_APP_VERSION = '20260416-1331';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -354,7 +354,9 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 #main-content {
   flex: 1;
   padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
+  /* overflow-y removed: body is the scroll container.
+     overflow-y:auto here created a nested scroll context that broke
+     position:fixed on iOS Safari during address-bar transitions. */
 }
 #bottom-tab-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
@@ -364,6 +366,10 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
   display: flex; align-items: stretch; justify-content: space-around;
   z-index: 200;
   box-shadow: 0 -1px 8px rgba(0,0,0,0.06);
+  /* iOS Safari fix: force GPU layer so position:fixed stays anchored
+     during address-bar show/hide transitions */
+  -webkit-backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
 }
 
 #desktop-nav { display: none; }
@@ -2794,52 +2800,48 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 
 
-  <!-- BOTTOM TAB BAR -->
-  <nav id="bottom-tab-bar" role="navigation" aria-label="Tab navigation">
-    <button class="tab-btn active" id="tab-btn-today" onclick="switchTab('today')" aria-label="Today's Card" aria-selected="true">
-      <!-- Horse head SVG -->
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 20 C4 14 7 10 9 9 L9 7 C9 5 11 4 13 4 C15 4 17 5 18 7 L20 9 C21 10 21 12 20 13 L18 14 C17 15 17 16 18 17 L20 20"/>
-        <circle cx="15" cy="8" r="1" fill="currentColor"/>
-        <path d="M9 14 L6 17 L5 20"/>
-      </svg>
-      <span>Today</span>
-      <span class="tab-badge hidden" id="scratch-badge">0</span>
-    </button>
-    <button class="tab-btn" id="tab-btn-bets" onclick="switchTab('bets')" aria-label="Bets" aria-selected="false">
-      <!-- Ticket SVG -->
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M2 9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4V9z"/>
-        <line x1="9" y1="7" x2="9" y2="17" stroke-dasharray="2 2"/>
-      </svg>
-      <span>Bets</span>
-    </button>
-    <button class="tab-btn" id="tab-btn-handicap" onclick="switchTab('handicap')" aria-label="Handicapping" aria-selected="false">
-      <!-- Chart/line SVG -->
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-      </svg>
-      <span>Handicap</span>
-    </button>
-    <button class="tab-btn" id="tab-btn-results" onclick="switchTab('results')" aria-label="Results" aria-selected="false">
-      <!-- Dollar sign SVG -->
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="1" x2="12" y2="23"/>
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-      </svg>
-      <span>Results</span>
-    </button>
-    <button class="tab-btn" id="tab-btn-reference" onclick="switchTab('reference')" aria-label="Reference" aria-selected="false">
-      <!-- Book SVG -->
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-      </svg>
-      <span>Reference</span>
-    </button>
-  </nav>
-
 </div><!-- end app-frame -->
+
+<!-- BOTTOM TAB BAR — placed outside app-frame to prevent iOS Safari
+     position:fixed breakage when ancestors have overflow/transform -->
+<nav id="bottom-tab-bar" role="navigation" aria-label="Tab navigation">
+  <button class="tab-btn active" id="tab-btn-today" onclick="switchTab('today')" aria-label="Today's Card" aria-selected="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 20 C4 14 7 10 9 9 L9 7 C9 5 11 4 13 4 C15 4 17 5 18 7 L20 9 C21 10 21 12 20 13 L18 14 C17 15 17 16 18 17 L20 20"/>
+      <circle cx="15" cy="8" r="1" fill="currentColor"/>
+      <path d="M9 14 L6 17 L5 20"/>
+    </svg>
+    <span>Today</span>
+    <span class="tab-badge hidden" id="scratch-badge">0</span>
+  </button>
+  <button class="tab-btn" id="tab-btn-bets" onclick="switchTab('bets')" aria-label="Bets" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4V9z"/>
+      <line x1="9" y1="7" x2="9" y2="17" stroke-dasharray="2 2"/>
+    </svg>
+    <span>Bets</span>
+  </button>
+  <button class="tab-btn" id="tab-btn-handicap" onclick="switchTab('handicap')" aria-label="Handicapping" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    <span>Handicap</span>
+  </button>
+  <button class="tab-btn" id="tab-btn-results" onclick="switchTab('results')" aria-label="Results" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23"/>
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+    </svg>
+    <span>Results</span>
+  </button>
+  <button class="tab-btn" id="tab-btn-reference" onclick="switchTab('reference')" aria-label="Reference" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+    <span>Reference</span>
+  </button>
+</nav>
 
 <!-- SETTINGS MODAL -->
 <div id="settings-modal" role="dialog" aria-modal="true" aria-label="Settings" onclick="closeSettingsOnBg(event)">
