@@ -59,7 +59,7 @@
   // Detect browser for targeted advice
   var ua = navigator.userAgent || '';
   var browserName = 'Unknown';
-  var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent));
   var isChromeIOS = isIOS && /CriOS/.test(ua);
   var isSafariIOS = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
   var isFirefoxIOS = isIOS && /FxiOS/.test(ua);

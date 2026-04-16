@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-1255';
+var NE_APP_VERSION = '20260416-1321';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -131,16 +131,19 @@ function neForceUpdate(newVersion) {
 <meta name="theme-color" content="#1B4332">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="NE Racing">
+<meta name="apple-mobile-web-app-title" content="Railbird AI">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
 <meta name="description" content="NE Racing Companion 2026 — Personal horse racing handicapping & bet tracking tool for the NYRA circuit.">
-<title>NE Racing Companion 2026</title>
+<title>Railbird AI — Saratoga Racing Companion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="image" type="image/webp" href="images/hero-race-action.webp">
+<link rel="prefetch" as="image" type="image/webp" href="images/hero-race-action.webp">
+<link rel="prefetch" as="image" type="image/webp" href="images/hero-paddock-bright.webp">
+<link rel="prefetch" as="image" type="image/webp" href="images/hero-winners-circle.webp">
+<link rel="prefetch" as="image" type="image/webp" href="images/hero-grandstand.webp">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
 /* =========================================================
@@ -242,8 +245,8 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
   width: 100%; height: 100%;
   object-fit: cover; object-position: center 35%;
   display: block;
-  will-change: filter, transform;
 }
+/* will-change set dynamically in JS during hero load transition */
 #hero-screen::before {
   content: '';
   position: absolute; inset: 0;
@@ -277,7 +280,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 /* A2HS (Add to Home Screen) banner */
 .a2hs-banner {
   background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   border-radius: var(--radius-lg); padding: 1rem 1.25rem;
   margin: 0 1.25rem 1.5rem; max-width: 420px; width: calc(100% - 2.5rem);
   text-align: center; position: relative;
@@ -469,7 +472,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 
 /* WPS Quick-pick buttons */
 .wps-btn {
-  width: 32px; height: 32px; min-height: 44px; border-radius: var(--radius-sm);
+  width: 32px; height: 32px; min-width: 44px; min-height: 44px; border-radius: var(--radius-sm);
   font-size: 0.7rem; font-weight: 700; border: 1.5px solid;
   transition: all 0.12s; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -657,7 +660,6 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   gap: 0.35rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding: 0.25rem 0;
 }
@@ -676,7 +678,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   background: var(--color-white);
   cursor: pointer;
   transition: all 0.15s ease;
-  user-select: none;
+  -webkit-user-select: none; user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 .date-strip-day:active { transform: scale(0.95); }
@@ -771,8 +773,14 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 .badge-complete { background: var(--color-racing-green); color: var(--color-gold); opacity: 0.85; font-size: 0.55rem; }
 @keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
-.pulse-hint { animation: pulseHint 1.5s ease-in-out infinite; }
-@keyframes pulseHint { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 8px 2px rgba(201,168,76,0.5); } }
+.pulse-hint { position: relative; }
+.pulse-hint::after {
+  content: ''; position: absolute; inset: -2px; border-radius: inherit;
+  border: 2px solid rgba(201,168,76,0.5);
+  animation: pulseHint 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes pulseHint { 0%,100% { opacity: 0; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
 .race-num {
   font-family: var(--font-mono); font-size: 0.95rem; font-weight: 700;
   color: var(--color-gold); min-width: 32px; width: 32px; height: 32px;
@@ -897,7 +905,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   text-align: right;
 }
 .bet-amount-input:focus { outline: none; border-color: var(--color-racing-green); }
-.remove-bet-btn { color: var(--color-muted); transition: color 0.12s; flex-shrink: 0; }
+.remove-bet-btn { color: var(--color-muted); transition: color 0.12s; flex-shrink: 0; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 .remove-bet-btn:hover { color: var(--color-negative); }
 .bankroll-banner {
   background: var(--color-racing-green); color: var(--color-white);
@@ -1258,7 +1266,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
   padding: 0.3rem 0.65rem; border-radius: 20px;
   border: 1.5px solid var(--color-gold); cursor: pointer; text-decoration: none;
-  min-height: 32px; transition: background 0.15s, color 0.15s, transform 0.1s;
+  min-height: 44px; transition: background 0.15s, color 0.15s, transform 0.1s;
 }
 .btn-bet-sm:hover { background: rgba(201,168,76,0.15); }
 .btn-bet-sm:active { transform: scale(0.97); }
@@ -1296,13 +1304,19 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .betting-mode-toggle .mode-pill.active-sim {
   background: var(--color-racing-green); color: #D8F3DC;
   box-shadow: 0 0 8px rgba(45,106,79,0.4);
+  position: relative; overflow: visible;
+}
+.betting-mode-toggle .mode-pill.active-sim::after {
+  content: ''; position: absolute; inset: -2px; border-radius: inherit;
+  box-shadow: 0 0 14px rgba(45,106,79,0.6);
   animation: simPulse 3s ease-in-out infinite;
+  pointer-events: none;
 }
 .betting-mode-toggle .mode-pill.active-real {
   background: var(--color-gold); color: #1B4332;
   box-shadow: 0 0 8px rgba(201,168,76,0.4);
 }
-@keyframes simPulse { 0%,100% { box-shadow: 0 0 8px rgba(45,106,79,0.4); } 50% { box-shadow: 0 0 14px rgba(45,106,79,0.6); } }
+@keyframes simPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
 
 /* Settings mode toggle (light bg variant) */
 .settings-mode-toggle {
@@ -1380,7 +1394,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   background: var(--color-racing-green); color: var(--color-white); border-color: var(--color-racing-green);
 }
 
-.advice-bet-pill {
+.advice-bet-pill { position: relative; /* UX-6 expanded hit area */
   display: inline-flex; align-items: center; gap: 0.2rem;
   background: transparent; color: var(--color-gold);
   font-size: 0.68rem; font-weight: 700;
@@ -1484,8 +1498,13 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
 
 /* Live update flash */
-@keyframes flashGreen { 0%,100%{background:inherit} 50%{background:rgba(82,183,136,0.2)} }
-.updated { animation: flashGreen 0.8s ease; }
+.updated { position: relative; }
+.updated::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: rgba(82,183,136,0.2); pointer-events: none;
+  animation: flashGreen 0.8s ease forwards;
+}
+@keyframes flashGreen { 0%,100% { opacity: 0; } 50% { opacity: 1; } }
 
 /* Add Race form */
 #add-race-form {
@@ -1542,9 +1561,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 /* --- Best Bet glow entrance --- */
 @keyframes bestBetGlow {
-  0% { box-shadow: var(--shadow-lg); }
-  40% { box-shadow: var(--shadow-lg), 0 0 24px rgba(212,168,73,0.4); }
-  100% { box-shadow: var(--shadow-lg), 0 0 20px rgba(212,168,73,0.08); }
+  0% { filter: drop-shadow(0 0 0 transparent); }
+  40% { filter: drop-shadow(0 0 12px rgba(212,168,73,0.5)); }
+  100% { filter: drop-shadow(0 0 6px rgba(212,168,73,0.1)); }
 }
 .rec-bets-card.glow-entrance {
   animation: bestBetGlow 1.5s ease-out;
@@ -1677,12 +1696,132 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 /* --- Win celebration on result card --- */
 @keyframes winCelebrate {
-  0% { box-shadow: var(--shadow-md); }
-  30% { box-shadow: var(--shadow-md), 0 0 24px rgba(212,168,73,0.5), 0 0 48px rgba(212,168,73,0.2); }
-  100% { box-shadow: var(--shadow-md), 0 0 12px rgba(212,168,73,0.15); }
+  0% { filter: drop-shadow(0 0 0 transparent); }
+  30% { filter: drop-shadow(0 0 16px rgba(212,168,73,0.5)); }
+  100% { filter: drop-shadow(0 0 6px rgba(212,168,73,0.1)); }
 }
 .result-bet-item.win.celebrate {
   animation: winCelebrate 1.2s ease-out;
+}
+
+/* --- Expandable bet card details panel --- */
+.rec-bet-item { cursor: pointer; position: relative; transition: background 0.2s ease; }
+.rec-bet-item:active { background: rgba(255,255,255,0.03); }
+.rec-bet-expand-hint {
+  position: absolute; right: 0.4rem; top: 0.55rem;
+  font-size: 0.6rem; color: rgba(255,255,255,0.35);
+  transition: transform 0.3s ease;
+}
+.rec-bet-item.expanded .rec-bet-expand-hint { transform: rotate(180deg); }
+.rec-bet-details {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease, padding 0.3s ease;
+  opacity: 0; padding: 0;
+}
+.rec-bet-item.expanded .rec-bet-details {
+  max-height: 800px; opacity: 1;
+  padding: 0.75rem 0 0.25rem;
+}
+
+/* Score gauge */
+.detail-score-gauge { text-align: center; margin-bottom: 0.6rem; }
+.detail-score-gauge svg { width: 90px; height: 90px; }
+.gauge-track { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 6; }
+.gauge-fill { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+.gauge-fill.high { stroke: #4ADE80; }
+.gauge-fill.medium { stroke: #D4A849; }
+.gauge-fill.low { stroke: #EF4444; }
+.gauge-score { font-family: var(--font-mono); font-size: 1.4rem; font-weight: 700; fill: #fff; }
+.gauge-label { font-family: var(--font-body); font-size: 0.45rem; fill: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* Factor bars */
+.detail-factors { margin-bottom: 0.6rem; }
+.detail-factor-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+}
+.detail-factor-label {
+  width: 52px; font-size: 0.65rem; font-weight: 600; color: rgba(255,255,255,0.6);
+  text-transform: uppercase; letter-spacing: 0.03em; text-align: right; flex-shrink: 0;
+}
+.detail-factor-track {
+  flex: 1; height: 8px; background: rgba(255,255,255,0.06);
+  border-radius: 4px; overflow: hidden; position: relative;
+}
+.detail-factor-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  min-width: 2px;
+}
+.detail-factor-fill.speed { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
+.detail-factor-fill.class { background: linear-gradient(90deg, #8B5CF6, #A78BFA); }
+.detail-factor-fill.pace { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
+.detail-factor-fill.tj { background: linear-gradient(90deg, #10B981, #34D399); }
+.detail-factor-fill.bias { background: linear-gradient(90deg, #EC4899, #F472B6); }
+.detail-factor-fill.fresh { background: linear-gradient(90deg, #06B6D4, #22D3EE); }
+.detail-factor-val {
+  width: 28px; font-size: 0.65rem; font-family: var(--font-mono);
+  color: rgba(255,255,255,0.5); text-align: right; flex-shrink: 0;
+}
+
+/* Speed sparkline */
+.detail-sparkline { margin-bottom: 0.6rem; text-align: center; }
+.detail-sparkline svg { width: 100%; max-width: 220px; height: 48px; }
+.sparkline-line { fill: none; stroke: #60A5FA; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sparkline-area { fill: url(#sparkGrad); opacity: 0.3; }
+.sparkline-dot { fill: #60A5FA; }
+.sparkline-dot.latest { fill: #FBBF24; r: 4; }
+.sparkline-label { font-family: var(--font-mono); font-size: 0.55rem; fill: rgba(255,255,255,0.4); }
+.sparkline-title { font-size: 0.65rem; color: rgba(255,255,255,0.45); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+
+/* Odds & value section */
+.detail-odds-row {
+  display: flex; gap: 0.5rem; margin-bottom: 0.6rem; flex-wrap: wrap;
+}
+.detail-odds-card {
+  flex: 1; min-width: 80px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 0.45rem 0.5rem; text-align: center;
+}
+.detail-odds-card .odds-val {
+  font-family: var(--font-mono); font-size: 1rem; font-weight: 700; color: #fff;
+}
+.detail-odds-card .odds-label {
+  font-size: 0.6rem; color: rgba(255,255,255,0.4); text-transform: uppercase;
+  letter-spacing: 0.06em; margin-top: 2px;
+}
+.detail-odds-card.value-positive { border-color: rgba(74,222,128,0.3); }
+.detail-odds-card.value-positive .odds-val { color: #4ADE80; }
+.detail-odds-card.value-negative { border-color: rgba(239,68,68,0.2); }
+.detail-odds-card.value-negative .odds-val { color: #EF4444; }
+
+/* Expert chips */
+.detail-experts { margin-bottom: 0.5rem; }
+.detail-experts-title {
+  font-size: 0.65rem; color: rgba(255,255,255,0.45); text-transform: uppercase;
+  letter-spacing: 0.06em; font-weight: 600; margin-bottom: 6px;
+}
+.detail-expert-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 20px; padding: 0.2rem 0.55rem; margin: 0 4px 4px 0;
+  font-size: 0.68rem; color: var(--color-gold); font-weight: 600;
+}
+.detail-expert-chip .chip-check { color: #4ADE80; font-size: 0.7rem; }
+.detail-expert-chip.no-pick { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.3); }
+
+/* Pace scenario pill */
+.detail-pace-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 6px; padding: 0.25rem 0.6rem;
+  font-size: 0.7rem; color: #FBBF24; font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.detail-pace-pill svg { width: 14px; height: 14px; }
+
+/* Section dividers inside expanded card */
+.detail-section-divider {
+  height: 1px; background: rgba(201,168,76,0.15); margin: 0.5rem 0;
 }
 
 /* --- Best Bet item: gold envelope wrapper --- */
@@ -1732,6 +1871,15 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   border-radius: 50%; border: 2px solid rgba(212,168,73,0.4);
 }
 
+/* --- Accessibility: Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -4434,6 +4582,8 @@ function estimatePayoutRange(mlOdds, betAmount) {
 }
 
 function updateTopPicksCard(allScores) {
+  _ticketDetailData = {};
+  _ticketDetailCounter = 0;
   // Hide legacy top-picks card
   el('top-picks-card').classList.add('hidden');
 
@@ -4543,13 +4693,16 @@ function updateTopPicksCard(allScores) {
     }
     const bbMlOdds = parseOddsToNum(bestBetEntry.horse.ml);
     const bbPayout = estimatePayoutRange(bbMlOdds, suggestedAmt);
-    html += `<div class="rec-bet-item">
+    var bbDetailId = storeTicketDetail(bestBetEntry, bestBetEntry.race, 'best');
+    html += `<div class="rec-bet-item" data-detail-id="${bbDetailId}">
+      <span class="rec-bet-expand-hint">&#9660;</span>
       <div class="rec-bet-tag rec-tag-best">&#127942; Best Bet</div>${convictionBadge}
       <div class="rec-bet-detail">Race ${bestBetEntry.race.num}: <strong>#${bestBetEntry.horse.pp} ${escHtml(bestBetEntry.horse.name).toUpperCase()}</strong> to WIN</div>
       <div class="rec-bet-amount">$${suggestedAmt} to Win</div>
       ${bbPayout ? '<div class="ticket-payout">' + bbPayout + '</div>' : ''}
       ${buildTicketConfidenceMeter(bbConf)}
       <div class="rec-bet-reason">"${reason}"</div>
+      <div class="rec-bet-details"></div>
       <button class="btn-bet" onclick="handleTicketBetClick(event, ${bestBetEntry.race.num}, '${escHtml(bestBetEntry.horse.name).replace(/'/g,"\\'")}', ${bestBetEntry.horse.pp}, 'Win', ${suggestedAmt}, 'best')">PLACE BET</button>
     </div>`;
     ticketLines.push(`BEST BET — Race ${bestBetEntry.race.num}: #${bestBetEntry.horse.pp} ${bestBetEntry.horse.name} to WIN — $${suggestedAmt}${bbPayout ? ' (' + bbPayout + ')' : ''}`);
@@ -4568,13 +4721,16 @@ function updateTopPicksCard(allScores) {
     const vpConf = raceInfo[v.race.id] ? raceInfo[v.race.id].confidence : 'medium';
     const vpMlOdds = parseOddsToNum(v.horse.ml);
     const vpPayout = vpMlOdds > 0 ? 'Potential return: $' + Math.round(4 * vpMlOdds * 0.85) + '\u2013$' + Math.round(4 * vpMlOdds * 1.15) + ' on $4 exacta' : '';
-    html += `<div class="rec-bet-item">
+    var vpDetailId = storeTicketDetail(v, v.race, 'value');
+    html += `<div class="rec-bet-item" data-detail-id="${vpDetailId}">
+      <span class="rec-bet-expand-hint">&#9660;</span>
       <div class="rec-bet-tag rec-tag-value">&#128176; Value Play</div>
       <div class="rec-bet-detail">Race ${v.race.num}: <strong>#${v.horse.pp} ${escHtml(v.horse.name).toUpperCase()}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(${v.horse.ml || 'N/A'}${overlayStr})</span></div>
       <div class="rec-bet-amount">$2 EX Box with ${exPartner || '#2'}</div>
       ${vpPayout ? '<div class="ticket-payout">' + vpPayout + '</div>' : ''}
       ${buildTicketConfidenceMeter(vpConf)}
       <div class="rec-bet-reason">"${reason}"</div>
+      <div class="rec-bet-details"></div>
       <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}', ${v.horse.pp}, 'Exacta Box', 4, 'value')">PLACE BET</button>
     </div>`;
     ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}${overlayStr}) — $2 EX Box with ${exPartner || '#2'}${vpPayout ? ' (' + vpPayout + ')' : ''}`);
@@ -4591,13 +4747,16 @@ function updateTopPicksCard(allScores) {
     const actConf = topAction.confidence || 'medium';
     const actMlOdds = parseOddsToNum(topAction.entry.horse.ml);
     const actPayout = estimatePayoutRange(actMlOdds, actionAmt);
-    html += `<div class="rec-bet-item">
+    var actDetailId = storeTicketDetail(topAction.entry, topAction.entry.race, 'action');
+    html += `<div class="rec-bet-item" data-detail-id="${actDetailId}">
+      <span class="rec-bet-expand-hint">&#9660;</span>
       <div class="rec-bet-tag rec-tag-action">&#127919; Action Bet</div>
       <div class="rec-bet-detail">Race ${topAction.entry.race.num}: <strong>#${topAction.entry.horse.pp} ${escHtml(topAction.entry.horse.name).toUpperCase()}</strong> to WIN</div>
       <div class="rec-bet-amount">$${actionAmt} to Win</div>
       ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
       ${buildTicketConfidenceMeter(actConf)}
       <div class="rec-bet-reason">"${reason}"</div>
+      <div class="rec-bet-details"></div>
       <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${topAction.entry.race.num}, '${escHtml(topAction.entry.horse.name).replace(/'/g,"\\'")}', ${topAction.entry.horse.pp}, 'Win', ${actionAmt}, 'action')">PLACE BET</button>
     </div>`;
     ticketLines.push(`ACTION — Race ${topAction.entry.race.num}: #${topAction.entry.horse.pp} ${topAction.entry.horse.name} to WIN — $${actionAmt}${actPayout ? ' (' + actPayout + ')' : ''}`);
@@ -6491,6 +6650,14 @@ function getScratchesUrl(code, date) {
 function startLivePolling() {
   stopLivePolling();
   fetchLiveEntries();
+  // Pause polling when tab is backgrounded to save battery
+  if (!window._visChangeRegistered) {
+    window._visChangeRegistered = true;
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'hidden') { stopLivePolling(); }
+      else if (document.visibilityState === 'visible') { startLivePolling(); }
+    });
+  }
   livePollingInterval = setInterval(fetchLiveEntries, 5 * 60 * 1000);
   // Scratches only if Worker URL is configured
   const store = getStore();
@@ -7208,15 +7375,196 @@ function dismissWinnerOverlay(e) {
   var fullSrc = 'images/' + key + ext;
   var loader = new Image();
   loader.onload = function() {
+    img.style.willChange = 'filter, transform';
     img.src = fullSrc;
-    // Remove blur once the full image is painted
     requestAnimationFrame(function() {
       img.style.filter = 'none';
       img.style.transform = 'scale(1)';
+      img.addEventListener('transitionend', function() {
+        img.style.willChange = 'auto';
+      }, { once: true });
     });
   };
   loader.src = fullSrc;
 })();
+
+// --- Expandable bet card details ---
+var _ticketDetailData = {};
+var _ticketDetailCounter = 0;
+
+function storeTicketDetail(entry, race, betType) {
+  var id = 'td-' + (++_ticketDetailCounter);
+  _ticketDetailData[id] = { entry: entry, race: race, betType: betType };
+  return id;
+}
+
+function toggleTicketDetail(e) {
+  // Don't toggle if clicking a button or link
+  if (e.target.closest('button, a, .btn-bet, .btn-bet-sm, .btn-bet-outline')) return;
+  var item = e.target.closest('.rec-bet-item[data-detail-id]');
+  if (!item) return;
+  var detailId = item.getAttribute('data-detail-id');
+  var detailDiv = item.querySelector('.rec-bet-details');
+  if (!detailDiv || !detailId) return;
+
+  if (item.classList.contains('expanded')) {
+    item.classList.remove('expanded');
+    return;
+  }
+
+  // Close any other expanded items
+  document.querySelectorAll('.rec-bet-item.expanded').forEach(function(other) {
+    other.classList.remove('expanded');
+  });
+
+  // Build content if not yet rendered
+  if (!detailDiv.getAttribute('data-rendered')) {
+    var data = _ticketDetailData[detailId];
+    if (data) {
+      detailDiv.innerHTML = buildExpandedDetails(data.entry, data.race, data.betType);
+      detailDiv.setAttribute('data-rendered', '1');
+    }
+  }
+
+  item.classList.add('expanded');
+}
+
+// Delegate click on the rec-bets-content container
+document.addEventListener('DOMContentLoaded', function() {
+  var rc = document.getElementById('rec-bets-content');
+  if (rc) rc.addEventListener('click', toggleTicketDetail);
+});
+
+function buildExpandedDetails(s, race, betType) {
+  var h = s.horse;
+  var score = s.score || 0;
+  var figs = (h.speedFigs || []).filter(function(f) { return f != null; });
+
+  var html = '';
+
+  // ── Score Gauge (SVG radial) ──
+  var radius = 36;
+  var circumference = 2 * Math.PI * radius;
+  var pct = Math.min(score, 100) / 100;
+  var offset = circumference * (1 - pct);
+  var gaugeColor = score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low';
+  html += '<div class="detail-score-gauge">';
+  html += '<svg viewBox="0 0 90 90">';
+  html += '<circle class="gauge-track" cx="45" cy="45" r="' + radius + '"/>';
+  html += '<circle class="gauge-fill ' + gaugeColor + '" cx="45" cy="45" r="' + radius + '" stroke-dasharray="' + circumference.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '" transform="rotate(-90 45 45)"/>';
+  html += '<text class="gauge-score" x="45" y="48" text-anchor="middle" dominant-baseline="middle">' + score.toFixed(0) + '</text>';
+  html += '<text class="gauge-label" x="45" y="62" text-anchor="middle">COMPOSITE</text>';
+  html += '</svg>';
+  html += '</div>';
+
+  // ── Factor Breakdown Bars ──
+  var factors = [
+    { key: 'speed', label: 'Speed', val: s.speedScore || 0, weight: '35%' },
+    { key: 'class', label: 'Class', val: s.classScore || 0, weight: '20%' },
+    { key: 'pace', label: 'Pace', val: s.paceScore || 0, weight: '15%' },
+    { key: 'tj', label: 'T/J', val: s.tjScore || 0, weight: '15%' },
+    { key: 'bias', label: 'Bias', val: s.biasScore || 0, weight: '10%' },
+    { key: 'fresh', label: 'Fresh', val: s.freshnessScore || 0, weight: '5%' }
+  ];
+  html += '<div class="detail-factors">';
+  factors.forEach(function(f) {
+    var w = Math.min(f.val, 100);
+    html += '<div class="detail-factor-row">';
+    html += '<div class="detail-factor-label">' + f.label + '</div>';
+    html += '<div class="detail-factor-track"><div class="detail-factor-fill ' + f.key + '" style="width:' + w + '%"></div></div>';
+    html += '<div class="detail-factor-val">' + Math.round(f.val) + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // ── Speed Figure Sparkline ──
+  if (figs.length >= 2) {
+    html += '<div class="detail-sparkline">';
+    html += '<div class="sparkline-title">Speed Figure Trend</div>';
+    var svgW = 220, svgH = 48, padX = 16, padY = 8;
+    var minF = Math.min.apply(null, figs) - 3;
+    var maxF = Math.max.apply(null, figs) + 3;
+    var rangeF = maxF - minF || 1;
+    var points = figs.map(function(f, i) {
+      var x = padX + (i / (figs.length - 1)) * (svgW - 2 * padX);
+      var y = padY + (1 - (f - minF) / rangeF) * (svgH - 2 * padY);
+      return { x: x, y: y, val: f };
+    });
+    var linePath = points.map(function(p, i) { return (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+    var areaPath = linePath + ' L' + points[points.length-1].x.toFixed(1) + ',' + (svgH - padY) + ' L' + points[0].x.toFixed(1) + ',' + (svgH - padY) + ' Z';
+    html += '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '">';
+    html += '<defs><linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#60A5FA" stop-opacity="0.4"/><stop offset="100%" stop-color="#60A5FA" stop-opacity="0"/></linearGradient></defs>';
+    html += '<path class="sparkline-area" d="' + areaPath + '"/>';
+    html += '<path class="sparkline-line" d="' + linePath + '"/>';
+    points.forEach(function(p, i) {
+      var cls = i === points.length - 1 ? 'sparkline-dot latest' : 'sparkline-dot';
+      var r = i === points.length - 1 ? 4 : 2.5;
+      html += '<circle class="' + cls + '" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r + '"/>';
+      // Label for first and last
+      if (i === 0 || i === points.length - 1) {
+        html += '<text class="sparkline-label" x="' + p.x.toFixed(1) + '" y="' + (p.y - 6).toFixed(1) + '" text-anchor="middle">' + p.val + '</text>';
+      }
+    });
+    html += '</svg>';
+    html += '</div>';
+  }
+
+  html += '<div class="detail-section-divider"></div>';
+
+  // ── Odds & Value Cards ──
+  var ml = h.ml || '';
+  var liveOdds = h.liveOdds || '';
+  var modelProbPct = s.modelProb ? (s.modelProb * 100).toFixed(0) : '—';
+  var impliedProbPct = s.impliedProb ? (s.impliedProb * 100).toFixed(0) : '—';
+  var overlayPct = s.overlay ? (s.overlay * 100).toFixed(0) : '0';
+  var overlayClass = s.overlay > 0.05 ? 'value-positive' : s.overlay < -0.05 ? 'value-negative' : '';
+
+  html += '<div class="detail-odds-row">';
+  html += '<div class="detail-odds-card"><div class="odds-val">' + (ml || '—') + '</div><div class="odds-label">Morning Line</div></div>';
+  html += '<div class="detail-odds-card"><div class="odds-val">' + (liveOdds || '—') + '</div><div class="odds-label">Live Odds</div></div>';
+  html += '<div class="detail-odds-card"><div class="odds-val">' + modelProbPct + '%</div><div class="odds-label">Our Model</div></div>';
+  html += '<div class="detail-odds-card ' + overlayClass + '"><div class="odds-val">' + (s.overlay > 0 ? '+' : '') + overlayPct + '%</div><div class="odds-label">Edge</div></div>';
+  html += '</div>';
+
+  // ── Pace Scenario ──
+  var style = h.runningStyle || '';
+  var styleNames = { 'E': 'Early Speed', 'EP': 'Presser', 'S': 'Stalker', 'SS': 'Deep Closer' };
+  var styleName = styleNames[style] || style || 'Unknown';
+  var paceIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
+  html += '<div class="detail-pace-pill">' + paceIcon + ' ' + styleName + '</div>';
+
+  // ── Expert Picks Visual ──
+  var expertPicks = race.expertPicks || [];
+  if (expertPicks.length) {
+    html += '<div class="detail-experts">';
+    html += '<div class="detail-experts-title">Expert Sources</div>';
+    expertPicks.forEach(function(ep) {
+      var match = (ep.pick === h.pp || ep.horseName === h.name);
+      if (match) {
+        html += '<span class="detail-expert-chip"><span class="chip-check">\u2713</span> ' + escHtml(ep.source.replace('NYRA - ', '')) + '</span>';
+      } else {
+        html += '<span class="detail-expert-chip no-pick">' + escHtml(ep.source.replace('NYRA - ', '')) + '</span>';
+      }
+    });
+    html += '</div>';
+  }
+
+  // ── Jockey & Trainer Stats ──
+  var jkyPct = parseFloat(h.jockeyPct) || 0;
+  var trnPct = parseFloat(h.trainerPct) || 0;
+  if (h.jockey || h.trainer) {
+    html += '<div class="detail-odds-row" style="margin-top:0.35rem">';
+    if (h.jockey) {
+      html += '<div class="detail-odds-card"><div class="odds-val">' + jkyPct.toFixed(0) + '%</div><div class="odds-label">' + escHtml(h.jockey) + '</div></div>';
+    }
+    if (h.trainer) {
+      html += '<div class="detail-odds-card"><div class="odds-val">' + trnPct.toFixed(0) + '%</div><div class="odds-label">' + escHtml(h.trainer) + '</div></div>';
+    }
+    html += '</div>';
+  }
+
+  return html;
+}
 
 // --- Win celebration on setResultBet ---
 (function() {
@@ -7285,14 +7633,30 @@ function dismissWinnerOverlay(e) {
 
 // --- MTP live countdown ticker ---
 // Re-renders the today tab every 60s so MTP badges stay accurate
+// Preserves user-expanded race cards across re-render
 (function() {
   setInterval(function() {
-    if (typeof renderTodayTab === 'function') {
-      var activePanel = document.querySelector('.tab-panel.active');
-      if (activePanel && activePanel.id === 'tab-today') {
-        renderTodayTab();
+    if (typeof renderTodayTab !== 'function') return;
+    var activePanel = document.querySelector('.tab-panel.active');
+    if (!activePanel || activePanel.id !== 'tab-today') return;
+    // Snapshot which race bodies are open
+    var openRaceIds = [];
+    document.querySelectorAll('.race-body:not(.hidden)').forEach(function(el) {
+      var id = el.id ? el.id.replace('race-body-', '') : '';
+      if (id) openRaceIds.push(id);
+    });
+    renderTodayTab();
+    // Restore user-expanded race cards after re-render
+    openRaceIds.forEach(function(raceId) {
+      var body = document.getElementById('race-body-' + raceId);
+      var icon = document.getElementById('collapse-icon-' + raceId);
+      var header = document.getElementById('race-header-' + raceId);
+      if (body) {
+        body.classList.remove('hidden');
+        if (icon) icon.classList.remove('collapsed');
+        if (header) header.classList.remove('collapsed');
       }
-    }
+    });
   }, 60000);
 })();
 
