@@ -13,10 +13,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Purge Cloudflare cache
+        env:
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: |
-          curl -s -X POST \
-            "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID }}/purge_cache" \
-            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+          if [ -z "$CF_ZONE_ID" ] || [ -z "$CF_API_TOKEN" ]; then
+            echo "::warning::CF_ZONE_ID or CF_API_TOKEN secret not set — skipping cache purge"
+            exit 0
+          fi
+          RESPONSE=$(curl -sf -X POST \
+            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data '{"purge_everything":true}' \
-            | jq .
+            --data '{"purge_everything":true}')
+          echo "$RESPONSE" | jq .
+          if echo "$RESPONSE" | jq -e '.success' | grep -q true; then
+            echo "Cache purged successfully"
+          else
+            echo "::error::Cache purge failed"
+            exit 1
+          fi
