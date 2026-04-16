@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-0750';
+var NE_APP_VERSION = '20260416-0850';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -40,11 +40,26 @@ function neForceUpdate(newVersion) {
     if (newVersion) localStorage.setItem('ne-racing-version', newVersion);
   } catch(e) {}
 
-  // Wait for SW unregister + cache clear, then hard reload
+  // Wait for SW unregister + cache clear, then hard reload.
+  // GitHub Pages + Fastly CDN ignores query strings for caching,
+  // so we use fetch() with cache:'reload' to force a network request,
+  // then replace the page with the fresh HTML.
   Promise.all(tasks).then(function() {
-    // Force reload with cache-busting URL — works on all browsers including Chrome iOS
-    var v = newVersion || Date.now();
-    window.location.href = window.location.pathname + '?_v=' + v + '&_t=' + Date.now();
+    // Strategy: fetch the page fresh from origin, then replace the document
+    fetch(window.location.pathname, {
+      cache: 'reload',
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    }).then(function(res) {
+      if (res.ok) return res.text();
+      throw new Error('fetch failed');
+    }).then(function(html) {
+      document.open();
+      document.write(html);
+      document.close();
+    }).catch(function() {
+      // Fallback: hard reload (may still hit CDN cache, but worth trying)
+      window.location.reload(true);
+    });
   });
 }
 
@@ -134,10 +149,11 @@ function neForceUpdate(newVersion) {
   --color-racing-green: #0D3320;
   --color-cream: #FAF3E0;
   --color-gold: #D4A849;
+  --color-gold-text: #9A7B2F;
   --color-burgundy: #6B1D2A;
   --color-slate: #2D3436;
   --color-white: #FFFFFF;
-  --color-muted: #8D99AE;
+  --color-muted: #636B7F;
   --color-positive: #2D6A4F;
   --color-negative: #C1121F;
   --color-green-light: #D8F3DC;
@@ -168,7 +184,7 @@ function neForceUpdate(newVersion) {
 html { -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.6;
   color: var(--color-slate);
   background: linear-gradient(170deg, #FBF6EE 0%, #F5EDE0 50%, #F0E8D8 100%);
@@ -194,7 +210,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 .text-muted { color: var(--color-muted); }
 .text-positive { color: var(--color-positive); }
 .text-negative { color: var(--color-negative); }
-.text-gold { color: var(--color-gold); }
+.text-gold { color: var(--color-gold-text); }
 .text-sm { font-size: 0.8125rem; }
 .text-xs { font-size: 0.75rem; }
 .text-lg { font-size: 1.0625rem; }
@@ -517,7 +533,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 
 
-.track-section-header { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.45); margin: 0.75rem 0 0.35rem; padding: 0 0.25rem; }
+.track-section-header { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.65); margin: 0.75rem 0 0.35rem; padding: 0 0.25rem; }
 
 /* SAR / AQU two-button toggle */
 
@@ -597,7 +613,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .toast.warning { border-left-color: var(--color-amber); }
 .toast.danger { border-left-color: var(--color-negative); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes toastOut { to { opacity: 0; transform: translateY(-10px); height: 0; padding: 0; margin: 0; } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-10px) scaleY(0); transform-origin: top; } }
 
 /* =========================================================
    BANNER
@@ -717,7 +733,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 /* =========================================================
    RACE CARD
    ========================================================= */
-.race-card-wrap { margin-bottom: 1.25rem; }
+.race-card-wrap { margin-bottom: 1.25rem; contain: layout style; }
 .race-card-wrap.race-active { border-left: 3px solid var(--color-gold); box-shadow: 0 0 0 1px rgba(201,168,76,0.15), var(--shadow-md); border-radius: var(--radius-md); }
 .race-card-header {
   background: #f5f0e6; color: var(--color-racing-green);
@@ -748,6 +764,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   box-shadow: var(--shadow-sm); overflow: hidden;
 }
 .race-body.hidden { display: none; }
+.race-body { content-visibility: auto; contain-intrinsic-size: 0 400px; }
 .collapse-icon { transition: transform 0.2s; color: var(--color-muted); flex-shrink: 0; }
 .collapse-icon.collapsed { transform: rotate(-90deg); }
 
@@ -789,7 +806,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .notes-input { padding: 0.2rem 0.4rem; border: 1px solid #e0e0e0; border-radius: var(--radius-sm); font-size: 0.72rem; width: 100%; min-width: 80px; }
 .wps-group { display: flex; gap: 3px; }
 .scratch-toggle { display: flex; align-items: center; gap: 3px; font-size: 0.68rem; color: var(--color-muted); cursor: pointer; white-space: nowrap; }
-.scratch-toggle input { width: 12px; height: 12px; accent-color: var(--color-negative); }
+.scratch-toggle { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.scratch-toggle input { width: 18px; height: 18px; accent-color: var(--color-negative); }
 
 /* Add horse row */
 .add-horse-row { padding: 0.5rem 0.75rem; background: rgba(27,67,50,0.03); border-top: 1px dashed rgba(27,67,50,0.15); }
@@ -863,7 +881,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;
   margin-bottom: 1rem; font-size: 0.82rem;
 }
-.bankroll-banner .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.55); }
+.bankroll-banner .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.65); }
 .bankroll-banner .stat-val { font-family: var(--font-mono); font-weight: 600; font-size: 0.95rem; }
 .bankroll-banner .stat-val.positive { color: #52b788; }
 .bankroll-banner .stat-val.warn { color: #f4a261; }
@@ -928,7 +946,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .bankroll-stat .stat-value { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; }
 .stat-positive { color: var(--color-positive); }
 .stat-negative { color: var(--color-negative); }
-.stat-gold { color: var(--color-gold); }
+.stat-gold { color: var(--color-gold-text); }
 
 /* Sparkline */
 .sparkline-wrap { background: var(--color-white); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 1rem; margin-bottom: 1rem; }
@@ -1036,7 +1054,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    ========================================================= */
 #settings-modal {
   position: fixed; inset: 0; z-index: 500;
-  background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   display: flex; align-items: flex-end;
   opacity: 0; pointer-events: none; transition: opacity 0.2s;
 }
@@ -1061,7 +1079,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    ========================================================= */
 #horse-modal {
   position: fixed; inset: 0; z-index: 400;
-  background: rgba(0,0,0,0.5); backdrop-filter: blur(3px);
+  background: rgba(0,0,0,0.5); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   display: flex; align-items: flex-end; justify-content: center;
   opacity: 0; pointer-events: none; transition: opacity 0.2s;
 }
@@ -1080,7 +1098,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 /* Bet helper popup */
 #bet-helper-popup {
   position: fixed; inset: 0; z-index: 450;
-  background: rgba(0,0,0,0.5); backdrop-filter: blur(3px);
+  background: rgba(0,0,0,0.5); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none; transition: opacity 0.2s;
 }
@@ -1157,7 +1175,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .ticket-conf-bar.filled-medium { background: var(--color-gold); }
 .ticket-conf-bar.filled-low { background: var(--color-negative); }
 .ticket-conf-bar.empty { background: rgba(255,255,255,0.1); }
-.ticket-conf-label { font-size: 0.65rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.04em; }
+.ticket-conf-label { font-size: 0.65rem; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.04em; }
 .ticket-payout { font-size: 0.72rem; font-family: var(--font-mono); color: rgba(255,255,255,0.55); margin-top: 2px; }
 .ticket-exotic { margin-top: 0.5rem; padding: 0.5rem; background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.25); border-radius: var(--radius-sm); }
 .ticket-exotic-tag { font-size: 0.7rem; font-weight: 700; color: var(--color-gold); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
@@ -1185,10 +1203,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .rec-bet-amount { font-family: var(--font-mono); font-size: 0.78rem; color: var(--color-gold); font-weight: 600; }
 .ticket-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem; }
 .ticket-header .ticket-icon { font-size: 1.2rem; }
-.ticket-subtitle { font-size: 0.72rem; color: rgba(255,255,255,0.5); margin-bottom: 0.75rem; }
+.ticket-subtitle { font-size: 0.72rem; color: rgba(255,255,255,0.65); margin-bottom: 0.75rem; }
 .copy-ticket-btn { display: flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%; margin-top: 0.6rem; padding: 0.5rem; background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.35); color: var(--color-gold); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
 .copy-ticket-btn:hover { background: rgba(201,168,76,0.25); }
-.pass-races-line { font-size: 0.78rem; color: rgba(255,255,255,0.5); padding: 0.4rem 0; }
+.pass-races-line { font-size: 0.78rem; color: rgba(255,255,255,0.65); padding: 0.4rem 0; }
 .loading-indicator { display: flex; align-items: center; gap: 0.5rem; padding: 1rem; color: var(--color-muted); font-size: 0.85rem; }
 .loading-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-gold); animation: pulseDot 1s ease infinite; }
 @keyframes pulseDot { 0%,100%{ opacity:0.3; transform:scale(0.8); } 50%{ opacity:1; transform:scale(1.2); } }
@@ -1231,7 +1249,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .btn-bet-outline:hover { background: rgba(201,168,76,0.15); }
 .btn-bet-outline:active { transform: scale(0.97); }
 .bet-disclaimer {
-  font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; line-height: 1.4;
+  font-size: 0.65rem; color: rgba(255,255,255,0.65); margin-top: 0.5rem; line-height: 1.4;
   padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.06);
 }
 
@@ -1285,7 +1303,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 /* Sim mode banner in ticket */
 .sim-mode-banner {
-  font-size: 0.68rem; color: rgba(255,255,255,0.45); text-align: center;
+  font-size: 0.68rem; color: rgba(255,255,255,0.65); text-align: center;
   padding: 0.3rem 0.6rem; background: rgba(255,255,255,0.05);
   border-radius: var(--radius-sm); margin-bottom: 0.5rem;
   letter-spacing: 0.02em;
@@ -1569,11 +1587,11 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   box-shadow: 0 2px 8px rgba(212,168,73,0.3);
 }
 @keyframes quickPickShimmer {
-  0% { left: -100%; }
-  100% { left: 100%; }
+  0% { transform: translateX(-200%); }
+  100% { transform: translateX(200%); }
 }
 .quick-pick-btn .shimmer-sweep {
-  position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   pointer-events: none;
 }
@@ -6878,20 +6896,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-
-  // Check for version updates on load
-  if (navigator.onLine) {
-    fetch('version.json?_=' + Date.now(), {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
-    })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.v && d.v !== NE_APP_VERSION) {
-          neForceUpdate(d.v);
-        }
-      }).catch(function(){});
-  }
 });
 
 
@@ -7010,11 +7014,7 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
   // Pick a random image each load
   var idx = Math.floor(Math.random() * heroImages.length);
   img.src = heroImages[idx];
-  // Preload others for smooth experience
-  heroImages.forEach(function(src) {
-    var preload = new Image();
-    preload.src = src;
-  });
+  // Only selected image loads; others load on-demand on next visit
 })();
 
 // --- Win celebration on setResultBet ---
@@ -7124,20 +7124,6 @@ document.addEventListener('keydown', e => {
 });
 
 </script>
-<script>
-// Register the self-destructing service worker. This is INTENTIONAL:
-// If a user's browser has an old SW cached that intercepts requests and
-// serves stale HTML, simply calling unregister() from JS won't work —
-// because the old SW serves the old JS that doesn't have the unregister call.
-// By registering sw.js (which self-destructs on activate), the browser
-// sees a new SW, installs it, which then clears all caches and unregisters
-// itself. This is the ONLY way to kill a rogue cached service worker.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=20260416-0750').then(function(reg) {
-    // Force immediate update check
-    reg.update().catch(function(){});
-  }).catch(function(){});
-}
-</script>
+
 </body>
 </html>

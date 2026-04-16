@@ -1,5 +1,18 @@
+# NOTE: This file is IGNORED by GitHub Pages.
+# Cache headers are controlled via:
+# 1. Cloudflare Page Rule: railbirdai.com/* → Cache Level: Bypass
+# 2. Meta tags in index.html (http-equiv Cache-Control)
+# 3. The version.json polling mechanism in the app JS
+#
+# If migrating to Cloudflare Pages, this file WILL take effect:
 /*
   Cache-Control: public, max-age=0, must-revalidate
 
 /index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/version.json
   Cache-Control: no-cache, no-store, must-revalidate
