@@ -11,7 +11,8 @@
  *   • Scratches — Live XML feed from Equibase (free, no auth required)
  *                 https://www.equibase.com/premium/eqbLateChangeXMLDownload.cfm
  *   • Odds     — Not available; returns graceful empty response
- *   • Results  — Not available; returns graceful empty response
+ *   • Results  — Equibase mobile site (free, no auth required)
+ *                 https://mobile.equibase.com/html/results{TRACK}{YYYYMMDD}{RR}.html
  *
  *   DATA_SOURCE = "theracingapi"  (requires API_KEY secret)
  *   ────────────────────────────────────────────────────────────────────
@@ -763,26 +764,173 @@ function parseEquibaseOddsXml(xml, track, date, venue, raceNumber) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// FREE SOURCE: RESULTS — not available; graceful stub
+// FREE SOURCE: RESULTS — Equibase mobile site
 // ═════════════════════════════════════════════════════════════════════════════
 
+const EQUIBASE_MOBILE_BASE = "https://mobile.equibase.com/html/results";
+
 /**
- * Returns a graceful "unavailable" response for results in free mode.
+ * Fetches race results from the Equibase mobile site for free-mode users.
  *
- * @param {string} track — Equibase track code
+ * 1. Fetches the race list page to discover available race numbers.
+ * 2. Fetches each individual race result page in parallel.
+ * 3. Parses simple HTML to extract finisher positions, names, and payouts.
+ *
+ * @param {string} track — Equibase track code (e.g. "AQU")
  * @param {string} date  — YYYY-MM-DD
  * @param {string} venue — Human-readable venue name
  */
-function buildFreeResultsResponse(track, date, venue) {
+async function fetchFreeResults(track, date, venue) {
+  const yyyymmdd = date.replace(/-/g, "");
+  const listUrl = `${EQUIBASE_MOBILE_BASE}${track}${yyyymmdd}.html`;
+
+  const listRes = await fetch(listUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; RacingCompanion/1.0)",
+      Accept: "text/html",
+    },
+  });
+
+  if (!listRes.ok) {
+    // No results page — races may not have run yet
+    return {
+      track, date, venue,
+      lastUpdated: new Date().toISOString(),
+      source: "equibase",
+      races: [],
+    };
+  }
+
+  const listHtml = await listRes.text();
+
+  // Extract race numbers from links like resultsAQU2026041001.html
+  const linkPattern = new RegExp(
+    `results${track}${yyyymmdd}(\\d{2})\\.html`, "gi"
+  );
+  const raceNumbers = [];
+  let linkMatch;
+  while ((linkMatch = linkPattern.exec(listHtml)) !== null) {
+    const num = parseInt(linkMatch[1], 10);
+    if (!raceNumbers.includes(num)) raceNumbers.push(num);
+  }
+  raceNumbers.sort((a, b) => a - b);
+
+  if (!raceNumbers.length) {
+    return {
+      track, date, venue,
+      lastUpdated: new Date().toISOString(),
+      source: "equibase",
+      races: [],
+    };
+  }
+
+  // Fetch each individual race result in parallel
+  const racePromises = raceNumbers.map(async (raceNum) => {
+    const rr = String(raceNum).padStart(2, "0");
+    const raceUrl = `${EQUIBASE_MOBILE_BASE}${track}${yyyymmdd}${rr}.html`;
+    try {
+      const res = await fetch(raceUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; RacingCompanion/1.0)",
+          Accept: "text/html",
+        },
+      });
+      if (!res.ok) return null;
+      const html = await res.text();
+      return parseEquibaseRaceResult(html, raceNum);
+    } catch (_) {
+      return null;
+    }
+  });
+
+  const raceResults = (await Promise.all(racePromises)).filter(Boolean);
+
   return {
     track,
     date,
     venue,
     lastUpdated: new Date().toISOString(),
-    source:  "unavailable",
-    message: "Race results require a The Racing API subscription. " +
-             "Configure DATA_SOURCE=theracingapi and set API_KEY in Settings.",
-    races: [],
+    source: "equibase",
+    races: raceResults,
+  };
+}
+
+/**
+ * Parses an individual Equibase mobile race result HTML page.
+ *
+ * Expected structure:
+ *   <table bgcolor="#008000">...<b>04/10/2026 Race 1 - Starter Allowance</b>...</table>
+ *   <table width="100%">
+ *     <tr><td>1 Snide $4.38 $2.92 $2.32</td></tr>       (1st: PP Name $Win $Place $Show)
+ *     <tr><td>4 Grace and Grit  $3.66 $2.94</td></tr>    (2nd: PP Name $Place $Show)
+ *     <tr><td>2 Racing Colors   $3.58</td></tr>           (3rd: PP Name $Show)
+ *   </table>
+ *
+ * @param {string} html    — Raw HTML from the race result page
+ * @param {number} raceNum — The race number (fallback if parsing header fails)
+ */
+function parseEquibaseRaceResult(html, raceNum) {
+  // Extract race number from the green header: "Race N"
+  const raceHeaderMatch = html.match(/Race\s+(\d+)/i);
+  const raceNumber = raceHeaderMatch ? parseInt(raceHeaderMatch[1], 10) : raceNum;
+
+  // Find the results table — it comes after the green header table.
+  // We look for <tr><td> rows containing a leading number (PP) followed by
+  // a horse name and dollar amounts.
+  // Pattern: {PP} {HorseName} [$X.XX] [$X.XX] [$X.XX]
+  const resultRowPattern = /<tr[^>]*>\s*<td[^>]*>\s*(\d+)\s+([^$<]+?)(\$[\d.]+(?:\s+\$[\d.]+)*)\s*<\/td>\s*<\/tr>/gi;
+
+  const results = [];
+  let position = 0;
+  let rowMatch;
+
+  while ((rowMatch = resultRowPattern.exec(html)) !== null) {
+    position++;
+    const pp = parseInt(rowMatch[1], 10);
+    const horseName = rowMatch[2].trim();
+    const payoutStr = rowMatch[3].trim();
+
+    // Parse dollar amounts
+    const payouts = [];
+    const dollarPattern = /\$([\d.]+)/g;
+    let dollarMatch;
+    while ((dollarMatch = dollarPattern.exec(payoutStr)) !== null) {
+      payouts.push(parseFloat(dollarMatch[1]));
+    }
+
+    const entry = { position, pp, horseName };
+
+    // 1st place: 3 payouts (Win, Place, Show)
+    // 2nd place: 2 payouts (Place, Show)
+    // 3rd place: 1 payout (Show)
+    if (position === 1 && payouts.length >= 3) {
+      entry.winPayout = payouts[0];
+      entry.placePayout = payouts[1];
+      entry.showPayout = payouts[2];
+    } else if (position === 1 && payouts.length === 2) {
+      entry.winPayout = payouts[0];
+      entry.placePayout = payouts[1];
+    } else if (position === 1 && payouts.length === 1) {
+      entry.winPayout = payouts[0];
+    } else if (position === 2 && payouts.length >= 2) {
+      entry.placePayout = payouts[0];
+      entry.showPayout = payouts[1];
+    } else if (position === 2 && payouts.length === 1) {
+      entry.placePayout = payouts[0];
+    } else if (position === 3 && payouts.length >= 1) {
+      entry.showPayout = payouts[0];
+    }
+
+    results.push(entry);
+    if (position >= 3) break; // Only need top 3
+  }
+
+  if (!results.length) return null;
+
+  return {
+    raceNumber,
+    results,
+    official: true,
   };
 }
 
@@ -1290,14 +1438,24 @@ async function handleResults(request, env, origin) {
     return jsonError(`Unknown track code: ${track}`, 400, origin);
   }
 
-  // Free mode: return the stub immediately
+  const cacheKey = new Request(`https://ne-racing-cache/results/${track}/${date}`);
+
+  // Free mode: fetch from Equibase mobile site
   if (!usePaidSource(env)) {
-    const body = buildFreeResultsResponse(track, date, venue);
-    return jsonOk(body, origin, 0);
+    const cached = await readCache(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const body = await fetchFreeResults(track, date, venue);
+      const response = jsonOk(body, origin, CACHE_TTL.results);
+      await writeCache(cacheKey, response);
+      return response;
+    } catch (err) {
+      return jsonError(`Results fetch failed: ${err.message}`, 503, origin);
+    }
   }
 
   // Paid mode: fetch from The Racing API
-  const cacheKey = new Request(`https://ne-racing-cache/results/${track}/${date}`);
   const cached = await readCache(cacheKey);
   if (cached) return cached;
 
@@ -1468,7 +1626,7 @@ export default {
               entries:  dataSource === "theracingapi" ? "theracingapi"   : "github-pages-static",
               scratches: dataSource === "theracingapi" ? "theracingapi"  : "equibase-live",
               odds:     dataSource === "theracingapi" ? "theracingapi"   : "nyra-equibase-free",
-              results:  dataSource === "theracingapi" ? "theracingapi"   : "unavailable",
+              results:  dataSource === "theracingapi" ? "theracingapi"   : "equibase-mobile",
             },
             defaultTrack: env.DEFAULT_TRACK || "AQU",
             staticEntriesPattern: `${STATIC_ENTRIES_BASE}/entries-{TRACK}-{DATE}.json`,

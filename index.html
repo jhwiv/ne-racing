@@ -4492,6 +4492,9 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     renderStraightBets();
     checkBankrollOverrun();
   }
+
+  // Start results auto-polling when a bet is placed
+  if (typeof startResultsPolling === 'function') startResultsPolling();
 }
 
 /* ── Bet Amount Picker (Bug 2 fix) ── */
@@ -4731,6 +4734,9 @@ function initApp() {
 
   // Start live polling
   startLivePolling();
+
+  // Start results auto-polling if there are unresolved bets
+  startResultsPolling();
 
   // Load accuracy tracking data
   renderAccuracyFromStorage();
@@ -8497,32 +8503,117 @@ async function fetchLiveScratches() {
   } catch(e) { _scratchInitialLoadDone = true; }
 }
 
+function normalizeHorseName(name) {
+  return (name || '').trim().toLowerCase();
+}
+
 async function fetchLiveResults() {
   const store = getStore();
   const workerUrl = store && store.settings.workerUrl;
-  if (!workerUrl) { showToast('Live results require a Worker URL (or The Racing API). Check Settings.', 'danger', 4000); return; }
+  if (!workerUrl) { showToast('Live results require a Worker URL. Check Settings.', 'danger', 4000); return; }
   const code = getActiveTrack();
   const today = getTodayStr();
   try {
     const res = await fetch(`${workerUrl}/api/results?track=${code}&date=${today}&_t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const results = await res.json();
-    if (!Array.isArray(results)) return;
+    const body = await res.json();
+    const races = body && body.races ? body.races : [];
+    if (!races.length) {
+      showToast('No results available yet for ' + code, 'default', 3000);
+      return;
+    }
     const data = getTrackData();
+    const bets = (data.bets || []).filter(function(b) { return !b.isExotic; });
     let updated = 0;
-    results.forEach(r => {
-      const bet = (data.bets||[]).find(b => String(b.raceNum) === String(r.raceNum) && b.type === r.betType && (b.selections||[]).includes(r.horseName));
-      if (bet) {
-        bet.result = r.result;
-        if (r.payout) bet.payout = r.payout;
+    bets.forEach(function(bet) {
+      // Only process unresolved bets for today
+      if (bet.result) return;
+      if (bet.date && bet.date !== today) return;
+      const raceResult = races.find(function(r) { return r.raceNumber === parseInt(bet.raceNum, 10); });
+      if (!raceResult || !raceResult.results || !raceResult.results.length) return;
+      const betHorse = normalizeHorseName(bet.selections && bet.selections[0]);
+      if (!betHorse) return;
+      const betType = (bet.type || '').toLowerCase();
+      // Find matching finisher by fuzzy horse name match
+      const matchedFinisher = raceResult.results.find(function(f) {
+        return normalizeHorseName(f.horseName) === betHorse;
+      });
+      if (betType === 'win') {
+        // Win bet: horse must finish 1st
+        if (matchedFinisher && matchedFinisher.position === 1 && matchedFinisher.winPayout) {
+          bet.result = 'win';
+          bet.payout = Math.round(matchedFinisher.winPayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
+        } else {
+          bet.result = 'loss';
+          bet.payout = 0;
+        }
+        updated++;
+      } else if (betType === 'place') {
+        // Place bet: horse must finish 1st or 2nd
+        if (matchedFinisher && matchedFinisher.position <= 2 && matchedFinisher.placePayout) {
+          bet.result = 'win';
+          bet.payout = Math.round(matchedFinisher.placePayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
+        } else {
+          bet.result = 'loss';
+          bet.payout = 0;
+        }
+        updated++;
+      } else if (betType === 'show') {
+        // Show bet: horse must finish 1st, 2nd, or 3rd
+        if (matchedFinisher && matchedFinisher.position <= 3 && matchedFinisher.showPayout) {
+          bet.result = 'win';
+          bet.payout = Math.round(matchedFinisher.showPayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
+        } else {
+          bet.result = 'loss';
+          bet.payout = 0;
+        }
         updated++;
       }
     });
-    saveTrackData(data);
-    renderResultsTab();
-    showToast(updated + ' result(s) updated from live data', 'success', 4000);
+    if (updated) {
+      saveTrackData(data);
+      renderResultsTab();
+      renderStraightBets();
+    }
+    const racesResolved = races.length;
+    const pending = bets.filter(function(b) { return !b.result; }).length;
+    if (updated > 0) {
+      showToast(updated + ' bet(s) resolved from ' + racesResolved + ' race result(s)' + (pending > 0 ? ' \u2014 ' + pending + ' still pending' : ''), 'success', 4000);
+    } else if (racesResolved > 0) {
+      showToast(racesResolved + ' race result(s) loaded \u2014 no matching unresolved bets', 'default', 3000);
+    }
   } catch(e) {
     showToast('Error fetching results: ' + e.message, 'danger', 4000);
+  }
+}
+
+/* ── Auto-polling for results every 3 minutes ── */
+var _resultsPollingTimer = null;
+var RESULTS_POLL_INTERVAL = 3 * 60 * 1000; // 3 minutes
+
+function hasUnresolvedBets() {
+  var data = getTrackData();
+  var bets = (data && data.bets || []).filter(function(b) { return !b.isExotic; });
+  var today = getTodayStr();
+  return bets.some(function(b) { return !b.result && (!b.date || b.date === today); });
+}
+
+function startResultsPolling() {
+  stopResultsPolling();
+  if (!hasUnresolvedBets()) return;
+  _resultsPollingTimer = setInterval(function() {
+    if (!document.hidden && hasUnresolvedBets()) {
+      fetchLiveResults();
+    } else if (!hasUnresolvedBets()) {
+      stopResultsPolling();
+    }
+  }, RESULTS_POLL_INTERVAL);
+}
+
+function stopResultsPolling() {
+  if (_resultsPollingTimer) {
+    clearInterval(_resultsPollingTimer);
+    _resultsPollingTimer = null;
   }
 }
 
