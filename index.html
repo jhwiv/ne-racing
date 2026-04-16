@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260415-1817';
+var NE_APP_VERSION = '20260416-0100';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -196,68 +196,98 @@ h3 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
 /* scroll-behavior: smooth removed — causes choppy scrolling on mobile */
 #app { display: flex; flex-direction: column; }
 /* =========================================================
-   HERO SCREEN (scrollable, non-gating)
+   HERO SCREEN (full-screen, scrollable)
    ========================================================= */
 #hero-screen {
   position: relative;
-  min-height: 85dvh;
+  height: 100dvh;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 1.5rem 1.25rem 2rem;
   box-sizing: border-box;
   overflow: hidden;
+  cursor: pointer;
 }
 #hero-screen-bg {
   position: absolute; inset: 0; z-index: 0;
-  background: url('https://www.saratoga.com/images/horse-race-grandstand-view.jpg') center/cover no-repeat;
+}
+#hero-screen-bg img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center 30%;
+  display: block;
 }
 #hero-screen::before {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(to bottom, rgba(27,67,50,0.2) 0%, rgba(27,67,50,0.5) 40%, rgba(27,67,50,0.85) 100%);
+  background: linear-gradient(to bottom, rgba(27,67,50,0.25) 0%, rgba(27,67,50,0.55) 40%, rgba(27,67,50,0.88) 100%);
   z-index: 1;
 }
 #hero-screen > * { position: relative; z-index: 2; }
 #hero-screen > #hero-screen-bg { position: absolute; inset: 0; z-index: 0; }
-.welcome-inner { width: 100%; max-width: 440px; }
-.welcome-logo { text-align: center; margin-bottom: 0.3rem; }
-.welcome-logo svg { width: 40px; height: 40px; }
-.welcome-title {
-  font-family: var(--font-display); font-size: clamp(1.4rem, 4.5vw, 2.2rem);
-  font-weight: 700; color: var(--color-white); text-align: center; line-height: 1.15;
-  margin-bottom: 0.15rem;
+
+/* Hero title block */
+.hero-title-block { text-align: center; padding: 0 1.5rem; margin-bottom: 1.5rem; }
+.hero-title-main {
+  font-family: var(--font-display); font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 700; color: var(--color-white); line-height: 1.1;
+  margin: 0 0 0.15rem;
 }
-.welcome-subtitle { color: rgba(255,255,255,0.65); text-align: center; font-size: 0.78rem; margin-bottom: 0.5rem; }
-.welcome-step {
-  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-radius: var(--radius-lg); padding: 0.55rem 1rem; margin-bottom: 0.4rem;
+.hero-title-sub {
+  font-family: var(--font-display); font-size: clamp(1.4rem, 4vw, 2.4rem);
+  font-weight: 400; color: var(--color-white); line-height: 1.1;
+  margin: 0 0 0.75rem;
 }
-.welcome-step-label {
-  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.1em; color: var(--color-gold); margin-bottom: 0.15rem;
+.hero-tagline {
+  font-family: var(--font-body); font-size: clamp(0.8rem, 2.2vw, 1rem);
+  color: var(--color-cream); opacity: 0.75; margin: 0;
 }
-.welcome-step h3 { color: var(--color-white); font-size: 0.85rem; margin-bottom: 0.35rem; }
-.welcome-step .form-control { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: var(--color-white); }
-.welcome-step .form-control::placeholder { color: rgba(255,255,255,0.4); }
-.welcome-step .form-control:focus { border-color: var(--color-gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.2); }
-.welcome-step .form-label { color: rgba(255,255,255,0.8); }
-.sar-aqu-toggle { display: flex; gap: 0.5rem; }
-.sar-aqu-btn {
-  flex: 1; padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 600;
-  color: rgba(255,255,255,0.6); cursor: pointer;
-  background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15);
-  border-radius: var(--radius-md); transition: all 0.15s; text-align: center;
+
+/* A2HS (Add to Home Screen) banner */
+.a2hs-banner {
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--radius-lg); padding: 1rem 1.25rem;
+  margin: 0 1.25rem 1.5rem; max-width: 420px; width: calc(100% - 2.5rem);
+  text-align: center; position: relative;
 }
-.sar-aqu-btn.selected { background: rgba(201,168,76,0.25); border-color: var(--color-gold); color: var(--color-white); }
-.mode-toggle { display: flex; gap: 0; border: 1.5px solid rgba(255,255,255,0.2); border-radius: var(--radius-md); overflow: hidden; }
-.mode-btn { flex: 1; padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.6); cursor: pointer; background: transparent; transition: all 0.15s; text-align: center; border: none; }
-.mode-btn.active { background: var(--color-gold); color: var(--color-white); }
-.hero-scroll-hint {
-  margin-top: 1rem; text-align: center; color: rgba(255,255,255,0.4);
-  font-size: 0.75rem; animation: hero-bounce 2s ease-in-out infinite;
+.a2hs-banner.hidden { display: none; }
+.a2hs-content { display: flex; align-items: center; gap: 0.75rem; text-align: left; }
+.a2hs-icon { flex-shrink: 0; width: 28px; height: 28px; color: var(--color-cream); }
+.a2hs-icon svg { width: 100%; height: 100%; }
+.a2hs-text { color: var(--color-cream); font-size: 0.82rem; line-height: 1.4; }
+.a2hs-text strong { color: var(--color-white); }
+.a2hs-dismiss {
+  position: absolute; top: 0.5rem; right: 0.5rem;
+  background: none; border: none; cursor: pointer; padding: 0.25rem;
+  color: rgba(255,255,255,0.5); transition: color 0.15s;
 }
-.hero-scroll-hint svg { width: 20px; height: 20px; margin: 0 auto; display: block; }
-@keyframes hero-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+.a2hs-dismiss:hover { color: var(--color-white); }
+.a2hs-dismiss svg { width: 16px; height: 16px; }
+
+/* Android native install button */
+.a2hs-install-btn {
+  display: inline-block; margin-top: 0.6rem; padding: 0.4rem 1.2rem;
+  background: var(--color-gold); color: var(--color-white); font-weight: 600;
+  font-size: 0.82rem; border: none; border-radius: var(--radius-md);
+  cursor: pointer; transition: opacity 0.15s;
+}
+.a2hs-install-btn:hover { opacity: 0.9; }
+
+/* Tap to enter prompt */
+.hero-enter-prompt {
+  position: absolute; bottom: 2.5rem; left: 0; right: 0;
+  text-align: center; z-index: 2;
+  animation: hero-pulse 2.5s ease-in-out infinite;
+}
+.hero-enter-text {
+  font-family: var(--font-body); font-size: 0.85rem;
+  color: var(--color-cream); opacity: 0.7; letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+.hero-enter-chevron { color: var(--color-cream); opacity: 0.5; }
+.hero-enter-chevron svg { width: 22px; height: 22px; margin: 0 auto; display: block; }
+@keyframes hero-pulse {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.5; transform: translateY(4px); }
+}
 #app-frame { display: flex; flex-direction: column; min-height: auto; }
 #top-header {
   height: var(--header-height);
@@ -1424,56 +1454,33 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
      ============================================= -->
 
 <!-- =============================================
-     HERO SCREEN (scrollable — no gate)
+     HERO SCREEN (full-screen, tap to enter)
      ============================================= -->
-<div id="hero-screen">
-  <div id="hero-screen-bg"></div>
-  <div class="welcome-inner">
-    <div class="welcome-logo">
-      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Saratoga Racing Companion">
-        <circle cx="40" cy="40" r="38" fill="rgba(255,255,255,0.07)" stroke="rgba(201,168,76,0.4)" stroke-width="1.5"/>
-        <path d="M20 52 C20 30 27 20 40 20 C53 20 60 30 60 52" stroke="#C9A84C" stroke-width="4" stroke-linecap="round" fill="none"/>
-        <path d="M20 52 L20 56 Q20 60 24 60 L28 60 Q32 60 32 56 L32 52" fill="#C9A84C"/>
-        <path d="M60 52 L60 56 Q60 60 56 60 L52 60 Q48 60 48 56 L48 52" fill="#C9A84C"/>
-        <circle cx="40" cy="38" r="5" fill="rgba(201,168,76,0.3)" stroke="#C9A84C" stroke-width="1.5"/>
-      </svg>
-    </div>
-    <h1 class="welcome-title">Saratoga Racing<br>Companion 2026</h1>
-    <p class="welcome-subtitle" id="hero-subtitle">Your personal handicapping &amp; bet tracking tool</p>
+<div id="hero-screen" onclick="heroTapEnter(event)">
+  <div id="hero-screen-bg">
+    <img src="images/hero-saratoga.jpg" alt="Saratoga Race Course grandstand" loading="eager" fetchpriority="high">
+  </div>
 
-    <div class="welcome-step">
-      <div class="welcome-step-label">Bankroll</div>
-      <h3>Starting Bankroll</h3>
-      <div class="form-group" style="margin-bottom:0">
-        <label class="form-label" for="welcome-bankroll">Amount ($)</label>
-        <input type="number" id="welcome-bankroll" class="form-control" value="1000" min="1" inputmode="numeric" placeholder="1000"
-          onchange="applyHeroBankroll(this.value)">
-      </div>
-    </div>
+  <div class="hero-title-block">
+    <h1 class="hero-title-main">Saratoga Racing</h1>
+    <p class="hero-title-sub">Companion 2026</p>
+    <p class="hero-tagline">Your personal handicapping &amp; bet tracking tool</p>
+  </div>
 
-    <div class="welcome-step">
-      <div class="welcome-step-label">Track</div>
-      <h3>Select Track</h3>
-      <div class="sar-aqu-toggle">
-        <button class="sar-aqu-btn" id="welcome-sar-btn" onclick="selectWelcomeTrack('SAR', this)">SAR &mdash; Saratoga</button>
-        <button class="sar-aqu-btn selected" id="welcome-aqu-btn" onclick="selectWelcomeTrack('AQU', this)">AQU &mdash; Aqueduct</button>
-      </div>
-      <p style="font-size:0.72rem;color:rgba(255,255,255,0.45);margin-top:0.4rem">Aqueduct spring meet through Apr 26 &bull; Saratoga opens Jul 3</p>
+  <!-- Add to Home Screen banner (platform-detected, dismissible) -->
+  <div id="a2hs-banner" class="a2hs-banner hidden">
+    <button class="a2hs-dismiss" onclick="dismissA2HS(event)" aria-label="Dismiss">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="a2hs-content" id="a2hs-content">
+      <!-- Populated by JS based on platform -->
     </div>
+  </div>
 
-    <div class="welcome-step">
-      <div class="welcome-step-label">Data</div>
-      <h3>Data Mode</h3>
-      <div class="mode-toggle">
-        <button class="mode-btn active" id="mode-live" onclick="setWelcomeMode('live')">Live Data (API)</button>
-        <button class="mode-btn" id="mode-manual" onclick="setWelcomeMode('manual')">Manual Entry</button>
-      </div>
-      <p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:0.5rem" id="mode-desc">Fetches race cards automatically on race days.</p>
-    </div>
-
-    <div class="hero-scroll-hint">
+  <div class="hero-enter-prompt" id="hero-enter-prompt">
+    <div class="hero-enter-text">Tap anywhere to enter</div>
+    <div class="hero-enter-chevron">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-      scroll down for today&rsquo;s card
     </div>
   </div>
 </div>
@@ -1551,7 +1558,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     <section id="tab-today" class="tab-panel active" role="tabpanel" aria-label="Today's Card">
       <div id="live-unavailable-banner" class="banner banner-warning hidden">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        No race card available — try manual entry or check back on a race day
+        No race card available — check back on a race day
       </div>
       <div id="preview-date-banner" class="banner banner-info hidden"></div>
 
@@ -2383,13 +2390,6 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <select id="settings-track" class="form-control" onchange="settingsChangeTrack(this.value)"></select>
     </div>
     <div class="settings-group">
-      <h4>Data Mode</h4>
-      <div class="mode-seg">
-        <button class="mode-seg-btn" id="settings-mode-live" onclick="settingsSetMode('live')">Live Data (API)</button>
-        <button class="mode-seg-btn active" id="settings-mode-manual" onclick="settingsSetMode('manual')">Manual Entry</button>
-      </div>
-    </div>
-    <div class="settings-group">
       <h4>Betting Mode</h4>
       <div class="settings-mode-toggle" id="settings-mode-toggle">
         <button class="mode-pill-light active-sim" id="settings-bm-sim" onclick="setBettingMode('simulate')">
@@ -2838,61 +2838,101 @@ function setResultsModeFilter(filter) {
 /* =============================================================
    HERO SCREEN FUNCTIONS
    ============================================================= */
-let welcomeSelectedTrack = 'AQU';
-let welcomeDataMode = 'live';
+/* =============================================================
+   HERO: Platform detection & Add to Home Screen (A2HS)
+   ============================================================= */
+let deferredInstallPrompt = null; // for Android beforeinstallprompt
 
-function selectWelcomeTrack(code, elem) {
-  welcomeSelectedTrack = code;
-  document.querySelectorAll('.sar-aqu-btn').forEach(b => b.classList.remove('selected'));
-  if (elem) elem.classList.add('selected');
-  // Apply immediately
-  const store = getStore();
-  if (store) { store.settings.activeTrack = code; saveStore(store); }
-  updateHeaderTrack();
-  renderTabContent('today');
-  updateHeroSubtitle();
+function detectPlatform() {
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+  const isChrome = /Chrome/.test(ua) && !/Edge/.test(ua);
+  return { isIOS, isAndroid, isStandalone, isSafari, isChrome };
 }
 
-function updateHeroSubtitle() {
-  const sub = el('hero-subtitle');
-  if (!sub) return;
-  const code = welcomeSelectedTrack || getActiveTrack();
-  const track = TRACKS[code];
-  if (!track) return;
-  const today = getTodayStr();
-  let seasonLabel = '';
-  const activeSeason = track.seasons.find(s => today >= s.from && today <= s.to);
-  if (activeSeason) {
-    seasonLabel = activeSeason.label.toLowerCase() + ' meet';
-  } else {
-    const upcoming = track.seasons.filter(s => today < s.from).sort((a,b) => a.from.localeCompare(b.from));
-    if (upcoming.length) seasonLabel = upcoming[0].label.toLowerCase() + ' meet';
-    else seasonLabel = 'racing season';
+function initA2HSBanner() {
+  const banner = el('a2hs-banner');
+  const content = el('a2hs-content');
+  if (!banner || !content) return;
+
+  const platform = detectPlatform();
+
+  // Don't show if already standalone or previously dismissed
+  if (platform.isStandalone) return;
+  try { if (localStorage.getItem('ne-racing-a2hs-dismissed')) return; } catch(e) {}
+
+  // iOS Safari
+  if (platform.isIOS) {
+    content.innerHTML =
+      '<div class="a2hs-icon">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M12 3v12"/><path d="M8 7l4-4 4 4"/>' +
+          '<rect x="3" y="11" width="18" height="11" rx="2"/>' +
+        '</svg>' +
+      '</div>' +
+      '<div class="a2hs-text">For the best experience, tap <strong>Share</strong> then <strong>Add to Home Screen</strong></div>';
+    banner.classList.remove('hidden');
   }
-  const locMap = { AQU: 'Aqueduct', SAR: 'Saratoga Springs', BEL: 'Belmont at the Big A', BTP: 'Belmont Park' };
-  const loc = locMap[code] || track.name;
-  sub.textContent = 'Your personal handicapping & bet tracking tool for the ' + seasonLabel + ' at ' + loc;
+  // Android
+  else if (platform.isAndroid) {
+    if (deferredInstallPrompt) {
+      content.innerHTML =
+        '<div class="a2hs-icon">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M12 5v14"/><path d="M5 12h14"/>' +
+          '</svg>' +
+        '</div>' +
+        '<div class="a2hs-text">Install this app for the best experience<br>' +
+        '<button class="a2hs-install-btn" onclick="triggerNativeInstall(event)">Install App</button></div>';
+    } else {
+      content.innerHTML =
+        '<div class="a2hs-icon">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>' +
+        '</div>' +
+        '<div class="a2hs-text">For the best experience, tap <strong>Menu</strong> (\u22EE) then <strong>Add to Home Screen</strong></div>';
+    }
+    banner.classList.remove('hidden');
+  }
+  // Desktop/other
+  else {
+    content.innerHTML =
+      '<div class="a2hs-text" style="text-align:center;width:100%">Open on your phone and add to your home screen for the full app experience</div>';
+    banner.classList.remove('hidden');
+  }
 }
 
-function setWelcomeMode(mode) {
-  welcomeDataMode = mode;
-  el('mode-live').classList.toggle('active', mode === 'live');
-  el('mode-manual').classList.toggle('active', mode === 'manual');
-  el('mode-desc').textContent = mode === 'live'
-    ? 'Fetches race cards automatically on race days.'
-    : 'Manually enter race cards, entries, and results. No API key needed.';
-  // Apply immediately
-  const store = getStore();
-  if (store) { store.settings.dataMode = mode; saveStore(store); }
-  if (mode === 'live') startLivePolling();
-  else stopLivePolling();
+function dismissA2HS(e) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  var banner = el('a2hs-banner');
+  if (banner) banner.classList.add('hidden');
+  try { localStorage.setItem('ne-racing-a2hs-dismissed', '1'); } catch(e) {}
 }
 
-function applyHeroBankroll(val) {
-  const amt = parseFloat(val) || 1000;
-  const store = getStore();
-  if (store) { store.settings.startingBankroll = amt; saveStore(store); }
-  updateBankrollBanner();
+function triggerNativeInstall(e) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(function() { dismissA2HS(); });
+    deferredInstallPrompt = null;
+  }
+}
+
+// Capture the beforeinstallprompt event for Android native install
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Re-init banner if already shown
+  initA2HSBanner();
+});
+
+function heroTapEnter(e) {
+  // Don't scroll if user clicked the dismiss button or install button
+  if (e.target.closest('.a2hs-dismiss') || e.target.closest('.a2hs-install-btn')) return;
+  var appFrame = el('app-frame');
+  if (appFrame) appFrame.scrollIntoView({ behavior: 'smooth' });
 }
 
 
@@ -2913,20 +2953,17 @@ function initApp() {
   renderGlossary();
   updateBiasDateDefault();
 
-  // Task 6a: Hide sync info in manual mode
-  const syncInfo = el('sync-time');
-  if (syncInfo) {
-    if (store.settings.dataMode === 'manual') syncInfo.classList.add('hidden');
-    else syncInfo.classList.remove('hidden');
+  // Ensure data mode is always live
+  if (store.settings.dataMode !== 'live') {
+    store.settings.dataMode = 'live';
+    saveStore(store);
   }
 
   // Initialize live odds status badge
   updateLiveOddsStatus(false);
 
-  // Start live polling if needed
-  if (store.settings.dataMode === 'live') {
-    startLivePolling();
-  }
+  // Start live polling
+  startLivePolling();
 
   // Load accuracy tracking data
   renderAccuracyFromStorage();
@@ -5916,15 +5953,6 @@ function buildSettingsModal() {
   const store = getStore();
   if (store) {
     sel.value = store.settings.activeTrack || 'AQU';
-    const modeManual = el('settings-mode-manual');
-    const modeLive = el('settings-mode-live');
-    if (store.settings.dataMode === 'live') {
-      if (modeLive) modeLive.classList.add('active');
-      if (modeManual) modeManual.classList.remove('active');
-    } else {
-      if (modeManual) modeManual.classList.add('active');
-      if (modeLive) modeLive.classList.remove('active');
-    }
     const br = el('settings-bankroll');
     if (br) br.value = store.settings.startingBankroll || 1000;
     const wu = el('settings-worker-url');
@@ -5955,14 +5983,7 @@ function forceRefresh() {
 
 function settingsChangeTrack(code) { /* applied on close */ }
 
-function settingsSetMode(mode) {
-  el('settings-mode-live').classList.toggle('active', mode === 'live');
-  el('settings-mode-manual').classList.toggle('active', mode === 'manual');
-  setSetting('dataMode', mode);
-  if (mode === 'live') startLivePolling();
-  else stopLivePolling();
-  showToast('Mode set to ' + (mode === 'live' ? 'Live Data' : 'Manual Entry'), 'success', 2500);
-}
+// Data mode is hardcoded to 'live' — manual entry removed
 
 function saveSettingsBankroll() {
   const val = parseFloat(el('settings-bankroll').value) || 1000;
@@ -6595,24 +6616,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize the app immediately
   initApp();
 
-  // Pre-fill hero from saved settings
-  if (store.settings.activeTrack) {
-    welcomeSelectedTrack = store.settings.activeTrack;
-    document.querySelectorAll('.sar-aqu-btn').forEach(b => b.classList.remove('selected'));
-    const trackBtn = el('welcome-' + store.settings.activeTrack.toLowerCase() + '-btn');
-    if (trackBtn) trackBtn.classList.add('selected');
-  }
-  if (store.settings.startingBankroll) {
-    const br = el('welcome-bankroll');
-    if (br) br.value = store.settings.startingBankroll;
-  }
-  if (store.settings.dataMode) {
-    welcomeDataMode = store.settings.dataMode;
-    var livBtn = el('mode-live'), manBtn = el('mode-manual');
-    if (livBtn) livBtn.classList.toggle('active', store.settings.dataMode === 'live');
-    if (manBtn) manBtn.classList.toggle('active', store.settings.dataMode === 'manual');
-  }
-  updateHeroSubtitle();
+  // Initialize Add to Home Screen banner
+  initA2HSBanner();
 
   // Hide bottom tab bar when hero is in view
   var heroEl = el('hero-screen');
