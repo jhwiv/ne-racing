@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-1136';
+var NE_APP_VERSION = '20260416-1212';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2052,11 +2052,11 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .advice-bet-pill { position: relative; /* UX-6 expanded hit area */
   display: inline-flex; align-items: center; gap: 0.2rem;
   background: transparent; color: var(--color-gold);
-  font-size: 0.68rem; font-weight: 700;
+  font-family: inherit; font-size: 0.68rem; font-weight: 700;
   padding: 0.2rem 0.55rem; border-radius: 14px;
   border: 1.5px solid var(--color-gold); cursor: pointer; text-decoration: none;
   min-height: 28px; transition: background 0.15s, transform 0.1s;
-  margin-left: 6px; vertical-align: middle;
+  margin-left: 6px; vertical-align: middle; -webkit-appearance: none;
 }
 .advice-bet-pill:hover { background: rgba(201,168,76,0.12); }
 .advice-bet-pill:active { transform: scale(0.97); }
@@ -5528,7 +5528,9 @@ function runAdviceEngine() {
 
       let rationale = buildRationale(s, race, confidence, i);
 
-      const betPill = i === 0 && !isAutoPass ? ` <a class="advice-bet-pill" href="${buildBetUrl(race.num)}" target="_blank" rel="noopener">Bet &#8594;</a>` : '';
+      const betPill = i === 0 && !isAutoPass ? (getBettingMode() === 'real'
+        ? ` <a class="advice-bet-pill" href="${buildBetUrl(race.num)}" target="_blank" rel="noopener">Bet &#8594;</a>`
+        : ` <button class="advice-bet-pill" onclick="handleTicketBetClick(event, ${race.num}, '${escHtml(s.horse.name).replace(/'/g,"\\'")}', ${s.horse.pp}, 'Win', 2, 'action')">+ Bet Slip</button>`) : '';
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
@@ -5719,6 +5721,7 @@ function updateTopPicksCard(allScores) {
   const bankroll = (store && store.settings.startingBankroll) || 1000;
   const dailyBudget = bankroll * 0.20;
   let totalBetCost = 0;
+  const _betBtnLabel = getBettingMode() === 'real' ? 'PLACE BET' : '+ ADD TO SLIP';
 
   // Set ticket subtitle with track name and date
   const code = getActiveTrack();
@@ -5827,7 +5830,7 @@ function updateTopPicksCard(allScores) {
       ${bbPayout ? '<div class="ticket-payout">' + bbPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
-      <button class="btn-bet" onclick="handleTicketBetClick(event, ${bestBetEntry.race.num}, '${escHtml(bestBetEntry.horse.name).replace(/'/g,"\\'")}', ${bestBetEntry.horse.pp}, 'Win', ${suggestedAmt}, 'best')">PLACE BET</button>
+      <button class="btn-bet" onclick="handleTicketBetClick(event, ${bestBetEntry.race.num}, '${escHtml(bestBetEntry.horse.name).replace(/'/g,"\\'")}', ${bestBetEntry.horse.pp}, 'Win', ${suggestedAmt}, 'best')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`BEST BET — Race ${bestBetEntry.race.num}: #${bestBetEntry.horse.pp} ${bestBetEntry.horse.name} to WIN — $${suggestedAmt}${bbPayout ? ' (' + bbPayout + ')' : ''}`);
   }
@@ -5855,7 +5858,7 @@ function updateTopPicksCard(allScores) {
       ${vpPayout ? '<div class="ticket-payout">' + vpPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
-      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}', ${v.horse.pp}, 'Exacta Box', 4, 'value')">PLACE BET</button>
+      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}', ${v.horse.pp}, 'Exacta Box', 4, 'value')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}${overlayStr}) — $2 EX Box with ${exPartner || '#2'}${vpPayout ? ' (' + vpPayout + ')' : ''}`);
   });
@@ -5881,7 +5884,7 @@ function updateTopPicksCard(allScores) {
       ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
-      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${topAction.entry.race.num}, '${escHtml(topAction.entry.horse.name).replace(/'/g,"\\'")}', ${topAction.entry.horse.pp}, 'Win', ${actionAmt}, 'action')">PLACE BET</button>
+      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="handleTicketBetClick(event, ${topAction.entry.race.num}, '${escHtml(topAction.entry.horse.name).replace(/'/g,"\\'")}', ${topAction.entry.horse.pp}, 'Win', ${actionAmt}, 'action')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`ACTION — Race ${topAction.entry.race.num}: #${topAction.entry.horse.pp} ${topAction.entry.horse.name} to WIN — $${actionAmt}${actPayout ? ' (' + actPayout + ')' : ''}`);
   }
@@ -5922,7 +5925,7 @@ function updateTopPicksCard(allScores) {
       <div class="card-explainer">A bonus exacta pairing where the model sees a clear top-two</div>
       <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} \u2014 $2</div>
       <div class="ticket-exotic-reason">"${exReason}"</div>
-      <button class="btn-bet-outline" style="margin-top:0.4rem" onclick="handleTicketBetClick(event, ${exRaceNum}, '${escHtml(ex1.horse.name).replace(/'/g,"\\'")}/${escHtml(ex2.horse.name).replace(/'/g,"\\'")}', '${ex1.horse.pp}/${ex2.horse.pp}', 'Exacta Box', 4, 'exotic')">PLACE BET</button>
+      <button class="btn-bet-outline" style="margin-top:0.4rem" onclick="handleTicketBetClick(event, ${exRaceNum}, '${escHtml(ex1.horse.name).replace(/'/g,"\\'")}/${escHtml(ex2.horse.name).replace(/'/g,"\\'")}', '${ex1.horse.pp}/${ex2.horse.pp}', 'Exacta Box', 4, 'exotic')">${_betBtnLabel}</button>
     </div>`;
     exoticLine = `EXOTIC — EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $4 ($2 box) — ${exReason}`;
     ticketLines.push(exoticLine);
@@ -6736,7 +6739,9 @@ function renderAdviceEnginePanel() {
         liveOddsHtml = ' <span class="mono text-xs text-muted" style="margin-left:4px">LIVE: &mdash;</span>';
       }
 
-      const hcBetPill = i === 0 && !isAutoPassEarly ? ` <a class="advice-bet-pill" href="${buildBetUrl(race.num)}" target="_blank" rel="noopener">Bet &#8594;</a>` : '';
+      const hcBetPill = i === 0 && !isAutoPassEarly ? (getBettingMode() === 'real'
+        ? ` <a class="advice-bet-pill" href="${buildBetUrl(race.num)}" target="_blank" rel="noopener">Bet &#8594;</a>`
+        : ` <button class="advice-bet-pill" onclick="handleTicketBetClick(event, ${race.num}, '${escHtml(s.horse.name).replace(/'/g,"\\'")}', ${s.horse.pp}, 'Win', 2, 'action')">+ Bet Slip</button>`) : '';
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
