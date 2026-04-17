@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1600-ticket-clarity-v2.13';
+var NE_APP_VERSION = '20260417-1630-saratoga-scaffold-v2.14';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.13-ticket-clarity';
+var RAILBIRD_VERSION = 'v2.14-saratoga-scaffold';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2544,6 +2544,15 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   letter-spacing: 0.08em; padding: 0.2rem 0.5rem; border-radius: 3px; white-space: nowrap;
 }
 .hc-badge-nyra { background: var(--color-gold); color: #1B4332; }
+/* v2.14: Saratoga meet voter pill */
+.hc-saratoga-pill {
+  display: inline-block; vertical-align: middle;
+  font-size: 0.58rem; font-weight: 800; letter-spacing: 0.14em;
+  padding: 1px 6px; margin-left: 6px;
+  background: rgba(201,168,76,0.18); color: var(--color-gold);
+  border: 1px solid rgba(201,168,76,0.45); border-radius: 3px;
+  text-transform: uppercase;
+}
 .hc-badge-drf { background: #2563eb; color: #fff; }
 .hc-badge-independent { background: var(--color-burgundy); color: #fff; }
 .hc-badge-algorithmic { background: #0d9488; color: #fff; }
@@ -5978,7 +5987,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.13)
+          Export Data (v2.14)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -9607,7 +9616,8 @@ function renderHandicapperProfiles() {
       methodology: 'Form-cycle analysis, pace interpretation, trainer pattern recognition. Tends to look for improving horses at value odds rather than chalking favorites.',
       bestFor: 'Live longshots, trainer intent moves, routes and grass races',
       link: 'https://www.nyra.com/aqueduct/racing/talking-horses/',
-      linkLabel: 'NYRA Talking Horses'
+      linkLabel: 'NYRA Talking Horses',
+      saratogaActive: true
     },
     {
       name: 'David Aragona',
@@ -9617,7 +9627,30 @@ function renderHandicapperProfiles() {
       methodology: 'TimeformUS pace figures (Early/Late ratings), speed figure analysis, pace projector models. Focus on how races unfold from a pace perspective \u2014 which horses benefit from the likely pace scenario.',
       bestFor: 'Pace analysis, trip handicapping, surface/distance switches',
       link: 'https://www.nyra.com/aqueduct/racing/timeformus/',
-      linkLabel: 'TimeformUS on NYRA'
+      linkLabel: 'TimeformUS on NYRA',
+      saratogaActive: true
+    },
+    {
+      name: 'Matthew DeSantis',
+      title: 'NYRA Bets Handicapper',
+      badge: 'NYRA Official', badgeClass: 'hc-badge-nyra',
+      bio: 'Handicapper for NYRA Bets, NYRA\'s official betting platform. Delivers confidence-rated selections and key horses to watch for each NYRA card with an emphasis on finding value against the morning line.',
+      methodology: 'Value-oriented handicapping: looks for horses priced above their actual win probability. Combines pace, class, and jockey-trainer stats with a bettor\'s lens on odds vs. fair-value.',
+      bestFor: 'Value plays, overlay identification, bet-structure guidance',
+      link: 'https://www.nyra.com/saratoga/racing/nyra-bets-picks/',
+      linkLabel: 'NYRA Bets Picks',
+      saratogaActive: true
+    },
+    {
+      name: 'Darwin Vizcaya',
+      title: 'NYRA Picks Handicapper (Spanish-language)',
+      badge: 'NYRA Official', badgeClass: 'hc-badge-nyra',
+      bio: 'NYRA\'s Spanish-language handicapper providing selections for every NYRA race day. Known for strong statistical grounding and a disciplined approach to trainer/jockey pattern recognition on the NYRA circuit.',
+      methodology: 'Statistical pattern recognition, trainer-jockey combo analysis, pace shape projection. Daily picks cover every race with confidence ratings.',
+      bestFor: 'NYRA-circuit specialization, trainer intent reads',
+      link: 'https://www.nyra.com/saratoga/racing/nyra-picks/',
+      linkLabel: 'NYRA Picks',
+      saratogaActive: true
     },
     {
       name: 'DRF Consensus',
@@ -9654,7 +9687,9 @@ function renderHandicapperProfiles() {
   var html = '<div class="handicapper-cards">';
   experts.forEach(function(ex) {
     html += '<div class="handicapper-card">';
-    html += '<div class="handicapper-card-header"><div><h4>' + escHtml(ex.name) + '</h4><div class="hc-title">' + escHtml(ex.title) + '</div></div><span class="hc-badge ' + ex.badgeClass + '">' + escHtml(ex.badge) + '</span></div>';
+    html += '<div class="handicapper-card-header"><div><h4>' + escHtml(ex.name);
+    if (ex.saratogaActive) html += ' <span class="hc-saratoga-pill" title="Feeds into consensus during Saratoga meet (mid-Jul to early Sep)">SAR</span>';
+    html += '</h4><div class="hc-title">' + escHtml(ex.title) + '</div></div><span class="hc-badge ' + ex.badgeClass + '">' + escHtml(ex.badge) + '</span></div>';
     html += '<div class="handicapper-card-body">';
     html += '<p>' + escHtml(ex.bio) + '</p>';
     html += '<div class="hc-section-label">Methodology</div>';
@@ -9663,6 +9698,19 @@ function renderHandicapperProfiles() {
     html += '<a class="hc-link" href="' + ex.link + '" target="_blank" rel="noopener">' + escHtml(ex.linkLabel) + ' &#8599;</a>';
     html += '</div></div>';
   });
+  html += '</div>';
+
+  // v2.14: Saratoga meet handicapper consensus note
+  html += '<div class="consensus-explainer" style="margin-top:0.75rem">';
+  html += '<h4>Saratoga Meet \u2014 Expanded Consensus</h4>';
+  html += '<p style="margin:0 0 0.5rem">During the Saratoga meet (mid-July to early September), four NYRA-official handicappers feed daily picks into the consensus engine as additional equal-weight voters:</p>';
+  html += '<ul>';
+  html += '<li><strong>Andy Serling</strong> \u2014 Talking Horses (NYRA lead analyst)</li>';
+  html += '<li><strong>David Aragona</strong> \u2014 TimeformUS on NYRA (morning line oddsmaker)</li>';
+  html += '<li><strong>Matthew DeSantis</strong> \u2014 NYRA Bets picks</li>';
+  html += '<li><strong>Darwin Vizcaya</strong> \u2014 NYRA Picks (Spanish-language)</li>';
+  html += '</ul>';
+  html += '<p style="margin:0.5rem 0 0;font-size:0.82rem;opacity:0.85">Picks are pulled from public NYRA feeds and appear as named chips on each Saratoga race card alongside the standard DRF/Equibase/Brisnet voters. Scoring logic is unchanged \u2014 more voters simply produce stronger consensus signal.</p>';
   html += '</div>';
 
   // How Consensus Works section
