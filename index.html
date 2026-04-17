@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1330-cohesion-v2.9';
+var NE_APP_VERSION = '20260417-1345-hero-sticky-v2.10';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.9-cohesion';
+var RAILBIRD_VERSION = 'v2.10-hero-sticky';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1241,8 +1241,12 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   box-sizing: border-box;
   overflow: hidden;
-  cursor: pointer;
   padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
+}
+#hero-enter-prompt {
+  cursor: pointer;
+  padding: 0.75rem 1.5rem;
+  -webkit-tap-highlight-color: rgba(201,168,76,0.25);
 }
 #hero-screen-bg {
   position: absolute; inset: 0; z-index: 0;
@@ -5734,7 +5738,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.9)
+          Export Data (v2.10)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -6394,21 +6398,29 @@ window.addEventListener('beforeinstallprompt', function(e) {
   initA2HSBanner();
 });
 
-// Hero behavior: show once on first visit, then collapse it away for every
-// subsequent session. On tap/scroll, persist the "seen" flag and remove the
-// hero entirely so app-frame is the first paint on reload.
+// Hero behavior (v2.10):
+//  - Shows on first visit of EACH new app version (seen-flag is version-keyed)
+//  - Only dismisses on the explicit "Enter" chevron/button, NOT on a stray
+//    tap anywhere on the hero (too easy to accidentally dismiss)
+//  - Also dismisses on real scroll (passive)
+//  - Clears any legacy railbird_hero_seen_v1 flag on load so everyone sees
+//    v2.10's hero again after this release
 (function() {
-  var HERO_SEEN_KEY = 'railbird_hero_seen_v1';
+  // Clear legacy global flag (pre-version-keyed behavior) so users who
+  // dismissed v2.8 hero see the hero again on v2.10+
+  try { localStorage.removeItem('railbird_hero_seen_v1'); } catch(_) {}
+
+  // Version-keyed seen flag — rotates with every new release
+  var HERO_SEEN_KEY = 'railbird_hero_seen_' + (window.RAILBIRD_VERSION || 'unknown');
   var hero = document.getElementById('hero-screen');
   if (!hero) return;
 
-  // If already seen, remove hero immediately so subsequent loads open to content
+  // If already seen FOR THIS VERSION, collapse immediately on reload
   try {
     if (localStorage.getItem(HERO_SEEN_KEY) === '1') {
       hero.classList.add('hero-hidden');
-      // Scroll to top of app-frame (no smooth — instant)
-      var af = document.getElementById('app-frame');
-      if (af) window.scrollTo(0, 0);
+      var af0 = document.getElementById('app-frame');
+      if (af0) window.scrollTo(0, 0);
       return;
     }
   } catch(_) {}
@@ -6420,21 +6432,35 @@ window.addEventListener('beforeinstallprompt', function(e) {
     var af = document.getElementById('app-frame');
     if (af) af.scrollIntoView({ behavior: 'smooth' });
   }
+  // Expose for the Enter chevron and any debugging
+  window.dismissHero = dismissHero;
+  window.resetHero = function() {
+    // Clear ALL version-keyed hero-seen flags so hero returns next load
+    try {
+      Object.keys(localStorage).forEach(function(k) {
+        if (k.indexOf('railbird_hero_seen_') === 0) localStorage.removeItem(k);
+      });
+    } catch(_) {}
+    hero.classList.remove('hero-hidden', 'hero-fadeout');
+    window.scrollTo(0, 0);
+  };
 
-  hero.addEventListener('click', function(e) {
-    // Don't dismiss if tapping A2HS banner buttons
-    if (e.target.closest('.a2hs-banner')) return;
-    dismissHero();
-  });
+  // Explicit Enter button/chevron = dismiss. Tapping the image/title = nothing.
+  var enterBtn = document.getElementById('hero-enter-prompt');
+  if (enterBtn) {
+    enterBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dismissHero();
+    });
+  }
 
-  // Auto-dismiss on first scroll past hero as well
+  // Real scroll past the hero also dismisses (gesture = intent to enter)
   var scrollDismissed = false;
   window.addEventListener('scroll', function() {
     if (scrollDismissed) return;
     if (window.scrollY > window.innerHeight * 0.35) {
       scrollDismissed = true;
       try { localStorage.setItem(HERO_SEEN_KEY, '1'); } catch(_) {}
-      // Don't fade — user is already scrolling past; just mark seen
     }
   }, { passive: true });
 })();
