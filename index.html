@@ -14,9 +14,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1230-adw-bets-chip-v2.16.5';
+var NE_APP_VERSION = '20260417-1315-hero-header-v2.16.6';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.16.5-adw-bets-chip';
+var RAILBIRD_VERSION = 'v2.16.6-hero-header-polish';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1382,11 +1382,14 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 }
 #app-frame { display: flex; flex-direction: column; min-height: auto; }
 #top-header {
-  height: var(--header-height);
+  /* v2.16.6: reserve space for iOS Dynamic Island / notch so the gear,
+     track pill, and logo are never hidden behind system UI. */
+  height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background: var(--color-white);
   color: var(--color-slate);
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 1rem;
+  padding-left: 1rem; padding-right: 1rem;
   position: sticky; top: 0; z-index: 200;
   border-bottom: 1px solid #e5e0d5;
 }
@@ -3713,6 +3716,13 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
   font-size: 0.95rem; letter-spacing: 0.28em; text-transform: uppercase;
   color: var(--lux-gold); opacity: 0.85; margin-bottom: 0.9rem;
 }
+/* v2.16.6: when the eyebrow sits BELOW the title, flip the spacing so
+   it reads cleanly between title and the gold rule. */
+.hero-eyebrow.hero-eyebrow-below {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.32em;
+}
 .hero-title-luxury .hero-title-main {
   font-family: var(--lux-font-display);
   font-weight: 700;
@@ -5286,8 +5296,8 @@ tr:has(> td > .detail-stat-row),
   </div>
 
   <div class="hero-title-block hero-title-luxury">
-    <p class="hero-eyebrow">Est. 2026</p>
     <h1 class="hero-title-main">RAILBIRD AI</h1>
+    <p class="hero-eyebrow hero-eyebrow-below">Est. 2026</p>
     <div class="hero-rule"></div>
     <p class="hero-title-sub">Your Private Handicapping Companion</p>
     <p class="hero-tagline">Live entries, advice engine, bankroll &amp; bets — all in one program</p>
@@ -5319,11 +5329,6 @@ tr:has(> td > .detail-stat-row),
   <!-- TOP HEADER -->
   <header id="top-header">
     <div class="header-logo">
-      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Saratoga Racing">
-        <path d="M7 22 C7 11 11 7 16 7 C21 7 25 11 25 22" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-        <path d="M7 22 L7 24 Q7 26 9 26 L11 26 Q13 26 13 24 L13 22" fill="#C9A84C"/>
-        <path d="M25 22 L25 24 Q25 26 23 26 L21 26 Q19 26 19 24 L19 22" fill="#C9A84C"/>
-      </svg>
       <span class="header-logo-text">Saratoga 2026</span>
     </div>
 
@@ -6338,7 +6343,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.16.5)
+          Export Data (v2.16.6)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
