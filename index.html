@@ -8,7 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-0600-lux';
+var NE_APP_VERSION = '20260417-2100-lux-v2.1';
+// Human-readable release tag surfaced in Settings > App Info and Export label
+var RAILBIRD_VERSION = 'v2.1-luxury-corrected';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1127,7 +1129,7 @@ function neForceUpdate(newVersion) {
 
 
 </script>
-<meta name="theme-color" content="#0A1628">
+<meta name="theme-color" content="#1B2E4B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Railbird AI">
@@ -3423,25 +3425,28 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 /* =========================================================
    LUXURY THEME OVERLAY — Saratoga 2026 edition
    Pure visual layer. No logic touched.
-   Palette: navy #0A1628, antique gold #C9A84C,
-            warm cream #F5F0E8, slate #2C3E50
+   Palette (v2.1): navy #1B2E4B (breathable), surface #243653,
+            cream #F5F0E8, body-on-dark #EDE8DC,
+            antique gold #C9A84C (+saturation), slate #2C3E50
    Type:    Playfair Display / Crimson Pro / DM Mono
    ========================================================= */
 :root {
-  --lux-navy: #0A1628;
-  --lux-navy-2: #0E1D33;
-  --lux-navy-3: #14253F;
+  /* v2.1 corrected palette — mid-navy, no pure black */
+  --lux-navy: #1B2E4B;              /* primary background */
+  --lux-navy-2: #1F3353;             /* slightly elevated */
+  --lux-navy-3: #243653;             /* card/surface */
+  --lux-surface: #243653;            /* alias used by new v2.1 components */
   --lux-slate: #2C3E50;
   --lux-slate-2: #3A4E64;
-  --lux-gold: #C9A84C;
-  --lux-gold-soft: #B59538;
+  --lux-gold: #C9A84C;               /* antique gold */
+  --lux-gold-soft: #B8963F;
   --lux-gold-muted: #9A7B2F;
-  --lux-gold-glow: rgba(201,168,76,0.35);
-  --lux-cream: #F5F0E8;
-  --lux-cream-2: #EFE7D8;
-  --lux-ink: #1A2536;
-  --lux-ink-soft: rgba(245,240,232,0.78);
-  --lux-ink-mute: rgba(245,240,232,0.55);
+  --lux-gold-glow: rgba(201,168,76,0.40);
+  --lux-cream: #F5F0E8;              /* alternating light sections */
+  --lux-cream-2: #EDE6D6;
+  --lux-ink: #1A2536;                /* dark ink on cream */
+  --lux-ink-soft: #EDE8DC;           /* body text on dark surfaces */
+  --lux-ink-mute: rgba(237,232,220,0.62);
   --lux-amber: #E0A043;
   --lux-rose: #B8413A;
   --lux-green: #6FA07A;
@@ -3591,11 +3596,16 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
 .chip-nav {
   position: sticky;
   top: var(--header-height, 56px);
-  z-index: 40;
+  z-index: 100;
   background: linear-gradient(180deg, var(--lux-navy) 0%, var(--lux-navy-2) 100%);
   border-bottom: 1px solid var(--lux-hairline);
-  box-shadow: 0 8px 18px -12px rgba(10,22,40,0.45);
+  box-shadow: 0 8px 18px -12px rgba(27,46,75,0.55);
 }
+/* v2.1: ensure anchored sections clear the sticky header+chip stack */
+.tab-panel { scroll-margin-top: calc(var(--header-height, 56px) + 60px); }
+#best-bet-callout, .race-card-wrap, #results-summary { scroll-margin-top: calc(var(--header-height, 56px) + 60px); }
+/* v2.1: prevent iOS rubber-band breaking sticky nav */
+html, body { overscroll-behavior: none; }
 .chip-nav-inner {
   display: flex;
   gap: 0.25rem;
@@ -4082,11 +4092,12 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
    ========================================================= */
 .fab-menu {
   position: fixed;
-  right: 1rem;
-  bottom: calc(var(--tab-bar-height, 64px) + env(safe-area-inset-bottom, 0px) + 0.9rem);
-  z-index: 70;
+  right: 20px;
+  bottom: calc(var(--tab-bar-height, 64px) + env(safe-area-inset-bottom, 0px) + 24px);
+  z-index: 200;
   display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;
   pointer-events: none;
+  touch-action: manipulation; /* v2.1: don't steal scroll */
 }
 .fab-menu > * { pointer-events: auto; }
 .fab-main {
@@ -5365,7 +5376,7 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export JSON
+          Export Data (v2.1)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -5380,8 +5391,9 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
     </div>
     <div class="settings-group">
       <h4>App Info</h4>
-      <div style="font-size:0.8rem;color:var(--color-muted);font-family:var(--font-mono)">
-        Version: <span id="settings-app-version"></span>
+      <div style="font-size:0.85rem;color:var(--color-muted);font-family:var(--font-mono);line-height:1.65">
+        Release: <span id="settings-release-tag" style="color:var(--lux-gold)"></span><br>
+        Build: <span id="settings-app-version"></span>
       </div>
       <button class="btn btn-outline btn-sm" style="margin-top:0.5rem" onclick="forceRefresh()">
         &#128260; Force Refresh
@@ -9038,6 +9050,8 @@ function openSettings() {
   buildSettingsModal();
   var vEl = el('settings-app-version');
   if (vEl) vEl.textContent = NE_APP_VERSION;
+  var rtEl = el('settings-release-tag');
+  if (rtEl) rtEl.textContent = (typeof RAILBIRD_VERSION !== 'undefined') ? RAILBIRD_VERSION : 'v2.1';
   var bpEl = el('settings-betting-platform');
   if (bpEl) bpEl.value = getBettingPlatform();
   syncBettingModeUI();
