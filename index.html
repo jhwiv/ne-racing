@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1200-ct-default-v2.5';
+var NE_APP_VERSION = '20260417-1230-seed-data-v2.6';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.5-ct-default';
+var RAILBIRD_VERSION = 'v2.6-seed-data';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -5334,6 +5334,7 @@ html, body { overscroll-behavior: none; }
     <div class="settings-group">
       <h4>Active Track</h4>
       <select id="settings-track" class="form-control" onchange="settingsChangeTrack(this.value)"></select>
+      <div id="settings-track-availability" style="margin-top:0.45rem;font-size:0.72rem;color:var(--color-muted);line-height:1.4">Checking today's cards\u2026</div>
     </div>
     <div class="settings-group">
       <h4>Betting Mode</h4>
@@ -5376,7 +5377,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.5)
+          Export Data (v2.6)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -9128,7 +9129,7 @@ function buildSettingsModal() {
   const sel = el('settings-track');
   if (!sel) return;
   sel.innerHTML = Object.values(TRACKS).map(t =>
-    `<option value="${t.code}">${t.code} — ${t.name}</option>`
+    `<option value="${t.code}">${t.code} \u2014 ${t.name}</option>`
   ).join('');
   const store = getStore();
   if (store) {
@@ -9137,6 +9138,65 @@ function buildSettingsModal() {
     if (br) br.value = store.settings.startingBankroll || 1000;
     const wu = el('settings-worker-url');
     if (wu) wu.value = store.settings.workerUrl || '';
+  }
+  // Lazily probe which tracks have a card available today and annotate the dropdown.
+  probeTrackAvailability();
+}
+
+/* Probe each track's entry endpoint for today. Annotates the <option> labels
+   with a leading \u25CF (green) when a card is available, \u00B7 (dim) when not.
+   Results are cached in-session to avoid re-probing every modal open. */
+var _trackAvailabilityCache = null;
+async function probeTrackAvailability() {
+  const hint = el('settings-track-availability');
+  const sel = el('settings-track');
+  if (!sel) return;
+  const store = getStore();
+  const workerUrl = store && store.settings.workerUrl;
+  const today = getTodayStr();
+  const codes = Object.keys(TRACKS);
+  // Cache by date so it resets at midnight naturally via a new session
+  if (_trackAvailabilityCache && _trackAvailabilityCache.date === today) {
+    return paintAvailability(_trackAvailabilityCache.status);
+  }
+  if (!workerUrl) {
+    if (hint) hint.textContent = 'Worker URL not set \u2014 data availability unknown.';
+    return;
+  }
+  if (hint) hint.textContent = 'Checking today\u2019s cards\u2026';
+  const status = {};
+  await Promise.all(codes.map(async (code) => {
+    try {
+      const url = workerUrl + '/api/entries?track=' + code + '&date=' + today + '&_probe=' + Date.now();
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) { status[code] = 'none'; return; }
+      const json = await res.json();
+      status[code] = (json && Array.isArray(json.races) && json.races.length) ? 'live' : 'none';
+    } catch (e) { status[code] = 'none'; }
+  }));
+  _trackAvailabilityCache = { date: today, status };
+  paintAvailability(status);
+}
+
+function paintAvailability(status) {
+  const sel = el('settings-track');
+  const hint = el('settings-track-availability');
+  if (!sel) return;
+  const prev = sel.value;
+  const liveCount = Object.values(status).filter(s => s === 'live').length;
+  sel.innerHTML = Object.values(TRACKS).map(t => {
+    const s = status[t.code] || 'none';
+    const dot = (s === 'live') ? '\u25CF ' : '\u00B7 ';
+    const suffix = (s === 'live') ? '' : ' \u2014 no card today';
+    return `<option value="${t.code}">${dot}${t.code} \u2014 ${t.name}${suffix}</option>`;
+  }).join('');
+  sel.value = prev;
+  if (hint) {
+    if (liveCount === 0) {
+      hint.innerHTML = '<span style="opacity:0.8">No tracks have a card posted for today yet. Cards usually appear the morning of the race.</span>';
+    } else {
+      hint.innerHTML = '<span style="color:#22c55e">\u25CF</span> racing today \u00B7 <span style="opacity:0.6">\u00B7</span> no card posted';
+    }
   }
 }
 
