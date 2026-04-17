@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1345-hero-sticky-v2.10';
+var NE_APP_VERSION = '20260417-1400-contrast-v2.11';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.10-hero-sticky';
+var RAILBIRD_VERSION = 'v2.11-contrast';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -4589,6 +4589,102 @@ html, body { overscroll-behavior: none; }
 /* FAB item icon SVGs */
 .fab-item-icon svg { width: 1.15rem; height: 1.15rem; }
 
+/* ---- v2.11 CONTRAST FIXES on cream surfaces ----
+   v2.9 unified race cards to cream but some text colors
+   and pills still used --lux-ink-soft (cream) intended for
+   dark surfaces. Override with dark ink for legibility. */
+
+/* Dark muted color for secondary text on cream */
+:root {
+  --lux-ink-soft-on-cream: #5a6173;
+  --lux-ink-muted-cream:   #7a8091;
+}
+
+/* Race card header meta (surface, distance, post time) on cream */
+.race-card-header .race-meta,
+.race-card-header .surface,
+.race-card-header .distance,
+.race-card-header .surf-dist {
+  color: var(--lux-ink-soft-on-cream) !important;
+}
+.race-card-header .post-time,
+.race-card-header .race-time,
+.race-post-time {
+  color: var(--lux-ink) !important;
+  font-weight: 700;
+}
+
+/* Underlay / muted / equip pills must be dark text on any light bg */
+.tag-neutral,
+.badge-underlay,
+.badge-muted,
+.badge-equip {
+  background: rgba(10,22,40,0.08) !important;
+  color: var(--lux-ink) !important;
+  border: 1px solid rgba(10,22,40,0.18) !important;
+}
+
+/* Detail factor labels and field position labels inside race detail panel */
+.detail-factor-label,
+.factor-label,
+.detail-pace-pill,
+.detail-expert-chip,
+.class-label-from,
+.class-label-to {
+  color: var(--lux-ink) !important;
+}
+
+/* Any remaining body copy inside race cards that inherited
+   a dark-surface color should shift to dark ink */
+.race-card-wrap,
+.race-card-wrap p,
+.race-card-wrap span,
+.race-card-wrap td,
+.race-card-wrap div,
+.race-card-wrap li {
+  color: inherit;
+}
+.race-card-wrap {
+  color: var(--lux-ink) !important;
+}
+
+/* Detail panel backgrounds that were styled for dark surfaces
+   (subtle translucent fills) need dark ink for their labels */
+.detail-panel,
+.race-detail-panel,
+.detail-section,
+.field-position-panel,
+.expert-sources-panel,
+.completeness-panel {
+  color: var(--lux-ink) !important;
+}
+.detail-panel .section-label,
+.detail-panel .field-label,
+.detail-panel .stat-label,
+.detail-section .section-label {
+  color: var(--lux-ink-soft-on-cream) !important;
+}
+
+/* Anywhere --lux-ink-soft was being used as a color on what is
+   now a cream surface, visually it becomes cream-on-cream. The
+   safest net here is a scoped override: any element with cream
+   background (our design token) should NOT use --lux-ink-soft. */
+.surface-cream,
+[style*="background: var(--lux-cream)"],
+[style*="background:#F5F0E8"] {
+  color: var(--lux-ink) !important;
+}
+
+/* Live odds status chip when empty/muted on cream race card */
+.live-odds-status {
+  color: var(--lux-ink) !important;
+}
+.live-odds-status.off {
+  color: var(--lux-ink-muted-cream) !important;
+  background: rgba(10,22,40,0.04) !important;
+  border-color: rgba(10,22,40,0.15) !important;
+}
+
 /* ---- HERO TEXT LEGIBILITY — image-agnostic ----
    Ensures title/eyebrow/subtitle read cleanly against ANY
    background image (bright sky, busy pattern, etc.). Two
@@ -5738,7 +5834,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.10)
+          Export Data (v2.11)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
