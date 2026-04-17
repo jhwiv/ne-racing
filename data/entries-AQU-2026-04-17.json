@@ -1,1903 +1,1672 @@
 {
   "track": "AQU",
-  "venue": "Aqueduct",
   "date": "2026-04-17",
-  "lastUpdated": "2026-04-17T11:30:00.000Z",
-  "source": "seed-dev-data",
   "races": [
     {
       "race_number": 1,
       "post_time": "1:10 PM",
-      "purse": "$40,000",
-      "race_type": "Maiden Claiming",
-      "race_type_code": "MCL",
-      "conditions": null,
-      "distance": "6F",
-      "surface": "Dirt",
-      "entries": [
-        {
-          "pp": 1,
-          "name": "Royal Son",
-          "jockey": "Manuel Franco",
-          "trainer": "Ilkay Kantarmaci",
-          "weight": "122",
-          "scratched": false,
-          "ml": "3/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            38,
-            43,
-            43
-          ],
-          "runningStyle": "P",
-          "lastClass": "MCL",
-          "jockeyPct": 10,
-          "trainerPct": 22,
-          "lastRaceDate": "2026-03-10",
-          "dataCompleteness": 0.92
-        },
-        {
-          "pp": 2,
-          "name": "Lonesome Hunter",
-          "jockey": "Eric Cancel",
-          "trainer": "Miguel Clement",
-          "weight": "126",
-          "scratched": false,
-          "ml": "10/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            32,
-            31,
-            null
-          ],
-          "runningStyle": "P",
-          "lastClass": "MCL",
-          "jockeyPct": 23,
-          "trainerPct": 20,
-          "lastRaceDate": "2026-03-21",
-          "dataCompleteness": 0.84
-        },
-        {
-          "pp": 3,
-          "name": "Lucky Outlaw",
-          "jockey": "Dalila A. Rivera",
-          "trainer": "Rudy R. Rodriguez",
-          "weight": "118",
-          "scratched": false,
-          "ml": "7/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            45,
-            null,
-            47
-          ],
-          "runningStyle": "E",
-          "lastClass": "MCL",
-          "jockeyPct": 23,
-          "trainerPct": 19,
-          "lastRaceDate": "2026-03-23",
-          "dataCompleteness": 0.82
-        },
-        {
-          "pp": 4,
-          "name": "Quick Hunter Jr.",
-          "jockey": "Reylu Gutierrez",
-          "trainer": "Ilkay Kantarmaci",
-          "weight": "120",
-          "scratched": false,
-          "ml": "6/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            40,
-            41,
-            41
-          ],
-          "runningStyle": "S",
-          "lastClass": "MCL",
-          "jockeyPct": 14,
-          "trainerPct": 17,
-          "lastRaceDate": "2026-02-13",
-          "dataCompleteness": 0.82
-        },
-        {
-          "pp": 5,
-          "name": "Wicked Outlaw Jr.",
-          "jockey": "Ruben Silvera",
-          "trainer": "Mark A. Hennig",
-          "weight": "118",
-          "scratched": false,
-          "ml": "8/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            30,
-            30,
-            30
-          ],
-          "runningStyle": "E",
-          "lastClass": "MCL",
-          "jockeyPct": 15,
-          "trainerPct": 9,
-          "lastRaceDate": "2026-03-24",
-          "dataCompleteness": 0.88
-        },
-        {
-          "pp": 6,
-          "name": "Quiet Shadow",
-          "jockey": "Ricardo Santana, Jr.",
-          "trainer": "Linda Rice",
-          "weight": "123",
-          "scratched": false,
-          "ml": "4/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            34,
-            null,
-            35
-          ],
-          "runningStyle": "S",
-          "lastClass": "MCL",
-          "jockeyPct": 13,
-          "trainerPct": 15,
-          "lastRaceDate": "2026-03-22",
-          "dataCompleteness": 0.9
-        },
-        {
-          "pp": 7,
-          "name": "Rowdy Rebel Man",
-          "jockey": "Christopher Elliott",
-          "trainer": "Jorge R. Abreu",
-          "weight": "126",
-          "scratched": false,
-          "ml": "5/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            52,
-            47,
-            null
-          ],
-          "runningStyle": "E",
-          "lastClass": "MCL",
-          "jockeyPct": 24,
-          "trainerPct": 8,
-          "lastRaceDate": "2026-03-28",
-          "dataCompleteness": 0.87
-        },
-        {
-          "pp": 8,
-          "name": "Silver Rebel Kid",
-          "jockey": "Jose Lezcano",
-          "trainer": "H. James Bond",
-          "weight": "120",
-          "scratched": false,
-          "ml": "5/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            35,
-            null,
-            null
-          ],
-          "runningStyle": "P",
-          "lastClass": "MCL",
-          "jockeyPct": 14,
-          "trainerPct": 24,
-          "lastRaceDate": "2026-03-15",
-          "dataCompleteness": 0.84
-        },
-        {
-          "pp": 9,
-          "name": "Stormy Gamble Edition",
-          "jockey": "Ruben Silvera",
-          "trainer": "Todd A. Pletcher",
-          "weight": "118",
-          "scratched": false,
-          "ml": "8/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            48,
-            45,
-            null
-          ],
-          "runningStyle": "E",
-          "lastClass": "MCL",
-          "jockeyPct": 18,
-          "trainerPct": 19,
-          "lastRaceDate": "2026-03-17",
-          "dataCompleteness": 0.91
-        },
-        {
-          "pp": 10,
-          "name": "Stormy Son",
-          "jockey": "Jose Lezcano",
-          "trainer": "Anthony W. Dutrow",
-          "weight": "123",
-          "scratched": false,
-          "ml": "9/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            42,
-            null,
-            46
-          ],
-          "runningStyle": "P",
-          "lastClass": "MCL",
-          "jockeyPct": 10,
-          "trainerPct": 8,
-          "lastRaceDate": "2026-03-22",
-          "dataCompleteness": 0.82
-        }
-      ],
-      "expertPicks": [
-        {
-          "source": "NYRA - Serling",
-          "pick": 5,
-          "picks": [
-            5,
-            9,
-            3,
-            6
-          ],
-          "horseName": "Wicked Outlaw Jr."
-        },
-        {
-          "source": "NYRA - Aragona",
-          "pick": 6,
-          "picks": [
-            6,
-            1,
-            10,
-            8
-          ],
-          "horseName": "Quiet Shadow"
-        },
-        {
-          "source": "DRF Consensus",
-          "pick": 3,
-          "picks": [
-            3,
-            7,
-            2,
-            1
-          ],
-          "horseName": "Lucky Outlaw"
-        },
-        {
-          "source": "NY Racing Journal",
-          "pick": 9,
-          "picks": [
-            9,
-            1,
-            5,
-            10
-          ],
-          "horseName": "Stormy Gamble Edition"
-        },
-        {
-          "source": "TimeformUS",
-          "pick": 5,
-          "picks": [
-            5,
-            9,
-            4,
-            1
-          ],
-          "horseName": "Wicked Outlaw Jr."
-        }
-      ]
-    },
-    {
-      "race_number": 2,
-      "post_time": "1:41 PM",
-      "purse": "$28,000",
+      "purse": "$52,000",
       "race_type": "Claiming",
-      "race_type_code": "CLM",
       "conditions": null,
       "distance": "1M",
       "surface": "Dirt",
       "entries": [
         {
           "pp": 1,
-          "name": "Quiet Son Man",
-          "jockey": "Dylan Davis",
-          "trainer": "Kenneth G. McPeek",
-          "weight": "120",
+          "name": "Reliable Lady",
+          "jockey": "Jaime Rodriguez",
+          "trainer": "Ilkay Kantarmaci",
+          "weight": "126",
           "scratched": false,
-          "ml": "3/1",
-          "equibaseUrl": null,
+          "ml": "5/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10967581",
           "speedFigs": [
-            56,
-            51,
-            48
+            null,
+            null,
+            null
           ],
-          "runningStyle": "P",
-          "lastClass": "CLM",
-          "jockeyPct": 13,
-          "trainerPct": 20,
-          "lastRaceDate": "2026-02-26",
-          "dataCompleteness": 0.85
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 9,
+          "trainerPct": 6,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 2,
-          "name": "Sharp Mission Kid",
-          "jockey": "Dylan Davis",
-          "trainer": "Chad C. Brown",
+          "name": "Malu",
+          "jockey": "Ricardo Santana, Jr.",
+          "trainer": "Gustavo Rodriguez",
           "weight": "126",
           "scratched": false,
-          "ml": "9/5",
-          "equibaseUrl": null,
+          "ml": "3/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10779228",
           "speedFigs": [
-            61,
-            53,
-            52
+            null,
+            null,
+            null
           ],
-          "runningStyle": "E/P",
-          "lastClass": "CLM",
-          "jockeyPct": 13,
-          "trainerPct": 10,
-          "lastRaceDate": "2026-03-21",
-          "dataCompleteness": 0.83
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 17,
+          "trainerPct": 18,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 3,
-          "name": "Silver Echo",
-          "jockey": "Ricardo Santana, Jr.",
-          "trainer": "Chad C. Brown",
-          "weight": "123",
+          "name": "Vino Frizzante",
+          "jockey": "Manuel Franco",
+          "trainer": "Linda Rice",
+          "weight": "126",
           "scratched": false,
-          "ml": "7/2",
-          "equibaseUrl": null,
+          "ml": "4/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10945229",
           "speedFigs": [
-            54,
-            46,
-            46
+            null,
+            null,
+            null
           ],
           "runningStyle": "E",
-          "lastClass": "CLM",
-          "jockeyPct": 15,
-          "trainerPct": 7,
-          "lastRaceDate": "2026-02-22",
-          "dataCompleteness": 0.84
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 20,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 4,
-          "name": "Bourbon Cruiser",
-          "jockey": "Ruben Silvera",
-          "trainer": "Anthony W. Dutrow",
-          "weight": "122",
-          "scratched": false,
-          "ml": "5/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            56,
-            59,
-            56
-          ],
-          "runningStyle": "S",
-          "lastClass": "CLM",
-          "jockeyPct": 18,
-          "trainerPct": 14,
-          "lastRaceDate": "2026-02-26",
-          "dataCompleteness": 0.93
-        },
-        {
-          "pp": 5,
-          "name": "Wicked Echo Lad",
-          "jockey": "Manuel Franco",
-          "trainer": "Rob Atras",
-          "weight": "123",
-          "scratched": false,
-          "ml": "4/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            45,
-            47,
-            51
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "CLM",
-          "jockeyPct": 10,
-          "trainerPct": 11,
-          "lastRaceDate": "2026-03-27",
-          "dataCompleteness": 0.9
-        },
-        {
-          "pp": 6,
-          "name": "Lonesome Dream Edition",
-          "jockey": "Manuel Franco",
-          "trainer": "Chad C. Brown",
-          "weight": "124",
-          "scratched": false,
-          "ml": "8/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            55,
-            52,
-            59
-          ],
-          "runningStyle": "E",
-          "lastClass": "CLM",
-          "jockeyPct": 24,
-          "trainerPct": 16,
-          "lastRaceDate": "2026-03-20",
-          "dataCompleteness": 0.92
-        },
-        {
-          "pp": 7,
-          "name": "Silver Cowboy",
-          "jockey": "Omar Hernandez Moreno",
-          "trainer": "Jorge R. Abreu",
-          "weight": "119",
-          "scratched": false,
-          "ml": "5/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            42,
-            45,
-            42
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "CLM",
-          "jockeyPct": 11,
-          "trainerPct": 24,
-          "lastRaceDate": "2026-02-15",
-          "dataCompleteness": 0.86
-        },
-        {
-          "pp": 8,
-          "name": "Gritty Star Express",
-          "jockey": "Omar Hernandez Moreno",
-          "trainer": "Rudy R. Rodriguez",
+          "name": "Cararra",
+          "jockey": "Dylan Davis",
+          "trainer": "Charlton Baker",
           "weight": "126",
           "scratched": false,
           "ml": "6/1",
-          "equibaseUrl": null,
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10975354",
           "speedFigs": [
-            38,
-            44,
-            42
+            null,
+            null,
+            null
           ],
           "runningStyle": "P",
-          "lastClass": "CLM",
-          "jockeyPct": 19,
-          "trainerPct": 21,
-          "lastRaceDate": "2026-03-18",
-          "dataCompleteness": 0.89
+          "lastClass": null,
+          "jockeyPct": 16,
+          "trainerPct": 8,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 5,
+          "name": "Bourbon Serengeti",
+          "jockey": "Silvestre Gonzalez",
+          "trainer": "Ilkay Kantarmaci",
+          "weight": "126",
+          "scratched": false,
+          "ml": "9/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10976937",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 10,
+          "trainerPct": 6,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 6,
+          "name": "Royal Bobbie",
+          "jockey": "Jose Lezcano",
+          "trainer": "Linda Rice",
+          "weight": "126",
+          "scratched": false,
+          "ml": "7/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11107108",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 15,
+          "trainerPct": 20,
+          "dataCompleteness": 0.43
         }
       ],
+      "race_type_code": "CLM",
       "expertPicks": [
         {
           "source": "NYRA - Serling",
-          "pick": 4,
-          "picks": [
-            4,
-            1,
-            5,
-            7
-          ],
-          "horseName": "Bourbon Cruiser"
-        },
-        {
-          "source": "NYRA - Aragona",
-          "pick": 1,
-          "picks": [
-            1,
-            2,
-            5,
-            4
-          ],
-          "horseName": "Quiet Son Man"
-        },
-        {
-          "source": "DRF Consensus",
-          "pick": 8,
-          "picks": [
-            8,
-            6,
-            5,
-            1
-          ],
-          "horseName": "Gritty Star Express"
-        },
-        {
-          "source": "NY Racing Journal",
           "pick": 2,
           "picks": [
             2,
-            5,
-            8,
-            7
+            6,
+            1,
+            5
           ],
-          "horseName": "Sharp Mission Kid"
+          "horseName": "Malu"
         },
         {
-          "source": "TimeformUS",
+          "source": "NYRA - Aragona",
+          "pick": 5,
+          "picks": [
+            5,
+            3,
+            2,
+            1
+          ],
+          "horseName": "Bourbon Serengeti"
+        }
+      ]
+    },
+    {
+      "race_number": 2,
+      "post_time": "1:38 PM",
+      "purse": "$40,000",
+      "race_type": "Starter Optional Claiming",
+      "conditions": "FILLIES AND MARES FOUR YEARS OLD AND UPWARD WHICH HAVE STARTED FOR A CLAIMING PRICE OF $10,000 OR LESS SINCE APRIL 17, 2025 OR CLAIMING PRICE $16,000. Weight, 123 lbs. Non-winners Of A Race Since October 17, 2025 Allowed 2 lbs. Claiming Price $16,000 (1.5% Aftercare Assessment Due At Time Of Claim Otherwise Claim Will Be Void).",
+      "distance": "1M",
+      "surface": "Dirt",
+      "entries": [
+        {
+          "pp": 1,
+          "name": "Lady Emily Kathryn",
+          "jockey": "Jorge A. Vargas, Jr.",
+          "trainer": "Ernesto Padilla-Preciado",
+          "weight": "123",
+          "scratched": false,
+          "ml": "10/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10816209",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 24,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 2,
+          "name": "Whistler's Style",
+          "jockey": "Dylan Davis",
+          "trainer": "Emron Ibrahim",
+          "weight": "123",
+          "scratched": false,
+          "ml": "15/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10452372",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 16,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 3,
+          "name": "Dolce Sera",
+          "jockey": "Reylu Gutierrez",
+          "trainer": "Edward J. DeLauro",
+          "weight": "121",
+          "scratched": false,
+          "ml": "30/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10620248",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 13,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 4,
+          "name": "Golden Eib Micrphn",
+          "jockey": "Jaime Rodriguez",
+          "trainer": "Jamie Ness",
+          "weight": "123",
+          "scratched": false,
+          "ml": "9/5",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10623292",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 5,
+          "name": "Curlin's Magic",
+          "jockey": "Sahin Civaci",
+          "trainer": "Linda Rice",
+          "weight": "123",
+          "scratched": false,
+          "ml": "4/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10945847",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 10,
+          "trainerPct": 20,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 6,
+          "name": "Coquito",
+          "jockey": "Manuel Franco",
+          "trainer": "Steven I. Schauer",
+          "weight": "123",
+          "scratched": false,
+          "ml": "7/5",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11010792",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 7,
+          "name": "Last Glory",
+          "jockey": "Ricardo Santana, Jr.",
+          "trainer": "Ralph D'Alessandro",
+          "weight": "123",
+          "scratched": false,
+          "ml": "8/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11031436",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 17,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        }
+      ],
+      "race_type_code": "AOC",
+      "expertPicks": [
+        {
+          "source": "NYRA - Serling",
           "pick": 5,
           "picks": [
             5,
             6,
-            8,
-            4
+            4,
+            1
           ],
-          "horseName": "Wicked Echo Lad"
+          "horseName": "Curlin's Magic"
+        },
+        {
+          "source": "NYRA - Aragona",
+          "pick": 4,
+          "picks": [
+            4,
+            6,
+            5,
+            7
+          ],
+          "horseName": "Golden Eib Micrphn"
         }
       ]
     },
     {
       "race_number": 3,
-      "post_time": "2:12 PM",
-      "purse": "$34,000",
-      "race_type": "Maiden Claiming",
-      "race_type_code": "MCL",
+      "post_time": "2:11 PM",
+      "purse": "$60,000",
+      "race_type": "Starter Allowance",
       "conditions": null,
       "distance": "6F",
       "surface": "Dirt",
       "entries": [
         {
           "pp": 1,
-          "name": "Sharp Charm Man",
-          "jockey": "Dalila A. Rivera",
-          "trainer": "H. James Bond",
-          "weight": "124",
-          "scratched": false,
-          "ml": "8/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            55,
-            null,
-            52
-          ],
-          "runningStyle": "P",
-          "lastClass": "MCL",
-          "jockeyPct": 17,
-          "trainerPct": 12,
-          "lastRaceDate": "2026-02-15",
-          "dataCompleteness": 0.97
-        },
-        {
-          "pp": 2,
-          "name": "Southern Ghost Lad",
+          "name": "Mo for the King",
           "jockey": "Ricardo Santana, Jr.",
-          "trainer": "Jorge R. Abreu",
-          "weight": "124",
-          "scratched": false,
-          "ml": "8/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            32,
-            30,
-            30
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "MCL",
-          "jockeyPct": 10,
-          "trainerPct": 15,
-          "lastRaceDate": "2026-02-13",
-          "dataCompleteness": 0.88
-        },
-        {
-          "pp": 3,
-          "name": "Bourbon Blaze",
-          "jockey": "Dylan Davis",
-          "trainer": "Jorge R. Abreu",
-          "weight": "124",
-          "scratched": false,
-          "ml": "6/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            41,
-            34,
-            34
-          ],
-          "runningStyle": "S",
-          "lastClass": "MCL",
-          "jockeyPct": 11,
-          "trainerPct": 12,
-          "lastRaceDate": "2026-03-20",
-          "dataCompleteness": 0.95
-        },
-        {
-          "pp": 4,
-          "name": "Rowdy Echo",
-          "jockey": "Jorge A. Vargas, Jr.",
-          "trainer": "Kenneth G. McPeek",
-          "weight": "122",
+          "trainer": "Robert N. Falcone, Jr.",
+          "weight": "126",
           "scratched": false,
           "ml": "5/2",
-          "equibaseUrl": null,
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11132057",
           "speedFigs": [
-            46,
             null,
-            41
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "MCL",
-          "jockeyPct": 20,
-          "trainerPct": 16,
-          "lastRaceDate": "2026-03-28",
-          "dataCompleteness": 0.96
-        },
-        {
-          "pp": 5,
-          "name": "Midnight Hunter Lad",
-          "jockey": "Christopher Elliott",
-          "trainer": "Michael J. Maker",
-          "weight": "118",
-          "scratched": false,
-          "ml": "4/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            41,
-            44,
-            36
-          ],
-          "runningStyle": "P",
-          "lastClass": "MCL",
-          "jockeyPct": 21,
-          "trainerPct": 8,
-          "lastRaceDate": "2026-03-17",
-          "dataCompleteness": 0.91
-        },
-        {
-          "pp": 6,
-          "name": "Royal Runner Jr.",
-          "jockey": "Jose Lezcano",
-          "trainer": "Chad C. Brown",
-          "weight": "119",
-          "scratched": false,
-          "ml": "5/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            33,
             null,
-            41
-          ],
-          "runningStyle": "P",
-          "lastClass": "MCL",
-          "jockeyPct": 13,
-          "trainerPct": 16,
-          "lastRaceDate": "2026-02-25",
-          "dataCompleteness": 0.84
-        },
-        {
-          "pp": 7,
-          "name": "Mighty Breeze Kid",
-          "jockey": "Ricardo Santana, Jr.",
-          "trainer": "Todd A. Pletcher",
-          "weight": "119",
-          "scratched": false,
-          "ml": "9/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            46,
-            null,
-            54
+            null
           ],
           "runningStyle": "E",
-          "lastClass": "MCL",
-          "jockeyPct": 8,
-          "trainerPct": 15,
-          "lastRaceDate": "2026-03-21",
-          "dataCompleteness": 0.93
-        },
-        {
-          "pp": 8,
-          "name": "Quick Charm",
-          "jockey": "Manuel Franco",
-          "trainer": "Michael J. Maker",
-          "weight": "119",
-          "scratched": false,
-          "ml": "10/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            37,
-            null,
-            30
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "MCL",
-          "jockeyPct": 18,
-          "trainerPct": 24,
-          "lastRaceDate": "2026-03-21",
-          "dataCompleteness": 0.86
-        },
-        {
-          "pp": 9,
-          "name": "Silver Cruiser Lad",
-          "jockey": "Dylan Davis",
-          "trainer": "Rob Atras",
-          "weight": "123",
-          "scratched": false,
-          "ml": "3/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            41,
-            null,
-            42
-          ],
-          "runningStyle": "S",
-          "lastClass": "MCL",
-          "jockeyPct": 12,
-          "trainerPct": 14,
-          "lastRaceDate": "2026-02-23",
-          "dataCompleteness": 0.9
-        },
-        {
-          "pp": 10,
-          "name": "Wicked Ghost Man",
-          "jockey": "Christopher Elliott",
-          "trainer": "Horacio De Paz",
-          "weight": "120",
-          "scratched": false,
-          "ml": "7/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            38,
-            45,
-            43
-          ],
-          "runningStyle": "E",
-          "lastClass": "MCL",
-          "jockeyPct": 24,
-          "trainerPct": 20,
-          "lastRaceDate": "2026-03-17",
-          "dataCompleteness": 0.87
-        }
-      ],
-      "expertPicks": [
-        {
-          "source": "NYRA - Serling",
-          "pick": 5,
-          "picks": [
-            5,
-            9,
-            6,
-            10
-          ],
-          "horseName": "Midnight Hunter Lad"
-        },
-        {
-          "source": "NYRA - Aragona",
-          "pick": 5,
-          "picks": [
-            5,
-            10,
-            9,
-            2
-          ],
-          "horseName": "Midnight Hunter Lad"
-        },
-        {
-          "source": "DRF Consensus",
-          "pick": 10,
-          "picks": [
-            10,
-            5,
-            8,
-            3
-          ],
-          "horseName": "Wicked Ghost Man"
-        },
-        {
-          "source": "NY Racing Journal",
-          "pick": 3,
-          "picks": [
-            3,
-            10,
-            5,
-            7
-          ],
-          "horseName": "Bourbon Blaze"
-        },
-        {
-          "source": "TimeformUS",
-          "pick": 7,
-          "picks": [
-            7,
-            3,
-            10,
-            1
-          ],
-          "horseName": "Mighty Breeze Kid"
-        }
-      ]
-    },
-    {
-      "race_number": 4,
-      "post_time": "2:43 PM",
-      "purse": "$80,000",
-      "race_type": "Maiden Special Weight",
-      "race_type_code": "MSW",
-      "conditions": null,
-      "distance": "6F",
-      "surface": "Dirt",
-      "entries": [
-        {
-          "pp": 1,
-          "name": "Lucky Bandit Kid",
-          "jockey": "Ruben Silvera",
-          "trainer": "Todd A. Pletcher",
-          "weight": "123",
-          "scratched": false,
-          "ml": "4/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            51,
-            50,
-            59
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "MSW",
-          "jockeyPct": 9,
-          "trainerPct": 21,
-          "lastRaceDate": "2026-03-26",
-          "dataCompleteness": 0.92
+          "lastClass": null,
+          "jockeyPct": 17,
+          "trainerPct": 7,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 2,
-          "name": "Bourbon Cowboy Again",
-          "jockey": "Manuel Franco",
+          "name": "Kid Billy",
+          "jockey": "Ruben Silvera",
           "trainer": "Rudy R. Rodriguez",
           "weight": "126",
           "scratched": false,
-          "ml": "8/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            48,
-            48,
-            48
-          ],
-          "runningStyle": "E",
-          "lastClass": "MSW",
-          "jockeyPct": 19,
-          "trainerPct": 15,
-          "lastRaceDate": "2026-03-19",
-          "dataCompleteness": 0.89
-        },
-        {
-          "pp": 3,
-          "name": "Golden Spark Jr.",
-          "jockey": "Reylu Gutierrez",
-          "trainer": "Kenneth G. McPeek",
-          "weight": "118",
-          "scratched": false,
-          "ml": "8/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            62,
-            null,
-            62
-          ],
-          "runningStyle": "E",
-          "lastClass": "MSW",
-          "jockeyPct": 17,
-          "trainerPct": 14,
-          "lastRaceDate": "2026-03-28",
-          "dataCompleteness": 0.82
-        },
-        {
-          "pp": 4,
-          "name": "Golden Hunter Lad",
-          "jockey": "Eric Cancel",
-          "trainer": "Rob Atras",
-          "weight": "118",
-          "scratched": false,
-          "ml": "5/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            58,
-            57,
-            59
-          ],
-          "runningStyle": "S",
-          "lastClass": "MSW",
-          "jockeyPct": 13,
-          "trainerPct": 16,
-          "lastRaceDate": "2026-03-18",
-          "dataCompleteness": 0.93
-        },
-        {
-          "pp": 5,
-          "name": "Sharp Outlaw Jr.",
-          "jockey": "Jose Lezcano",
-          "trainer": "Ilkay Kantarmaci",
-          "weight": "122",
-          "scratched": false,
-          "ml": "5/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            59,
-            56,
-            68
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "MSW",
-          "jockeyPct": 24,
-          "trainerPct": 12,
-          "lastRaceDate": "2026-03-10",
-          "dataCompleteness": 0.91
-        },
-        {
-          "pp": 6,
-          "name": "Mighty Dream",
-          "jockey": "Kendrick Carmouche",
-          "trainer": "Rob Atras",
-          "weight": "124",
-          "scratched": false,
-          "ml": "3/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            60,
-            54,
-            55
-          ],
-          "runningStyle": "S",
-          "lastClass": "MSW",
-          "jockeyPct": 17,
-          "trainerPct": 9,
-          "lastRaceDate": "2026-03-19",
-          "dataCompleteness": 0.88
-        },
-        {
-          "pp": 7,
-          "name": "Lonesome Cruiser Lad",
-          "jockey": "Dylan Davis",
-          "trainer": "Horacio De Paz",
-          "weight": "119",
-          "scratched": false,
-          "ml": "9/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            64,
-            69,
-            62
-          ],
-          "runningStyle": "E",
-          "lastClass": "MSW",
-          "jockeyPct": 10,
-          "trainerPct": 24,
-          "lastRaceDate": "2026-03-19",
-          "dataCompleteness": 0.82
-        },
-        {
-          "pp": 8,
-          "name": "Tiny Star Jr.",
-          "jockey": "Ricardo Santana, Jr.",
-          "trainer": "Horacio De Paz",
-          "weight": "126",
-          "scratched": false,
-          "ml": "7/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            59,
-            54,
-            52
-          ],
-          "runningStyle": "E",
-          "lastClass": "MSW",
-          "jockeyPct": 23,
-          "trainerPct": 19,
-          "lastRaceDate": "2026-02-19",
-          "dataCompleteness": 0.89
-        },
-        {
-          "pp": 9,
-          "name": "Quick Thunder Again",
-          "jockey": "Jose Lezcano",
-          "trainer": "Miguel Clement",
-          "weight": "120",
-          "scratched": false,
-          "ml": "6/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            52,
-            53,
-            51
-          ],
-          "runningStyle": "S",
-          "lastClass": "MSW",
-          "jockeyPct": 17,
-          "trainerPct": 8,
-          "lastRaceDate": "2026-02-25",
-          "dataCompleteness": 0.96
-        }
-      ],
-      "expertPicks": [
-        {
-          "source": "NYRA - Serling",
-          "pick": 1,
-          "picks": [
-            1,
-            4,
-            8,
-            9
-          ],
-          "horseName": "Lucky Bandit Kid"
-        },
-        {
-          "source": "NYRA - Aragona",
-          "pick": 5,
-          "picks": [
-            5,
-            1,
-            9,
-            4
-          ],
-          "horseName": "Sharp Outlaw Jr."
-        },
-        {
-          "source": "DRF Consensus",
-          "pick": 3,
-          "picks": [
-            3,
-            6,
-            8,
-            9
-          ],
-          "horseName": "Golden Spark Jr."
-        },
-        {
-          "source": "NY Racing Journal",
-          "pick": 1,
-          "picks": [
-            1,
-            5,
-            8,
-            4
-          ],
-          "horseName": "Lucky Bandit Kid"
-        },
-        {
-          "source": "TimeformUS",
-          "pick": 1,
-          "picks": [
-            1,
-            2,
-            4,
-            7
-          ],
-          "horseName": "Lucky Bandit Kid"
-        }
-      ]
-    },
-    {
-      "race_number": 5,
-      "post_time": "3:14 PM",
-      "purse": "$77,000",
-      "race_type": "Allowance",
-      "race_type_code": "ALW",
-      "conditions": null,
-      "distance": "1 1/16M",
-      "surface": "Dirt",
-      "entries": [
-        {
-          "pp": 1,
-          "name": "Lucky Charm Jr.",
-          "jockey": "Omar Hernandez Moreno",
-          "trainer": "Rob Atras",
-          "weight": "124",
-          "scratched": false,
-          "ml": "7/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            66,
-            64,
-            71
-          ],
-          "runningStyle": "S",
-          "lastClass": "ALW",
-          "jockeyPct": 10,
-          "trainerPct": 20,
-          "lastRaceDate": "2026-03-13",
-          "dataCompleteness": 0.94
-        },
-        {
-          "pp": 2,
-          "name": "Bourbon Dream Edition",
-          "jockey": "Reylu Gutierrez",
-          "trainer": "Mark A. Hennig",
-          "weight": "126",
-          "scratched": false,
           "ml": "4/1",
-          "equibaseUrl": null,
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10774715",
           "speedFigs": [
-            61,
-            62,
-            61
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "ALW",
-          "jockeyPct": 18,
-          "trainerPct": 20,
-          "lastRaceDate": "2026-03-25",
-          "dataCompleteness": 0.95
-        },
-        {
-          "pp": 3,
-          "name": "Tiny Runner Again",
-          "jockey": "Ricardo Santana, Jr.",
-          "trainer": "Horacio De Paz",
-          "weight": "119",
-          "scratched": false,
-          "ml": "5/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            71,
-            70,
-            null
-          ],
-          "runningStyle": "S",
-          "lastClass": "ALW",
-          "jockeyPct": 20,
-          "trainerPct": 7,
-          "lastRaceDate": "2026-03-25",
-          "dataCompleteness": 0.95
-        },
-        {
-          "pp": 4,
-          "name": "Sudden Outlaw Jr.",
-          "jockey": "Ruben Silvera",
-          "trainer": "Horacio De Paz",
-          "weight": "123",
-          "scratched": false,
-          "ml": "3/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            71,
-            76,
-            67
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "ALW",
-          "jockeyPct": 18,
-          "trainerPct": 7,
-          "lastRaceDate": "2026-02-15",
-          "dataCompleteness": 0.95
-        },
-        {
-          "pp": 5,
-          "name": "Quick Dancer Kid",
-          "jockey": "Christopher Elliott",
-          "trainer": "Chad C. Brown",
-          "weight": "118",
-          "scratched": false,
-          "ml": "8/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            78,
+            null,
             null,
             null
           ],
-          "runningStyle": "P",
-          "lastClass": "ALW",
-          "jockeyPct": 18,
-          "trainerPct": 23,
-          "lastRaceDate": "2026-03-19",
-          "dataCompleteness": 0.84
-        },
-        {
-          "pp": 6,
-          "name": "Royal Charm",
-          "jockey": "Edgard J. Zayas",
-          "trainer": "Todd A. Pletcher",
-          "weight": "123",
-          "scratched": false,
-          "ml": "9/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            76,
-            70,
-            72
-          ],
-          "runningStyle": "S",
-          "lastClass": "ALW",
-          "jockeyPct": 19,
-          "trainerPct": 18,
-          "lastRaceDate": "2026-02-26",
-          "dataCompleteness": 0.9
-        }
-      ],
-      "expertPicks": [
-        {
-          "source": "NYRA - Serling",
-          "pick": 3,
-          "picks": [
-            3,
-            4,
-            6,
-            1
-          ],
-          "horseName": "Tiny Runner Again"
-        },
-        {
-          "source": "NYRA - Aragona",
-          "pick": 1,
-          "picks": [
-            1,
-            3,
-            6,
-            5
-          ],
-          "horseName": "Lucky Charm Jr."
-        },
-        {
-          "source": "DRF Consensus",
-          "pick": 4,
-          "picks": [
-            4,
-            3,
-            6,
-            1
-          ],
-          "horseName": "Sudden Outlaw Jr."
-        },
-        {
-          "source": "NY Racing Journal",
-          "pick": 4,
-          "picks": [
-            4,
-            2,
-            3,
-            5
-          ],
-          "horseName": "Sudden Outlaw Jr."
-        },
-        {
-          "source": "TimeformUS",
-          "pick": 2,
-          "picks": [
-            2,
-            6,
-            3,
-            5
-          ],
-          "horseName": "Bourbon Dream Edition"
-        }
-      ]
-    },
-    {
-      "race_number": 6,
-      "post_time": "3:45 PM",
-      "purse": "$77,000",
-      "race_type": "Allowance Optional Claiming",
-      "race_type_code": "AOC",
-      "conditions": null,
-      "distance": "7F",
-      "surface": "Dirt",
-      "entries": [
-        {
-          "pp": 1,
-          "name": "Golden Runner Edition",
-          "jockey": "Jorge A. Vargas, Jr.",
-          "trainer": "Michael J. Maker",
-          "weight": "119",
-          "scratched": false,
-          "ml": "7/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            74,
-            69,
-            64
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "AOC",
-          "jockeyPct": 24,
-          "trainerPct": 16,
-          "lastRaceDate": "2026-03-28",
-          "dataCompleteness": 0.87
-        },
-        {
-          "pp": 2,
-          "name": "Stormy Tide Edition",
-          "jockey": "Omar Hernandez Moreno",
-          "trainer": "Jorge R. Abreu",
-          "weight": "118",
-          "scratched": false,
-          "ml": "3/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            66,
-            70,
-            67
-          ],
-          "runningStyle": "S",
-          "lastClass": "AOC",
-          "jockeyPct": 24,
-          "trainerPct": 19,
-          "lastRaceDate": "2026-03-21",
-          "dataCompleteness": 0.95
-        },
-        {
-          "pp": 3,
-          "name": "Mighty Cruiser",
-          "jockey": "Ricardo Santana, Jr.",
-          "trainer": "Todd A. Pletcher",
-          "weight": "124",
-          "scratched": false,
-          "ml": "9/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            73,
-            74,
-            79
-          ],
           "runningStyle": "E",
-          "lastClass": "AOC",
-          "jockeyPct": 10,
-          "trainerPct": 15,
-          "lastRaceDate": "2026-03-19",
-          "dataCompleteness": 0.92
-        },
-        {
-          "pp": 4,
-          "name": "Quick Bandit Lad",
-          "jockey": "Jorge A. Vargas, Jr.",
-          "trainer": "Mark A. Hennig",
-          "weight": "123",
-          "scratched": false,
-          "ml": "4/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            73,
-            68,
-            62
-          ],
-          "runningStyle": "E",
-          "lastClass": "AOC",
-          "jockeyPct": 24,
-          "trainerPct": 12,
-          "lastRaceDate": "2026-03-23",
-          "dataCompleteness": 0.92
-        },
-        {
-          "pp": 5,
-          "name": "Humble Cowboy Express",
-          "jockey": "Kendrick Carmouche",
-          "trainer": "Jorge R. Abreu",
-          "weight": "118",
-          "scratched": false,
-          "ml": "5/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            80,
-            null,
-            75
-          ],
-          "runningStyle": "S",
-          "lastClass": "AOC",
-          "jockeyPct": 19,
-          "trainerPct": 14,
-          "lastRaceDate": "2026-03-26",
-          "dataCompleteness": 0.86
-        },
-        {
-          "pp": 6,
-          "name": "Sudden Charm",
-          "jockey": "Eric Cancel",
-          "trainer": "Mark A. Hennig",
-          "weight": "124",
-          "scratched": false,
-          "ml": "8/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            83,
-            82,
-            74
-          ],
-          "runningStyle": "S",
-          "lastClass": "AOC",
-          "jockeyPct": 14,
-          "trainerPct": 13,
-          "lastRaceDate": "2026-03-27",
-          "dataCompleteness": 0.95
-        }
-      ],
-      "expertPicks": [
-        {
-          "source": "NYRA - Serling",
-          "pick": 4,
-          "picks": [
-            4,
-            5,
-            1,
-            3
-          ],
-          "horseName": "Quick Bandit Lad"
-        },
-        {
-          "source": "NYRA - Aragona",
-          "pick": 4,
-          "picks": [
-            4,
-            5,
-            1,
-            2
-          ],
-          "horseName": "Quick Bandit Lad"
-        },
-        {
-          "source": "DRF Consensus",
-          "pick": 5,
-          "picks": [
-            5,
-            2,
-            1,
-            6
-          ],
-          "horseName": "Humble Cowboy Express"
-        },
-        {
-          "source": "NY Racing Journal",
-          "pick": 5,
-          "picks": [
-            5,
-            1,
-            6,
-            2
-          ],
-          "horseName": "Humble Cowboy Express"
-        },
-        {
-          "source": "TimeformUS",
-          "pick": 5,
-          "picks": [
-            5,
-            3,
-            4,
-            2
-          ],
-          "horseName": "Humble Cowboy Express"
-        }
-      ]
-    },
-    {
-      "race_number": 7,
-      "post_time": "4:16 PM",
-      "purse": "$150,000",
-      "race_type": "Plenty of Grace Stakes (Listed)",
-      "race_type_code": "STK-L",
-      "conditions": null,
-      "distance": "1M (Turf)",
-      "surface": "Turf",
-      "entries": [
-        {
-          "pp": 1,
-          "name": "Lonesome Hunter Again",
-          "jockey": "Reylu Gutierrez",
-          "trainer": "H. James Bond",
-          "weight": "119",
-          "scratched": false,
-          "ml": "3/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            76,
-            78,
-            81
-          ],
-          "runningStyle": "S",
-          "lastClass": "STK-L",
-          "jockeyPct": 7,
-          "trainerPct": 20,
-          "lastRaceDate": "2026-03-20",
-          "dataCompleteness": 0.9
-        },
-        {
-          "pp": 2,
-          "name": "Wicked Echo Edition",
-          "jockey": "Jose Lezcano",
-          "trainer": "Ilkay Kantarmaci",
-          "weight": "118",
-          "scratched": false,
-          "ml": "4/1",
-          "equibaseUrl": null,
-          "speedFigs": [
-            81,
-            77,
-            73
-          ],
-          "runningStyle": "S",
-          "lastClass": "STK-L",
+          "lastClass": null,
           "jockeyPct": 8,
-          "trainerPct": 12,
-          "lastRaceDate": "2026-03-24",
-          "dataCompleteness": 0.87
+          "trainerPct": 18,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 3,
-          "name": "Noble Cowboy Man",
-          "jockey": "Kendrick Carmouche",
-          "trainer": "Todd A. Pletcher",
-          "weight": "122",
+          "name": "Timaeus",
+          "jockey": "Silvestre Gonzalez",
+          "trainer": "Ilkay Kantarmaci",
+          "weight": "126",
           "scratched": false,
-          "ml": "6/1",
-          "equibaseUrl": null,
+          "ml": "10/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10792693",
           "speedFigs": [
-            76,
-            74,
+            null,
+            null,
             null
           ],
-          "runningStyle": "E/P",
-          "lastClass": "STK-L",
-          "jockeyPct": 9,
-          "trainerPct": 17,
-          "lastRaceDate": "2026-03-25",
-          "dataCompleteness": 0.84
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 10,
+          "trainerPct": 6,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 4,
-          "name": "Golden Rebel Lad",
-          "jockey": "Dylan Davis",
-          "trainer": "Michael J. Maker",
-          "weight": "123",
-          "scratched": false,
-          "ml": "8/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            88,
-            91,
-            80
-          ],
-          "runningStyle": "S",
-          "lastClass": "STK-L",
-          "jockeyPct": 17,
-          "trainerPct": 19,
-          "lastRaceDate": "2026-03-17",
-          "dataCompleteness": 0.94
-        },
-        {
-          "pp": 5,
-          "name": "Sharp Gamble Again",
-          "jockey": "Jaime Rodriguez",
-          "trainer": "Anthony W. Dutrow",
-          "weight": "118",
-          "scratched": false,
-          "ml": "9/5",
-          "equibaseUrl": null,
-          "speedFigs": [
-            84,
-            83,
-            90
-          ],
-          "runningStyle": "E",
-          "lastClass": "STK-L",
-          "jockeyPct": 12,
-          "trainerPct": 8,
-          "lastRaceDate": "2026-03-12",
-          "dataCompleteness": 0.88
-        },
-        {
-          "pp": 6,
-          "name": "Silver Star",
-          "jockey": "Edgard J. Zayas",
-          "trainer": "Horacio De Paz",
-          "weight": "120",
-          "scratched": false,
-          "ml": "5/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            86,
-            81,
-            81
-          ],
-          "runningStyle": "E/P",
-          "lastClass": "STK-L",
-          "jockeyPct": 22,
-          "trainerPct": 13,
-          "lastRaceDate": "2026-02-28",
-          "dataCompleteness": 0.95
-        },
-        {
-          "pp": 7,
-          "name": "Humble Shadow Man",
-          "jockey": "Ruben Silvera",
-          "trainer": "Linda Rice",
-          "weight": "120",
-          "scratched": false,
-          "ml": "7/2",
-          "equibaseUrl": null,
-          "speedFigs": [
-            76,
-            78,
-            81
-          ],
-          "runningStyle": "E",
-          "lastClass": "STK-L",
-          "jockeyPct": 7,
-          "trainerPct": 11,
-          "lastRaceDate": "2026-03-26",
-          "dataCompleteness": 0.91
-        },
-        {
-          "pp": 8,
-          "name": "Tiny Hunter",
-          "jockey": "Jaime Rodriguez",
-          "trainer": "Rob Atras",
+          "name": "Gypsy Dreaming",
+          "jockey": "Kendrick Carmouche",
+          "trainer": "Michelle Giangiulio",
           "weight": "126",
           "scratched": false,
           "ml": "5/1",
-          "equibaseUrl": null,
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11106997",
           "speedFigs": [
-            78,
-            78,
-            75
+            null,
+            null,
+            null
           ],
           "runningStyle": "P",
-          "lastClass": "STK-L",
-          "jockeyPct": 11,
-          "trainerPct": 21,
-          "lastRaceDate": "2026-03-27",
-          "dataCompleteness": 0.97
+          "lastClass": null,
+          "jockeyPct": 14,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 5,
+          "name": "Social Hour",
+          "jockey": "Manuel Franco",
+          "trainer": "Ilkay Kantarmaci",
+          "weight": "126",
+          "scratched": false,
+          "ml": "9/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11171852",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 6,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 6,
+          "name": "Go Irish",
+          "jockey": "Javier Castellano",
+          "trainer": "Jena M. Antonucci",
+          "weight": "126",
+          "scratched": false,
+          "ml": "8/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10982517",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 12,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 7,
+          "name": "Seeker's Hope",
+          "jockey": "Jaime Rodriguez",
+          "trainer": "Roshan Samsundar",
+          "weight": "126",
+          "scratched": false,
+          "ml": "15/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11110989",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 8,
+          "name": "Sinister Smile",
+          "jockey": "Dylan Davis",
+          "trainer": "Joe Sharp",
+          "weight": "126",
+          "scratched": false,
+          "ml": "9/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11100694",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 16,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
         }
       ],
+      "race_type_code": "ALW",
       "expertPicks": [
         {
           "source": "NYRA - Serling",
           "pick": 8,
           "picks": [
             8,
+            1,
             6,
-            7,
-            4
+            5
           ],
-          "horseName": "Tiny Hunter"
+          "horseName": "Sinister Smile"
         },
         {
           "source": "NYRA - Aragona",
-          "pick": 1,
+          "pick": 6,
           "picks": [
-            1,
-            2,
             6,
-            4
-          ],
-          "horseName": "Lonesome Hunter Again"
-        },
-        {
-          "source": "DRF Consensus",
-          "pick": 1,
-          "picks": [
-            1,
             8,
-            6,
-            3
-          ],
-          "horseName": "Lonesome Hunter Again"
-        },
-        {
-          "source": "NY Racing Journal",
-          "pick": 1,
-          "picks": [
             1,
-            2,
-            8,
-            4
+            2
           ],
-          "horseName": "Lonesome Hunter Again"
-        },
-        {
-          "source": "TimeformUS",
-          "pick": 1,
-          "picks": [
-            1,
-            4,
-            8,
-            3
-          ],
-          "horseName": "Lonesome Hunter Again"
+          "horseName": "Go Irish"
         }
       ]
     },
     {
-      "race_number": 8,
-      "post_time": "4:47 PM",
-      "purse": "$75,000",
+      "race_number": 4,
+      "post_time": "2:44 PM",
+      "purse": "$80,000",
       "race_type": "Maiden Special Weight",
-      "race_type_code": "MSW",
       "conditions": null,
+      "distance": "1M",
+      "surface": "Turf",
+      "entries": [
+        {
+          "pp": 1,
+          "name": "Party Animal",
+          "jockey": "Ricardo Santana, Jr.",
+          "trainer": "Jena M. Antonucci",
+          "weight": "120",
+          "scratched": false,
+          "ml": "6/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11320900",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 17,
+          "trainerPct": 12,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 2,
+          "name": "Orgonite",
+          "jockey": "Jaime Rodriguez",
+          "trainer": "David G. Donk",
+          "weight": "126",
+          "scratched": false,
+          "ml": "3/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11139938",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 9,
+          "trainerPct": 13,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 3,
+          "name": "Up for an Oscar",
+          "jockey": "Dylan Davis",
+          "trainer": "Chad C. Brown",
+          "weight": "126",
+          "scratched": false,
+          "ml": "5/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11145635",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 16,
+          "trainerPct": 27,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 4,
+          "name": "C J Star",
+          "jockey": "Javier Castellano",
+          "trainer": "Mark E. Casse",
+          "weight": "120",
+          "scratched": false,
+          "ml": "8/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11297919",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 5,
+          "name": "Quiet Power",
+          "jockey": "Kendrick Carmouche",
+          "trainer": "Claude R. McGaughey III",
+          "weight": "120",
+          "scratched": false,
+          "ml": "9/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11272170",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 14,
+          "trainerPct": 9,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 6,
+          "name": "Capt Fluff N Stuff",
+          "jockey": "Manuel Franco",
+          "trainer": "Chad C. Brown",
+          "weight": "126",
+          "scratched": false,
+          "ml": "6/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11108837",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 27,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 7,
+          "name": "Double Act",
+          "jockey": "Jose Lezcano",
+          "trainer": "William I. Mott",
+          "weight": "120",
+          "scratched": false,
+          "ml": "5/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11315948",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 15,
+          "trainerPct": 23,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 8,
+          "name": "Steady Force",
+          "jockey": "Dylan Davis",
+          "trainer": "Chad C. Brown",
+          "weight": "120",
+          "scratched": false,
+          "ml": "7/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11287459",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 16,
+          "trainerPct": 27,
+          "dataCompleteness": 0.43
+        }
+      ],
+      "race_type_code": "MSW",
+      "expertPicks": [
+        {
+          "source": "NYRA - Serling",
+          "pick": 2,
+          "picks": [
+            2,
+            3,
+            5,
+            6
+          ],
+          "horseName": "Orgonite"
+        },
+        {
+          "source": "NYRA - Aragona",
+          "pick": 6,
+          "picks": [
+            6,
+            3,
+            2,
+            1
+          ],
+          "horseName": "Capt Fluff N Stuff"
+        }
+      ]
+    },
+    {
+      "race_number": 5,
+      "post_time": "3:16 PM",
+      "purse": "$83,000",
+      "race_type": "Allowance",
+      "conditions": null,
+      "distance": "6F",
+      "surface": "Turf",
+      "entries": [
+        {
+          "pp": 1,
+          "name": "Di Natale (CHI)",
+          "jockey": "Javier Castellano",
+          "trainer": "Wesley A. Ward",
+          "weight": "126",
+          "scratched": false,
+          "ml": "8/5",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11480948",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 2,
+          "name": "Shore War",
+          "jockey": "Reylu Gutierrez",
+          "trainer": "Amelia J. Green",
+          "weight": "126",
+          "scratched": false,
+          "ml": "12/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10960123",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 13,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 3,
+          "name": "Blame the Banker",
+          "jockey": "Silvestre Gonzalez",
+          "trainer": "Panagiotis A. Synnefias",
+          "weight": "126",
+          "scratched": false,
+          "ml": "15/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11099346",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 10,
+          "trainerPct": 6,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 4,
+          "name": "Sweet Montreal",
+          "jockey": "Christopher Elliott",
+          "trainer": "James T. Ryerson",
+          "weight": "120",
+          "scratched": false,
+          "ml": "4/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11302071",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 7,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 5,
+          "name": "Will Not Be Swayed",
+          "jockey": "Jose Lezcano",
+          "trainer": "Linda Rice",
+          "weight": "126",
+          "scratched": false,
+          "ml": "8/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11137659",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 15,
+          "trainerPct": 20,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 6,
+          "name": "Dangherecomesshang (IRE)",
+          "jockey": "Jaime Rodriguez",
+          "trainer": "Wesley A. Ward",
+          "weight": "126",
+          "scratched": false,
+          "ml": "3/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11170211",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 7,
+          "name": "Tap It Up",
+          "jockey": "Luis R. Rivera, Jr.",
+          "trainer": "James T. Ryerson",
+          "weight": "126",
+          "scratched": false,
+          "ml": "15/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10754474",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 24,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 8,
+          "name": "Somnium",
+          "jockey": "Manuel Franco",
+          "trainer": "Elizabeth M. Merryman",
+          "weight": "126",
+          "scratched": false,
+          "ml": "6/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11158806",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 9,
+          "name": "Bernieandtherose",
+          "jockey": "Jaime Rodriguez",
+          "trainer": "Domenick L. Schettino",
+          "weight": "126",
+          "scratched": false,
+          "ml": "5/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11127571",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 9,
+          "trainerPct": 9,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 10,
+          "name": "Mila Candy",
+          "jockey": "Manuel Franco",
+          "trainer": "Ilkay Kantarmaci",
+          "weight": "126",
+          "scratched": false,
+          "ml": "6/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11139319",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 6,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 11,
+          "name": "Next On Stage",
+          "jockey": "Jose Lezcano",
+          "trainer": "Linda Rice",
+          "weight": "126",
+          "scratched": false,
+          "ml": "9/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10958917",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 15,
+          "trainerPct": 20,
+          "dataCompleteness": 0.43
+        }
+      ],
+      "race_type_code": "ALW",
+      "expertPicks": [
+        {
+          "source": "NYRA - Serling",
+          "pick": 1,
+          "picks": [
+            1,
+            6,
+            4,
+            2
+          ],
+          "horseName": "Di Natale (CHI)"
+        },
+        {
+          "source": "NYRA - Aragona",
+          "pick": 2,
+          "picks": [
+            2,
+            1,
+            6,
+            4
+          ],
+          "horseName": "Shore War"
+        }
+      ]
+    },
+    {
+      "race_number": 6,
+      "post_time": "3:48 PM",
+      "purse": "$77,000",
+      "race_type": "Allowance",
+      "conditions": "THREE YEAR OLDS AND UPWARD FOALED IN NEW YORK STATE AND APPROVED BY THE NEW YORK STATE-BRED REGISTRY WHICH HAVE NEVER WON $20,000 OTHER THAN MAIDEN, CLAIMING OR STARTER OR WHICH HAVE NEVER WON TWO RACES. Three Year Olds, 120 lbs.; Older, 126 lbs. (Non-Starters For A Claiming Price Of $35,000 Or Less In The Last 3 Starts Preferred).",
       "distance": "1 1/8M",
       "surface": "Dirt",
       "entries": [
         {
           "pp": 1,
-          "name": "Silver Charm",
-          "jockey": "Dalila A. Rivera",
-          "trainer": "Ilkay Kantarmaci",
-          "weight": "118",
+          "name": "Ez Roll",
+          "jockey": "Jorge A. Vargas, Jr.",
+          "trainer": "Raymond Handal",
+          "weight": "126",
           "scratched": false,
-          "ml": "4/1",
-          "equibaseUrl": null,
+          "ml": "9/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10935336",
           "speedFigs": [
-            62,
-            51,
-            58
+            null,
+            null,
+            null
           ],
-          "runningStyle": "P",
-          "lastClass": "MSW",
-          "jockeyPct": 15,
-          "trainerPct": 9,
-          "lastRaceDate": "2026-03-11",
-          "dataCompleteness": 0.91
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 24,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 2,
-          "name": "Midnight Rebel Kid",
+          "name": "Senegal",
           "jockey": "Ricardo Santana, Jr.",
-          "trainer": "Anthony W. Dutrow",
+          "trainer": "Thomas Morley",
           "weight": "126",
           "scratched": false,
-          "ml": "3/1",
-          "equibaseUrl": null,
+          "ml": "4/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10955776",
           "speedFigs": [
-            62,
-            55,
-            64
+            null,
+            null,
+            null
           ],
-          "runningStyle": "S",
-          "lastClass": "MSW",
-          "jockeyPct": 19,
-          "trainerPct": 23,
-          "lastRaceDate": "2026-02-16",
-          "dataCompleteness": 0.87
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 17,
+          "trainerPct": 11,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 3,
-          "name": "Silver Tide",
-          "jockey": "Manuel Franco",
-          "trainer": "Ilkay Kantarmaci",
-          "weight": "122",
+          "name": "Gamebred",
+          "jockey": "Jose Lezcano",
+          "trainer": "Charlton Baker",
+          "weight": "126",
           "scratched": false,
-          "ml": "8/5",
-          "equibaseUrl": null,
+          "ml": "8/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11091381",
           "speedFigs": [
-            68,
-            70,
-            71
+            null,
+            null,
+            null
           ],
-          "runningStyle": "S",
-          "lastClass": "MSW",
-          "jockeyPct": 20,
-          "trainerPct": 19,
-          "lastRaceDate": "2026-02-19",
-          "dataCompleteness": 0.96
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 15,
+          "trainerPct": 8,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 4,
-          "name": "Sharp Thunder",
-          "jockey": "Ricardo Santana, Jr.",
-          "trainer": "Mark A. Hennig",
-          "weight": "119",
+          "name": "Kaz Oil Changer",
+          "jockey": "Dylan Davis",
+          "trainer": "Dimitrios K. Synnefias",
+          "weight": "126",
           "scratched": false,
-          "ml": "5/1",
-          "equibaseUrl": null,
+          "ml": "6/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11142382",
           "speedFigs": [
-            52,
             null,
-            52
+            null,
+            null
           ],
-          "runningStyle": "E",
-          "lastClass": "MSW",
-          "jockeyPct": 13,
-          "trainerPct": 7,
-          "lastRaceDate": "2026-03-11",
-          "dataCompleteness": 0.9
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 16,
+          "trainerPct": 6,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 5,
-          "name": "Sharp Hunter",
-          "jockey": "Jaime Rodriguez",
-          "trainer": "Chad C. Brown",
-          "weight": "119",
+          "name": "Mad Banker",
+          "jockey": "Ruben Silvera",
+          "trainer": "Jamie Ness",
+          "weight": "126",
           "scratched": false,
-          "ml": "5/2",
-          "equibaseUrl": null,
+          "ml": "9/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10969486",
           "speedFigs": [
-            63,
-            64,
-            60
+            null,
+            null,
+            null
           ],
-          "runningStyle": "E",
-          "lastClass": "MSW",
+          "runningStyle": "P",
+          "lastClass": null,
           "jockeyPct": 8,
-          "trainerPct": 15,
-          "lastRaceDate": "2026-03-12",
-          "dataCompleteness": 0.86
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 6,
-          "name": "Tiny Spark",
-          "jockey": "Edgard J. Zayas",
-          "trainer": "Horacio De Paz",
-          "weight": "118",
+          "name": "Corvus",
+          "jockey": "Dalila A. Rivera",
+          "trainer": "Jose M. Jimenez",
+          "weight": "119",
           "scratched": false,
-          "ml": "7/2",
-          "equibaseUrl": null,
+          "ml": "5/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11123127",
           "speedFigs": [
-            54,
             null,
-            62
+            null,
+            null
           ],
           "runningStyle": "P",
-          "lastClass": "MSW",
-          "jockeyPct": 20,
-          "trainerPct": 18,
-          "lastRaceDate": "2026-02-13",
-          "dataCompleteness": 0.89
+          "lastClass": null,
+          "jockeyPct": 7,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
         },
         {
           "pp": 7,
-          "name": "Lucky Blaze Man",
-          "jockey": "Ruben Silvera",
-          "trainer": "Chad C. Brown",
-          "weight": "119",
+          "name": "Smilensaycheese",
+          "jockey": "Reylu Gutierrez",
+          "trainer": "Edward J. DeLauro",
+          "weight": "126",
           "scratched": false,
-          "ml": "9/5",
-          "equibaseUrl": null,
+          "ml": "12/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11126671",
           "speedFigs": [
-            58,
-            61,
-            59
+            null,
+            null,
+            null
           ],
           "runningStyle": "P",
-          "lastClass": "MSW",
-          "jockeyPct": 23,
-          "trainerPct": 13,
-          "lastRaceDate": "2026-02-21",
-          "dataCompleteness": 0.84
+          "lastClass": null,
+          "jockeyPct": 13,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 8,
+          "name": "Probability",
+          "jockey": "Jaime Rodriguez",
+          "trainer": "Amelia J. Green",
+          "weight": "126",
+          "scratched": false,
+          "ml": "7/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11129884",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
         }
       ],
+      "race_type_code": "ALW",
       "expertPicks": [
         {
           "source": "NYRA - Serling",
-          "pick": 4,
+          "pick": 3,
           "picks": [
+            3,
+            2,
             4,
-            7,
-            1,
-            2
+            5
           ],
-          "horseName": "Sharp Thunder"
+          "horseName": "Gamebred"
         },
         {
           "source": "NYRA - Aragona",
           "pick": 3,
           "picks": [
             3,
-            6,
+            7,
             1,
-            5
+            4
           ],
-          "horseName": "Silver Tide"
+          "horseName": "Gamebred"
+        }
+      ]
+    },
+    {
+      "race_number": 7,
+      "post_time": "4:21 PM",
+      "purse": "$150,000",
+      "race_type": "Stakes",
+      "conditions": "FILLIES AND MARES FOUR YEARS OLD AND UPWARD. Lasix not allowed within 48 hours of post time pursuant to HISA Rule 4212. By subscription of $150 which should accompany the nomination. $750 to pass the entry box and $750 additional to start. For horses not originally nominated, a supplemental nomination payment of $750 in addition to entry and starting fees can be made at any time prior to the close of entries. 124 lbs. Non-winners of a Graded Sweepstakes in 2025-26 allowed 2 lbs.; of a Sweepstakes since October 1, 2025 allowed 4 lbs. Any horse entered as a main track only runner will be assigned the high weight. A trophy will be presented to the winning owner. The New York Racing Association reserves the right to transfer this race to the Main Track.In the event this race is taken off the turf course, it may be subject to downgrading upon review by the Graded Stakes Committee. Closed Saturday, April 4, 2026 with 35 Nominations. (If the Stewards consider it inadvisable to run this race on the turf couu",
+      "distance": "1M",
+      "surface": "Turf",
+      "entries": [
+        {
+          "pp": 1,
+          "name": "Oversubscribed (GB)",
+          "jockey": "Manuel Franco",
+          "trainer": "Chad C. Brown",
+          "weight": "122",
+          "scratched": false,
+          "ml": "5/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10944309",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 27,
+          "dataCompleteness": 0.43
         },
         {
-          "source": "DRF Consensus",
-          "pick": 6,
+          "pp": 2,
+          "name": "Do Gooder",
+          "jockey": "Ricardo Santana, Jr.",
+          "trainer": "Jena M. Antonucci",
+          "weight": "120",
+          "scratched": false,
+          "ml": "10/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10966920",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 17,
+          "trainerPct": 12,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 3,
+          "name": "Relaxx (FR)",
+          "jockey": "Jaime Rodriguez",
+          "trainer": "Miguel Clement",
+          "weight": "120",
+          "scratched": false,
+          "ml": "5/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11499434",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 9,
+          "trainerPct": 8,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 4,
+          "name": "Al Jafara (GB)",
+          "jockey": "Dylan Davis",
+          "trainer": "Chad C. Brown",
+          "weight": "120",
+          "scratched": false,
+          "ml": "4/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11187621",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 16,
+          "trainerPct": 27,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 5,
+          "name": "Accent (GB)",
+          "jockey": "Jose Lezcano",
+          "trainer": "Chad C. Brown",
+          "weight": "120",
+          "scratched": false,
+          "ml": "6/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11189845",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 15,
+          "trainerPct": 27,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 6,
+          "name": "Storm Miami (IRE)",
+          "jockey": "Reylu Gutierrez",
+          "trainer": "Amelia J. Green",
+          "weight": "120",
+          "scratched": false,
+          "ml": "15/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10988026",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 13,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 7,
+          "name": "And One More Time",
+          "jockey": "Javier Castellano",
+          "trainer": "Mark E. Casse",
+          "weight": "120",
+          "scratched": false,
+          "ml": "2/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11123424",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 8,
+          "name": "Just Music",
+          "jockey": "Manuel Franco",
+          "trainer": "Ilkay Kantarmaci",
+          "weight": "124",
+          "scratched": false,
+          "ml": "7/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=10975901",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 6,
+          "dataCompleteness": 0.43
+        }
+      ],
+      "race_type_code": "STK",
+      "expertPicks": [
+        {
+          "source": "NYRA - Serling",
+          "pick": 7,
           "picks": [
-            6,
-            5,
             7,
+            1,
+            5,
             3
           ],
-          "horseName": "Tiny Spark"
+          "horseName": "And One More Time"
         },
         {
-          "source": "NY Racing Journal",
-          "pick": 4,
+          "source": "NYRA - Aragona",
+          "pick": 5,
           "picks": [
-            4,
-            6,
+            5,
             3,
-            7
+            7,
+            4
           ],
-          "horseName": "Sharp Thunder"
+          "horseName": "Accent (GB)"
+        }
+      ]
+    },
+    {
+      "race_number": 8,
+      "post_time": "4:53 PM",
+      "purse": "$75,000",
+      "race_type": "Maiden Special Weight",
+      "conditions": null,
+      "distance": "6F",
+      "surface": "Turf",
+      "entries": [
+        {
+          "pp": 1,
+          "name": "No Spun Intended",
+          "jockey": "Ruben Silvera",
+          "trainer": "Thomas Morley",
+          "weight": "120",
+          "scratched": false,
+          "ml": "15/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11290467",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 8,
+          "trainerPct": 11,
+          "dataCompleteness": 0.43
         },
         {
-          "source": "TimeformUS",
-          "pick": 6,
-          "picks": [
-            6,
-            3,
-            4,
-            5
+          "pp": 2,
+          "name": "Poppy's Ticket",
+          "jockey": "Jaime Rodriguez",
+          "trainer": "Chris J. Englehart",
+          "weight": "126",
+          "scratched": false,
+          "ml": "12/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11106621",
+          "speedFigs": [
+            null,
+            null,
+            null
           ],
-          "horseName": "Tiny Spark"
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 9,
+          "trainerPct": 13,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 3,
+          "name": "Dinghy Bar",
+          "jockey": "Katie Davis",
+          "trainer": "John P. Terranova II",
+          "weight": "120",
+          "scratched": false,
+          "ml": "6/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11305657",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "lastClass": null,
+          "jockeyPct": 8,
+          "trainerPct": 9,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 4,
+          "name": "Twirling Lad",
+          "jockey": "Ricardo Santana, Jr.",
+          "trainer": "Horacio De Paz",
+          "weight": "120",
+          "scratched": false,
+          "ml": "5/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11280541",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 17,
+          "trainerPct": 14,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 5,
+          "name": "Peyton",
+          "jockey": "Omar Hernandez Moreno",
+          "trainer": "Domenick L. Schettino",
+          "weight": "126",
+          "scratched": false,
+          "ml": "30/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11132365",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 8,
+          "trainerPct": 9,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 6,
+          "name": "Aristide Maillol",
+          "jockey": "Jose Lezcano",
+          "trainer": "William I. Mott",
+          "weight": "120",
+          "scratched": false,
+          "ml": "7/2",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11318129",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 15,
+          "trainerPct": 23,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 7,
+          "name": "Speightful Storm",
+          "jockey": "Javier Castellano",
+          "trainer": "H. James Bond",
+          "weight": "126",
+          "scratched": false,
+          "ml": "8/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11131404",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 8,
+          "name": "Kirkwood",
+          "jockey": "Manuel Franco",
+          "trainer": "Miguel Clement",
+          "weight": "120",
+          "scratched": false,
+          "ml": "4/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11299541",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 18,
+          "trainerPct": 8,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 9,
+          "name": "Deacon Blues",
+          "jockey": "Sahin Civaci",
+          "trainer": "David G. Donk",
+          "weight": "120",
+          "scratched": false,
+          "ml": "20/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11303794",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 10,
+          "trainerPct": 13,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 10,
+          "name": "Moonlight Drive",
+          "jockey": "Dylan Davis",
+          "trainer": "Jorge R. Abreu",
+          "weight": "120",
+          "scratched": false,
+          "ml": "8/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11282459",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 16,
+          "trainerPct": 13,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 11,
+          "name": "Eye On the Ball",
+          "jockey": "Jorge A. Vargas, Jr.",
+          "trainer": "Raymond Handal",
+          "weight": "120",
+          "scratched": false,
+          "ml": "20/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11313660",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 24,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 12,
+          "name": "Sweetnessthrtyfour",
+          "jockey": "Rider TBA",
+          "trainer": "Michael Miceli",
+          "weight": "120",
+          "scratched": false,
+          "ml": "6/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11317573",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        },
+        {
+          "pp": 13,
+          "name": "Lord King",
+          "jockey": "Reylu Gutierrez",
+          "trainer": "Eduardo E. Jones",
+          "weight": "120",
+          "scratched": false,
+          "ml": "3/1",
+          "equibaseUrl": "http://www.equibase.com/profiles/Results.cfm?type=Horse&registry=T&refno=11331546",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "lastClass": null,
+          "jockeyPct": 13,
+          "trainerPct": 10,
+          "dataCompleteness": 0.43
+        }
+      ],
+      "race_type_code": "MSW",
+      "expertPicks": [
+        {
+          "source": "NYRA - Serling",
+          "pick": 7,
+          "picks": [
+            7,
+            6,
+            10,
+            8
+          ],
+          "horseName": "Speightful Storm"
+        },
+        {
+          "source": "NYRA - Aragona",
+          "pick": 9,
+          "picks": [
+            9,
+            8,
+            4,
+            6
+          ],
+          "horseName": "Deacon Blues"
         }
       ]
     }
