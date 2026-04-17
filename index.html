@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1430-detail-panel-v2.12';
+var NE_APP_VERSION = '20260417-1500-detail-panel-v2.12.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.12-detail-panel';
+var RAILBIRD_VERSION = 'v2.12.1-detail-panel';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -4745,14 +4745,27 @@ tr:has(> td > .detail-stat-row),
 .race-card-wrap .detail-stat-card .stat-label { color: rgba(255,255,255,0.65) !important; }
 .race-card-wrap .detail-experts-title { color: rgba(255,255,255,0.65) !important; }
 
-/* Turn off the v2.11 blanket dark-ink override inside the detail panel —
-   the detail panel provides its own dark surface so reversed colors apply */
+/* Force readable text inside detail panel — inline rgba(255,255,255,*)
+   styles at 0.25/0.40 are too faint even on dark navy. Promote all
+   descendant text to high-opacity white, then selectively soften labels. */
 [id^="horse-detail-"] *,
 .horse-detail-panel *,
 .rec-bet-details:has(.detail-stat-row) *,
 .rec-bet-details:has(.detail-hero-row) *,
 [class*="expand"]:has(.detail-stat-row) * {
-  color: inherit;
+  color: #fff !important;
+}
+
+/* Soften secondary labels inside detail panel — readable but de-emphasized */
+.rec-bet-details:has(.detail-stat-row) .detail-stat-card .stat-label,
+.rec-bet-details:has(.detail-stat-row) .detail-experts-title,
+.rec-bet-details:has(.detail-stat-row) .detail-completeness,
+.rec-bet-details:has(.detail-stat-row) .class-label-from,
+.rec-bet-details:has(.detail-stat-row) .class-label-to,
+[id^="horse-detail-"] .detail-stat-card .stat-label,
+[id^="horse-detail-"] .detail-experts-title,
+[id^="horse-detail-"] .detail-completeness {
+  color: rgba(255,255,255,0.78) !important;
 }
 
 /* Detail stat-label override inside navy panel — keep its designed look */
@@ -5939,7 +5952,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.12)
+          Export Data (v2.12.1)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
