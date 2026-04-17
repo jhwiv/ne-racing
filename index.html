@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1100-single-nav-v2.3';
+var NE_APP_VERSION = '20260417-1130-bright-hero-v2.4';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.3-single-nav';
+var RAILBIRD_VERSION = 'v2.4-bright-hero';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -3507,12 +3507,16 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
    HERO — full-bleed Saratoga, spaced gold title,
    Crimson italic subhead, dark vignette
    ========================================================= */
+/* v2.4: brighter hero — lighter vignette, softer floor, photo punch via brightness/saturate */
 #hero-screen::before {
   background:
-    linear-gradient(180deg, rgba(10,22,40,0.25) 0%, rgba(10,22,40,0.45) 40%, rgba(10,22,40,0.70) 72%, rgba(10,22,40,0.88) 100%),
-    radial-gradient(60% 80% at 50% 35%, transparent 0%, rgba(10,22,40,0.35) 100%) !important;
+    linear-gradient(180deg, rgba(10,22,40,0.05) 0%, rgba(10,22,40,0.18) 45%, rgba(10,22,40,0.38) 78%, rgba(10,22,40,0.55) 100%),
+    radial-gradient(75% 90% at 50% 40%, transparent 0%, rgba(10,22,40,0.18) 100%) !important;
 }
-#hero-screen-bg img { object-position: center 40%; }
+#hero-screen-bg img {
+  object-position: center 40%;
+  filter: brightness(1.15) saturate(1.08) contrast(1.03);
+}
 .hero-title-luxury { text-align: center; padding: 0 1.5rem; max-width: 640px; }
 .hero-eyebrow {
   font-family: var(--lux-font-body); font-style: italic;
@@ -4346,11 +4350,10 @@ html, body { overscroll-behavior: none; }
      ============================================= -->
 <div id="hero-screen">
   <div id="hero-screen-bg">
-    <img id="hero-bg-img" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBVt7Q5UBy7D5eaG0052x/Oe/oKoK8ysIjMRJwwVkHWrK38sUIZXEkfOexGKcarQpUkyRtKkDEZU496KlW58xQyxoQe+7rRVe2aF7JGbJF5snzOxHqeTQ0S5KkvtYcbF4Prx+dTCfylGQTzTmuXIwPlPsK4OZmtyskICgOkuR6UUr3ALHO7NFVzSFc//9k=" alt="Saratoga Race Course" style="filter:blur(20px);transform:scale(1.1);transition:filter 0.4s ease,transform 0.4s ease;">
+    <img id="hero-bg-img" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBVt7Q5UBy7D5eaG0052x/Oe/oKoK8ysIjMRJwwVkHWrK38sUIZXEkfOexGKcarQpUkyRtKkDEZU496KlW58xQyxoQe+7rRVe2aF7JGbJF5snzOxHqeTQ0S5KkvtYcbF4Prx+dTCfylGQTzTmuXIwPlPsK4OZmtyskICgOkuR6UUr3ALHO7NFVzSFc//9k=" alt="Saratoga Race Course" style="filter:blur(20px) brightness(1.15) saturate(1.08);transform:scale(1.1);transition:filter 0.4s ease,transform 0.4s ease;">
   </div>
 
   <div class="hero-title-block hero-title-luxury">
-    <div class="hero-eyebrow">The Spa</div>
     <h1 class="hero-title-main">SARATOGA 2026</h1>
     <div class="hero-rule"></div>
     <p class="hero-title-sub">Your Private Handicapping Companion</p>
@@ -5365,7 +5368,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.3)
+          Export Data (v2.4)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -10440,7 +10443,8 @@ function dismissWinnerOverlay(e) {
     img.style.willChange = 'filter, transform';
     img.src = fullSrc;
     requestAnimationFrame(function() {
-      img.style.filter = 'none';
+      // v2.4: brighten+saturate the hero photo once the full-res loads (blur → punched)
+      img.style.filter = 'brightness(1.15) saturate(1.08) contrast(1.03)';
       img.style.transform = 'scale(1)';
       img.addEventListener('transitionend', function() {
         img.style.willChange = 'auto';
