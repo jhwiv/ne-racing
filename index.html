@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1230-seed-data-v2.6';
+var NE_APP_VERSION = '20260417-1250-ticket-contrast-v2.7';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.6-seed-data';
+var RAILBIRD_VERSION = 'v2.7-ticket-contrast';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -4303,6 +4303,133 @@ html, body { overscroll-behavior: none; }
 }
 
 /* =========================================================
+   TODAY'S TICKET — CONTRAST FIX FOR CREAM CARD (v2.7)
+   The ticket card was originally designed for a dark green
+   background; after v2.1 forced cream surface, inner text
+   colors stayed white. These overrides restore readable
+   dark-ink-on-cream values without touching any JS.
+   ========================================================= */
+.rec-bets-card {
+  color: var(--lux-ink) !important;
+}
+.rec-bets-card .ticket-header h3 {
+  color: var(--lux-ink) !important;
+}
+.rec-bets-card .ticket-subtitle {
+  color: var(--lux-slate) !important;
+}
+.rec-bets-card .sim-mode-banner {
+  background: rgba(27,46,75,0.06) !important;
+  color: var(--lux-slate) !important;
+  border: 1px solid rgba(27,46,75,0.12);
+}
+.rec-bets-card .rec-bet-item {
+  border-bottom: 1px solid rgba(27,46,75,0.10) !important;
+}
+.rec-bets-card .rec-bet-detail {
+  color: var(--lux-ink) !important;
+}
+.rec-bets-card .rec-bet-detail strong {
+  color: var(--lux-ink) !important;
+}
+.rec-bets-card .rec-bet-amount {
+  color: var(--lux-navy) !important;
+  font-weight: 700;
+}
+.rec-bets-card .ticket-payout {
+  color: var(--lux-slate) !important;
+  opacity: 0.85;
+}
+.rec-bets-card .rec-bet-reason {
+  color: var(--lux-slate) !important;
+  opacity: 0.9;
+}
+.rec-bets-card .rec-bet-sub {
+  color: var(--lux-slate) !important;
+  opacity: 0.8;
+}
+.rec-bets-card .card-explainer {
+  color: var(--lux-slate) !important;
+  opacity: 0.75;
+}
+.rec-bets-card .card-best .card-explainer,
+.rec-bets-card .card-value .card-explainer,
+.rec-bets-card .card-action .card-explainer {
+  color: var(--lux-slate) !important;
+  opacity: 0.8;
+}
+.rec-bets-card .pass-races-line {
+  color: var(--lux-slate) !important;
+}
+.rec-bets-card .rec-bet-tag.rec-tag-pass {
+  background: rgba(27,46,75,0.08) !important;
+  color: var(--lux-slate) !important;
+}
+.rec-bets-card .rec-bet-summary {
+  border-top: 1px solid rgba(201,168,76,0.4) !important;
+  color: var(--lux-ink) !important;
+}
+.rec-bets-card .rec-bet-summary .label {
+  color: var(--lux-slate) !important;
+  opacity: 0.75;
+}
+.rec-bets-card .rec-bet-summary .val {
+  color: var(--lux-navy) !important;
+}
+.rec-bets-card .ticket-exotic {
+  background: rgba(201,168,76,0.10) !important;
+  border: 1px solid rgba(201,168,76,0.35) !important;
+}
+.rec-bets-card .ticket-exotic-detail {
+  color: var(--lux-ink) !important;
+}
+.rec-bets-card .ticket-exotic-reason {
+  color: var(--lux-slate) !important;
+  opacity: 0.85;
+}
+.rec-bets-card .ticket-conf-label {
+  color: var(--lux-slate) !important;
+  opacity: 0.75;
+}
+.rec-bets-card .ticket-conf-bar.empty {
+  background: rgba(27,46,75,0.12) !important;
+}
+.rec-bets-card .copy-ticket-btn {
+  background: rgba(201,168,76,0.12) !important;
+  color: var(--lux-navy) !important;
+  border: 1px solid rgba(201,168,76,0.45) !important;
+}
+.rec-bets-card .copy-ticket-btn:hover {
+  background: rgba(201,168,76,0.22) !important;
+}
+.rec-bets-card .bet-disclaimer {
+  color: var(--lux-slate) !important;
+  opacity: 0.7;
+  border-top: 1px solid rgba(27,46,75,0.10) !important;
+}
+.rec-bets-card .rec-bet-expand-hint {
+  color: var(--lux-slate) !important;
+  opacity: 0.55;
+}
+/* Section date subtitle rendered just above the ticket (Charles Town — Fri, Apr 17) */
+.rec-bets-card #ticket-subtitle,
+#ticket-subtitle {
+  color: var(--lux-slate) !important;
+}
+/* Best Bet LOCK badge already has good contrast; keep. */
+/* Action Bet tag on cream — bump contrast */
+.rec-bets-card .rec-bet-tag.rec-tag-action {
+  background: rgba(27,46,75,0.08) !important;
+  color: #0B5E89 !important;
+  border: 1px solid rgba(14,165,233,0.45) !important;
+}
+.rec-bets-card .rec-bet-tag.rec-tag-value {
+  background: rgba(201,168,76,0.15) !important;
+  color: #7A5A12 !important;
+  border: 1px solid rgba(201,168,76,0.5) !important;
+}
+
+/* =========================================================
    END LUXURY THEME OVERLAY
    ========================================================= */
 </style>
@@ -5377,7 +5504,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.6)
+          Export Data (v2.7)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
