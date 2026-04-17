@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5">
+<meta name="theme-color" content="#1B2E4B">
+<title>Railbird QC Prompts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Crimson+Pro:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1B2E4B;
+    --navy-2: #1F3353;
+    --surface: #243653;
+    --cream: #F5F0E8;
+    --ink-soft: #EDE8DC;
+    --ink-mute: rgba(237,232,220,0.62);
+    --gold: #C9A84C;
+    --gold-soft: #B8963F;
+    --hairline: rgba(201,168,76,0.22);
+    --ok: #6FA07A;
+    --fd: 'Playfair Display', Georgia, serif;
+    --fb: 'Crimson Pro', Georgia, serif;
+    --fm: 'DM Mono', 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--navy);
+    color: var(--ink-soft);
+    font-family: var(--fb);
+    font-size: 17px;
+    line-height: 1.55;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 2rem 1.1rem 4rem;
+  }
+  header {
+    text-align: center;
+    padding: 1.5rem 0 1.2rem;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: var(--fd);
+    font-size: 0.75rem;
+    letter-spacing: 0.34em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  h1 {
+    font-family: var(--fd);
+    font-size: clamp(1.9rem, 5vw, 2.5rem);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--gold);
+    margin: 0 0 0.3rem;
+  }
+  .sub {
+    font-family: var(--fb);
+    font-style: italic;
+    font-size: 1.02rem;
+    color: var(--ink-soft);
+    opacity: 0.78;
+    margin: 0;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    padding: 1.3rem 1.2rem 1.4rem;
+    margin-bottom: 1.6rem;
+    box-shadow: 0 18px 44px rgba(0,0,0,0.28), 0 3px 8px rgba(0,0,0,0.2);
+    position: relative;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+    flex-wrap: wrap;
+  }
+  h2 {
+    font-family: var(--fd);
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--gold);
+    margin: 0;
+    letter-spacing: 0.01em;
+  }
+  .tag {
+    font-family: var(--fm);
+    font-size: 0.68rem;
+    color: var(--gold-soft);
+    border: 1px solid var(--hairline);
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .desc {
+    font-family: var(--fb);
+    font-style: italic;
+    font-size: 0.98rem;
+    color: var(--ink-soft);
+    opacity: 0.82;
+    margin: 0 0 1rem;
+  }
+  .btn-row {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
+  }
+  .btn {
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--fd);
+    font-size: 0.92rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.75rem 1.1rem;
+    border-radius: 3px;
+    transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.2s ease;
+    min-height: 44px; /* iOS tap target */
+  }
+  .btn-primary {
+    background: var(--gold);
+    color: var(--navy);
+    box-shadow: 0 4px 14px rgba(201,168,76,0.28);
+  }
+  .btn-primary:hover { background: #D7B657; }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-outline {
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+  }
+  .btn-outline:hover { background: rgba(201,168,76,0.1); }
+  .btn.copied {
+    background: var(--ok);
+    color: var(--navy);
+    box-shadow: 0 4px 14px rgba(111,160,122,0.28);
+  }
+  pre {
+    background: var(--navy);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 0.9rem 0.95rem;
+    font-family: var(--fm);
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-height: 280px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+  }
+  details { margin-top: 0.6rem; }
+  summary {
+    cursor: pointer;
+    font-family: var(--fd);
+    font-size: 0.82rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold-soft);
+    padding: 0.4rem 0;
+    user-select: none;
+  }
+  summary:hover { color: var(--gold); }
+  .usage {
+    background: var(--surface);
+    border-left: 3px solid var(--gold);
+    padding: 1rem 1.1rem;
+    margin-top: 2rem;
+    border-radius: 0 4px 4px 0;
+  }
+  .usage h3 {
+    font-family: var(--fd);
+    color: var(--gold);
+    font-size: 1.1rem;
+    margin: 0 0 0.5rem;
+  }
+  .usage p { margin: 0.4rem 0; font-size: 0.95rem; }
+  .usage code {
+    font-family: var(--fm);
+    font-size: 0.82rem;
+    color: var(--gold);
+    background: rgba(201,168,76,0.08);
+    padding: 0.1rem 0.35rem;
+    border-radius: 2px;
+  }
+  footer {
+    text-align: center;
+    margin-top: 3rem;
+    font-family: var(--fb);
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--ink-mute);
+  }
+  footer a { color: var(--gold); text-decoration: none; border-bottom: 1px solid var(--hairline); }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    background: var(--gold);
+    color: var(--navy);
+    font-family: var(--fd);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.7rem 1.2rem;
+    border-radius: 3px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    z-index: 1000;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  @media (max-width: 480px) {
+    .wrap { padding: 1.2rem 0.9rem 3rem; }
+    h1 { font-size: 1.7rem; }
+    .card { padding: 1.1rem 1rem 1.2rem; }
+    h2 { font-size: 1.15rem; }
+    .btn { font-size: 0.82rem; padding: 0.7rem 0.9rem; letter-spacing: 0.12em; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Railbird AI</div>
+    <h1>QC Prompts</h1>
+    <p class="sub">Tap a button to copy an audit command. Paste into Computer.</p>
+  </header>
+
+  <!-- Paste A -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Paste A — Post-Deploy QC</h2>
+      <span class="tag">~2 min</span>
+    </div>
+    <p class="desc">Append to any update request, or run solo after a commit lands. Checks version sync, workflow health, live render, logic smoke test, infrastructure, repo hygiene, code smells.</p>
+    <div class="btn-row">
+      <button class="btn btn-primary" data-copy="A">Copy Paste A</button>
+      <button class="btn btn-outline" data-share="A">Share</button>
+    </div>
+    <details>
+      <summary>Preview prompt</summary>
+      <pre id="text-A"></pre>
+    </details>
+  </section>
+
+  <!-- Paste B -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Paste B — Deep-Dive Audit</h2>
+      <span class="tag">Thorough</span>
+    </div>
+    <p class="desc">Run alone when the app feels off or you haven't deployed in a while. 7 phases: repo snapshot, live site forensics, app logic sanity, infra cross-check, code quality, security, prioritized report.</p>
+    <div class="btn-row">
+      <button class="btn btn-primary" data-copy="B">Copy Paste B</button>
+      <button class="btn btn-outline" data-share="B">Share</button>
+    </div>
+    <details>
+      <summary>Preview prompt</summary>
+      <pre id="text-B"></pre>
+    </details>
+  </section>
+
+  <div class="usage">
+    <h3>How to use</h3>
+    <p><strong>After a feature request:</strong> tap <code>Copy Paste A</code> and append it to your message. You get the feature + an audit in one shot.</p>
+    <p><strong>Weekly or when something feels off:</strong> tap <code>Copy Paste B</code> and send it on its own in a new conversation.</p>
+    <p><strong>On iOS/Android:</strong> <code>Share</code> opens the native share sheet so you can drop the prompt straight into any app.</p>
+  </div>
+
+  <footer>
+    <a href="/">← Back to Railbird</a>
+  </footer>
+</div>
+
+<div class="toast" id="toast">Copied</div>
+
+<script>
+// Prompt text stored as JS strings (no template literals for older UAs; join to keep source readable)
+const PROMPTS = {
+  A: [
+    "Run a post-deploy QC audit on railbirdai.com. Clone jhwiv/ne-racing fresh",
+    "(don't trust any cached copy), then report findings as a short",
+    "PASS/WARN/FAIL table covering these 7 checks:",
+    "",
+    "1. VERSION SYNC — fetch https://railbirdai.com/version.json and compare to",
+    "   version.json on origin/master AND to the NE_APP_VERSION constant inside",
+    "   index.html. All three must match. If they don't, the force-reload logic",
+    "   will loop users.",
+    "",
+    "2. WORKFLOW HEALTH — gh run list --repo jhwiv/ne-racing --limit 6. Both",
+    "   \"Purge Cloudflare Cache on Deploy\" and \"pages build and deployment\" must",
+    "   show success on the latest master commit. Report the commit SHA each ran",
+    "   against. Flag any failed daily-entries.yml runs in the last 3 days.",
+    "",
+    "3. LIVE SITE RENDER — open https://railbirdai.com at 390px mobile viewport",
+    "   with a fresh browser context (no cache). Confirm:",
+    "   - Page loads without console errors (capture any pageerror + console.error)",
+    "   - Service worker registers cleanly (no \"failed to register\" errors)",
+    "   - Fonts load: Playfair Display, Crimson Pro, DM Mono (check document.fonts)",
+    "   - No mixed-content warnings",
+    "   - No 404s in the Network tab for CSS/JS/font/image assets",
+    "   Take a hero screenshot and share it.",
+    "",
+    "4. TAB + LOGIC SMOKE TEST — with the page loaded, call window.switchTab()",
+    "   for each of today/bets/handicap/results/reference. After each switch",
+    "   confirm the tab panel is visible and no errors fired. Then verify these",
+    "   critical functions still exist (typeof === 'function'):",
+    "   setBettingMode, lockAllBets, storeTicketPicks, runAdviceEngine,",
+    "   showWinnerOverlay, renderBetsTab, openBettingWizard, switchTab,",
+    "   selectCalendarDate, shiftDateStrip.",
+    "   If any are missing, FAIL hard — advice engine or bet slip is broken.",
+    "",
+    "5. INFRASTRUCTURE CONSISTENCY — verify these match across surfaces:",
+    "   - CNAME file = railbirdai.com",
+    "   - DNS: dig railbirdai.com resolves via Cloudflare",
+    "   - HTTP headers on live site: cf-ray, cf-cache-status, server present",
+    "   - wrangler.toml worker name vs the Worker URL baked into index.html",
+    "     (current: cloudflare-worker.jhwiv-online.workers.dev)",
+    "   - Flag any stray \"your-worker.workers.dev\" placeholder strings",
+    "   - If the cloudflare connector is available, confirm the Pages/Worker",
+    "     projects still exist and aren't paused",
+    "",
+    "6. REPO HYGIENE — report:",
+    "   - Uncommitted changes on master (should be none)",
+    "   - Stale remote branches (count + candidates for deletion)",
+    "   - Open PRs and issues (title + age)",
+    "   - Any .github/workflows referencing secrets that might be missing",
+    "     (CF_ZONE_ID, CF_API_TOKEN)",
+    "   - Size of index.html (flag if >800KB)",
+    "   - Confirm git tags v1.0-baseline and v2.1-luxury-corrected still exist",
+    "",
+    "7. CODE SMELL SCAN — grep index.html for:",
+    "   - TODO/FIXME/XXX/HACK comments added in the last 2 commits",
+    "   - console.log left in production (count; flag if >10 new)",
+    "   - Duplicate element IDs",
+    "   - onclick handlers referencing functions that don't exist in window",
+    "   - Unclosed <style> or <script> tags (opening vs closing count)",
+    "",
+    "Deliver findings as a markdown table:",
+    "| # | Check | Status | Detail |",
+    "",
+    "End with a TOP 3 ACTIONS list if any FAILs exist. Do NOT make any fixes",
+    "yet — just audit. Ask before changing anything."
+  ].join("\n"),
+
+  B: [
+    "Deep QC audit of railbirdai.com. Treat this as an independent forensic",
+    "review — don't trust prior session state. Work through these phases and",
+    "produce a written report at the end.",
+    "",
+    "PHASE 1 — REPO SNAPSHOT",
+    "- Clone jhwiv/ne-racing to a fresh temp directory",
+    "- Record: master HEAD SHA, last 10 commits, open PRs, open issues,",
+    "  stale branches (not merged to master in 30+ days)",
+    "- Confirm index.html is a single file (no external JS/CSS splits)",
+    "- Diff the last 3 commits — summarize each in one line",
+    "- Confirm git tags: v1.0-baseline (pre-luxury) and v2.1-luxury-corrected",
+    "",
+    "PHASE 2 — LIVE SITE FORENSICS (Playwright, 390px + 1280px)",
+    "For BOTH viewports:",
+    "- Navigate to https://railbirdai.com with cache disabled",
+    "- Capture: console errors, pageerror events, failed network requests",
+    "- Inspect DOM: count elements with duplicate IDs, list any that exist",
+    "- Verify all 3 Google Fonts loaded (document.fonts.check)",
+    "- Screenshot hero + each of the 5 tabs (Today, Bets, Handicap, Results,",
+    "  Reference)",
+    "- Record first-contentful-paint + load time",
+    "- Check service worker: registration state, active script URL",
+    "- Open DevTools Network tab, reload, list any 4xx/5xx responses",
+    "- Verify palette: --lux-navy #1B2E4B, --lux-surface #243653,",
+    "  --lux-cream #F5F0E8, --lux-gold #C9A84C",
+    "",
+    "PHASE 3 — APP LOGIC SANITY",
+    "- Confirm these globals are functions (FAIL any missing):",
+    "  switchTab, setBettingMode, lockAllBets, storeTicketPicks,",
+    "  renderBetsTab, runAdviceEngine, showWinnerOverlay, openBettingWizard,",
+    "  dismissWinnerOverlay, selectCalendarDate, shiftDateStrip, buildDateStrip,",
+    "  exportData, openSettings",
+    "- Confirm NE_APP_VERSION constant exists and equals version.json",
+    "- Confirm RAILBIRD_VERSION constant exists (human-readable release tag)",
+    "- Run window.switchTab() for each tab, assert tab panel becomes visible",
+    "- Click a prior date in the date strip, confirm 'Showing entries for...'",
+    "  banner appears and Best Bet callout updates for that date",
+    "- In simulate mode, programmatically add a test bet if a helper exists",
+    "  and confirm the bankroll numbers update without errors",
+    "- Check localStorage keys with ne-racing- prefix — list them + confirm",
+    "  JSON.parse succeeds on each value",
+    "",
+    "PHASE 4 — INFRASTRUCTURE CROSS-CHECK",
+    "- DNS: dig railbirdai.com A + CNAME, confirm resolves via Cloudflare",
+    "- HTTP headers: curl -I https://railbirdai.com — look for cf-ray,",
+    "  cf-cache-status, server, x-github-request-id. Flag inconsistencies",
+    "- GitHub Pages: gh api repos/jhwiv/ne-racing/pages — confirm source is",
+    "  master branch / root, https_enforced=true, status=built",
+    "- Workflow secrets: list .github/workflows/*.yml, extract every",
+    "  ${{ secrets.X }} reference, note which are required",
+    "- Cloudflare side (via connector if available): Pages/Workers projects,",
+    "  cache settings, any paused or errored services",
+    "- Worker URL baked into index.html vs wrangler.toml name — do they",
+    "  match? If index.html references a Worker that doesn't exist, live",
+    "  odds will silently fail",
+    "",
+    "PHASE 5 — CODE QUALITY SWEEP",
+    "In index.html:",
+    "- Count lines, size in KB (warn if >800KB)",
+    "- Find TODO/FIXME/XXX/HACK comments (show each with line number)",
+    "- Find console.log / console.warn / console.error (count each type)",
+    "- Find onclick=\"funcName(...)\" where funcName is not defined elsewhere",
+    "  in the file (static regex + definition check)",
+    "- Find duplicate element IDs",
+    "- Find unclosed <script> or <style> tags (opening count vs closing)",
+    "- Find any /* DEBUG */ regions or disabled code blocks",
+    "",
+    "PHASE 6 — SECURITY + PRIVACY QUICK-CHECK",
+    "- Any hardcoded API keys, tokens, or credentials in the repo?",
+    "  (grep for \"sk_\", \"pk_\", \"api_key\", \"token\", \"secret\" in tracked files)",
+    "- Any personal identifiers (real names, emails beyond the public owner",
+    "  email) in commit history of the last 10 commits?",
+    "- CORS / CSP headers: curl -I the live site, report what's set",
+    "- manifest.json: correct start_url, scope, icons present?",
+    "",
+    "PHASE 7 — REPORT",
+    "Output a single markdown document with:",
+    "1. Executive summary (3–5 bullets)",
+    "2. Pass/Warn/Fail table across all 6 phases",
+    "3. Top 5 bugs or risks ranked by severity (Critical / High / Med / Low)",
+    "4. Infrastructure inconsistencies (GitHub ↔ Cloudflare ↔ index.html)",
+    "5. Recommended fixes, in priority order, with estimated effort",
+    "   (S = <15 min, M = <1 hr, L = >1 hr)",
+    "6. A \"safe to ship\" / \"needs fixes first\" verdict",
+    "",
+    "Do NOT change any files. Read-only audit. Ask before taking action."
+  ].join("\n")
+};
+
+// Populate preview blocks
+document.getElementById('text-A').textContent = PROMPTS.A;
+document.getElementById('text-B').textContent = PROMPTS.B;
+
+const toast = document.getElementById('toast');
+let toastTimer = null;
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
+}
+
+async function copyText(text, btn) {
+  try {
+    // Modern Clipboard API (requires https + user gesture — satisfied here)
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      // Legacy fallback
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    btn.classList.add('copied');
+    const original = btn.textContent;
+    btn.textContent = '✓ Copied';
+    showToast('Copied — now paste into Computer');
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = original; }, 1800);
+  } catch (err) {
+    // Final fallback: select the preview pre so the user can long-press-copy
+    const pre = document.getElementById('text-' + btn.dataset.copy);
+    if (pre) {
+      const range = document.createRange();
+      range.selectNodeContents(pre);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      const details = pre.closest('details');
+      if (details) details.open = true;
+      pre.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    showToast('Select the text and copy manually');
+    console.warn('Clipboard failed:', err);
+  }
+}
+
+async function sharePrompt(which) {
+  const text = PROMPTS[which];
+  const title = 'Railbird QC — Paste ' + which;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return; // user cancelled
+    }
+  }
+  // Fallback to clipboard copy
+  await copyText(text, document.querySelector('[data-copy="' + which + '"]'));
+}
+
+document.querySelectorAll('[data-copy]').forEach(btn => {
+  btn.addEventListener('click', () => copyText(PROMPTS[btn.dataset.copy], btn));
+});
+document.querySelectorAll('[data-share]').forEach(btn => {
+  btn.addEventListener('click', () => sharePrompt(btn.dataset.share));
+});
+
+// Keyboard shortcut: A or B copies the corresponding prompt
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'a' || e.key === 'A') copyText(PROMPTS.A, document.querySelector('[data-copy="A"]'));
+  if (e.key === 'b' || e.key === 'B') copyText(PROMPTS.B, document.querySelector('[data-copy="B"]'));
+});
+</script>
+</body>
+</html>
