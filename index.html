@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1030-date-cache-v2.2';
+var NE_APP_VERSION = '20260417-1100-single-nav-v2.3';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.2-date-cache';
+var RAILBIRD_VERSION = 'v2.3-single-nav';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -3601,9 +3601,9 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
   border-bottom: 1px solid var(--lux-hairline);
   box-shadow: 0 8px 18px -12px rgba(27,46,75,0.55);
 }
-/* v2.1: ensure anchored sections clear the sticky header+chip stack */
-.tab-panel { scroll-margin-top: calc(var(--header-height, 56px) + 60px); }
-#best-bet-callout, .race-card-wrap, #results-summary { scroll-margin-top: calc(var(--header-height, 56px) + 60px); }
+/* v2.3: top chip-nav removed — bottom nav is the sole tab switcher. Offset just the sticky header. */
+.tab-panel { scroll-margin-top: calc(var(--header-height, 56px) + 8px); }
+#best-bet-callout, .race-card-wrap, #results-summary { scroll-margin-top: calc(var(--header-height, 56px) + 8px); }
 /* v2.1: prevent iOS rubber-band breaking sticky nav */
 html, body { overscroll-behavior: none; }
 .chip-nav-inner {
@@ -4426,17 +4426,6 @@ html, body { overscroll-behavior: none; }
       </button>
     </div>
   </header>
-
-  <!-- LUXURY CHIP NAV (sticky horizontal chip bar, drives tab switching + scrollspy) -->
-  <nav id="chip-nav" class="chip-nav" role="navigation" aria-label="Section navigation">
-    <div class="chip-nav-inner">
-      <button class="chip active" data-tab="today" onclick="switchTab('today')">Today</button>
-      <button class="chip" data-tab="bets" onclick="switchTab('bets')">Bets</button>
-      <button class="chip" data-tab="handicap" onclick="switchTab('handicap')">Handicap</button>
-      <button class="chip" data-tab="results" onclick="switchTab('results')">Results</button>
-      <button class="chip" data-tab="reference" onclick="switchTab('reference')">Program</button>
-    </div>
-  </nav>
 
   <!-- TRACK TOGGLE (SAR / AQU) -->
   <div id="track-drawer" role="dialog" aria-label="Track selector">
@@ -5376,7 +5365,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.2)
+          Export Data (v2.3)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -6226,7 +6215,7 @@ function renderTodayTab() {
     } else {
       msg = 'No race card available \u2014 check back on a race day.';
     }
-    var emptyHtml = '<div class="empty-state" id="no-races-msg" style="background:var(--lux-navy,#1B2E4B);border-radius:14px;margin:12px 0;padding:28px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)"><div style="text-align:center;color:var(--lux-ink-soft,#EDE8DC);font-family:\'Crimson Pro\',serif;font-size:16px;line-height:1.55;font-style:italic">' + msg + '</div></div>';
+    var emptyHtml = '<div class="empty-state" id="no-races-msg-empty" style="background:var(--lux-navy,#1B2E4B);border-radius:14px;margin:12px 0;padding:28px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)"><div style="text-align:center;color:var(--lux-ink-soft,#EDE8DC);font-family:\'Crimson Pro\',serif;font-size:16px;line-height:1.55;font-style:italic">' + msg + '</div></div>';
     container.innerHTML = emptyHtml;
     var tp = el('top-picks-card'); if (tp) tp.classList.add('hidden');
     var rb = el('rec-bets-card'); if (rb) rb.classList.add('hidden');
