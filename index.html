@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1130-bright-hero-v2.4';
+var NE_APP_VERSION = '20260417-1200-ct-default-v2.5';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.4-bright-hero';
+var RAILBIRD_VERSION = 'v2.5-ct-default';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1568,14 +1568,21 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 .track-section-header { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.65); margin: 0.75rem 0 0.35rem; padding: 0 0.25rem; }
 
-/* SAR / AQU two-button toggle */
-
-
-
+/* CT / SAR two-button toggle */
+.sar-aqu-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.sar-aqu-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.65rem 0.5rem; font-size: 0.82rem; font-weight: 600;
+  border: 1px solid rgba(27,67,50,0.15); border-radius: 8px;
+  background: rgba(27,67,50,0.04); color: var(--color-slate);
+  cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap; text-align: center;
+}
+.sar-aqu-btn.selected { background: var(--color-racing-green, #1B4332); border-color: var(--color-racing-green, #1B4332); color: #F5F0E8; }
 .sar-aqu-btn:hover:not(.selected) { background: rgba(255,255,255,0.08); }
 .sar-aqu-drawer { padding: 0.25rem 0; }
 /* Override sar-aqu styles inside the white track drawer */
-#track-drawer .sar-aqu-btn:hover:not(.selected) { background: rgba(27,67,50,0.06); color: var(--color-slate); }
+#track-drawer .sar-aqu-btn:hover:not(.selected) { background: rgba(27,67,50,0.08); color: var(--color-slate); }
 
 /* =========================================================
    HEADER
@@ -4430,11 +4437,12 @@ html, body { overscroll-behavior: none; }
     </div>
   </header>
 
-  <!-- TRACK TOGGLE (SAR / AQU) -->
+  <!-- TRACK TOGGLE (CT / SAR) -->
   <div id="track-drawer" role="dialog" aria-label="Track selector">
     <div class="sar-aqu-drawer">
       <div class="track-drawer-group-label" style="margin-bottom:0.5rem">Switch Track</div>
       <div id="drawer-sar-aqu" class="sar-aqu-toggle"></div>
+      <div id="drawer-sar-hint" class="sar-hint" style="margin-top:0.5rem;font-size:0.72rem;color:var(--color-muted);line-height:1.4"></div>
     </div>
     <!-- Dormant: full 12-track drawer lists -->
     <div id="drawer-racing-today" style="display:none"></div>
@@ -5368,7 +5376,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.4)
+          Export Data (v2.5)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -5484,15 +5492,32 @@ var DEFAULT_WORKER_URL = 'https://cloudflare-worker.jhwiv-online.workers.dev';
 function initStore() {
   const existing = getStore();
   if (existing) {
+    let mutated = false;
     // Backfill Worker URL if missing (e.g. domain change wiped localStorage)
     if (!existing.settings.workerUrl) {
       existing.settings.workerUrl = DEFAULT_WORKER_URL;
-      saveStore(existing);
+      mutated = true;
     }
+    // v2.5 migration: AQU retired as default \u2014 move users to CT (Charles Town, near-daily racing)
+    // Runs once per user via migration flag. Users can still manually select AQU from settings.
+    if (!existing.settings.ctMigrationV25 && existing.settings.activeTrack === 'AQU') {
+      existing.settings.activeTrack = 'CT';
+      mutated = true;
+    }
+    if (!existing.settings.ctMigrationV25) {
+      existing.settings.ctMigrationV25 = true;
+      mutated = true;
+    }
+    // Ensure CT track data bucket exists (in case old store predates CT in registry)
+    if (existing.tracks && !existing.tracks.CT) {
+      existing.tracks.CT = { bets: [], races: [], bias: [], notes: {}, adviceLog: [], scratchHistory: [] };
+      mutated = true;
+    }
+    if (mutated) saveStore(existing);
     return existing;
   }
   const store = {
-    settings: { activeTrack: 'AQU', dataMode: 'live', startingBankroll: 1000, workerUrl: DEFAULT_WORKER_URL, welcomeDone: false },
+    settings: { activeTrack: 'CT', dataMode: 'live', startingBankroll: 1000, workerUrl: DEFAULT_WORKER_URL, welcomeDone: false },
     tracks: {}
   };
   Object.keys(TRACKS).forEach(code => {
@@ -5504,7 +5529,34 @@ function initStore() {
 
 function getActiveTrack() {
   const store = getStore();
-  return store ? (store.settings.activeTrack || 'SAR') : 'SAR';
+  return store ? (store.settings.activeTrack || 'CT') : 'CT';
+}
+
+/* Returns Saratoga meet status relative to today:
+   { phase: 'live'|'upcoming'|'ended', label: string, daysUntil: number|null } */
+function getSarStatus(today) {
+  try {
+    var t = TRACKS['SAR'];
+    if (!t || !Array.isArray(t.seasons) || !t.seasons.length) return { phase: 'ended', label: '', daysUntil: null };
+    var todayStr = today || getTodayStr();
+    // Find an active meet covering today
+    for (var i = 0; i < t.seasons.length; i++) {
+      var s = t.seasons[i];
+      if (todayStr >= s.from && todayStr <= s.to) {
+        return { phase: 'live', label: s.label + ' \u2014 live now', daysUntil: 0 };
+      }
+    }
+    // Otherwise find the next upcoming meet
+    var future = t.seasons.filter(function(s){ return s.from > todayStr; }).sort(function(a,b){ return a.from < b.from ? -1 : 1; });
+    if (future.length) {
+      var next = future[0];
+      var msTo = new Date(next.from + 'T12:00:00') - new Date(todayStr + 'T12:00:00');
+      var days = Math.max(0, Math.round(msTo / 86400000));
+      var opens = new Date(next.from + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return { phase: 'upcoming', label: next.label + ' opens ' + opens + (days > 0 ? ' (' + days + ' day' + (days === 1 ? '' : 's') + ')' : ''), daysUntil: days };
+    }
+    return { phase: 'ended', label: 'Meet concluded', daysUntil: null };
+  } catch(e) { return { phase: 'ended', label: '', daysUntil: null }; }
 }
 
 function getTrackData(code) {
@@ -6141,10 +6193,24 @@ function buildDrawerLists() {
   const activeCode = getActiveTrack();
   const sarAquDiv = el('drawer-sar-aqu');
   if (sarAquDiv) {
+    const sarStatus = getSarStatus();
+    const sarBadge = sarStatus.phase === 'live'
+      ? '<span class="sar-status-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle" title="Saratoga live now"></span>'
+      : '';
     sarAquDiv.innerHTML = `
-      <button class="sar-aqu-btn ${activeCode === 'SAR' ? 'selected' : ''}" onclick="selectTrack('SAR')">SAR &mdash; Saratoga</button>
-      <button class="sar-aqu-btn ${activeCode === 'AQU' ? 'selected' : ''}" onclick="selectTrack('AQU')">AQU &mdash; Aqueduct</button>
+      <button class="sar-aqu-btn ${activeCode === 'CT' ? 'selected' : ''}" onclick="selectTrack('CT')">CT &mdash; Charles Town</button>
+      <button class="sar-aqu-btn ${activeCode === 'SAR' ? 'selected' : ''}" onclick="selectTrack('SAR')">SAR &mdash; Saratoga${sarBadge}</button>
     `;
+    const hint = el('drawer-sar-hint');
+    if (hint) {
+      if (sarStatus.phase === 'live') {
+        hint.innerHTML = '<span style="color:#22c55e;font-weight:600">\u25CF Saratoga</span> ' + sarStatus.label;
+      } else if (sarStatus.phase === 'upcoming') {
+        hint.innerHTML = '<span style="opacity:0.8">Saratoga</span> ' + sarStatus.label;
+      } else {
+        hint.innerHTML = '';
+      }
+    }
   }
   /* Dormant: full 12-track drawer
   const todayDiv = el('drawer-racing-today');
@@ -9066,7 +9132,7 @@ function buildSettingsModal() {
   ).join('');
   const store = getStore();
   if (store) {
-    sel.value = store.settings.activeTrack || 'AQU';
+    sel.value = store.settings.activeTrack || 'CT';
     const br = el('settings-bankroll');
     if (br) br.value = store.settings.startingBankroll || 1000;
     const wu = el('settings-worker-url');
