@@ -14,9 +14,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1445-signin-bigger-v2.16.8';
+var NE_APP_VERSION = '20260417-1800-calendar-cache-render-v2.16.9';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.16.8-signin-bigger';
+var RAILBIRD_VERSION = 'v2.16.9-calendar-cache-render';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -5548,7 +5548,7 @@ tr:has(> td > .detail-stat-row),
 
       <!-- Race cards container -->
       <div id="races-container">
-        <div class="empty-state" id="no-races-msg"><div style="text-align:center;padding:24px;color:var(--lux-ink-soft,#EDE8DC);font-family:'Crimson Pro',serif;font-size:16px;line-height:1.5"><span class="loading-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--lux-gold,#C9A84C);animation:hero-pulse 1.5s ease-in-out infinite;margin-right:6px;vertical-align:middle"></span>Loading today&rsquo;s card&hellip;</div></div>
+        <div class="empty-state" id="no-races-msg" style="background:var(--lux-navy,#1B2E4B);border-radius:14px;margin:12px 0;padding:28px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)"><div style="text-align:center;color:var(--lux-ink-soft,#EDE8DC);font-family:'Crimson Pro',serif;font-size:16px;line-height:1.55;font-style:italic">Preparing the day&rsquo;s card&hellip;</div></div>
       </div>
     </section>
 
@@ -6364,7 +6364,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.16.8)
+          Export Data (v2.16.9)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -10750,17 +10750,15 @@ async function selectCalendarDate(dateStr) {
   const code = getActiveTrack();
   const previewBanner = el('preview-date-banner');
 
-  // --- Diagnostic log (per spec: output selected date + cache presence) ---
-  try {
-    var cacheKey = 'store.tracks.' + code + '.racesByDate.' + dateStr;
-    var cachedPeek = getCachedRacesForDate(dateStr, code);
-    console.log('[selectCalendarDate] dateStr=' + dateStr + ' key=' + cacheKey + ' cached=' + (cachedPeek ? cachedPeek.length + ' races' : 'none'));
-  } catch(_) {}
+  // --- Diagnostic log (per v2.16.9 spec: date chip tap → selected date, key, found?) ---
+  const cacheKey = 'store.tracks.' + code + '.racesByDate.' + dateStr;
+  const cached = getCachedRacesForDate(dateStr, code);
+  console.log('[dateChipTap] selected=' + dateStr + ' key=' + cacheKey + ' found=' + (cached && cached.length ? (cached.length + ' races') : 'none'));
 
   // ===== STEP 1: Synchronous cache-first render =====
-  // If we have cached races for this date, render them immediately — no spinner.
-  const cached = getCachedRacesForDate(dateStr, code);
+  // localStorage read is instant — never show a spinner for this path.
   if (cached && cached.length) {
+    hideLoadingIndicator();      // cancel any in-flight worker spinner
     loadedRaceDate = dateStr;
     const data = getTrackData();
     data.races = cached;
@@ -10855,8 +10853,12 @@ async function fetchLiveEntries() {
   const today = getTodayStr();
 
   // If user has manually selected a non-today date via the calendar, skip auto-load
-  // (their selection takes priority over polling)
-  if (selectedCalendarDate && selectedCalendarDate !== today) return;
+  // (their selection takes priority over polling). Hide any spinner that may be up
+  // from a previous in-flight fetch so past-date cards aren't covered by it.
+  if (selectedCalendarDate && selectedCalendarDate !== today) {
+    hideLoadingIndicator();
+    return;
+  }
 
   // Task 6c: Show loading indicator
   showLoadingIndicator();
