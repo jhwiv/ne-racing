@@ -1145,6 +1145,27 @@ function neForceUpdate(newVersion) {
 <title>Railbird AI — Your Private Handicapping Companion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- v2.16: eliminate grey flash — pick hero synchronously in <head> and preload it with highest priority.
+     Other heroes remain prefetched for future visits/rotations. -->
+<script>
+(function(){
+  try {
+    var heroKeys = ['hero-race-action','hero-paddock-bright','hero-winners-circle','hero-grandstand'];
+    var pick = heroKeys[Math.floor(Math.random()*heroKeys.length)];
+    window.__railbirdHero = pick;
+    // Detect WebP synchronously via UA hint (Safari 14+, Chrome, FF all support WebP now).
+    // Use a conservative check: if the browser is ancient, fall back to JPG in the JS loader.
+    var ext = '.webp';
+    var link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.type = 'image/webp';
+    link.href = 'images/' + pick + ext;
+    link.setAttribute('fetchpriority','high');
+    document.head.appendChild(link);
+  } catch(e){}
+})();
+</script>
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-race-action.webp">
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-paddock-bright.webp">
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-winners-circle.webp">
@@ -1250,6 +1271,8 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 }
 #hero-screen-bg {
   position: absolute; inset: 0; z-index: 0;
+  /* v2.16: dark navy floor so there's no grey flash before the hero image paints */
+  background: #0a1628;
 }
 #hero-screen-bg img {
   width: 100%; height: 100%;
@@ -4816,13 +4839,9 @@ tr:has(> td > .detail-stat-row),
    - Hero image fades in instead of popping
    - App frame fades in after hero dismiss
    - Prevent flash of navy bg before hero image loads */
-#hero-screen-bg img {
-  animation: hero-img-in 0.45s ease-out both;
-}
-@keyframes hero-img-in {
-  from { opacity: 0; transform: scale(1.02); }
-  to { opacity: 1; transform: scale(1); }
-}
+/* v2.16: opacity is driven inline by the hero loader JS so the fade only runs
+   once the full-res image has decoded. The earlier CSS animation caused a grey
+   flash because it ran against the placeholder before the photo arrived. */
 #hero-screen.hero-hidden ~ #app-frame,
 #hero-screen.hero-hidden + #app-frame {
   animation: app-frame-in 0.35s ease-out both;
@@ -5133,7 +5152,7 @@ tr:has(> td > .detail-stat-row),
      ============================================= -->
 <div id="hero-screen">
   <div id="hero-screen-bg">
-    <img id="hero-bg-img" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBVt7Q5UBy7D5eaG0052x/Oe/oKoK8ysIjMRJwwVkHWrK38sUIZXEkfOexGKcarQpUkyRtKkDEZU496KlW58xQyxoQe+7rRVe2aF7JGbJF5snzOxHqeTQ0S5KkvtYcbF4Prx+dTCfylGQTzTmuXIwPlPsK4OZmtyskICgOkuR6UUr3ALHO7NFVzSFc//9k=" alt="Railbird AI — horse racing handicapping" style="filter:blur(20px) brightness(1.15) saturate(1.08);transform:scale(1.1);transition:filter 0.4s ease,transform 0.4s ease;">
+    <img id="hero-bg-img" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201%201'%2F%3E" alt="Railbird AI — horse racing handicapping" style="opacity:0;transition:opacity 0.35s ease-out;">
   </div>
 
   <div class="hero-title-block hero-title-luxury">
@@ -11420,10 +11439,10 @@ function dismissWinnerOverlay(e) {
   clearTimeout(window._winnerTimeout);
 }
 
-// --- Rotating hero images (optimized: blur placeholder → WebP/JPG fade-in) ---
+// --- Rotating hero images (v2.16: dark-floor → WebP fade-in, no grey flash) ---
 (function() {
   var heroKeys = ['hero-race-action', 'hero-paddock-bright', 'hero-winners-circle', 'hero-grandstand'];
-  var placeholders = {
+  var _unused_placeholders = {
     'hero-race-action': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBVt7Q5UBy7D5eaG0052x/Oe/oKoK8ysIjMRJwwVkHWrK38sUIZXEkfOexGKcarQpUkyRtKkDEZU496KlW58xQyxoQe+7rRVe2aF7JGbJF5snzOxHqeTQ0S5KkvtYcbF4Prx+dTCfylGQTzTmuXIwPlPsK4OZmtyskICgOkuR6UUr3ALHO7NFVzSFc//9k=',
     'hero-paddock-bright': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCAq8beY655wO/HbNWkuCSPJ+VeMnH50y1tmCArgMEBIK7ePXNQwz4Kb4jGoXIP97PeuOULmppO0CNh8hsf3qKz/kl+ZJcjoeM0VPsx3LdmriUCSTJPGNmM/WqlxbebJ8zMCoAGB6k1FHKWOBkEd6uRW0ZjL8ttIBzxVubS1JTuV7KSKCN0kUod5O3BOKKkfyQcBX/Fs/0oo9r5BY//2Q==',
     'hero-winners-circle': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCvZ3c1uwbbyeuOP/rVpW2rb2WN1/hO5+4P09Kz/tATZ5kBRSQMgk/XFSwsXmLSMJ0xgSKnzEe9c72ubW10L8mpBWwpBFFZbwgnPOO2SvP50VnyvuaaditcSb4gChLkbw2cfpTLGV0hkA6gbgDxyKbKu2DaTkrwPfnvUCSOu4cYI2mtbXRN7MVrqVmzlsdsnJophf6/nRWmhld9z//Z',
@@ -11431,28 +11450,33 @@ function dismissWinnerOverlay(e) {
   };
   var img = document.getElementById('hero-bg-img');
   if (!img) return;
-  var idx = Math.floor(Math.random() * heroKeys.length);
-  var key = heroKeys[idx];
-  // Show blur placeholder instantly
-  img.src = placeholders[key];
+  // Use the key pre-picked in <head> (so the preload link points at the image we actually show).
+  var key = (typeof window !== 'undefined' && window.__railbirdHero) || heroKeys[Math.floor(Math.random() * heroKeys.length)];
   // Detect WebP support and load full image
   var useWebP = (document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0);
   var ext = useWebP ? '.webp' : '.jpg';
   var fullSrc = 'images/' + key + ext;
-  var loader = new Image();
-  loader.onload = function() {
-    img.style.willChange = 'filter, transform';
+  function reveal() {
     img.src = fullSrc;
+    // Ensure the browser has the new src applied before we fade in
     requestAnimationFrame(function() {
-      // v2.4: brighten+saturate the hero photo once the full-res loads (blur → punched)
-      img.style.filter = 'brightness(1.15) saturate(1.08) contrast(1.03)';
-      img.style.transform = 'scale(1)';
-      img.addEventListener('transitionend', function() {
-        img.style.willChange = 'auto';
-      }, { once: true });
+      img.style.opacity = '1';
     });
+  }
+  var loader = new Image();
+  loader.onload = reveal;
+  loader.onerror = function() {
+    // Fall back to JPG if WebP fails for any reason
+    if (useWebP) {
+      fullSrc = 'images/' + key + '.jpg';
+      var retry = new Image();
+      retry.onload = reveal;
+      retry.src = fullSrc;
+    }
   };
   loader.src = fullSrc;
+  // If the preload already cached the image, it resolves synchronously—reveal immediately
+  if (loader.complete && loader.naturalWidth > 0) reveal();
 })();
 
 // --- Expandable bet card details ---
