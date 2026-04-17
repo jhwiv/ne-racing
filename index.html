@@ -14,9 +14,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1315-hero-header-v2.16.6';
+var NE_APP_VERSION = '20260417-1345-ticket-signin-v2.16.7';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.16.6-hero-header-polish';
+var RAILBIRD_VERSION = 'v2.16.7-ticket-signin-chip';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2263,6 +2263,26 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   min-width: 0;
 }
 .adw-signin-chip .adw-chip-caret { opacity: 0.55; font-size: 0.8rem; flex: 0 0 auto; }
+
+/* v2.16.7: compact variant used next to SIMULATE/REAL on Today's Ticket */
+.mode-toggle-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.55rem; flex-wrap: wrap;
+  width: 100%;
+}
+.mode-toggle-row .betting-mode-toggle { margin: 0; }
+.adw-signin-chip-compact {
+  padding: 0.4rem 0.75rem 0.4rem 0.55rem;
+  font-size: 0.8rem;
+  gap: 0.4rem;
+}
+.adw-signin-chip-compact .adw-chip-icon { width: 20px; height: 20px; }
+.adw-signin-chip-compact .adw-chip-icon svg { width: 12px; height: 12px; }
+.adw-signin-chip-compact .adw-chip-caret { font-size: 0.72rem; }
+/* On very narrow screens, let the chip wrap to its own line below the toggle */
+@media (max-width: 400px) {
+  .adw-signin-chip-compact .adw-chip-text { max-width: 15ch; }
+}
 
 /* ADW sign-in bottom sheet (mirrors settings-modal pattern) */
 #adw-sheet {
@@ -5430,16 +5450,26 @@ tr:has(> td > .detail-stat-row),
       <div id="rec-bets-card" class="rec-bets-card hidden">
         <div class="ticket-header"><span class="ticket-icon">&#127915;</span><h3 style="margin:0">Today's Ticket</h3></div>
         <!-- v2.13: Betting Mode Toggle — centered, labeled, unmistakably a switch -->
+        <!-- v2.16.7: ADW sign-in chip placed alongside SIMULATE/REAL -->
         <div class="mode-toggle-wrap" role="group" aria-label="Betting mode">
           <div class="mode-toggle-label">Mode</div>
-          <div class="betting-mode-toggle" id="ticket-mode-toggle">
-            <button class="mode-pill active-sim" id="ticket-mode-sim" onclick="setBettingMode('simulate')" aria-pressed="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              SIMULATE
-            </button>
-            <button class="mode-pill" id="ticket-mode-real" onclick="setBettingMode('real')" aria-pressed="false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              REAL
+          <div class="mode-toggle-row">
+            <div class="betting-mode-toggle" id="ticket-mode-toggle">
+              <button class="mode-pill active-sim" id="ticket-mode-sim" onclick="setBettingMode('simulate')" aria-pressed="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                SIMULATE
+              </button>
+              <button class="mode-pill" id="ticket-mode-real" onclick="setBettingMode('real')" aria-pressed="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                REAL
+              </button>
+            </div>
+            <button type="button" class="adw-signin-chip adw-signin-chip-compact" onclick="openAdwSheet()" aria-haspopup="dialog" aria-controls="adw-sheet">
+              <span class="adw-chip-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+              </span>
+              <span class="adw-chip-text">Sign in to <span class="adw-chip-name">NYRA Bets</span></span>
+              <span class="adw-chip-caret" aria-hidden="true">▾</span>
             </button>
           </div>
         </div>
@@ -5540,7 +5570,7 @@ tr:has(> td > .detail-stat-row),
         <span class="adw-chip-icon" aria-hidden="true">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
         </span>
-        <span class="adw-chip-text">Sign in to <span id="adw-chip-name">NYRA Bets</span></span>
+        <span class="adw-chip-text">Sign in to <span class="adw-chip-name">NYRA Bets</span></span>
         <span class="adw-chip-caret" aria-hidden="true">▾</span>
       </button>
 
@@ -6343,7 +6373,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.16.6)
+          Export Data (v2.16.7)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -10332,10 +10362,9 @@ function renderAdwSigninList(hostId) {
 
 /* Chip label sync + sheet open/close */
 function syncAdwChipLabel() {
-  var el = document.getElementById('adw-chip-name');
-  if (!el) return;
   var info = BETTING_PLATFORMS[getBettingPlatform()] || BETTING_PLATFORMS.nyrabets;
-  el.textContent = info.name;
+  var spans = document.querySelectorAll('.adw-chip-name');
+  for (var i = 0; i < spans.length; i++) spans[i].textContent = info.name;
 }
 function openAdwSheet() {
   var m = document.getElementById('adw-sheet');
