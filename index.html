@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1500-detail-panel-v2.12.1';
+var NE_APP_VERSION = '20260417-1600-ticket-clarity-v2.13';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.12.1-detail-panel';
+var RAILBIRD_VERSION = 'v2.13-ticket-clarity';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2340,18 +2340,38 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 /* =========================================================
    BETTING MODE TOGGLE
    ========================================================= */
+/* v2.13: centered wrapper with 'Mode' label so the control is obviously a switch */
+.mode-toggle-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.35rem; margin: 0.25rem 0 0.6rem;
+}
+.mode-toggle-label {
+  font-family: var(--lux-font-display, var(--font-display));
+  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--lux-ink-soft-on-cream, rgba(27,46,75,0.55));
+}
+
+/* v2.13: segmented toggle track — unmistakably a toggle, not two buttons */
 .betting-mode-toggle {
-  display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 0.75rem;
+  display: inline-flex; align-items: stretch; justify-content: center;
+  gap: 0; margin: 0 auto 0.75rem; padding: 3px;
+  background: rgba(27,46,75,0.12);
+  border: 1px solid rgba(27,46,75,0.18);
+  border-radius: 999px;
+  position: relative;
 }
 .betting-mode-toggle .mode-pill {
   display: flex; align-items: center; gap: 0.35rem;
-  padding: 0.45rem 1rem; font-size: 0.72rem; font-weight: 700;
+  padding: 0.4rem 0.95rem; font-size: 0.72rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer;
-  border: none; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.08);
-  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  border: none; color: rgba(27,46,75,0.55); background: transparent;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.15s;
 }
-.betting-mode-toggle .mode-pill:first-child { border-radius: 20px 0 0 20px; }
-.betting-mode-toggle .mode-pill:last-child { border-radius: 0 20px 20px 0; }
+.betting-mode-toggle .mode-pill:hover:not(.active-sim):not(.active-real) {
+  color: rgba(27,46,75,0.85);
+}
+.betting-mode-toggle .mode-pill:first-child { border-radius: 999px 0 0 999px; }
+.betting-mode-toggle .mode-pill:last-child { border-radius: 0 999px 999px 0; }
 .betting-mode-toggle .mode-pill svg { width: 14px; height: 14px; flex-shrink: 0; }
 .betting-mode-toggle .mode-pill.active-sim {
   background: var(--color-racing-green); color: #D8F3DC;
@@ -5052,8 +5072,11 @@ tr:has(> td > .detail-stat-row),
         <div class="date-strip" id="date-strip"></div>
       </div>
 
-      <!-- LUXURY: Today's Best Bet callout (populated by JS from advice engine) -->
-      <section id="best-bet-callout" class="best-bet-callout hidden" aria-label="Today's Best Bet">
+      <!-- v2.13: 'The Play' callout removed — it duplicated the Best Bet shown inside
+           Today's Ticket below. Elements retained as hidden placeholders so any JS
+           that writes to #best-bet-race / #best-bet-horse / #best-bet-rationale
+           still has valid targets without double-rendering the horse. -->
+      <section id="best-bet-callout" class="best-bet-callout hidden" aria-hidden="true" style="display:none !important">
         <div class="best-bet-eyebrow">Today’s Best Bet</div>
         <h2 class="best-bet-title">The Play</h2>
         <div class="best-bet-rule"></div>
@@ -5070,16 +5093,19 @@ tr:has(> td > .detail-stat-row),
       <!-- Today's Ticket Card -->
       <div id="rec-bets-card" class="rec-bets-card hidden">
         <div class="ticket-header"><span class="ticket-icon">&#127915;</span><h3 style="margin:0">Today's Ticket</h3></div>
-        <!-- Betting Mode Toggle -->
-        <div class="betting-mode-toggle" id="ticket-mode-toggle">
-          <button class="mode-pill active-sim" id="ticket-mode-sim" onclick="setBettingMode('simulate')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            SIMULATE
-          </button>
-          <button class="mode-pill" id="ticket-mode-real" onclick="setBettingMode('real')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            REAL
-          </button>
+        <!-- v2.13: Betting Mode Toggle — centered, labeled, unmistakably a switch -->
+        <div class="mode-toggle-wrap" role="group" aria-label="Betting mode">
+          <div class="mode-toggle-label">Mode</div>
+          <div class="betting-mode-toggle" id="ticket-mode-toggle">
+            <button class="mode-pill active-sim" id="ticket-mode-sim" onclick="setBettingMode('simulate')" aria-pressed="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              SIMULATE
+            </button>
+            <button class="mode-pill" id="ticket-mode-real" onclick="setBettingMode('real')" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              REAL
+            </button>
+          </div>
         </div>
         <div id="sim-banner" class="sim-mode-banner">Simulation Mode — track your picks without real money</div>
         <div class="ticket-subtitle" id="ticket-subtitle"></div>
@@ -5952,7 +5978,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.12.1)
+          Export Data (v2.13)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -6282,8 +6308,8 @@ function syncBettingModeUI() {
   // Ticket toggle
   var tSim = el('ticket-mode-sim');
   var tReal = el('ticket-mode-real');
-  if (tSim) { tSim.className = 'mode-pill' + (isSim ? ' active-sim' : ''); }
-  if (tReal) { tReal.className = 'mode-pill' + (!isSim ? ' active-real' : ''); }
+  if (tSim) { tSim.className = 'mode-pill' + (isSim ? ' active-sim' : ''); tSim.setAttribute('aria-pressed', isSim ? 'true' : 'false'); }
+  if (tReal) { tReal.className = 'mode-pill' + (!isSim ? ' active-real' : ''); tReal.setAttribute('aria-pressed', !isSim ? 'true' : 'false'); }
 
   // Settings toggle
   var sSim = el('settings-bm-sim');
