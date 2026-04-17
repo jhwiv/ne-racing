@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-2100-lux-v2.1';
+var NE_APP_VERSION = '20260417-1030-date-cache-v2.2';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.1-luxury-corrected';
+var RAILBIRD_VERSION = 'v2.2-date-cache';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -4590,7 +4590,7 @@ html, body { overscroll-behavior: none; }
 
       <!-- Race cards container -->
       <div id="races-container">
-        <div class="empty-state" id="no-races-msg"><div style="text-align:center"><span class="loading-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-gold);animation:hero-pulse 1.5s ease-in-out infinite;margin-right:6px"></span>Loading today's card...</div></div>
+        <div class="empty-state" id="no-races-msg"><div style="text-align:center;padding:24px;color:var(--lux-ink-soft,#EDE8DC);font-family:'Crimson Pro',serif;font-size:16px;line-height:1.5"><span class="loading-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--lux-gold,#C9A84C);animation:hero-pulse 1.5s ease-in-out infinite;margin-right:6px;vertical-align:middle"></span>Loading today&rsquo;s card&hellip;</div></div>
       </div>
     </section>
 
@@ -5376,7 +5376,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.1)
+          Export Data (v2.2)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -5532,6 +5532,32 @@ function saveTrackData(data, code) {
   const tc = code || getActiveTrack();
   store.tracks[tc] = data;
   saveStore(store);
+}
+
+/* ---- Per-date race-card cache ----
+   Stored as store.tracks[CODE].racesByDate[YYYY-MM-DD] = races[]
+   Lets historical dates render instantly from localStorage without hitting the Worker. */
+function getCachedRacesForDate(dateStr, code) {
+  try {
+    const data = getTrackData(code);
+    if (!data || !data.racesByDate) return null;
+    const r = data.racesByDate[dateStr];
+    return (r && r.length) ? r : null;
+  } catch(e) { return null; }
+}
+function saveRacesForDate(dateStr, races, code) {
+  try {
+    if (!dateStr || !races || !races.length) return;
+    const data = getTrackData(code);
+    if (!data) return;
+    if (!data.racesByDate) data.racesByDate = {};
+    // Prune entries older than 60 days to keep localStorage tidy
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 60);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    Object.keys(data.racesByDate).forEach(k => { if (k < cutoffStr) delete data.racesByDate[k]; });
+    data.racesByDate[dateStr] = races;
+    saveTrackData(data, code);
+  } catch(e) { /* quota or serialize errors — non-fatal */ }
 }
 
 function getSetting(key) {
@@ -6189,11 +6215,21 @@ function renderTodayTab() {
   }
 
   if (!races.length) {
-    if (noMsg) noMsg.classList.remove('hidden');
-    container.innerHTML = '';
-    container.appendChild(noMsg);
-    el('top-picks-card').classList.add('hidden');
-    el('rec-bets-card').classList.add('hidden');
+    // Empty state — determine message based on date vs today
+    var emptyDate = loadedRaceDate || getTodayStr();
+    var todayStr = getTodayStr();
+    var msg;
+    if (emptyDate > todayStr) {
+      msg = 'No card posted yet for this date.';
+    } else if (emptyDate < todayStr) {
+      msg = 'No data cached for ' + new Date(emptyDate + 'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}) + '.';
+    } else {
+      msg = 'No race card available \u2014 check back on a race day.';
+    }
+    var emptyHtml = '<div class="empty-state" id="no-races-msg" style="background:var(--lux-navy,#1B2E4B);border-radius:14px;margin:12px 0;padding:28px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)"><div style="text-align:center;color:var(--lux-ink-soft,#EDE8DC);font-family:\'Crimson Pro\',serif;font-size:16px;line-height:1.55;font-style:italic">' + msg + '</div></div>';
+    container.innerHTML = emptyHtml;
+    var tp = el('top-picks-card'); if (tp) tp.classList.add('hidden');
+    var rb = el('rec-bets-card'); if (rb) rb.classList.add('hidden');
     return;
   }
   if (noMsg) noMsg.classList.add('hidden');
@@ -9481,20 +9517,53 @@ async function selectCalendarDate(dateStr) {
   }
   buildDateStrip();
 
-  // Fetch entries for this date
   const code = getActiveTrack();
-  showLoadingIndicator();
+  const previewBanner = el('preview-date-banner');
+
+  // --- Diagnostic log (per spec: output selected date + cache presence) ---
+  try {
+    var cacheKey = 'store.tracks.' + code + '.racesByDate.' + dateStr;
+    var cachedPeek = getCachedRacesForDate(dateStr, code);
+    console.log('[selectCalendarDate] dateStr=' + dateStr + ' key=' + cacheKey + ' cached=' + (cachedPeek ? cachedPeek.length + ' races' : 'none'));
+  } catch(_) {}
+
+  // ===== STEP 1: Synchronous cache-first render =====
+  // If we have cached races for this date, render them immediately — no spinner.
+  const cached = getCachedRacesForDate(dateStr, code);
+  if (cached && cached.length) {
+    loadedRaceDate = dateStr;
+    const data = getTrackData();
+    data.races = cached;
+    saveTrackData(data);
+    if (previewBanner) {
+      if (dateStr !== today) {
+        const d = new Date(dateStr + 'T12:00:00');
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        previewBanner.innerHTML = '&#128197; Showing entries for <strong>' + dayName + '</strong>';
+        previewBanner.classList.remove('hidden');
+      } else {
+        previewBanner.classList.add('hidden');
+      }
+    }
+    hideLiveUnavailable();
+    renderTodayTab();
+    // Only today's card benefits from a live-odds refresh; skip the network fetch
+    // for historical dates to keep them snappy and offline-tolerant.
+    if (dateStr !== today) return;
+  }
+
+  // ===== STEP 2: Network refresh (today, or dates with no cache) =====
+  // Show the spinner only when we're actually hitting the network.
+  if (!cached || !cached.length) showLoadingIndicator();
   hideLiveUnavailable();
 
   const result = await tryFetchEntries(code, dateStr);
-
   hideLoadingIndicator();
 
-  // Update preview banner
-  const previewBanner = el('preview-date-banner');
   if (!result) {
+    // No network data. If we already rendered from cache, keep it. Otherwise show empty state.
+    if (cached && cached.length) return;
     loadedRaceDate = dateStr;
-    // Clear existing races and show empty state
     const data = getTrackData();
     data.races = [];
     saveTrackData(data);
@@ -9516,7 +9585,6 @@ async function selectCalendarDate(dateStr) {
   hideLiveUnavailable();
   loadedRaceDate = result.date;
 
-  // Show banner for non-today dates
   if (previewBanner) {
     if (dateStr !== today) {
       const d = new Date(dateStr + 'T12:00:00');
@@ -9528,7 +9596,8 @@ async function selectCalendarDate(dateStr) {
     }
   }
 
-  // Load races (replace for calendar selection — not merge)
+  // Save to per-date cache AND live store
+  saveRacesForDate(dateStr, result.races, code);
   const data = getTrackData();
   data.races = result.races;
   saveTrackData(data);
@@ -9592,6 +9661,9 @@ async function fetchLiveEntries() {
   hideLoadingIndicator();
   hideLiveUnavailable();
   loadedRaceDate = result.date;
+
+  // Persist fetched entries to the per-date cache so historical views can render offline.
+  try { saveRacesForDate(result.date, result.races, code); } catch(_) {}
 
   // Update date strip to reflect the loaded date (e.g. lookahead found tomorrow's card)
   if (lookaheadDate) {
