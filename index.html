@@ -14,9 +14,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1800-calendar-cache-render-v2.16.9';
+var NE_APP_VERSION = '20260417-1830-offday-dashboard-v2.17.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.16.9-calendar-cache-render';
+var RAILBIRD_VERSION = 'v2.17.0-offday-dashboard';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -6364,7 +6364,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.16.9)
+          Export Data (v2.17.0)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -11586,6 +11586,266 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
       hasGlowed = true;
     }
     if (typeof updateQuickPickVisibility === 'function') updateQuickPickVisibility();
+  };
+})();
+
+// =============================================================
+// v2.17.0 — OFF-DAY DASHBOARD
+// When the user opens the app on a non-race day (no card posted for today),
+// replace the terse "No race card available" message with a rich dashboard:
+//   • Next race day (detected async via Worker, falls back to +1 day)
+//   • Yesterday's top-pick recap with W/L + payout
+//   • Season P&L to date (total wagered, returned, net, win rate)
+//   • Personalized come-back message
+// Wrapper pattern — never touches renderTodayTab body.
+// =============================================================
+(function() {
+  // --- helpers ---------------------------------------------------------
+  function offday_addDays(ymd, n) {
+    var d = new Date(ymd + 'T12:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toISOString().split('T')[0];
+  }
+  function offday_fmt$(n) {
+    var v = Number(n) || 0;
+    var sign = v < 0 ? '-$' : '$';
+    return sign + Math.abs(v).toFixed(2);
+  }
+  function offday_dayLabel(ymd, opts) {
+    try {
+      return new Date(ymd + 'T12:00:00').toLocaleDateString('en-US', opts || { weekday: 'long', month: 'short', day: 'numeric' });
+    } catch(e) { return ymd; }
+  }
+  function offday_findMostRecentResults(code) {
+    // Walk back up to 14 days to find a day with results cached
+    var today = getTodayStr();
+    for (var i = 1; i <= 14; i++) {
+      var d = offday_addDays(today, -i);
+      try {
+        var races = (typeof getCachedResults === 'function') ? getCachedResults(code, d) : [];
+        if (races && races.length) return { date: d, races: races };
+      } catch(_) {}
+    }
+    return null;
+  }
+  function offday_computeSeasonPnL(code) {
+    try {
+      var data = getTrackData(code);
+      var bets = (data && data.bets) ? data.bets : [];
+      // Settled = has a result (win/loss/scratch)
+      var settled = bets.filter(function(b) { return b.result; });
+      var totalWagered = 0;
+      var totalReturned = 0;
+      var wins = 0;
+      settled.forEach(function(b) {
+        totalWagered += parseFloat(b.isExotic ? (b.cost || b.amount) : b.amount) || 0;
+        totalReturned += parseFloat(b.payout) || 0;
+        if (b.result === 'win') wins++;
+      });
+      var net = totalReturned - totalWagered;
+      var winRate = settled.length ? Math.round(wins / settled.length * 100) : 0;
+      return {
+        betsCount: settled.length,
+        wagered: totalWagered,
+        returned: totalReturned,
+        net: net,
+        winRate: winRate,
+        wins: wins
+      };
+    } catch(e) {
+      return { betsCount: 0, wagered: 0, returned: 0, net: 0, winRate: 0, wins: 0 };
+    }
+  }
+  function offday_summarizeYesterday(code) {
+    var recent = offday_findMostRecentResults(code);
+    if (!recent) return null;
+    // Pull bets placed on that day
+    var data = getTrackData(code);
+    var bets = (data && data.bets) ? data.bets : [];
+    var dayBets = bets.filter(function(b) { return b.date === recent.date && b.result; });
+    var wins = dayBets.filter(function(b) { return b.result === 'win'; }).length;
+    var losses = dayBets.filter(function(b) { return b.result === 'loss'; }).length;
+    var wagered = 0;
+    var returned = 0;
+    dayBets.forEach(function(b) {
+      wagered += parseFloat(b.isExotic ? (b.cost || b.amount) : b.amount) || 0;
+      returned += parseFloat(b.payout) || 0;
+    });
+    // Top win of the day (largest payout winning bet)
+    var topWin = null;
+    dayBets.filter(function(b) { return b.result === 'win'; }).forEach(function(b) {
+      if (!topWin || (parseFloat(b.payout) || 0) > (parseFloat(topWin.payout) || 0)) topWin = b;
+    });
+    // Winner of each race (first 3 races for summary)
+    var headliners = [];
+    (recent.races || []).slice(0, 3).forEach(function(r) {
+      var winner = (r.results || []).find(function(f) { return f.position === 1; });
+      if (winner) {
+        headliners.push({
+          race: r.raceNumber,
+          name: winner.horseName,
+          payout: winner.winPayout ? ('$' + Number(winner.winPayout).toFixed(2)) : null
+        });
+      }
+    });
+    return {
+      date: recent.date,
+      raceCount: recent.races.length,
+      headliners: headliners,
+      dayBets: dayBets.length,
+      wins: wins,
+      losses: losses,
+      wagered: wagered,
+      returned: returned,
+      net: returned - wagered,
+      topWin: topWin
+    };
+  }
+  function offday_buildHTML(code) {
+    var track = TRACKS[code] || { name: code };
+    var today = getTodayStr();
+    var season = offday_computeSeasonPnL(code);
+    var yday = offday_summarizeYesterday(code);
+    // Next race day: async-detected, starts as "Checking schedule…"
+    // and gets patched in after the Worker probe finishes.
+    var todayLabel = offday_dayLabel(today, { weekday: 'long', month: 'long', day: 'numeric' });
+
+    // --- Header: today + come-back message ----------------------------
+    var header =
+      '<div style="font-family:Cormorant Garamond,Crimson Pro,serif;font-size:1.55rem;font-weight:600;color:#F5F0E8;letter-spacing:0.01em;margin-bottom:4px">' +
+      'Dark day at ' + (track.name || code) +
+      '</div>' +
+      '<div style="font-family:Crimson Pro,serif;font-size:0.95rem;color:#EDE8DC;opacity:0.85;font-style:italic;margin-bottom:2px">' +
+      todayLabel + ' — no live card today.' +
+      '</div>';
+
+    // --- Next race day block (placeholder, updated async) -------------
+    var nextBlock =
+      '<div id="offday-next-block" style="margin-top:18px;padding:16px 18px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.35);border-radius:12px">' +
+      '<div style="font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:#C9A84C;font-weight:700;margin-bottom:6px">Next race day</div>' +
+      '<div id="offday-next-text" style="font-family:Cormorant Garamond,serif;font-size:1.25rem;font-weight:600;color:#F5F0E8">Checking schedule…</div>' +
+      '<div id="offday-next-sub" style="font-family:Crimson Pro,serif;font-size:0.85rem;color:#EDE8DC;opacity:0.75;margin-top:4px"></div>' +
+      '</div>';
+
+    // --- Yesterday recap ----------------------------------------------
+    var ydayBlock = '';
+    if (yday) {
+      var ydayLabel = offday_dayLabel(yday.date);
+      var winnerList = yday.headliners.map(function(h) {
+        return '<li style="font-family:Crimson Pro,serif;font-size:0.92rem;color:#EDE8DC;margin-bottom:3px"><strong style="color:#F5F0E8">R' + h.race + ':</strong> ' + h.name + (h.payout ? ' <span style="color:#C9A84C;font-weight:600">' + h.payout + '</span>' : '') + '</li>';
+      }).join('');
+      var betSummary = '';
+      if (yday.dayBets > 0) {
+        var netClass = yday.net >= 0 ? '#C9A84C' : '#D9867A';
+        betSummary =
+          '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(237,232,220,0.15);font-family:Crimson Pro,serif;font-size:0.88rem;color:#EDE8DC">' +
+          'Your day: <strong style="color:#F5F0E8">' + yday.wins + 'W</strong> / <strong style="color:#F5F0E8">' + yday.losses + 'L</strong> · net <strong style="color:' + netClass + '">' + offday_fmt$(yday.net) + '</strong>' +
+          (yday.topWin ? '<div style="margin-top:4px;font-size:0.82rem;opacity:0.85">Best: ' + (yday.topWin.selections && yday.topWin.selections[0] ? yday.topWin.selections[0] : '') + ' — ' + offday_fmt$(yday.topWin.payout) + ' return</div>' : '') +
+          '</div>';
+      }
+      ydayBlock =
+        '<div style="margin-top:14px;padding:16px 18px;background:#243653;border-radius:12px">' +
+        '<div style="font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:#C9A84C;font-weight:700;margin-bottom:8px">Last race day — ' + ydayLabel + '</div>' +
+        (winnerList ? '<ul style="list-style:none;padding:0;margin:0">' + winnerList + '</ul>' : '<div style="font-family:Crimson Pro,serif;font-size:0.88rem;color:#EDE8DC;opacity:0.75">' + yday.raceCount + ' races completed.</div>') +
+        betSummary +
+        '</div>';
+    }
+
+    // --- Season P&L ----------------------------------------------------
+    var pnlBlock = '';
+    if (season.betsCount > 0) {
+      var netClr = season.net >= 0 ? '#C9A84C' : '#D9867A';
+      pnlBlock =
+        '<div style="margin-top:14px;padding:16px 18px;background:#243653;border-radius:12px">' +
+        '<div style="font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:#C9A84C;font-weight:700;margin-bottom:10px">Season to date</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px">' +
+        '<div><div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:#EDE8DC;opacity:0.6">Net</div><div style="font-family:JetBrains Mono,ui-monospace,monospace;font-size:1.15rem;font-weight:700;color:' + netClr + '">' + offday_fmt$(season.net) + '</div></div>' +
+        '<div><div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:#EDE8DC;opacity:0.6">Win rate</div><div style="font-family:JetBrains Mono,ui-monospace,monospace;font-size:1.15rem;font-weight:700;color:#F5F0E8">' + season.winRate + '%</div></div>' +
+        '<div><div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:#EDE8DC;opacity:0.6">Wagered</div><div style="font-family:JetBrains Mono,ui-monospace,monospace;font-size:1.05rem;color:#EDE8DC">' + offday_fmt$(season.wagered) + '</div></div>' +
+        '<div><div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:#EDE8DC;opacity:0.6">Returned</div><div style="font-family:JetBrains Mono,ui-monospace,monospace;font-size:1.05rem;color:#EDE8DC">' + offday_fmt$(season.returned) + '</div></div>' +
+        '</div>' +
+        '<div style="margin-top:8px;font-family:Crimson Pro,serif;font-size:0.82rem;color:#EDE8DC;opacity:0.65">' + season.betsCount + ' settled bet' + (season.betsCount === 1 ? '' : 's') + ' · ' + season.wins + ' winner' + (season.wins === 1 ? '' : 's') + '</div>' +
+        '</div>';
+    } else {
+      pnlBlock =
+        '<div style="margin-top:14px;padding:16px 18px;background:#243653;border-radius:12px">' +
+        '<div style="font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:#C9A84C;font-weight:700;margin-bottom:6px">Season to date</div>' +
+        '<div style="font-family:Crimson Pro,serif;font-size:0.9rem;color:#EDE8DC;opacity:0.75;font-style:italic">No settled bets yet. Place a few and come back — we’ll track wagered, returned, and win rate here.</div>' +
+        '</div>';
+    }
+
+    // --- Footer tip ----------------------------------------------------
+    var tip =
+      '<div style="margin-top:16px;text-align:center;font-family:Crimson Pro,serif;font-size:0.85rem;color:#EDE8DC;opacity:0.65;font-style:italic;padding:4px 8px">' +
+      'Tip: use the date strip above to review past cards, or jump to Handicapping to study the next meet.' +
+      '</div>';
+
+    return (
+      '<div id="offday-dashboard" class="empty-state" style="background:#1B2E4B;border-radius:14px;margin:12px 0;padding:22px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">' +
+      header + nextBlock + ydayBlock + pnlBlock + tip +
+      '</div>'
+    );
+  }
+  async function offday_probeNextRaceDay(code) {
+    var today = getTodayStr();
+    // Per-request timeout so a slow/down Worker doesn't leave the block on "Checking schedule…" forever.
+    function withTimeout(p, ms) {
+      return Promise.race([
+        p,
+        new Promise(function(resolve) { setTimeout(function() { resolve(null); }, ms); })
+      ]);
+    }
+    for (var i = 1; i <= 7; i++) {
+      var d = offday_addDays(today, i);
+      try {
+        if (typeof tryFetchEntries !== 'function') break;
+        var res = await withTimeout(tryFetchEntries(code, d), 2500);
+        if (res && res.races && res.races.length) return { date: d, raceCount: res.races.length };
+      } catch(_) {}
+    }
+    return null;
+  }
+  function offday_updateNextBlock(next) {
+    var textEl = document.getElementById('offday-next-text');
+    var subEl = document.getElementById('offday-next-sub');
+    if (!textEl) return;
+    if (!next) {
+      textEl.textContent = 'Schedule not posted yet';
+      if (subEl) subEl.textContent = 'Check back tomorrow — cards usually post 18–24 hours before post time.';
+      return;
+    }
+    var today = getTodayStr();
+    var days = Math.round((new Date(next.date + 'T12:00:00') - new Date(today + 'T12:00:00')) / 86400000);
+    var when;
+    if (days === 1) when = 'Tomorrow';
+    else if (days <= 6) when = 'This ' + offday_dayLabel(next.date, { weekday: 'long' });
+    else when = offday_dayLabel(next.date, { weekday: 'long', month: 'short', day: 'numeric' });
+    textEl.textContent = when + ' — ' + offday_dayLabel(next.date, { month: 'short', day: 'numeric' });
+    if (subEl) subEl.textContent = next.raceCount + ' races on the card.';
+  }
+  // Wrapper: after base renderTodayTab runs, if today is empty state, swap in dashboard
+  var base = typeof renderTodayTab === 'function' ? renderTodayTab : null;
+  if (!base) return;
+  renderTodayTab = function() {
+    base.apply(this, arguments);
+    try {
+      var container = document.getElementById('races-container');
+      if (!container) return;
+      // Only show on TODAY empty state, not past/future date empty states
+      var emptyNode = container.querySelector('#no-races-msg-empty');
+      if (!emptyNode) return;
+      var msgText = emptyNode.textContent || '';
+      if (msgText.indexOf('check back on a race day') === -1) return; // let past/future empties keep their terse message
+      // Build and inject dashboard
+      var code = getActiveTrack();
+      container.innerHTML = offday_buildHTML(code);
+      // Hide any live-loading spinner so it doesn't float above the dashboard
+      try { if (typeof hideLoadingIndicator === 'function') hideLoadingIndicator(); } catch(_) {}
+      // Async probe for next race day
+      offday_probeNextRaceDay(code).then(offday_updateNextBlock).catch(function() {
+        offday_updateNextBlock(null);
+      });
+    } catch(e) { /* never let dashboard break the tab */ }
   };
 })();
 
