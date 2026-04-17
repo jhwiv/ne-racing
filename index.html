@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1300-rebrand-hero-v2.8';
+var NE_APP_VERSION = '20260417-1330-cohesion-v2.9';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.8-rebrand-hero';
+var RAILBIRD_VERSION = 'v2.9-cohesion';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -421,7 +421,7 @@ function neForceUpdate(newVersion) {
     if (tips.length === 0) return '';
     var h = '<div id="wiz-advice-card" style="margin:0.75rem 0;padding:0.75rem;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);border-radius:10px">';
     h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">';
-    h += '<span style="font-size:0.78rem;font-weight:700;color:#fbbf24;letter-spacing:0.5px">📊 SMART TIPS</span>';
+    h += '<span style="font-size:0.78rem;font-weight:700;color:#fbbf24;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:0.35rem"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:0.95rem;height:0.95rem"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>SMART TIPS</span>';
     h += '<span onclick="document.getElementById(\'wiz-advice-card\').style.display=\'none\'" style="font-size:0.7rem;color:rgba(255,255,255,0.4);cursor:pointer">Dismiss</span>';
     h += '</div>';
     tips.forEach(function(tip) {
@@ -4430,6 +4430,235 @@ html, body { overscroll-behavior: none; }
 }
 
 /* =========================================================
+   v2.9 COHESION LAYER — appended 2026-04-17
+   Pure styling. No JS logic touched. Safe to revert.
+   ---------------------------------------------------------
+   #3 Unified card surfaces — race-card-header goes cream
+      with a slim navy accent rule so Today's Ticket, The
+      Play, and race cards share one surface language.
+   #4 Pill/tag consolidation — 4 named variants applied as
+      normalization on existing .badge-* classes so legacy
+      markup keeps working.
+   #5 Icon normalization — helper .ico-* classes for inline
+      SVGs replacing emoji in winner overlay, FAB, and
+      Smart Tips header.
+   ========================================================= */
+
+/* ---- #3 SURFACES ---- */
+.race-card-wrap {
+  background: var(--lux-cream) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 1px 2px rgba(10,22,40,0.04) !important;
+}
+.race-card-header {
+  background: var(--lux-cream) !important;
+  color: var(--lux-navy) !important;
+  border-bottom: 1px solid var(--lux-hairline) !important;
+  position: relative;
+}
+.race-card-header::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--lux-gold);
+  opacity: 0.85;
+}
+.race-card-header .race-num,
+.race-card-header .race-number,
+.race-number-badge {
+  background: var(--lux-navy) !important;
+  color: var(--lux-gold) !important;
+  border: 1px solid var(--lux-gold) !important;
+}
+.race-card-header .post-time,
+.race-card-header .race-time,
+.race-post-time {
+  color: var(--lux-navy) !important;
+  font-weight: 600;
+}
+.race-card-header .race-meta,
+.race-card-header .surface,
+.race-card-header .distance,
+.race-card-header .surf-dist {
+  color: var(--lux-ink-soft) !important;
+}
+
+/* ---- #4 PILLS — 4 named variants as normalization ---- */
+.badge,
+.badge-conviction, .badge-lock, .badge-value, .badge-strong-value,
+.badge-underlay, .badge-green, .badge-gold, .badge-muted,
+.badge-burgundy, .badge-next, .badge-live, .badge-equip,
+.tag-conviction, .tag-accent, .tag-neutral, .tag-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--lux-font-mono, 'DM Mono', monospace) !important;
+  font-size: 0.62rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 0.2rem 0.5rem !important;
+  border-radius: 2px !important;
+  line-height: 1.1 !important;
+  vertical-align: middle;
+}
+/* conviction — gold-filled (BEST BET, LOCK) */
+.tag-conviction,
+.badge-lock {
+  background: var(--lux-gold) !important;
+  color: var(--lux-navy) !important;
+  border: 1px solid var(--lux-gold) !important;
+  box-shadow: 0 1px 2px rgba(201,168,76,0.3) !important;
+}
+.badge-conviction {
+  background: var(--lux-navy) !important;
+  color: var(--lux-gold) !important;
+  border: 1px solid var(--lux-gold) !important;
+}
+/* accent — navy-outlined (ACTION BET, VALUE) */
+.tag-accent,
+.badge-value,
+.badge-strong-value,
+.badge-burgundy {
+  background: transparent !important;
+  color: var(--lux-navy) !important;
+  border: 1px solid var(--lux-gold) !important;
+}
+/* neutral — muted (UNDERLAY, PASS, MTP) */
+.tag-neutral,
+.badge-underlay,
+.badge-muted,
+.badge-equip {
+  background: rgba(10,22,40,0.06) !important;
+  color: var(--lux-ink-soft) !important;
+  border: 1px solid rgba(10,22,40,0.12) !important;
+}
+/* live — pulsing green */
+.tag-live,
+.badge-live,
+.badge-green,
+.badge-next {
+  background: #1B4332 !important;
+  color: #D8F3DC !important;
+  border: 1px solid rgba(201,168,76,0.3) !important;
+}
+.badge-gold {
+  background: var(--lux-gold) !important;
+  color: var(--lux-navy) !important;
+  border: 1px solid var(--lux-gold) !important;
+}
+.badge-scratch {
+  background: rgba(200,60,60,0.15) !important;
+  color: #8a2a2a !important;
+  border: 1px solid rgba(200,60,60,0.35) !important;
+  font-family: var(--lux-font-mono, 'DM Mono', monospace) !important;
+  font-size: 0.6rem !important;
+  padding: 0.15rem 0.4rem !important;
+  border-radius: 2px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+}
+
+/* ---- #5 ICONS — inline SVG helper ---- */
+.ico {
+  display: inline-block;
+  width: 1em; height: 1em;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ico-lg { width: 1.4em; height: 1.4em; }
+.ico-xl { width: 2em; height: 2em; }
+.ico-gold { color: var(--lux-gold); }
+.ico-navy { color: var(--lux-navy); }
+.ico-cream { color: var(--lux-cream); }
+
+/* Winner trophy SVG container */
+.winner-trophy svg { width: 5rem; height: 5rem; color: var(--lux-gold); }
+
+/* FAB item icon SVGs */
+.fab-item-icon svg { width: 1.15rem; height: 1.15rem; }
+
+/* ---- HERO TEXT LEGIBILITY — image-agnostic ----
+   Ensures title/eyebrow/subtitle read cleanly against ANY
+   background image (bright sky, busy pattern, etc.). Two
+   mechanisms stacked:
+   1. Localized soft radial wash behind the title block.
+   2. Multi-layer text-shadows on every text element.
+   Layered AFTER v2.4 bright-hero so it takes precedence. */
+.hero-title-luxury {
+  position: relative;
+  isolation: isolate;
+}
+.hero-title-luxury::before {
+  content: '';
+  position: absolute;
+  inset: -2rem -3rem;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(10,22,40,0.55) 0%,
+    rgba(10,22,40,0.40) 35%,
+    rgba(10,22,40,0.18) 65%,
+    rgba(10,22,40,0) 90%
+  );
+  z-index: -1;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(1.5px);
+  backdrop-filter: blur(1.5px);
+}
+.hero-title-luxury .hero-eyebrow {
+  color: var(--lux-gold) !important;
+  opacity: 1 !important;
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.85),
+    0 2px 12px rgba(0,0,0,0.65),
+    0 0 24px rgba(0,0,0,0.5) !important;
+}
+.hero-title-luxury .hero-title-main {
+  color: #F5E4A8 !important; /* slightly brighter gold for legibility */
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.9),
+    0 2px 8px rgba(0,0,0,0.75),
+    0 4px 24px rgba(0,0,0,0.55),
+    0 0 40px rgba(10,22,40,0.5) !important;
+}
+.hero-title-luxury .hero-title-sub {
+  color: #FFFFFF !important;
+  opacity: 1 !important;
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.9),
+    0 2px 10px rgba(0,0,0,0.7),
+    0 0 28px rgba(0,0,0,0.55) !important;
+}
+.hero-title-luxury .hero-tagline {
+  color: #FFFFFF !important;
+  opacity: 0.92 !important;
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.85),
+    0 2px 8px rgba(0,0,0,0.6) !important;
+}
+.hero-rule {
+  box-shadow: 0 0 10px rgba(0,0,0,0.5) !important;
+}
+/* Bump the global vignette slightly so bright spots in an image
+   can never fully blow out the text frame. */
+#hero-screen::before {
+  background:
+    linear-gradient(180deg,
+      rgba(10,22,40,0.15) 0%,
+      rgba(10,22,40,0.30) 40%,
+      rgba(10,22,40,0.50) 78%,
+      rgba(10,22,40,0.68) 100%),
+    radial-gradient(80% 95% at 50% 45%, transparent 0%, rgba(10,22,40,0.30) 100%) !important;
+}
+
+/* =========================================================
    END LUXURY THEME OVERLAY
    ========================================================= */
 </style>
@@ -4466,7 +4695,7 @@ html, body { overscroll-behavior: none; }
 <!-- Winner celebration overlay -->
 <div id="winner-overlay" onclick="dismissWinnerOverlay(event)">
   <div class="winner-confetti" id="winner-confetti"></div>
-  <div class="winner-trophy" id="winner-trophy">🏆</div>
+  <div class="winner-trophy" id="winner-trophy"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z"/><path d="M6 5H3v1a4 4 0 0 0 4 4"/><path d="M18 5h3v1a4 4 0 0 1-4 4"/><path d="M9 20h6"/><path d="M12 14v6"/></svg></div>
   <div class="winner-title">WINNER!</div>
   <div class="winner-horse" id="winner-horse-name"></div>
   <div class="winner-payout" id="winner-payout-text"></div>
@@ -5375,7 +5604,7 @@ html, body { overscroll-behavior: none; }
     <div class="fab-items" id="fab-items" aria-hidden="true">
       <button class="fab-item" onclick="luxFabAction('bestbet')" title="Jump to Best Bet">
         <span class="fab-item-label">Best Bet</span>
-        <span class="fab-item-icon">✪</span>
+        <span class="fab-item-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg></span>
       </button>
       <button class="fab-item" onclick="luxFabAction('betslip')" title="Open Bet Slip">
         <span class="fab-item-label">Bet Slip</span>
@@ -5383,7 +5612,7 @@ html, body { overscroll-behavior: none; }
       </button>
       <button class="fab-item" onclick="luxFabAction('settings')" title="Settings">
         <span class="fab-item-label">Settings</span>
-        <span class="fab-item-icon">⚙</span>
+        <span class="fab-item-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
       </button>
     </div>
     <button class="fab-main" id="fab-main" onclick="luxFabToggle()" aria-label="Open quick actions" aria-expanded="false">
@@ -5505,7 +5734,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.8)
+          Export Data (v2.9)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
