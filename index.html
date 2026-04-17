@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260416-1212';
+var NE_APP_VERSION = '20260417-0600-lux';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1127,7 +1127,7 @@ function neForceUpdate(newVersion) {
 
 
 </script>
-<meta name="theme-color" content="#1B4332">
+<meta name="theme-color" content="#0A1628">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Railbird AI">
@@ -1147,8 +1147,8 @@ function neForceUpdate(newVersion) {
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-paddock-bright.webp">
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-winners-circle.webp">
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-grandstand.webp">
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap"></noscript>
 <style>
 /* =========================================================
    CSS CUSTOM PROPERTIES
@@ -3419,6 +3419,870 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     scroll-behavior: auto !important;
   }
 }
+
+/* =========================================================
+   LUXURY THEME OVERLAY — Saratoga 2026 edition
+   Pure visual layer. No logic touched.
+   Palette: navy #0A1628, antique gold #C9A84C,
+            warm cream #F5F0E8, slate #2C3E50
+   Type:    Playfair Display / Crimson Pro / DM Mono
+   ========================================================= */
+:root {
+  --lux-navy: #0A1628;
+  --lux-navy-2: #0E1D33;
+  --lux-navy-3: #14253F;
+  --lux-slate: #2C3E50;
+  --lux-slate-2: #3A4E64;
+  --lux-gold: #C9A84C;
+  --lux-gold-soft: #B59538;
+  --lux-gold-muted: #9A7B2F;
+  --lux-gold-glow: rgba(201,168,76,0.35);
+  --lux-cream: #F5F0E8;
+  --lux-cream-2: #EFE7D8;
+  --lux-ink: #1A2536;
+  --lux-ink-soft: rgba(245,240,232,0.78);
+  --lux-ink-mute: rgba(245,240,232,0.55);
+  --lux-amber: #E0A043;
+  --lux-rose: #B8413A;
+  --lux-green: #6FA07A;
+  --lux-hairline: rgba(201,168,76,0.22);
+  --lux-hairline-2: rgba(245,240,232,0.10);
+  --lux-shadow: 0 20px 48px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.25);
+  --lux-font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --lux-font-body: 'Crimson Pro', Georgia, 'Times New Roman', serif;
+  --lux-font-mono: 'DM Mono', 'Courier New', monospace;
+  --font-display: var(--lux-font-display);
+  --font-body: var(--lux-font-body);
+  --font-mono: var(--lux-font-mono);
+  /* Re-map semantic tokens to the luxury palette so cascading styles inherit correctly */
+  --color-racing-green: var(--lux-navy);
+  --color-cream: var(--lux-cream);
+  --color-white: var(--lux-cream);
+  --color-gold: var(--lux-gold);
+  --color-gold-text: var(--lux-gold-soft);
+  --color-gold-light: rgba(201,168,76,0.18);
+  --color-burgundy: var(--lux-rose);
+  --color-burgundy-light: rgba(184,65,58,0.16);
+  --color-slate: var(--lux-slate);
+  --color-muted: rgba(44,62,80,0.72);
+  --color-positive: #3F7A57;
+  --color-negative: #B8413A;
+  --color-amber: var(--lux-amber);
+  --color-amber-light: rgba(224,160,67,0.15);
+  --color-emerald: #3F7A57;
+  --color-emerald-light: rgba(63,122,87,0.14);
+  --color-green-light: rgba(63,122,87,0.16);
+}
+
+/* Base surface — no white backgrounds */
+body {
+  font-family: var(--lux-font-body);
+  color: var(--lux-slate);
+  background:
+    radial-gradient(1200px 800px at 90% -5%, rgba(201,168,76,0.10), transparent 55%),
+    radial-gradient(900px 700px at -5% 95%, rgba(20,37,63,0.35), transparent 60%),
+    linear-gradient(180deg, var(--lux-cream) 0%, var(--lux-cream-2) 100%);
+  background-attachment: fixed;
+  font-size: 16.5px;
+  line-height: 1.55;
+}
+h1, h2, h3, .display { font-family: var(--lux-font-display); letter-spacing: 0.005em; }
+h3 { letter-spacing: 0.02em; }
+
+/* Headings in cards use Playfair; body copy uses Crimson Pro */
+p, .card-body, .card-section, .advice-rationale, .text-muted {
+  font-family: var(--lux-font-body);
+}
+.mono, .bankroll-banner .stat-val, .advice-score, .live-odds-status,
+.track-pill, .odds-cell, .mono-text {
+  font-family: var(--lux-font-mono);
+}
+
+/* =========================================================
+   HERO — full-bleed Saratoga, spaced gold title,
+   Crimson italic subhead, dark vignette
+   ========================================================= */
+#hero-screen::before {
+  background:
+    linear-gradient(180deg, rgba(10,22,40,0.25) 0%, rgba(10,22,40,0.45) 40%, rgba(10,22,40,0.70) 72%, rgba(10,22,40,0.88) 100%),
+    radial-gradient(60% 80% at 50% 35%, transparent 0%, rgba(10,22,40,0.35) 100%) !important;
+}
+#hero-screen-bg img { object-position: center 40%; }
+.hero-title-luxury { text-align: center; padding: 0 1.5rem; max-width: 640px; }
+.hero-eyebrow {
+  font-family: var(--lux-font-body); font-style: italic;
+  font-size: 0.95rem; letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--lux-gold); opacity: 0.85; margin-bottom: 0.9rem;
+}
+.hero-title-luxury .hero-title-main {
+  font-family: var(--lux-font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 9vw, 4.25rem);
+  letter-spacing: 0.22em;
+  color: var(--lux-gold);
+  text-shadow: 0 2px 24px rgba(0,0,0,0.55), 0 0 1px rgba(201,168,76,0.4);
+  line-height: 1.05;
+  margin: 0;
+}
+.hero-rule {
+  width: 72px; height: 1px; margin: 1.1rem auto 1rem;
+  background: linear-gradient(90deg, transparent, var(--lux-gold) 50%, transparent);
+  opacity: 0.85;
+}
+.hero-title-luxury .hero-title-sub {
+  font-family: var(--lux-font-body); font-style: italic;
+  font-weight: 400;
+  font-size: clamp(1.1rem, 3vw, 1.55rem);
+  color: var(--lux-cream); opacity: 0.94; letter-spacing: 0.01em;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.55);
+  margin: 0 0 0.6rem;
+}
+.hero-title-luxury .hero-tagline {
+  font-family: var(--lux-font-body);
+  font-size: 0.95rem; color: var(--lux-cream); opacity: 0.68;
+  letter-spacing: 0.04em;
+}
+.hero-enter-text { font-family: var(--lux-font-body); font-style: italic; letter-spacing: 0.15em; text-transform: uppercase; }
+
+/* =========================================================
+   TOP HEADER — navy with gold logo wordmark
+   ========================================================= */
+#top-header {
+  background: linear-gradient(180deg, var(--lux-navy) 0%, var(--lux-navy-2) 100%) !important;
+  border-bottom: 1px solid var(--lux-hairline);
+  box-shadow: 0 2px 14px rgba(10,22,40,0.30);
+  color: var(--lux-cream);
+}
+.header-logo-text {
+  font-family: var(--lux-font-display) !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase;
+  color: var(--lux-gold) !important;
+  font-size: 0.92rem !important;
+  font-weight: 600;
+}
+#top-header .icon-btn { color: var(--lux-cream); }
+#top-header .icon-btn:hover { color: var(--lux-gold); }
+#top-header .sync-info { color: var(--lux-ink-mute); font-family: var(--lux-font-mono); font-size: 0.68rem; letter-spacing: 0.05em; }
+#top-header .track-pill {
+  background: rgba(201,168,76,0.12);
+  border: 1px solid var(--lux-hairline);
+  color: var(--lux-gold);
+  font-family: var(--lux-font-mono);
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+#top-header .live-odds-status {
+  background: rgba(201,168,76,0.10);
+  border: 1px solid var(--lux-hairline);
+  color: var(--lux-gold);
+  letter-spacing: 0.08em;
+}
+#top-header .live-odds-status.off { color: var(--lux-ink-mute); border-color: var(--lux-hairline-2); background: rgba(245,240,232,0.05); }
+#top-header .live-odds-status.on  { color: var(--lux-gold); border-color: var(--lux-hairline); }
+
+/* Hide the old desktop nav — replaced by chip bar */
+#desktop-nav { display: none !important; }
+
+/* =========================================================
+   CHIP NAV — sticky horizontal nav chips, zurich-weekend style
+   ========================================================= */
+.chip-nav {
+  position: sticky;
+  top: var(--header-height, 56px);
+  z-index: 40;
+  background: linear-gradient(180deg, var(--lux-navy) 0%, var(--lux-navy-2) 100%);
+  border-bottom: 1px solid var(--lux-hairline);
+  box-shadow: 0 8px 18px -12px rgba(10,22,40,0.45);
+}
+.chip-nav-inner {
+  display: flex;
+  gap: 0.25rem;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0.55rem 0.85rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.chip-nav-inner::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto;
+  position: relative;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--lux-ink-soft);
+  font-family: var(--lux-font-display);
+  font-size: 0.98rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.55rem 0.95rem 0.6rem;
+  border-radius: 0;
+  cursor: pointer;
+  transition: color 0.18s ease;
+}
+.chip:hover { color: var(--lux-cream); }
+.chip::after {
+  content: '';
+  position: absolute;
+  left: 0.95rem; right: 0.95rem; bottom: 0.25rem;
+  height: 1px;
+  background: var(--lux-gold);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.28s cubic-bezier(.2,.7,.2,1);
+}
+.chip.active { color: var(--lux-gold); }
+.chip.active::after { transform: scaleX(1); }
+
+/* =========================================================
+   APP SURFACES — panels use cream text panels over navy-tinged base
+   ========================================================= */
+.tab-panel { padding-top: 1.25rem; }
+
+.card, .section-block, .rec-bets-card, .bet-slip-item, .exotic-bet-card,
+.advice-panel, .bankroll-card, .pnl-panel, .race-card-wrap,
+.top-picks-card, #settings-modal .settings-sheet {
+  background: var(--lux-cream) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 2px 14px rgba(10,22,40,0.08), 0 1px 2px rgba(10,22,40,0.06) !important;
+}
+.card + .card { margin-top: 1.1rem; }
+
+.card-header {
+  background: linear-gradient(180deg, var(--lux-navy) 0%, var(--lux-navy-2) 100%) !important;
+  border-bottom: 1px solid var(--lux-hairline) !important;
+  color: var(--lux-cream);
+  padding: 0.85rem 1rem !important;
+}
+.card-header h3, .card-header h2 {
+  font-family: var(--lux-font-display) !important;
+  color: var(--lux-gold) !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+}
+.card-section + .card-section { border-top: 1px solid var(--lux-hairline); }
+.card-body, .card-section { color: var(--lux-slate); }
+
+/* Buttons — no rounded pills, squared with gold rule */
+.btn {
+  border-radius: 2px !important;
+  font-family: var(--lux-font-display);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.btn-primary {
+  background: var(--lux-navy) !important;
+  color: var(--lux-gold) !important;
+  border: 1px solid var(--lux-gold) !important;
+}
+.btn-primary:hover { background: var(--lux-navy-3) !important; color: var(--lux-cream) !important; }
+.btn-gold {
+  background: var(--lux-gold) !important;
+  color: var(--lux-navy) !important;
+  border: 1px solid var(--lux-gold) !important;
+}
+.btn-gold:hover { background: var(--lux-gold-soft) !important; color: var(--lux-navy) !important; }
+.btn-outline {
+  background: transparent !important;
+  color: var(--lux-navy) !important;
+  border: 1px solid var(--lux-navy) !important;
+}
+.btn-outline:hover { background: var(--lux-navy) !important; color: var(--lux-gold) !important; }
+.btn-ghost { background: rgba(10,22,40,0.06) !important; color: var(--lux-slate) !important; border: 1px solid transparent; }
+.btn-ghost:hover { background: rgba(10,22,40,0.10) !important; }
+.btn-burgundy { background: var(--lux-rose) !important; color: var(--lux-cream) !important; border: 1px solid var(--lux-rose) !important; }
+.btn-sm, .btn-xs { border-radius: 2px !important; }
+
+/* Kill app-store-style pill buttons everywhere */
+.mode-pill { border-radius: 2px !important; font-family: var(--lux-font-display); letter-spacing: 0.14em; text-transform: uppercase; }
+
+/* =========================================================
+   RACE CARD — navy surface, gold race badge, DM Mono post time
+   ========================================================= */
+.race-card-wrap {
+  background: var(--lux-cream) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  border-left: 3px solid transparent !important;
+  border-radius: 2px !important;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.race-card-wrap.race-active,
+.race-card-wrap.lux-top-rated {
+  border-left: 3px solid var(--lux-gold) !important;
+  box-shadow: 0 2px 18px rgba(10,22,40,0.10), inset 0 0 0 1px rgba(201,168,76,0.10) !important;
+}
+.race-card-header {
+  background: linear-gradient(180deg, var(--lux-navy) 0%, var(--lux-navy-2) 100%) !important;
+  color: var(--lux-cream) !important;
+  border-bottom: 1px solid var(--lux-hairline) !important;
+  padding: 0.75rem 0.85rem !important;
+}
+.race-card-header .race-num,
+.race-card-header .race-number,
+.race-number-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 38px; height: 38px;
+  padding: 0 8px;
+  background: var(--lux-gold) !important;
+  color: var(--lux-navy) !important;
+  font-family: var(--lux-font-display) !important;
+  font-weight: 700;
+  font-size: 0.98rem;
+  letter-spacing: 0.04em;
+  border-radius: 2px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+}
+.race-card-header .post-time,
+.race-card-header .race-time,
+.race-post-time {
+  font-family: var(--lux-font-mono) !important;
+  letter-spacing: 0.06em;
+  color: var(--lux-cream);
+}
+.race-card-header .race-meta,
+.race-card-header .surface,
+.race-card-header .distance,
+.race-card-header .surf-dist {
+  font-family: var(--lux-font-body) !important;
+  font-style: italic;
+  color: var(--lux-ink-soft);
+  letter-spacing: 0.02em;
+}
+.race-card-header h3, .race-card-header h4 {
+  font-family: var(--lux-font-display) !important;
+  color: var(--lux-gold) !important;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+/* Horse rows / advice grades */
+.advice-horse-name { font-family: var(--lux-font-display); font-weight: 600; letter-spacing: 0.01em; font-size: 0.98rem; color: var(--lux-ink); }
+.advice-rationale {
+  font-family: var(--lux-font-body);
+  font-style: italic;
+  font-size: 0.88rem;
+  color: var(--lux-slate-2);
+  line-height: 1.4;
+}
+.advice-score { font-family: var(--lux-font-mono); color: var(--lux-gold-muted); letter-spacing: 0.04em; }
+
+/* Grade badge — letter hero, gold for A+/A */
+.advice-grade {
+  font-family: var(--lux-font-display) !important;
+  font-weight: 700 !important;
+  font-size: 1.1rem !important;
+  width: 40px !important; height: 40px !important;
+  border-radius: 2px !important;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.12);
+}
+.grade-a-plus {
+  background: linear-gradient(180deg, var(--lux-gold) 0%, var(--lux-gold-soft) 100%) !important;
+  color: var(--lux-navy) !important;
+  border: 1px solid rgba(10,22,40,0.35) !important;
+  box-shadow: 0 0 0 2px rgba(201,168,76,0.25), 0 0 14px rgba(201,168,76,0.35) !important;
+  animation: luxGradeGlow 3.8s ease-in-out infinite;
+}
+.grade-a {
+  background: rgba(201,168,76,0.22) !important;
+  color: var(--lux-gold-muted) !important;
+  border: 1px solid rgba(201,168,76,0.55) !important;
+}
+.grade-b-plus {
+  background: var(--lux-slate) !important;
+  color: var(--lux-cream) !important;
+  border: 1px solid rgba(44,62,80,0.6) !important;
+}
+.grade-b {
+  background: rgba(44,62,80,0.18) !important;
+  color: var(--lux-slate) !important;
+  border: 1px solid rgba(44,62,80,0.3) !important;
+}
+.grade-c {
+  background: rgba(44,62,80,0.10) !important;
+  color: rgba(44,62,80,0.78) !important;
+  border: 1px solid rgba(44,62,80,0.18) !important;
+}
+.grade-d {
+  background: rgba(184,65,58,0.14) !important;
+  color: var(--lux-rose) !important;
+  border: 1px solid rgba(184,65,58,0.35) !important;
+}
+@keyframes luxGradeGlow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(201,168,76,0.22), 0 0 12px rgba(201,168,76,0.30); }
+  50%      { box-shadow: 0 0 0 2px rgba(201,168,76,0.38), 0 0 22px rgba(201,168,76,0.55); }
+}
+
+/* Confidence tier tag (if present as .conf-tag or generated) */
+.conf-tag, .confidence-tag, .confidence-tier {
+  display: inline-block;
+  font-family: var(--lux-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid var(--lux-hairline);
+  color: var(--lux-gold-muted);
+  background: rgba(201,168,76,0.08);
+}
+
+/* =========================================================
+   TODAY'S BEST BET CALLOUT
+   ========================================================= */
+.best-bet-callout {
+  background:
+    linear-gradient(135deg, var(--lux-navy) 0%, var(--lux-navy-3) 100%);
+  border: 1px solid var(--lux-hairline);
+  border-radius: 2px;
+  padding: 1.25rem 1.15rem 1.35rem;
+  margin: 0 0 1.1rem;
+  color: var(--lux-cream);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(10,22,40,0.18);
+}
+.best-bet-callout::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--lux-gold) 30%, var(--lux-gold) 70%, transparent);
+}
+.best-bet-callout::after {
+  content: ''; position: absolute; inset: auto 0 0 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lux-hairline), transparent);
+}
+.best-bet-eyebrow {
+  font-family: var(--lux-font-body); font-style: italic;
+  letter-spacing: 0.26em; text-transform: uppercase;
+  color: var(--lux-gold); font-size: 0.72rem; margin-bottom: 0.35rem;
+}
+.best-bet-title {
+  font-family: var(--lux-font-display);
+  font-size: clamp(1.75rem, 6vw, 2.35rem);
+  color: var(--lux-gold); letter-spacing: 0.08em;
+  margin: 0 0 0.7rem;
+  font-weight: 700;
+}
+.best-bet-rule {
+  width: 48px; height: 1px; background: var(--lux-gold); opacity: 0.8; margin-bottom: 0.85rem;
+}
+.best-bet-meta {
+  display: flex; align-items: center; gap: 0.7rem;
+  margin-bottom: 0.35rem;
+}
+.best-bet-race {
+  font-family: var(--lux-font-mono); font-size: 0.78rem;
+  letter-spacing: 0.08em; color: var(--lux-gold);
+  border: 1px solid var(--lux-hairline); padding: 2px 7px; border-radius: 2px;
+  background: rgba(201,168,76,0.10);
+}
+.best-bet-grade {
+  font-family: var(--lux-font-display); font-weight: 700;
+  font-size: 1rem; letter-spacing: 0.04em;
+  color: var(--lux-navy);
+  background: var(--lux-gold);
+  padding: 3px 10px; border-radius: 2px;
+}
+.best-bet-horse {
+  font-family: var(--lux-font-display);
+  font-size: clamp(1.25rem, 4.5vw, 1.7rem);
+  color: var(--lux-cream); letter-spacing: 0.02em;
+  font-weight: 600;
+  margin: 0.15rem 0 0.5rem;
+}
+.best-bet-rationale {
+  font-family: var(--lux-font-body); font-style: italic;
+  font-size: 1rem; color: var(--lux-ink-soft); line-height: 1.45;
+  margin: 0;
+}
+
+/* =========================================================
+   BET SLIP — printed ticket aesthetic
+   ========================================================= */
+.bet-slip-item {
+  background: var(--lux-cream) !important;
+  border: 1px solid var(--lux-navy) !important;
+  border-left-width: 4px !important;
+  border-left-color: var(--lux-navy) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 1px 0 rgba(10,22,40,0.10), 0 6px 18px rgba(10,22,40,0.07) !important;
+  position: relative;
+  padding: 0.85rem 1rem !important;
+}
+.bet-slip-item::before {
+  content: '';
+  position: absolute; left: -5px; top: 50%; transform: translateY(-50%);
+  width: 8px; height: 8px;
+  background: var(--lux-cream);
+  border: 1px solid var(--lux-navy);
+  border-radius: 50%;
+}
+.bet-slip-item::after {
+  content: '';
+  position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+  width: 8px; height: 8px;
+  background: var(--lux-cream);
+  border: 1px solid var(--lux-navy);
+  border-radius: 50%;
+}
+.bet-slip-item.locked,
+.bet-slip-item[data-locked="true"],
+.bet-slip-item.is-locked {
+  border-left-color: var(--lux-gold) !important;
+  box-shadow: 0 0 0 1px var(--lux-gold), 0 6px 18px rgba(201,168,76,0.18) !important;
+}
+.bet-slip-item .bet-slip-label {
+  font-family: var(--lux-font-mono) !important;
+  letter-spacing: 0.12em !important;
+  color: var(--lux-gold-muted) !important;
+  font-size: 0.7rem !important;
+}
+.bet-slip-item .bet-slip-horse {
+  font-family: var(--lux-font-display) !important;
+  font-weight: 600;
+  color: var(--lux-ink);
+}
+.bet-slip-item .bet-amount,
+.bet-slip-item .bet-odds,
+.bet-slip-item .bet-payout,
+.bet-slip-item .race-num {
+  font-family: var(--lux-font-mono) !important;
+  letter-spacing: 0.04em;
+}
+
+/* Bet-lock flash (triggered by JS adding .just-locked) */
+.bet-slip-item.just-locked { animation: luxLockFlash 0.9s ease-out 1; }
+@keyframes luxLockFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(201,168,76,0.0), 0 6px 18px rgba(10,22,40,0.07); }
+  30%  { box-shadow: 0 0 0 4px rgba(201,168,76,0.45), 0 6px 18px rgba(201,168,76,0.28); }
+  100% { box-shadow: 0 0 0 1px var(--lux-gold), 0 6px 18px rgba(201,168,76,0.18); }
+}
+
+/* =========================================================
+   BANKROLL STRIP — horizontal dashboard, DM Mono gold
+   ========================================================= */
+.bankroll-banner {
+  background: linear-gradient(180deg, var(--lux-navy) 0%, var(--lux-navy-2) 100%) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  border-radius: 2px !important;
+  padding: 0.85rem 1rem !important;
+  color: var(--lux-cream);
+  position: relative;
+}
+.bankroll-banner::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lux-gold), transparent);
+  opacity: 0.55;
+}
+.bankroll-banner .stat-label {
+  font-family: var(--lux-font-body) !important;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.14em !important;
+  color: var(--lux-ink-soft) !important;
+  font-size: 0.72rem !important;
+  font-style: italic;
+}
+.bankroll-banner .stat-val {
+  font-family: var(--lux-font-mono) !important;
+  color: var(--lux-gold) !important;
+  font-size: 1.05rem !important;
+  letter-spacing: 0.03em;
+  font-weight: 500 !important;
+}
+.bankroll-banner .stat-val.warn { color: var(--lux-amber) !important; }
+.bankroll-banner .stat-val.positive { color: var(--lux-gold) !important; }
+.bankroll-banner .stat-val.negative, .bankroll-banner .stat-val.danger { color: var(--lux-rose) !important; }
+.bankroll-grid .bankroll-stat {
+  background: var(--lux-cream) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  border-radius: 2px !important;
+  padding: 0.7rem 0.85rem !important;
+}
+.bankroll-grid .bankroll-stat .stat-label {
+  font-family: var(--lux-font-body) !important;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.12em !important;
+  color: var(--lux-slate-2) !important;
+  font-style: italic;
+}
+.bankroll-grid .bankroll-stat .stat-value {
+  font-family: var(--lux-font-mono) !important;
+  color: var(--lux-gold-muted) !important;
+  font-weight: 600 !important;
+}
+
+/* =========================================================
+   RESULTS / P&L — navy chart background, gold line, DM Mono axes
+   ========================================================= */
+.pnl-panel, .sparkline-panel, #pnl-sparkline-wrap, .pnl-chart-wrap {
+  background: var(--lux-navy) !important;
+  color: var(--lux-cream) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  border-radius: 2px !important;
+}
+.pnl-panel svg line, .sparkline-panel svg line { stroke: var(--lux-hairline-2); }
+.pnl-panel svg path, .sparkline-panel svg path { stroke: var(--lux-gold); }
+.pnl-panel svg text, .sparkline-panel svg text,
+.pnl-axis, .chart-axis text { fill: var(--lux-ink-mute); font-family: var(--lux-font-mono); letter-spacing: 0.04em; }
+
+.roi-headline, .total-roi, #total-roi, .pnl-headline {
+  font-family: var(--lux-font-display) !important;
+  color: var(--lux-gold) !important;
+  letter-spacing: 0.03em;
+  font-weight: 700 !important;
+}
+
+/* Convert any green/red filled result cells into subtle tick/dash accents */
+.result-win, .result-cell.win, .bet-result-win { color: var(--lux-green) !important; }
+.result-loss, .result-cell.loss, .bet-result-loss { color: var(--lux-rose) !important; }
+
+/* =========================================================
+   FOOTER + tab bar (navy)
+   ========================================================= */
+#app-footer {
+  background: linear-gradient(180deg, var(--lux-navy-2) 0%, var(--lux-navy) 100%) !important;
+  color: var(--lux-ink-soft) !important;
+  font-family: var(--lux-font-body) !important;
+  font-style: italic;
+  font-size: 0.82rem;
+  border-top: 1px solid var(--lux-hairline);
+  padding: 1.25rem 1.15rem 1.5rem;
+  letter-spacing: 0.01em;
+}
+#bottom-tab-bar {
+  background: linear-gradient(180deg, var(--lux-navy-2) 0%, var(--lux-navy) 100%) !important;
+  border-top: 1px solid var(--lux-hairline) !important;
+  color: var(--lux-cream);
+}
+#bottom-tab-bar .tab-btn { color: var(--lux-ink-mute); font-family: var(--lux-font-display); letter-spacing: 0.1em; text-transform: uppercase; }
+#bottom-tab-bar .tab-btn span:not(.tab-badge) { font-size: 0.7rem; }
+#bottom-tab-bar .tab-btn.active { color: var(--lux-gold); }
+#bottom-tab-bar .tab-btn.active::before {
+  content: ''; position: absolute; top: 0; left: 15%; right: 15%; height: 1px;
+  background: var(--lux-gold);
+}
+
+/* Settings sheet type tune-up */
+#settings-modal .settings-sheet h2, #settings-modal .settings-sheet h3 {
+  font-family: var(--lux-font-display); color: var(--lux-navy); letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+/* =========================================================
+   FLOATING UTILITY MENU
+   ========================================================= */
+.fab-menu {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(var(--tab-bar-height, 64px) + env(safe-area-inset-bottom, 0px) + 0.9rem);
+  z-index: 70;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;
+  pointer-events: none;
+}
+.fab-menu > * { pointer-events: auto; }
+.fab-main {
+  width: 54px; height: 54px; border-radius: 50%;
+  background: var(--lux-gold);
+  color: var(--lux-navy);
+  border: 1px solid rgba(10,22,40,0.25);
+  box-shadow: 0 10px 22px rgba(10,22,40,0.35), 0 0 0 4px rgba(201,168,76,0.18);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--lux-font-display);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.25s ease, background 0.2s ease;
+}
+.fab-main:hover { background: var(--lux-gold-soft); }
+.fab-main:active { transform: translateY(1px); }
+.fab-menu.open .fab-main { transform: rotate(45deg); }
+.fab-items {
+  display: flex; flex-direction: column; gap: 0.4rem;
+  opacity: 0; transform: translateY(6px) scale(0.96);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+.fab-menu.open .fab-items { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.fab-item {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  background: var(--lux-navy);
+  color: var(--lux-cream);
+  border: 1px solid var(--lux-hairline);
+  border-radius: 2px;
+  padding: 0.5rem 0.7rem 0.5rem 0.85rem;
+  font-family: var(--lux-font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 18px rgba(10,22,40,0.35);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.fab-item:hover { color: var(--lux-gold); background: var(--lux-navy-3); }
+.fab-item-icon {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--lux-gold); color: var(--lux-navy);
+  font-family: var(--lux-font-display); font-weight: 700; font-size: 0.85rem;
+}
+.fab-item-label { line-height: 1; }
+
+/* =========================================================
+   WINNER BANNER (full-width gold-on-navy)
+   ========================================================= */
+.lux-winner-banner {
+  position: fixed;
+  left: 0; right: 0;
+  top: calc(var(--header-height, 56px) + 46px);
+  z-index: 1200;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.lux-winner-banner.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.lux-winner-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  background:
+    linear-gradient(90deg, var(--lux-navy) 0%, var(--lux-navy-3) 50%, var(--lux-navy) 100%);
+  border-top: 1px solid var(--lux-gold);
+  border-bottom: 1px solid var(--lux-gold);
+  box-shadow: 0 12px 28px rgba(10,22,40,0.45);
+  padding: 0.75rem 1.1rem;
+  display: flex; align-items: center; gap: 0.9rem;
+}
+.lux-winner-kicker {
+  font-family: var(--lux-font-body); font-style: italic;
+  color: var(--lux-gold); letter-spacing: 0.22em; text-transform: uppercase;
+  font-size: 0.72rem;
+}
+.lux-winner-title {
+  font-family: var(--lux-font-display);
+  color: var(--lux-gold);
+  letter-spacing: 0.32em;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.lux-winner-meta {
+  font-family: var(--lux-font-body); font-style: italic;
+  color: var(--lux-cream); opacity: 0.9;
+  font-size: 0.95rem;
+  margin-left: auto;
+  letter-spacing: 0.02em;
+}
+
+/* =========================================================
+   Micro-adjustments — round pill killers, misc text panels
+   ========================================================= */
+.pill, .chip-pill, .status-pill, .sim-mode-banner, .banner, .rec-bet-item,
+.advice-panel-row, .toast, .exotic-bet-card, .betting-mode-toggle,
+.quick-pick-btn, .follow-picks-btn, .suggested-bet-chip {
+  border-radius: 2px !important;
+}
+.suggested-bet-chip {
+  background: rgba(201,168,76,0.12) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  color: var(--lux-gold-muted) !important;
+  font-family: var(--lux-font-mono) !important;
+  letter-spacing: 0.06em;
+}
+.sim-mode-banner, .banner {
+  background: rgba(201,168,76,0.08) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  color: var(--lux-slate) !important;
+  font-family: var(--lux-font-body);
+  font-style: italic;
+}
+.banner-warning { border-color: rgba(224,160,67,0.45) !important; background: rgba(224,160,67,0.10) !important; }
+.banner-info { border-color: var(--lux-hairline) !important; background: rgba(201,168,76,0.08) !important; }
+.quick-pick-btn, .follow-picks-btn {
+  background: var(--lux-navy) !important;
+  color: var(--lux-gold) !important;
+  border: 1px solid var(--lux-gold) !important;
+  font-family: var(--lux-font-display) !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Tap state for chips — subtle gold background */
+.chip:active { background: rgba(201,168,76,0.06); }
+
+/* Ensure the chip-nav doesn't collide with tab content padding on mobile */
+@media (max-width: 600px) {
+  .chip { font-size: 0.88rem; padding: 0.5rem 0.8rem; letter-spacing: 0.10em; }
+  .chip-nav-inner { padding: 0.5rem 0.75rem; }
+}
+
+/* Hero vignette override wins over green overlay */
+#hero-screen::before { mix-blend-mode: normal; }
+
+/* P&L hero — navy gradient, gold mono value, Playfair label */
+.todays-pnl-hero {
+  background: linear-gradient(135deg, var(--lux-navy) 0%, var(--lux-navy-3) 100%) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  border-radius: 2px !important;
+  color: var(--lux-cream) !important;
+  position: relative;
+}
+.todays-pnl-hero::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lux-gold), transparent);
+}
+.pnl-hero-label {
+  font-family: var(--lux-font-body) !important;
+  font-style: italic; font-variant-caps: small-caps;
+  color: var(--lux-gold) !important; opacity: 1 !important;
+  letter-spacing: 0.22em !important; font-weight: 500 !important;
+}
+.pnl-hero-value {
+  font-family: var(--lux-font-display) !important;
+  font-weight: 700 !important;
+  color: var(--lux-gold) !important;
+  letter-spacing: 0.02em !important;
+}
+.pnl-hero-value.pnl-positive { color: var(--lux-gold) !important; }
+.pnl-hero-value.pnl-negative { color: var(--lux-rose) !important; }
+.pnl-hero-value.pnl-zero { color: var(--lux-ink-soft) !important; }
+.pnl-hero-sub {
+  font-family: var(--lux-font-body) !important; font-style: italic;
+  color: var(--lux-ink-soft) !important;
+}
+
+/* Results segmented filters — square off pills */
+.segment-pills, .filter-pills, .toggle-group, .segmented, .bet-type-filters,
+.track-filter-segment, .results-filter {
+  border-radius: 2px !important;
+}
+.segment-pills > *, .filter-pills > *, .toggle-group > *, .segmented > *,
+.bet-type-filters > *, .track-filter-segment > *, .results-filter > * {
+  border-radius: 2px !important;
+  font-family: var(--lux-font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Keep closed drawer fully invisible (prevents peek over hero screen) */
+#track-drawer:not(.open) { visibility: hidden; }
+#track-drawer.open { visibility: visible; }
+#track-drawer {
+  background: var(--lux-cream) !important;
+  border: 1px solid var(--lux-hairline) !important;
+  color: var(--lux-slate);
+}
+
+/* =========================================================
+   END LUXURY THEME OVERLAY
+   ========================================================= */
 </style>
 </head>
 <body>
@@ -3474,10 +4338,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     <img id="hero-bg-img" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBVt7Q5UBy7D5eaG0052x/Oe/oKoK8ysIjMRJwwVkHWrK38sUIZXEkfOexGKcarQpUkyRtKkDEZU496KlW58xQyxoQe+7rRVe2aF7JGbJF5snzOxHqeTQ0S5KkvtYcbF4Prx+dTCfylGQTzTmuXIwPlPsK4OZmtyskICgOkuR6UUr3ALHO7NFVzSFc//9k=" alt="Saratoga Race Course" style="filter:blur(20px);transform:scale(1.1);transition:filter 0.4s ease,transform 0.4s ease;">
   </div>
 
-  <div class="hero-title-block">
-    <h1 class="hero-title-main">Saratoga Racing</h1>
-    <p class="hero-title-sub">Companion 2026</p>
-    <p class="hero-tagline">Your personal handicapping &amp; bet tracking tool</p>
+  <div class="hero-title-block hero-title-luxury">
+    <div class="hero-eyebrow">The Spa</div>
+    <h1 class="hero-title-main">SARATOGA 2026</h1>
+    <div class="hero-rule"></div>
+    <p class="hero-title-sub">Your Private Handicapping Companion</p>
+    <p class="hero-tagline">Live entries, advice engine, bankroll &amp; bets — all in one program</p>
   </div>
 
   <!-- Add to Home Screen banner (platform-detected, dismissible) -->
@@ -3550,6 +4416,17 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     </div>
   </header>
 
+  <!-- LUXURY CHIP NAV (sticky horizontal chip bar, drives tab switching + scrollspy) -->
+  <nav id="chip-nav" class="chip-nav" role="navigation" aria-label="Section navigation">
+    <div class="chip-nav-inner">
+      <button class="chip active" data-tab="today" onclick="switchTab('today')">Today</button>
+      <button class="chip" data-tab="bets" onclick="switchTab('bets')">Bets</button>
+      <button class="chip" data-tab="handicap" onclick="switchTab('handicap')">Handicap</button>
+      <button class="chip" data-tab="results" onclick="switchTab('results')">Results</button>
+      <button class="chip" data-tab="reference" onclick="switchTab('reference')">Program</button>
+    </div>
+  </nav>
+
   <!-- TRACK TOGGLE (SAR / AQU) -->
   <div id="track-drawer" role="dialog" aria-label="Track selector">
     <div class="sar-aqu-drawer">
@@ -3588,6 +4465,21 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
         </div>
         <div class="date-strip" id="date-strip"></div>
       </div>
+
+      <!-- LUXURY: Today's Best Bet callout (populated by JS from advice engine) -->
+      <section id="best-bet-callout" class="best-bet-callout hidden" aria-label="Today's Best Bet">
+        <div class="best-bet-eyebrow">Today’s Best Bet</div>
+        <h2 class="best-bet-title">The Play</h2>
+        <div class="best-bet-rule"></div>
+        <div class="best-bet-body">
+          <div class="best-bet-meta">
+            <span class="best-bet-race" id="best-bet-race">—</span>
+            <span class="best-bet-grade" id="best-bet-grade">—</span>
+          </div>
+          <div class="best-bet-horse" id="best-bet-horse">Awaiting today’s card</div>
+          <p class="best-bet-rationale" id="best-bet-rationale">The advice engine will surface the single highest-conviction play once today’s entries and scores are in.</p>
+        </div>
+      </section>
 
       <!-- Today's Ticket Card -->
       <div id="rec-bets-card" class="rec-bets-card hidden">
@@ -4338,6 +5230,36 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
     </section>
 
   </main><!-- end main-content -->
+
+  <!-- LUXURY: Floating Utility Menu -->
+  <div id="fab-menu" class="fab-menu" aria-label="Quick actions">
+    <div class="fab-items" id="fab-items" aria-hidden="true">
+      <button class="fab-item" onclick="luxFabAction('bestbet')" title="Jump to Best Bet">
+        <span class="fab-item-label">Best Bet</span>
+        <span class="fab-item-icon">✪</span>
+      </button>
+      <button class="fab-item" onclick="luxFabAction('betslip')" title="Open Bet Slip">
+        <span class="fab-item-label">Bet Slip</span>
+        <span class="fab-item-icon">▧</span>
+      </button>
+      <button class="fab-item" onclick="luxFabAction('settings')" title="Settings">
+        <span class="fab-item-label">Settings</span>
+        <span class="fab-item-icon">⚙</span>
+      </button>
+    </div>
+    <button class="fab-main" id="fab-main" onclick="luxFabToggle()" aria-label="Open quick actions" aria-expanded="false">
+      <span class="fab-main-icon">+</span>
+    </button>
+  </div>
+
+  <!-- LUXURY: Winner banner (upgraded celebration) -->
+  <div id="lux-winner-banner" class="lux-winner-banner" role="status" aria-live="polite">
+    <div class="lux-winner-inner">
+      <span class="lux-winner-kicker">The Wire</span>
+      <span class="lux-winner-title">WINNER</span>
+      <span class="lux-winner-meta" id="lux-winner-meta"></span>
+    </div>
+  </div>
 
   <!-- FOOTER DISCLAIMER -->
   <footer id="app-footer">
@@ -9875,5 +10797,222 @@ document.addEventListener('keydown', e => {
     <div class="wizard-body" id="wizard-body"></div>
   </div>
 </div>
+<!-- =========================================================
+     LUXURY OVERLAY — Additive JS
+     Purely visual: chip scrollspy, Best Bet callout population,
+     FAB menu, winner banner upgrade, top-rated race marking.
+     ========================================================= -->
+<script>
+(function(){
+  'use strict';
+  var LUX = { fabOpen: false, bestBetObserver: null };
+
+  // --- Chip nav syncs with tabs ------------------------------------------
+  function setActiveChip(tabName) {
+    var chips = document.querySelectorAll('#chip-nav .chip');
+    chips.forEach(function(c){
+      c.classList.toggle('active', c.getAttribute('data-tab') === tabName);
+    });
+  }
+
+  // Wrap switchTab without touching the original body
+  if (typeof window.switchTab === 'function' && !window._luxSwitchWrapped) {
+    var orig = window.switchTab;
+    window.switchTab = function(name){
+      var r = orig.apply(this, arguments);
+      try { setActiveChip(name); } catch(e){}
+      try { populateLuxBestBet(); } catch(e){}
+      try { markTopRatedRaceCards(); } catch(e){}
+      return r;
+    };
+    window._luxSwitchWrapped = true;
+  }
+
+  // --- Best Bet callout --------------------------------------------------
+  // Reads the stored ticket picks the advice engine writes to localStorage
+  function getStoredBestBet() {
+    try {
+      var store = (typeof getStore === 'function') ? getStore() : null;
+      var code = (typeof getActiveTrack === 'function') ? getActiveTrack() : (store && store.settings && store.settings.activeTrack) || 'SAR';
+      var date = (typeof loadedRaceDate !== 'undefined' && loadedRaceDate) ? loadedRaceDate
+               : (typeof getTodayStr === 'function' ? getTodayStr() : new Date().toISOString().slice(0,10));
+      var key = 'ne-racing-ticket-' + code + '-' + date;
+      var raw = localStorage.getItem(key);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      return parsed && parsed.bestBet ? parsed : null;
+    } catch(e){ return null; }
+  }
+
+  function gradeFromScore(score){
+    if (score == null) return '—';
+    if (score >= 90) return 'A+';
+    if (score >= 82) return 'A';
+    if (score >= 74) return 'B+';
+    if (score >= 66) return 'B';
+    if (score >= 58) return 'C';
+    return 'D';
+  }
+
+  function buildRationaleFor(bb) {
+    // Mirror the conviction language used by the advice engine without
+    // calling into it. Keep it short — this is the "private handicapper voice."
+    var s = bb.score != null ? Math.round(bb.score) : null;
+    if (s == null) return 'Top-rated play on today’s card.';
+    if (s >= 90) return 'Highest conviction play on the card — numbers, form and class all point the same way.';
+    if (s >= 82) return 'Strong figure off a sharp work tab; clear edge over the field at today’s shape.';
+    if (s >= 74) return 'Plays a notch above par today — the right pace setup and a live connections combo.';
+    return 'Top-rated horse in the race based on the advice engine’s weighted scoring.';
+  }
+
+  function populateLuxBestBet(){
+    var callout = document.getElementById('best-bet-callout');
+    if (!callout) return;
+    var data = getStoredBestBet();
+    var elRace  = document.getElementById('best-bet-race');
+    var elGrade = document.getElementById('best-bet-grade');
+    var elHorse = document.getElementById('best-bet-horse');
+    var elRat   = document.getElementById('best-bet-rationale');
+
+    if (!data || !data.bestBet) {
+      callout.classList.add('hidden');
+      return;
+    }
+    var bb = data.bestBet;
+    var grade = gradeFromScore(bb.score);
+    if (elRace)  elRace.textContent = 'R' + bb.race + (bb.pp ? ' · #' + bb.pp : '');
+    if (elGrade) elGrade.textContent = grade;
+    if (elHorse) elHorse.textContent = (bb.name || '').toUpperCase();
+    if (elRat)   elRat.textContent   = buildRationaleFor(bb);
+    callout.classList.remove('hidden');
+  }
+
+  // --- Top-rated race card marking --------------------------------------
+  // The value play + best bet races get a subtle gold left border.
+  function markTopRatedRaceCards(){
+    try {
+      document.querySelectorAll('.race-card-wrap.lux-top-rated').forEach(function(n){ n.classList.remove('lux-top-rated'); });
+      var data = getStoredBestBet();
+      if (!data) return;
+      var marks = [];
+      if (data.bestBet) marks.push(data.bestBet.race);
+      (data.valuePlays || []).forEach(function(v){ marks.push(v.race); });
+      marks.forEach(function(num){
+        var card = document.querySelector('[data-race-num="' + num + '"]') ||
+                   document.querySelector('#race-card-' + num) ||
+                   document.querySelector('.race-card-wrap[data-race="' + num + '"]');
+        if (card) card.classList.add('lux-top-rated');
+      });
+    } catch(e){}
+  }
+
+  // --- Scrollspy within Today tab ---------------------------------------
+  // Updates chip to 'today' while the Today tab's content is in view.
+  // When other tabs become active, switchTab already handles the chip.
+  function initScrollSpy(){
+    if (LUX.bestBetObserver || !('IntersectionObserver' in window)) return;
+    LUX.bestBetObserver = new IntersectionObserver(function(entries){
+      // Detect which tab panel is active via DOM state
+      var activePanel = document.querySelector('.tab-panel.active');
+      if (!activePanel) return;
+      var panelId = activePanel.id || '';
+      var name = panelId.replace('tab-', '');
+      if (name) setActiveChip(name);
+    }, { rootMargin: '-20% 0px -60% 0px', threshold: 0.01 });
+    document.querySelectorAll('.tab-panel').forEach(function(p){ LUX.bestBetObserver.observe(p); });
+  }
+
+  // --- FAB menu ---------------------------------------------------------
+  window.luxFabToggle = function(){
+    var menu = document.getElementById('fab-menu');
+    var main = document.getElementById('fab-main');
+    var items = document.getElementById('fab-items');
+    if (!menu) return;
+    LUX.fabOpen = !LUX.fabOpen;
+    menu.classList.toggle('open', LUX.fabOpen);
+    if (main) main.setAttribute('aria-expanded', String(LUX.fabOpen));
+    if (items) items.setAttribute('aria-hidden', String(!LUX.fabOpen));
+  };
+
+  window.luxFabAction = function(kind){
+    LUX.fabOpen = false;
+    var menu = document.getElementById('fab-menu');
+    if (menu) menu.classList.remove('open');
+    if (kind === 'bestbet') {
+      if (typeof window.switchTab === 'function') window.switchTab('today');
+      setTimeout(function(){
+        var bb = document.getElementById('best-bet-callout');
+        if (bb && !bb.classList.contains('hidden')) {
+          var headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 56;
+          var y = bb.getBoundingClientRect().top + window.pageYOffset - headerH - 50;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+        } else if (typeof window.showToast === 'function') {
+          window.showToast('Best bet will surface once today’s advice runs', 'default', 2800);
+        }
+      }, 60);
+    } else if (kind === 'betslip') {
+      if (typeof window.switchTab === 'function') window.switchTab('bets');
+    } else if (kind === 'settings') {
+      if (typeof window.openSettings === 'function') window.openSettings();
+    }
+  };
+
+  // Close FAB on outside click
+  document.addEventListener('click', function(e){
+    if (!LUX.fabOpen) return;
+    var menu = document.getElementById('fab-menu');
+    if (menu && !menu.contains(e.target)) {
+      LUX.fabOpen = false;
+      menu.classList.remove('open');
+    }
+  });
+
+  // --- Winner banner upgrade --------------------------------------------
+  // Show a gold-on-navy banner alongside (not replacing) the existing overlay.
+  function luxShowWinnerBanner(horseName, payout, raceNum, betType){
+    var banner = document.getElementById('lux-winner-banner');
+    var meta = document.getElementById('lux-winner-meta');
+    if (!banner) return;
+    var parts = [];
+    if (raceNum) parts.push('R' + raceNum);
+    if (horseName) parts.push(String(horseName).toUpperCase());
+    if (betType) parts.push(betType);
+    if (payout) parts.push(payout);
+    if (meta) meta.textContent = parts.join('  ·  ');
+    banner.classList.add('show');
+    clearTimeout(banner._hideT);
+    banner._hideT = setTimeout(function(){ banner.classList.remove('show'); }, 4200);
+  }
+
+  if (typeof window.showWinnerOverlay === 'function' && !window._luxWinnerWrapped) {
+    var origWin = window.showWinnerOverlay;
+    window.showWinnerOverlay = function(horseName, payout, raceNum, betType){
+      try { luxShowWinnerBanner(horseName, payout, raceNum, betType); } catch(e){}
+      return origWin.apply(this, arguments);
+    };
+    window._luxWinnerWrapped = true;
+  }
+
+  // --- Init -------------------------------------------------------------
+  function init(){
+    try { initScrollSpy(); } catch(e){}
+    try { populateLuxBestBet(); } catch(e){}
+    try { markTopRatedRaceCards(); } catch(e){}
+    // Re-populate periodically — the advice engine runs on load and on refresh.
+    setInterval(function(){
+      try { populateLuxBestBet(); markTopRatedRaceCards(); } catch(e){}
+    }, 3500);
+    // Reflect current active tab in chips
+    var active = document.querySelector('.tab-panel.active');
+    if (active) setActiveChip((active.id || '').replace('tab-', ''));
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
 </body>
 </html>
