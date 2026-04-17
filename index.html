@@ -14,9 +14,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1130-adw-quick-signin-v2.16.4';
+var NE_APP_VERSION = '20260417-1145-adw-contrast-v2.16.4.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.16.4-adw-quick-signin';
+var RAILBIRD_VERSION = 'v2.16.4.1-adw-contrast';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2190,19 +2190,20 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .adw-signin-btn {
   display: flex; align-items: center; justify-content: space-between;
   gap: 0.5rem; width: 100%;
-  padding: 0.65rem 0.85rem;
-  background: rgba(245,240,232,0.04);
-  border: 1px solid rgba(201,168,76,0.25);
+  padding: 0.7rem 0.9rem;
+  background: #FFFFFF;
+  border: 1px solid rgba(27,46,75,0.18);
   border-radius: 10px;
-  color: #EDE8DC;
-  font: inherit; font-weight: 600; font-size: 0.92rem;
+  color: #1B2E4B;
+  font: inherit; font-weight: 600; font-size: 0.95rem;
   text-align: left; text-decoration: none;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
 }
 .adw-signin-btn:hover, .adw-signin-btn:focus-visible {
-  background: rgba(201,168,76,0.10);
-  border-color: rgba(201,168,76,0.55);
+  background: #FFFFFF;
+  border-color: rgba(201,168,76,0.75);
+  box-shadow: 0 1px 6px rgba(27,46,75,0.10);
   outline: none;
 }
 .adw-signin-btn:active { transform: translateY(1px); }
@@ -2222,8 +2223,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   display: inline-flex; align-items: center;
 }
 .adw-signin-btn[data-primary="true"] {
-  background: rgba(201,168,76,0.08);
-  border-color: rgba(201,168,76,0.55);
+  background: #FFFDF6;
+  border-color: rgba(201,168,76,0.70);
+  box-shadow: 0 1px 4px rgba(201,168,76,0.18);
 }
 
 /* =========================================================
@@ -6233,7 +6235,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.16.4)
+          Export Data (v2.16.4.1)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
