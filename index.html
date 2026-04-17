@@ -14,9 +14,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1830-offday-dashboard-v2.17.0';
+var NE_APP_VERSION = '20260417-1900-offday-dashboard-v2.17.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.17.0-offday-dashboard';
+var RAILBIRD_VERSION = 'v2.17.1-offday-dashboard';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -6364,7 +6364,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.17.0)
+          Export Data (v2.17.1)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -11841,6 +11841,8 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
       container.innerHTML = offday_buildHTML(code);
       // Hide any live-loading spinner so it doesn't float above the dashboard
       try { if (typeof hideLoadingIndicator === 'function') hideLoadingIndicator(); } catch(_) {}
+      // Hide the redundant cream "No race card available" banner — dashboard header already says it
+      try { var b = document.getElementById('live-unavailable-banner'); if (b) b.classList.add('hidden'); } catch(_) {}
       // Async probe for next race day
       offday_probeNextRaceDay(code).then(offday_updateNextBlock).catch(function() {
         offday_updateNextBlock(null);
