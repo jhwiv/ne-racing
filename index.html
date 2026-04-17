@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1250-ticket-contrast-v2.7';
+var NE_APP_VERSION = '20260417-1300-rebrand-hero-v2.8';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.7-ticket-contrast';
+var RAILBIRD_VERSION = 'v2.8-rebrand-hero';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1137,12 +1137,12 @@ function neForceUpdate(newVersion) {
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
-<meta name="description" content="Railbird AI — Personal horse racing handicapping &amp; bet tracking for the Saratoga NYRA circuit.">
-<meta property="og:title" content="Railbird AI — Saratoga Racing Companion">
-<meta property="og:description" content="Personal horse racing handicapping &amp; bet tracking for the NYRA circuit.">
+<meta name="description" content="Railbird AI — Your Private Handicapping Companion. Personal horse racing handicapping and bet tracking.">
+<meta property="og:title" content="Railbird AI — Your Private Handicapping Companion">
+<meta property="og:description" content="Personal horse racing handicapping and bet tracking — live entries, advice engine, bankroll and bets, all in one.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
-<title>Railbird AI — Saratoga Racing Companion</title>
+<title>Railbird AI — Your Private Handicapping Companion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="prefetch" as="image" type="image/webp" href="images/hero-race-action.webp">
@@ -4484,11 +4484,12 @@ html, body { overscroll-behavior: none; }
      ============================================= -->
 <div id="hero-screen">
   <div id="hero-screen-bg">
-    <img id="hero-bg-img" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBVt7Q5UBy7D5eaG0052x/Oe/oKoK8ysIjMRJwwVkHWrK38sUIZXEkfOexGKcarQpUkyRtKkDEZU496KlW58xQyxoQe+7rRVe2aF7JGbJF5snzOxHqeTQ0S5KkvtYcbF4Prx+dTCfylGQTzTmuXIwPlPsK4OZmtyskICgOkuR6UUr3ALHO7NFVzSFc//9k=" alt="Saratoga Race Course" style="filter:blur(20px) brightness(1.15) saturate(1.08);transform:scale(1.1);transition:filter 0.4s ease,transform 0.4s ease;">
+    <img id="hero-bg-img" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBVt7Q5UBy7D5eaG0052x/Oe/oKoK8ysIjMRJwwVkHWrK38sUIZXEkfOexGKcarQpUkyRtKkDEZU496KlW58xQyxoQe+7rRVe2aF7JGbJF5snzOxHqeTQ0S5KkvtYcbF4Prx+dTCfylGQTzTmuXIwPlPsK4OZmtyskICgOkuR6UUr3ALHO7NFVzSFc//9k=" alt="Railbird AI — horse racing handicapping" style="filter:blur(20px) brightness(1.15) saturate(1.08);transform:scale(1.1);transition:filter 0.4s ease,transform 0.4s ease;">
   </div>
 
   <div class="hero-title-block hero-title-luxury">
-    <h1 class="hero-title-main">SARATOGA 2026</h1>
+    <p class="hero-eyebrow">Est. 2026</p>
+    <h1 class="hero-title-main">RAILBIRD AI</h1>
     <div class="hero-rule"></div>
     <p class="hero-title-sub">Your Private Handicapping Companion</p>
     <p class="hero-tagline">Live entries, advice engine, bankroll &amp; bets — all in one program</p>
@@ -5401,7 +5402,7 @@ html, body { overscroll-behavior: none; }
 
   <!-- FOOTER DISCLAIMER -->
   <footer id="app-footer">
-    Saratoga Racing Companion 2026 — For personal use only. Not affiliated with NYRA, Saratoga Race Course, or any wagering platform. No real wagers are placed through this app. Betting suggestions are analysis based on available data — not financial advice and not a guarantee of results.
+    Railbird AI · 2026 — For personal use only. Not affiliated with any racetrack, racing authority, or wagering platform. No real wagers are placed through this app. Betting suggestions are analysis based on available data — not financial advice and not a guarantee of results.
   </footer>
 
 
@@ -5504,7 +5505,7 @@ html, body { overscroll-behavior: none; }
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.7)
+          Export Data (v2.8)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -6164,18 +6165,49 @@ window.addEventListener('beforeinstallprompt', function(e) {
   initA2HSBanner();
 });
 
-// Click/tap on hero scrolls past it to the app content
+// Hero behavior: show once on first visit, then collapse it away for every
+// subsequent session. On tap/scroll, persist the "seen" flag and remove the
+// hero entirely so app-frame is the first paint on reload.
 (function() {
+  var HERO_SEEN_KEY = 'railbird_hero_seen_v1';
   var hero = document.getElementById('hero-screen');
   if (!hero) return;
+
+  // If already seen, remove hero immediately so subsequent loads open to content
+  try {
+    if (localStorage.getItem(HERO_SEEN_KEY) === '1') {
+      hero.classList.add('hero-hidden');
+      // Scroll to top of app-frame (no smooth — instant)
+      var af = document.getElementById('app-frame');
+      if (af) window.scrollTo(0, 0);
+      return;
+    }
+  } catch(_) {}
+
+  function dismissHero() {
+    try { localStorage.setItem(HERO_SEEN_KEY, '1'); } catch(_) {}
+    hero.classList.add('hero-fadeout');
+    setTimeout(function() { hero.classList.add('hero-hidden'); }, 800);
+    var af = document.getElementById('app-frame');
+    if (af) af.scrollIntoView({ behavior: 'smooth' });
+  }
+
   hero.addEventListener('click', function(e) {
     // Don't dismiss if tapping A2HS banner buttons
     if (e.target.closest('.a2hs-banner')) return;
-    var appFrame = document.getElementById('app-frame');
-    if (appFrame) {
-      appFrame.scrollIntoView({ behavior: 'smooth' });
-    }
+    dismissHero();
   });
+
+  // Auto-dismiss on first scroll past hero as well
+  var scrollDismissed = false;
+  window.addEventListener('scroll', function() {
+    if (scrollDismissed) return;
+    if (window.scrollY > window.innerHeight * 0.35) {
+      scrollDismissed = true;
+      try { localStorage.setItem(HERO_SEEN_KEY, '1'); } catch(_) {}
+      // Don't fade — user is already scrolling past; just mark seen
+    }
+  }, { passive: true });
 })();
 
 
