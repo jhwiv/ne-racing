@@ -14,9 +14,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1035-hero-stays-home-v2.16.3';
+var NE_APP_VERSION = '20260417-1130-adw-quick-signin-v2.16.4';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.16.3-hero-stays-home';
+var RAILBIRD_VERSION = 'v2.16.4-adw-quick-signin';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2186,6 +2186,45 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .settings-group:last-child { border-bottom: none; }
 .settings-group h4 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-muted); margin-bottom: 0.75rem; }
 .settings-action-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.adw-signin-list { display: flex; flex-direction: column; gap: 0.45rem; }
+.adw-signin-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: rgba(245,240,232,0.04);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 10px;
+  color: #EDE8DC;
+  font: inherit; font-weight: 600; font-size: 0.92rem;
+  text-align: left; text-decoration: none;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+.adw-signin-btn:hover, .adw-signin-btn:focus-visible {
+  background: rgba(201,168,76,0.10);
+  border-color: rgba(201,168,76,0.55);
+  outline: none;
+}
+.adw-signin-btn:active { transform: translateY(1px); }
+.adw-signin-btn .adw-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adw-signin-btn .adw-primary-pill {
+  flex: 0 0 auto;
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  background: #C9A84C;
+  color: #1B2E4B;
+  border-radius: 999px;
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.adw-signin-btn .adw-arrow {
+  flex: 0 0 auto; opacity: 0.55;
+  display: inline-flex; align-items: center;
+}
+.adw-signin-btn[data-primary="true"] {
+  background: rgba(201,168,76,0.08);
+  border-color: rgba(201,168,76,0.55);
+}
 
 /* =========================================================
    HORSE DETAIL MODAL
@@ -6174,6 +6213,11 @@ tr:has(> td > .detail-stat-row),
       <p class="text-xs text-muted" style="margin-top:0.35rem">Bet buttons will open this platform in a new tab.</p>
     </div>
     <div class="settings-group">
+      <h4>Sign in to Your ADW</h4>
+      <p class="text-xs text-muted" style="margin-top:-0.1rem;margin-bottom:0.55rem">Opens the official sign-in page in a new tab. Railbird never sees your ADW username or password.</p>
+      <div id="adw-signin-list" class="adw-signin-list"></div>
+    </div>
+    <div class="settings-group">
       <h4>Starting Bankroll</h4>
       <input type="number" id="settings-bankroll" class="form-control" inputmode="numeric" placeholder="1000">
       <button class="btn btn-primary btn-sm mt-1" onclick="saveSettingsBankroll()">Save Bankroll</button>
@@ -6189,7 +6233,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.16.3)
+          Export Data (v2.16.4)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -10094,6 +10138,7 @@ function openSettings() {
   var bpEl = el('settings-betting-platform');
   if (bpEl) bpEl.value = getBettingPlatform();
   syncBettingModeUI();
+  try { renderAdwSigninList(); } catch (e) {}
   el('settings-modal').classList.add('open');
   document.body.classList.add('no-scroll');
 }
@@ -10135,16 +10180,42 @@ function saveWorkerUrl() {
 
 /* Betting platform helpers */
 var BETTING_PLATFORMS = {
-  nyrabets:   { name: 'NYRA Bets',              base: 'https://www.nyrabets.com' },
-  fanduel:    { name: 'FanDuel Racing',          base: 'https://racing.fanduel.com' },
-  tvg:        { name: 'TVG',                     base: 'https://www.tvg.com' },
-  twinspires: { name: 'TwinSpires',              base: 'https://www.twinspires.com' },
-  draftkings: { name: 'DraftKings Horse Racing', base: 'https://www.draftkings.com/horse-racing' }
+  nyrabets:   { name: 'NYRA Bets',              base: 'https://www.nyrabets.com',                     login: 'https://www.nyrabets.com/login' },
+  fanduel:    { name: 'FanDuel Racing',          base: 'https://racing.fanduel.com',                   login: 'https://racing.fanduel.com/login' },
+  tvg:        { name: 'TVG',                     base: 'https://www.tvg.com',                          login: 'https://www.tvg.com/login' },
+  twinspires: { name: 'TwinSpires',              base: 'https://www.twinspires.com',                   login: 'https://www.twinspires.com/signin' },
+  draftkings: { name: 'DraftKings Horse Racing', base: 'https://www.draftkings.com/horse-racing',      login: 'https://sportsbook.draftkings.com/login' }
 };
 
 function saveBettingPlatform(val) {
   setSetting('bettingPlatform', val);
   showToast('Betting platform set to ' + (BETTING_PLATFORMS[val] || {}).name, 'success', 2500);
+  try { renderAdwSigninList(); } catch (e) {}
+}
+
+/* ADW quick-launch sign-in list (Settings -> Betting) */
+function renderAdwSigninList() {
+  var host = document.getElementById('adw-signin-list');
+  if (!host) return;
+  var preferred = getBettingPlatform();
+  var order = [preferred].concat(Object.keys(BETTING_PLATFORMS).filter(function(k){ return k !== preferred; }));
+  var html = '';
+  order.forEach(function(key) {
+    var info = BETTING_PLATFORMS[key];
+    if (!info || !info.login) return;
+    var isPrimary = (key === preferred);
+    var pill = isPrimary ? '<span class="adw-primary-pill">Primary</span>' : '';
+    html += '<a class="adw-signin-btn" data-primary="' + (isPrimary ? 'true' : 'false') + '"' +
+            ' href="' + info.login + '" target="_blank" rel="noopener noreferrer"' +
+            ' aria-label="Sign in to ' + info.name + ' (opens in a new tab)">' +
+            '<span class="adw-name">' + info.name + '</span>' + pill +
+            '<span class="adw-arrow" aria-hidden="true">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<path d="M7 17L17 7"/><polyline points="8 7 17 7 17 16"/></svg>' +
+            '</span>' +
+            '</a>';
+  });
+  host.innerHTML = html;
 }
 
 function getBettingPlatform() {
