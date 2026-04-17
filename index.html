@@ -14,9 +14,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1145-adw-contrast-v2.16.4.1';
+var NE_APP_VERSION = '20260417-1230-adw-bets-chip-v2.16.5';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.16.4.1-adw-contrast';
+var RAILBIRD_VERSION = 'v2.16.5-adw-bets-chip';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2226,6 +2226,85 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   background: #FFFDF6;
   border-color: rgba(201,168,76,0.70);
   box-shadow: 0 1px 4px rgba(201,168,76,0.18);
+}
+
+/* ADW sign-in chip on Bets tab */
+.adw-signin-chip {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  margin: 0.25rem 0 0.9rem;
+  padding: 0.5rem 0.85rem 0.5rem 0.7rem;
+  background: #FFFDF6;
+  border: 1px solid rgba(201,168,76,0.70);
+  border-radius: 999px;
+  color: #1B2E4B;
+  font: inherit; font-weight: 700; font-size: 0.88rem; letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(27,46,75,0.08);
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  max-width: 100%;
+}
+.adw-signin-chip:hover, .adw-signin-chip:focus-visible {
+  background: #FFF8E6;
+  border-color: #C9A84C;
+  box-shadow: 0 2px 8px rgba(201,168,76,0.22);
+  outline: none;
+}
+.adw-signin-chip:active { transform: translateY(1px); }
+.adw-signin-chip .adw-chip-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #C9A84C; color: #1B2E4B; flex: 0 0 auto;
+}
+.adw-signin-chip .adw-chip-text {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  min-width: 0;
+}
+.adw-signin-chip .adw-chip-caret { opacity: 0.55; font-size: 0.8rem; flex: 0 0 auto; }
+
+/* ADW sign-in bottom sheet (mirrors settings-modal pattern) */
+#adw-sheet {
+  position: fixed; inset: 0; z-index: 520;
+  background: rgba(0,0,0,0.55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+@media (min-width: 500px) { #adw-sheet { align-items: center; justify-content: center; } }
+#adw-sheet.open { opacity: 1; pointer-events: auto; }
+.adw-sheet-inner {
+  background: #F5F0E8;
+  border-radius: 18px 18px 0 0;
+  width: 100%; max-height: 80vh; overflow-y: auto;
+  padding: 0.75rem 1.1rem 1.4rem;
+  transform: translateY(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  color: #1B2E4B;
+}
+@media (min-width: 500px) { .adw-sheet-inner { border-radius: 18px; width: min(440px, 95vw); transform: scale(0.95); } }
+#adw-sheet.open .adw-sheet-inner { transform: translateY(0); }
+@media (min-width: 500px) { #adw-sheet.open .adw-sheet-inner { transform: scale(1); } }
+.adw-sheet-handle {
+  width: 40px; height: 4px; border-radius: 2px;
+  background: rgba(27,46,75,0.22);
+  margin: 0.25rem auto 0.75rem;
+}
+.adw-sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0.2rem;
+}
+.adw-sheet-header h3 {
+  margin: 0; font-family: var(--font-display, serif);
+  font-size: 1.15rem; color: #1B2E4B;
+}
+.adw-sheet-close {
+  background: transparent; border: none; padding: 0.35rem;
+  color: #1B2E4B; cursor: pointer; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.adw-sheet-close:hover, .adw-sheet-close:focus-visible {
+  background: rgba(27,46,75,0.08); outline: none;
+}
+.adw-sheet-sub {
+  margin: 0.15rem 0 0.9rem;
+  font-size: 0.82rem; color: rgba(27,46,75,0.72); line-height: 1.4;
 }
 
 /* =========================================================
@@ -5451,6 +5530,15 @@ tr:has(> td > .detail-stat-row),
     <section id="tab-bets" class="tab-panel" role="tabpanel" aria-label="Bets">
       <h2 class="section-title">Bets</h2>
 
+      <!-- ADW quick sign-in chip -->
+      <button type="button" class="adw-signin-chip" onclick="openAdwSheet()" aria-haspopup="dialog" aria-controls="adw-sheet">
+        <span class="adw-chip-icon" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+        </span>
+        <span class="adw-chip-text">Sign in to <span id="adw-chip-name">NYRA Bets</span></span>
+        <span class="adw-chip-caret" aria-hidden="true">▾</span>
+      </button>
+
       <!-- Bankroll banner -->
       <div class="bankroll-banner" id="bet-bankroll-banner">
         <div>
@@ -6176,6 +6264,21 @@ tr:has(> td > .detail-stat-row),
 </nav>
 
 <!-- SETTINGS MODAL -->
+<!-- ADW Sign-In Sheet (opened from Bets tab chip) -->
+<div id="adw-sheet" role="dialog" aria-modal="true" aria-label="Sign in to your ADW" onclick="closeAdwSheetOnBg(event)">
+  <div class="adw-sheet-inner" role="document">
+    <div class="adw-sheet-handle" aria-hidden="true"></div>
+    <div class="adw-sheet-header">
+      <h3>Sign in to Your ADW</h3>
+      <button type="button" class="adw-sheet-close" onclick="closeAdwSheet()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <p class="adw-sheet-sub">Opens the official sign-in page in a new tab. Railbird never sees your ADW username or password.</p>
+    <div id="adw-sheet-list" class="adw-signin-list"></div>
+  </div>
+</div>
+
 <div id="settings-modal" role="dialog" aria-modal="true" aria-label="Settings" onclick="closeSettingsOnBg(event)">
   <div class="settings-sheet">
     <div class="flex justify-between items-center mb-2">
@@ -6235,7 +6338,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.16.4.1)
+          Export Data (v2.16.5)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -10193,11 +10296,13 @@ function saveBettingPlatform(val) {
   setSetting('bettingPlatform', val);
   showToast('Betting platform set to ' + (BETTING_PLATFORMS[val] || {}).name, 'success', 2500);
   try { renderAdwSigninList(); } catch (e) {}
+  try { syncAdwChipLabel(); } catch (e) {}
 }
 
-/* ADW quick-launch sign-in list (Settings -> Betting) */
-function renderAdwSigninList() {
-  var host = document.getElementById('adw-signin-list');
+/* ADW quick-launch sign-in list (Settings -> Betting AND Bets-tab sheet) */
+function renderAdwSigninList(hostId) {
+  hostId = hostId || 'adw-signin-list';
+  var host = document.getElementById(hostId);
   if (!host) return;
   var preferred = getBettingPlatform();
   var order = [preferred].concat(Object.keys(BETTING_PLATFORMS).filter(function(k){ return k !== preferred; }));
@@ -10218,6 +10323,30 @@ function renderAdwSigninList() {
             '</a>';
   });
   host.innerHTML = html;
+}
+
+/* Chip label sync + sheet open/close */
+function syncAdwChipLabel() {
+  var el = document.getElementById('adw-chip-name');
+  if (!el) return;
+  var info = BETTING_PLATFORMS[getBettingPlatform()] || BETTING_PLATFORMS.nyrabets;
+  el.textContent = info.name;
+}
+function openAdwSheet() {
+  var m = document.getElementById('adw-sheet');
+  if (!m) return;
+  try { renderAdwSigninList('adw-sheet-list'); } catch (e) {}
+  m.classList.add('open');
+  document.body.classList.add('no-scroll');
+}
+function closeAdwSheet() {
+  var m = document.getElementById('adw-sheet');
+  if (!m) return;
+  m.classList.remove('open');
+  document.body.classList.remove('no-scroll');
+}
+function closeAdwSheetOnBg(e) {
+  if (e.target && e.target.id === 'adw-sheet') closeAdwSheet();
 }
 
 function getBettingPlatform() {
@@ -11570,6 +11699,14 @@ function toggleTicketDetail(e) {
 document.addEventListener('DOMContentLoaded', function() {
   var rc = document.getElementById('rec-bets-content');
   if (rc) rc.addEventListener('click', toggleTicketDetail);
+  try { syncAdwChipLabel(); } catch (e) {}
+  // ESC closes the ADW sheet
+  document.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape') {
+      var m = document.getElementById('adw-sheet');
+      if (m && m.classList.contains('open')) closeAdwSheet();
+    }
+  });
 });
 
 function buildExpandedDetails(s, race, betType) {
