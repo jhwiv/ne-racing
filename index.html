@@ -8,9 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1630-saratoga-scaffold-v2.14';
+var NE_APP_VERSION = '20260417-1730-cream-contrast-v2.15';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.14-saratoga-scaffold';
+var RAILBIRD_VERSION = 'v2.15-cream-contrast';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -4832,6 +4832,179 @@ tr:has(> td > .detail-stat-row),
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* =========================================================
+   v2.15 CREAM-SURFACE CONTRAST RESET
+   =========================================================
+   Problem family (recurring since v2.9):
+   renderBetsTab, renderTodaysLockedBets, advice wizard, and
+   other renderers emit hardcoded inline style="color:rgba(255,255,255,*)"
+   designed for the original dark-navy surface. v2.9 moved many
+   containers to cream (#F5F0E8) — result: ghosted cream-on-cream
+   (IMG_8433, IMG_8430, IMG_8428 bug class).
+
+   Strategy: attribute-selector remap. CSS rules with !important
+   always win against inline styles. We target every known cream
+   container and remap inline white alphas to matching dark alphas
+   while preserving semantic hierarchy. v2.12 dark detail panel
+   is explicitly excluded.
+
+   Six alpha buckets cover the observed usage:
+   0.9 → dark 0.92 (primary text)
+   0.85 → dark 0.88 (strong emphasis)
+   0.7/0.8 → dark 0.75 (body)
+   0.5/0.6 → dark 0.58 (secondary)
+   0.35/0.4 → dark 0.5 (labels, muted)
+   0.25/0.3 → dark 0.38 (faint markers)
+   ========================================================= */
+
+/* Containers considered cream surfaces. If a container here is
+   actually sitting on the dark surface, nothing changes because
+   its children won't have white inline styles rendered badly. */
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output, #handicapper-profiles-body,
+  #breakdown-empty, .card, .hcp-tool
+)
+:is(
+  [style*="rgba(255,255,255,0.9"],
+  [style*="rgba(255, 255, 255, 0.9"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  color: rgba(27,46,75,0.92) !important;
+}
+
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output, #handicapper-profiles-body,
+  #breakdown-empty, .card, .hcp-tool
+)
+:is(
+  [style*="rgba(255,255,255,0.85"],
+  [style*="rgba(255, 255, 255, 0.85"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  color: rgba(27,46,75,0.88) !important;
+}
+
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output, #handicapper-profiles-body,
+  #breakdown-empty, .card, .hcp-tool
+)
+:is(
+  [style*="rgba(255,255,255,0.7"],
+  [style*="rgba(255, 255, 255, 0.7"],
+  [style*="rgba(255,255,255,0.8"],
+  [style*="rgba(255, 255, 255, 0.8"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  color: rgba(27,46,75,0.78) !important;
+}
+
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output, #handicapper-profiles-body,
+  #breakdown-empty, .card, .hcp-tool
+)
+:is(
+  [style*="rgba(255,255,255,0.5"],
+  [style*="rgba(255, 255, 255, 0.5"],
+  [style*="rgba(255,255,255,0.6"],
+  [style*="rgba(255, 255, 255, 0.6"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  color: rgba(27,46,75,0.6) !important;
+}
+
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output, #handicapper-profiles-body,
+  #breakdown-empty, .card, .hcp-tool
+)
+:is(
+  [style*="rgba(255,255,255,0.3"],
+  [style*="rgba(255, 255, 255, 0.3"],
+  [style*="rgba(255,255,255,0.35"],
+  [style*="rgba(255, 255, 255, 0.35"],
+  [style*="rgba(255,255,255,0.4"],
+  [style*="rgba(255, 255, 255, 0.4"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  color: rgba(27,46,75,0.5) !important;
+}
+
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output, #handicapper-profiles-body,
+  #breakdown-empty, .card, .hcp-tool
+)
+:is(
+  [style*="rgba(255,255,255,0.25"],
+  [style*="rgba(255, 255, 255, 0.25"],
+  [style*="rgba(255,255,255,0.2"],
+  [style*="rgba(255, 255, 255, 0.2"],
+  [style*="rgba(255,255,255,0.15"],
+  [style*="rgba(255, 255, 255, 0.15"],
+  [style*="rgba(255,255,255,0.1"],
+  [style*="rgba(255, 255, 255, 0.1"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  color: rgba(27,46,75,0.4) !important;
+}
+
+/* Also remap inline background fills that were meant to be translucent
+   white-on-dark (rgba(255,255,255,0.0x)) — on cream they vanish or
+   read as washed-out blobs. Convert to subtle dark tint. */
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output
+)
+:is(
+  [style*="background:rgba(255,255,255,0.0"],
+  [style*="background: rgba(255,255,255,0.0"],
+  [style*="background:rgba(255,255,255,0.03"],
+  [style*="background: rgba(255,255,255,0.03"],
+  [style*="background:rgba(255,255,255,0.04"],
+  [style*="background: rgba(255,255,255,0.04"],
+  [style*="background:rgba(255,255,255,0.05"],
+  [style*="background: rgba(255,255,255,0.05"],
+  [style*="background:rgba(255,255,255,0.06"],
+  [style*="background: rgba(255,255,255,0.06"],
+  [style*="background:rgba(255,255,255,0.08"],
+  [style*="background: rgba(255,255,255,0.08"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  background: rgba(27,46,75,0.05) !important;
+}
+
+/* Inline borders rgba(255,255,255,0.0x) on cream likewise invisible —
+   remap to subtle dark border */
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output
+)
+:is(
+  [style*="border:1px solid rgba(255,255,255"],
+  [style*="border: 1px solid rgba(255,255,255"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  border-color: rgba(27,46,75,0.12) !important;
+}
+
+/* Empty-state icons use stroke="currentColor" with opacity — make sure the
+   parent resolves to dark ink so the outline is visible on cream */
+:where(#tab-bets, #tab-handicap, #tab-results, #tab-reference) .empty-state {
+  color: rgba(27,46,75,0.55) !important;
+}
+:where(#tab-bets, #tab-handicap, #tab-results, #tab-reference) .empty-state svg {
+  opacity: 0.55;
+}
+:where(#tab-bets, #tab-handicap, #tab-results, #tab-reference) .empty-state p {
+  color: rgba(27,46,75,0.7) !important;
+}
+
+/* END v2.15 CREAM-SURFACE CONTRAST RESET */
+
 /* ---- HERO TEXT LEGIBILITY — image-agnostic ----
    Ensures title/eyebrow/subtitle read cleanly against ANY
    background image (bright sky, busy pattern, etc.). Two
@@ -5987,7 +6160,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.14)
+          Export Data (v2.15)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
