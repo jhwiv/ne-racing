@@ -14,9 +14,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1015-hero-polish-v2.16.2';
+var NE_APP_VERSION = '20260417-1035-hero-stays-home-v2.16.3';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.16.2-hero-polish';
+var RAILBIRD_VERSION = 'v2.16.3-hero-stays-home';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1151,22 +1151,22 @@ function neForceUpdate(newVersion) {
 <title>Railbird AI — Your Private Handicapping Companion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- v2.16: eliminate grey flash — pick hero synchronously in <head> and preload it with highest priority.
-     Other heroes remain prefetched for future visits/rotations. -->
+<!-- v2.16.3: pick hero synchronously in <head>, preload with highest priority,
+     and stash src/srcset so the <img> in the body gets painted the moment it's parsed.
+     No JS decode-wait, no opacity fade — image either shows (cache hit from preload)
+     or resolves naturally against the navy floor behind it. -->
 <script>
 (function(){
   try {
     var heroKeys = ['hero-race-action','hero-paddock-bright','hero-winners-circle','hero-grandstand'];
     var pick = heroKeys[Math.floor(Math.random()*heroKeys.length)];
     window.__railbirdHero = pick;
-    // Detect WebP synchronously via UA hint (Safari 14+, Chrome, FF all support WebP now).
-    // Use a conservative check: if the browser is ancient, fall back to JPG in the JS loader.
-    var ext = '.webp';
+    window.__railbirdHeroSrc = 'images/' + pick + '.webp';
     var link = document.createElement('link');
     link.rel = 'preload';
     link.as = 'image';
     link.type = 'image/webp';
-    link.href = 'images/' + pick + ext;
+    link.href = window.__railbirdHeroSrc;
     link.setAttribute('fetchpriority','high');
     document.head.appendChild(link);
   } catch(e){}
@@ -2835,16 +2835,17 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   margin-top: 0.5rem;
 }
 
-/* --- Hero auto-dismiss --- */
-#hero-screen.hero-fadeout {
-  animation: heroFadeOut 0.8s ease-out forwards;
-}
-@keyframes heroFadeOut {
-  0% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-30px); }
-}
+/* --- Hero stays home (v2.16.3) ---
+   Hero is ALWAYS in the DOM as the first section of the scroll container.
+   Every page load lands on it (scrollTop = 0). Enter chevron or scroll
+   gesture slides the viewport down to #app-frame; user can scroll back up
+   any time to return to the hero. The old .hero-hidden { display:none }
+   path was removed because it caused a flash between the hero paint and
+   the app frame on return visits. */
+#hero-screen.hero-fadeout,
 #hero-screen.hero-hidden {
-  display: none !important;
+  /* Intentionally no-op: keep hero rendered. Classes preserved for any
+     legacy handlers still referencing them. */
 }
 
 
@@ -4856,14 +4857,8 @@ tr:has(> td > .detail-stat-row),
 /* v2.16: opacity is driven inline by the hero loader JS so the fade only runs
    once the full-res image has decoded. The earlier CSS animation caused a grey
    flash because it ran against the placeholder before the photo arrived. */
-#hero-screen.hero-hidden ~ #app-frame,
-#hero-screen.hero-hidden + #app-frame {
-  animation: app-frame-in 0.35s ease-out both;
-}
-@keyframes app-frame-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* v2.16.3: app-frame is always visible below the hero; no fade-in animation
+   since removing the hero-hidden toggle makes the frame permanently stacked. */
 
 /* =========================================================
    v2.15 CREAM-SURFACE CONTRAST RESET
@@ -5166,7 +5161,8 @@ tr:has(> td > .detail-stat-row),
      ============================================= -->
 <div id="hero-screen">
   <div id="hero-screen-bg">
-    <img id="hero-bg-img" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201%201'%2F%3E" alt="Railbird AI — horse racing handicapping" style="opacity:0;transition:opacity 0.35s ease-out;">
+    <img id="hero-bg-img" alt="Railbird AI — horse racing handicapping" decoding="async" fetchpriority="high" style="opacity:1;">
+    <script>(function(){try{var im=document.getElementById('hero-bg-img');if(im&&window.__railbirdHeroSrc)im.src=window.__railbirdHeroSrc;}catch(e){}})();</script>
   </div>
 
   <div class="hero-title-block hero-title-luxury">
@@ -6193,7 +6189,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.16.2)
+          Export Data (v2.16.3)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -6853,71 +6849,52 @@ window.addEventListener('beforeinstallprompt', function(e) {
   initA2HSBanner();
 });
 
-// Hero behavior (v2.10):
-//  - Shows on first visit of EACH new app version (seen-flag is version-keyed)
-//  - Only dismisses on the explicit "Enter" chevron/button, NOT on a stray
-//    tap anywhere on the hero (too easy to accidentally dismiss)
-//  - Also dismisses on real scroll (passive)
-//  - Clears any legacy railbird_hero_seen_v1 flag on load so everyone sees
-//    v2.10's hero again after this release
+// Hero behavior (v2.16.3 — hero stays home):
+//  - Hero is ALWAYS rendered as the first section of the page.
+//  - Every launch lands with the hero in view (scrollTop = 0).
+//  - Enter chevron smoothly scrolls the viewport down to #app-frame.
+//  - User can scroll back up to return to the hero at any time.
+//  - No seen-flags, no version-keyed dismiss state, no display:none toggle.
 (function() {
-  // Clear legacy global flag (pre-version-keyed behavior) so users who
-  // dismissed v2.8 hero see the hero again on v2.10+
-  try { localStorage.removeItem('railbird_hero_seen_v1'); } catch(_) {}
+  // Migration: purge legacy hero-seen flags from older versions so returning
+  // users don't carry forward any state that could affect scroll behavior.
+  try {
+    Object.keys(localStorage).forEach(function(k) {
+      if (k.indexOf('railbird_hero_seen_') === 0) localStorage.removeItem(k);
+    });
+    localStorage.removeItem('railbird_hero_seen_v1');
+  } catch(_) {}
 
-  // Version-keyed seen flag — rotates with every new release
-  var HERO_SEEN_KEY = 'railbird_hero_seen_' + (window.RAILBIRD_VERSION || 'unknown');
   var hero = document.getElementById('hero-screen');
   if (!hero) return;
 
-  // If already seen FOR THIS VERSION, collapse immediately on reload
-  try {
-    if (localStorage.getItem(HERO_SEEN_KEY) === '1') {
-      hero.classList.add('hero-hidden');
-      var af0 = document.getElementById('app-frame');
-      if (af0) window.scrollTo(0, 0);
-      return;
-    }
-  } catch(_) {}
-
-  function dismissHero() {
-    try { localStorage.setItem(HERO_SEEN_KEY, '1'); } catch(_) {}
-    hero.classList.add('hero-fadeout');
-    setTimeout(function() { hero.classList.add('hero-hidden'); }, 800);
-    var af = document.getElementById('app-frame');
-    if (af) af.scrollIntoView({ behavior: 'smooth' });
+  // Force the viewport to start at the hero on every load (overrides browser
+  // scroll restoration which could land the user mid-app on reload).
+  if ('scrollRestoration' in history) {
+    try { history.scrollRestoration = 'manual'; } catch(_) {}
   }
-  // Expose for the Enter chevron and any debugging
-  window.dismissHero = dismissHero;
+  window.scrollTo(0, 0);
+  // Belt-and-suspenders: some browsers restore scroll after 'load' fires
+  window.addEventListener('load', function() { window.scrollTo(0, 0); }, { once: true });
+
+  function enterApp() {
+    var af = document.getElementById('app-frame');
+    if (af) af.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  // Public helpers (retain names so any other code referencing them still works)
+  window.dismissHero = enterApp;
   window.resetHero = function() {
-    // Clear ALL version-keyed hero-seen flags so hero returns next load
-    try {
-      Object.keys(localStorage).forEach(function(k) {
-        if (k.indexOf('railbird_hero_seen_') === 0) localStorage.removeItem(k);
-      });
-    } catch(_) {}
-    hero.classList.remove('hero-hidden', 'hero-fadeout');
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Explicit Enter button/chevron = dismiss. Tapping the image/title = nothing.
+  // Enter chevron = scroll down to app
   var enterBtn = document.getElementById('hero-enter-prompt');
   if (enterBtn) {
     enterBtn.addEventListener('click', function(e) {
       e.stopPropagation();
-      dismissHero();
+      enterApp();
     });
   }
-
-  // Real scroll past the hero also dismisses (gesture = intent to enter)
-  var scrollDismissed = false;
-  window.addEventListener('scroll', function() {
-    if (scrollDismissed) return;
-    if (window.scrollY > window.innerHeight * 0.35) {
-      scrollDismissed = true;
-      try { localStorage.setItem(HERO_SEEN_KEY, '1'); } catch(_) {}
-    }
-  }, { passive: true });
 })();
 
 
@@ -11462,35 +11439,17 @@ function dismissWinnerOverlay(e) {
     'hero-winners-circle': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAeABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCvZ3c1uwbbyeuOP/rVpW2rb2WN1/hO5+4P09Kz/tATZ5kBRSQMgk/XFSwsXmLSMJ0xgSKnzEe9c72ubW10L8mpBWwpBFFZbwgnPOO2SvP50VnyvuaaditcSb4gChLkbw2cfpTLGV0hkA6gbgDxyKbKu2DaTkrwPfnvUCSOu4cYI2mtbXRN7MVrqVmzlsdsnJophf6/nRWmhld9z//Z',
     'hero-grandstand': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAANABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCOGaXGZbdW99+KsiW3/wCeLn6EGqLHLbDn5TjOeeuKeLdUQOSW3DpnpUurOK3K9nGWyLQubcji1c/gP8aKpkDPBf8A77NFT7eYvY+R/9k='
   };
+  // v2.16.3: hero src is set inline right after the <img> tag in the body.
+  // This block only handles JPG fallback if the WebP fails to decode.
   var img = document.getElementById('hero-bg-img');
   if (!img) return;
-  // Use the key pre-picked in <head> (so the preload link points at the image we actually show).
   var key = (typeof window !== 'undefined' && window.__railbirdHero) || heroKeys[Math.floor(Math.random() * heroKeys.length)];
-  // Detect WebP support and load full image
-  var useWebP = (document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0);
-  var ext = useWebP ? '.webp' : '.jpg';
-  var fullSrc = 'images/' + key + ext;
-  function reveal() {
-    img.src = fullSrc;
-    // Ensure the browser has the new src applied before we fade in
-    requestAnimationFrame(function() {
-      img.style.opacity = '1';
-    });
-  }
-  var loader = new Image();
-  loader.onload = reveal;
-  loader.onerror = function() {
-    // Fall back to JPG if WebP fails for any reason
-    if (useWebP) {
-      fullSrc = 'images/' + key + '.jpg';
-      var retry = new Image();
-      retry.onload = reveal;
-      retry.src = fullSrc;
+  img.addEventListener('error', function once() {
+    img.removeEventListener('error', once);
+    if (img.src.indexOf('.webp') > -1) {
+      img.src = 'images/' + key + '.jpg';
     }
-  };
-  loader.src = fullSrc;
-  // If the preload already cached the image, it resolves synchronously—reveal immediately
-  if (loader.complete && loader.naturalWidth > 0) reveal();
+  });
 })();
 
 // --- Expandable bet card details ---
