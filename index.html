@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>/* v2.17.2 FOUC kill: paint dark + hide doc until shell is ready. Uses app's actual dark (#0a1628) so any flash is invisible against the rendered app. Reveals on DOMContentLoaded + one rAF so at least one styled frame paints, with a 1500ms failsafe to avoid a stuck-hidden page. */
+(function(){var d=document.documentElement;d.style.backgroundColor='#0a1628';d.style.visibility='hidden';var revealed=false;function reveal(){if(revealed)return;revealed=true;d.style.visibility='visible';}document.addEventListener('DOMContentLoaded',function(){requestAnimationFrame(function(){requestAnimationFrame(reveal);});});setTimeout(reveal,1500);window.__railbirdReveal=reveal;})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -9,14 +11,16 @@
 <meta name="theme-color" content="#0a1628">
 <style>
 /* v2.16.2: kill white flash — paint the first frame navy, before any stylesheet loads.
-   Deliberately early + tiny so the browser can paint it during HTML streaming. */
+   Deliberately early + tiny so the browser can paint it during HTML streaming.
+   v2.17.2: also set html bg explicitly at the top so any flash is dark, not white. */
+html, body { background-color: #0a1628; }
 html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260417-1900-offday-dashboard-v2.17.1';
+var NE_APP_VERSION = '20260418-0330-fouc-kill-v2.17.2';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.17.1-offday-dashboard';
+var RAILBIRD_VERSION = 'v2.17.2-fouc-kill';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -6364,7 +6368,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.17.1)
+          Export Data (v2.17.2)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -12571,6 +12575,8 @@ document.addEventListener('keydown', e => {
 
   // --- Init -------------------------------------------------------------
   function init(){
+    // v2.17.2: app shell is up — reveal document (no-op if already revealed)
+    try { if (typeof window.__railbirdReveal === 'function') window.__railbirdReveal(); } catch(e){}
     try { initScrollSpy(); } catch(e){}
     try { populateLuxBestBet(); } catch(e){}
     try { markTopRatedRaceCards(); } catch(e){}
