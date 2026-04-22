@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260422-2200-virtual-barn-v2.21.1';
+var NE_APP_VERSION = '20260422-2215-curated-barn-v2.21.2';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.21.1-virtual-barn';
+var RAILBIRD_VERSION = 'v2.21.2-curated-barn';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -14207,6 +14207,8 @@ document.addEventListener('keydown', e => {
 (function(){
   var FIXTURE_URL = 'data/fixtures/saratoga_2025_sample.json';
   var DEMO_FLAG_KEY = 'railbird.barn.demoSeeded.v1';
+  var CURATED_URL = 'data/curated-horses.json';
+  var CURATED_FLAG_KEY = 'railbird.barn.curatedSeeded.v1';
 
   function getBarnStoreSafe(){
     var s = (typeof getStore === 'function') ? getStore() : null;
@@ -14252,6 +14254,17 @@ document.addEventListener('keydown', e => {
       if (!existing.trainer && entry.trainer) existing.trainer = entry.trainer;
       if (!existing.owner && entry.owner) existing.owner = entry.owner;
       if (!existing.addedFromRace && entry.addedFromRace) existing.addedFromRace = entry.addedFromRace;
+      // v2.21.2: carry curated profile fields if existing record lacks them.
+      // Never overwrite a user-set value — only fill blanks.
+      var curatedKeys = ['suffix','breed','color','sex','colorSex','age','foaled',
+        'sire','dam','damsire','breeder','equibaseRefno','speedFigureLatest',
+        'stats','sources','caveats'];
+      curatedKeys.forEach(function(k){
+        if ((existing[k] === undefined || existing[k] === null || existing[k] === '') && entry[k] !== undefined) {
+          existing[k] = entry[k];
+        }
+      });
+      if (entry.watchReason && !existing.watchReason) existing.watchReason = entry.watchReason;
     }
     saveBarnStoreSafe(s);
   }
@@ -14358,6 +14371,48 @@ document.addEventListener('keydown', e => {
       }).catch(function(){ return false; });
   }
 
+  // v2.21.2: Seed curated public-profile horses (e.g. Inspeightofcharlie).
+  // Source: user-provided Equibase screenshot + public profile pages
+  // (Sky Sports, At The Races, IrishRacing). Not an official/licensed feed.
+  // No bulk scraping — only the specific hand-curated facts in the JSON file.
+  // Idempotent: uses upsertHorse so a user's edits/notes are preserved.
+  function seedCuratedHorses(opts){
+    opts = opts || {};
+    var force = !!opts.force;
+    return fetch(CURATED_URL, { cache: 'force-cache' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(doc){
+        if (!doc || !Array.isArray(doc.horses) || !doc.horses.length) return { added: 0, updated: 0 };
+        var s = getBarnStoreSafe();
+        if (!s) return { added: 0, updated: 0 };
+        var added = 0, updated = 0;
+        doc.horses.forEach(function(h){
+          var pre = findHorseIdx(s.barn.horses, h.name);
+          var entry = Object.assign({}, h, {
+            source: h.source || 'curated-public-profile',
+            tags: (h.tags || []).slice()
+          });
+          upsertHorse(entry);
+          var post = findHorseIdx(getBarnStoreSafe().barn.horses, h.name);
+          if (pre < 0 && post >= 0) added += 1;
+          else if (pre >= 0) updated += 1;
+        });
+        try { localStorage.setItem(CURATED_FLAG_KEY, '1'); } catch(e){}
+        return { added: added, updated: updated, force: force };
+      }).catch(function(){ return { added: 0, updated: 0 }; });
+  }
+  window.virtualBarnSeedCurated = function(){
+    return seedCuratedHorses({ force: true }).then(function(res){
+      try { if (typeof showToast === 'function') {
+        if (res.added) showToast('Added ' + res.added + ' curated horse' + (res.added===1?'':'s') + ' to your Barn', 'success');
+        else if (res.updated) showToast('Curated profile refreshed', 'info');
+      }} catch(e){}
+      try { if (typeof barn_renderBarnTab === 'function') barn_renderBarnTab(); } catch(e){}
+      try { var aug = window.__augmentBarn; if (typeof aug === 'function') aug(); } catch(e){}
+      return res;
+    });
+  };
+
   // Expose public re-seed/export for user control.
   // v2.21.1: the in-Barn "Load sample horses" CTA calls this with force=true
   // so users can explicitly (re)seed without worrying about prior flag state.
@@ -14394,7 +14449,9 @@ document.addEventListener('keydown', e => {
     function fmtVal(v, fallback){ return (v !== null && v !== undefined && v !== '') ? esc(v) : (fallback || '<span class="vb-na">not in sample</span>'); }
     var hist = (h.history||[]).map(function(row){
       var chips = [];
-      if (row.track || row.race) chips.push('<span class="vb-chip vb-chip-key">' + esc(row.track||'—') + ' R' + esc(row.race||'—') + '</span>');
+      // v2.21.2: curated rows use finish/finishOf (no race number); demo rows use race number.
+      if (row.finish) chips.push('<span class="vb-chip vb-chip-finish">Finish ' + esc(row.finish) + (row.finishOf ? '/' + esc(row.finishOf) : '') + '</span>');
+      if (row.track || row.race) chips.push('<span class="vb-chip vb-chip-key">' + esc(row.track||'—') + (row.race ? ' R' + esc(row.race) : '') + '</span>');
       if (row.postTime) chips.push('<span class="vb-chip">PT ' + esc(row.postTime) + '</span>');
       if (row.distance) chips.push('<span class="vb-chip">' + esc(row.distance) + '</span>');
       if (row.surface) chips.push('<span class="vb-chip">' + esc(row.surface) + '</span>');
@@ -14402,33 +14459,102 @@ document.addEventListener('keydown', e => {
       if (row.purse) chips.push('<span class="vb-chip">$' + esc(row.purse.toLocaleString ? row.purse.toLocaleString() : row.purse) + '</span>');
       if (row.pp) chips.push('<span class="vb-chip vb-chip-num">PP ' + esc(row.pp) + '</span>');
       if (row.ml) chips.push('<span class="vb-chip vb-chip-ml">ML ' + esc(row.ml) + '</span>');
-      if (row.weight) chips.push('<span class="vb-chip">' + esc(row.weight) + 'lb</span>');
+      if (row.sp) chips.push('<span class="vb-chip vb-chip-ml">SP ' + esc(row.sp) + '</span>');
+      if (row.weight) chips.push('<span class="vb-chip">' + esc(row.weight) + (/^\d+-\d+$/.test(String(row.weight)) ? '' : 'lb') + '</span>');
+      if (row.or) chips.push('<span class="vb-chip">OR ' + esc(row.or) + '</span>');
       if (row.scratched) chips.push('<span class="vb-chip vb-chip-scratch">SCRATCHED</span>');
       var connections = [];
       if (row.jockey) connections.push('<b>J:</b> ' + esc(row.jockey));
       if (row.trainer) connections.push('<b>T:</b> ' + esc(row.trainer));
       if (row.owner) connections.push('<b>O:</b> ' + esc(row.owner));
+      if (row.winner) connections.push('<b>Winner:</b> ' + esc(row.winner));
+      var srcLine = row.source ? '<div class="vb-hist-src">Source: ' + esc(row.source) + '</div>' : '';
       return '<div class="vb-hist-row">' +
         '<div class="vb-hist-head"><span class="vb-hist-date">' + esc(row.date||'—') + '</span>' +
         '<span class="vb-hist-chips">' + chips.join('') + '</span></div>' +
         (connections.length ? '<div class="vb-hist-conn">' + connections.join(' · ') + '</div>' : '') +
         (row.note ? '<div class="vb-hist-note">' + esc(row.note) + '</div>' : '') +
+        srcLine +
         '</div>';
     }).join('') || '<div class="vb-empty">No history on file yet. Add notes below.</div>';
 
     var tagsStr = (h.tags||[]).join(', ');
-    var srcBadge = h.source === 'demo-saratoga-2025'
-      ? '<span class="vb-src-badge">DEMO · Saratoga sample</span>' : '';
+    var isCurated = h.source === 'curated-public-profile' || !!(h.sources && h.sources.length);
+    var srcBadge = '';
+    if (h.source === 'demo-saratoga-2025') srcBadge = '<span class="vb-src-badge">DEMO · Saratoga sample</span>';
+    else if (isCurated) srcBadge = '<span class="vb-src-badge vb-src-badge-curated">CURATED · Public profile data</span>';
 
     // Overview chips drawn from top-level horse fields.
     var overviewChips = [];
     if (h.age) overviewChips.push('<span class="vb-chip">' + esc(h.age) + 'yo' + (h.sex ? ' ' + esc(h.sex) : '') + '</span>');
+    else if (h.colorSex) overviewChips.push('<span class="vb-chip">' + esc(h.colorSex) + '</span>');
+    if (h.breed) overviewChips.push('<span class="vb-chip">' + esc(h.breed) + '</span>');
+    if (h.suffix) overviewChips.push('<span class="vb-chip">' + esc(h.suffix) + '</span>');
     if (h.runningStyle) overviewChips.push('<span class="vb-chip">Style: ' + esc(h.runningStyle) + '</span>');
     if (h.ml) overviewChips.push('<span class="vb-chip vb-chip-ml">ML ' + esc(h.ml) + '</span>');
+    if (h.speedFigureLatest) overviewChips.push('<span class="vb-chip vb-chip-key">SF ' + esc(h.speedFigureLatest) + '</span>');
     var appearancesCount = (h.history||[]).length;
-    if (appearancesCount) overviewChips.push('<span class="vb-chip vb-chip-key">' + appearancesCount + ' sample start' + (appearancesCount === 1 ? '' : 's') + '</span>');
+    var histLabel = isCurated ? 'public form line' : 'sample start';
+    if (appearancesCount) overviewChips.push('<span class="vb-chip vb-chip-key">' + appearancesCount + ' ' + histLabel + (appearancesCount === 1 ? '' : 's') + '</span>');
     if (h.favorite) overviewChips.push('<span class="vb-chip vb-chip-fav">\u2605 Favorite</span>');
     (h.tags||[]).forEach(function(t){ overviewChips.push('<span class="vb-chip vb-chip-tag">#' + esc(t) + '</span>'); });
+
+    // v2.21.2: Build Stats block for curated horses (season + career + surface + alt).
+    function renderStatRow(s){
+      if (!s) return '';
+      var parts = [];
+      if (s.starts != null) parts.push('<span class="vb-stat-num">' + esc(s.starts) + '</span><span class="vb-stat-lbl">Starts</span>');
+      var w = s.firsts != null ? s.firsts : s.wins;
+      if (w != null) parts.push('<span class="vb-stat-num">' + esc(w) + '</span><span class="vb-stat-lbl">Wins</span>');
+      if (s.seconds != null) parts.push('<span class="vb-stat-num">' + esc(s.seconds) + '</span><span class="vb-stat-lbl">2nd</span>');
+      if (s.thirds != null) parts.push('<span class="vb-stat-num">' + esc(s.thirds) + '</span><span class="vb-stat-lbl">3rd</span>');
+      if (s.places != null && s.seconds == null) parts.push('<span class="vb-stat-num">' + esc(s.places) + '</span><span class="vb-stat-lbl">Places</span>');
+      if (s.earningsDisplay) parts.push('<span class="vb-stat-num">' + esc(s.earningsDisplay) + '</span><span class="vb-stat-lbl">Earn</span>');
+      else if (s.earnings != null) parts.push('<span class="vb-stat-num">$' + esc((s.earnings.toLocaleString ? s.earnings.toLocaleString() : s.earnings)) + '</span><span class="vb-stat-lbl">Earn</span>');
+      var head = '<div class="vb-stat-head">' + esc(s.label || '') + (s.source ? ' <span class="vb-stat-src">· ' + esc(s.source) + '</span>' : '') + '</div>';
+      var note = s.note ? '<div class="vb-stat-note">' + esc(s.note) + '</div>' : '';
+      return '<div class="vb-stat-row">' + head + '<div class="vb-stat-grid">' + parts.join('') + '</div>' + note + '</div>';
+    }
+    var statsHtml = '';
+    if (h.stats) {
+      var pieces = [];
+      if (h.stats.season2026) pieces.push(renderStatRow(h.stats.season2026));
+      if (h.stats.career) pieces.push(renderStatRow(h.stats.career));
+      if (Array.isArray(h.stats.surface)) h.stats.surface.forEach(function(x){ pieces.push(renderStatRow(x)); });
+      if (Array.isArray(h.stats.alternate)) h.stats.alternate.forEach(function(x){ pieces.push(renderStatRow(x)); });
+      statsHtml = pieces.join('');
+    }
+
+    // v2.21.2: Sources section for curated horses.
+    var sourcesHtml = '';
+    if (Array.isArray(h.sources) && h.sources.length) {
+      sourcesHtml = h.sources.map(function(src){
+        var href = src.url ? esc(src.url) : '';
+        var label = esc(src.label || href || 'source');
+        var note = src.note ? '<div class="vb-src-note">' + esc(src.note) + '</div>' : '';
+        var link = href ? '<a class="vb-src-link" href="' + href + '" target="_blank" rel="noopener noreferrer">' + label + '</a>' : label;
+        return '<div class="vb-src-row">' + link + note + '</div>';
+      }).join('');
+      if (Array.isArray(h.caveats) && h.caveats.length) {
+        sourcesHtml += '<div class="vb-src-caveats"><b>Caveats</b>' +
+          h.caveats.map(function(c){ return '<div class="vb-src-note">· ' + esc(c) + '</div>'; }).join('') + '</div>';
+      }
+      sourcesHtml += '<div class="vb-src-disclaimer">Curated from public profile pages. Not an official or licensed data feed.</div>';
+    }
+
+    // v2.21.2: Pedigree/breeder block for curated horses (if present).
+    var pedigreeHtml = '';
+    if (isCurated && (h.sire || h.dam || h.damsire || h.breeder || h.foaled || h.equibaseRefno)) {
+      pedigreeHtml =
+        '<dl class="vb-overview-grid">' +
+          (h.foaled ? '<dt>Foaled</dt><dd>' + esc(h.foaled) + '</dd>' : '') +
+          (h.sire ? '<dt>Sire</dt><dd>' + esc(h.sire) + '</dd>' : '') +
+          (h.dam ? '<dt>Dam</dt><dd>' + esc(h.dam) + '</dd>' : '') +
+          (h.damsire ? '<dt>Damsire</dt><dd>' + esc(h.damsire) + '</dd>' : '') +
+          (h.breeder ? '<dt>Breeder</dt><dd>' + esc(h.breeder) + '</dd>' : '') +
+          (h.equibaseRefno ? '<dt>Equibase refno</dt><dd>' + esc(h.equibaseRefno) + '</dd>' : '') +
+        '</dl>';
+    }
 
     modal.innerHTML =
       '<style>' +
@@ -14475,6 +14601,25 @@ document.addEventListener('keydown', e => {
       '#virtual-barn-profile-modal .vb-overview-grid{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:0.88rem;line-height:1.55}' +
       '#virtual-barn-profile-modal .vb-overview-grid dt{color:#F0CB6A;font-weight:700;font-size:0.78rem;letter-spacing:0.04em;text-transform:uppercase;align-self:center}' +
       '#virtual-barn-profile-modal .vb-overview-grid dd{margin:0;color:#F5F0E8}' +
+      /* v2.21.2: curated badge + stats + sources + form-row extras */
+      '#virtual-barn-profile-modal .vb-src-badge-curated{background:rgba(125,200,140,0.2);color:#A8D4B3}' +
+      '#virtual-barn-profile-modal .vb-chip-finish{background:rgba(201,168,76,0.28);color:#F5E3A8;font-weight:800}' +
+      '#virtual-barn-profile-modal .vb-hist-src{color:#8F8975;font-size:0.72rem;margin-top:3px;font-style:italic}' +
+      '#virtual-barn-profile-modal .vb-stat-row{padding:10px 0;border-top:1px solid rgba(237,232,220,0.1)}' +
+      '#virtual-barn-profile-modal .vb-stat-row:first-child{border-top:none;padding-top:2px}' +
+      '#virtual-barn-profile-modal .vb-stat-head{color:#F0CB6A;font-size:0.78rem;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;margin-bottom:6px}' +
+      '#virtual-barn-profile-modal .vb-stat-src{color:#B9B3A0;font-size:0.7rem;font-weight:500;text-transform:none;letter-spacing:0}' +
+      '#virtual-barn-profile-modal .vb-stat-grid{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:baseline}' +
+      '#virtual-barn-profile-modal .vb-stat-grid .vb-stat-num{color:#F7F2E6;font-family:var(--font-mono,monospace);font-weight:700;font-size:1rem;margin-right:4px}' +
+      '#virtual-barn-profile-modal .vb-stat-grid .vb-stat-lbl{color:#C8C2AD;font-size:0.72rem;letter-spacing:0.04em;text-transform:uppercase;margin-right:8px}' +
+      '#virtual-barn-profile-modal .vb-stat-note{color:#C8C2AD;font-size:0.76rem;font-style:italic;margin-top:4px;line-height:1.5}' +
+      '#virtual-barn-profile-modal .vb-src-row{padding:8px 0;border-top:1px solid rgba(237,232,220,0.1)}' +
+      '#virtual-barn-profile-modal .vb-src-row:first-child{border-top:none;padding-top:2px}' +
+      '#virtual-barn-profile-modal .vb-src-link{color:#F0CB6A;text-decoration:underline;font-weight:700;font-size:0.88rem;word-break:break-all}' +
+      '#virtual-barn-profile-modal .vb-src-note{color:#C8C2AD;font-size:0.78rem;line-height:1.5;margin-top:3px}' +
+      '#virtual-barn-profile-modal .vb-src-caveats{margin-top:10px;padding:8px 10px;background:rgba(217,134,122,0.1);border-left:3px solid rgba(217,134,122,0.6);border-radius:6px}' +
+      '#virtual-barn-profile-modal .vb-src-caveats b{color:#E7A096;font-size:0.78rem;display:block;margin-bottom:4px;letter-spacing:0.04em;text-transform:uppercase}' +
+      '#virtual-barn-profile-modal .vb-src-disclaimer{margin-top:10px;color:#B9B3A0;font-size:0.72rem;font-style:italic;line-height:1.5}' +
       '</style>' +
       '<div class="vb-sheet" role="document">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">' +
@@ -14501,11 +14646,29 @@ document.addEventListener('keydown', e => {
             '</dl>' +
           '</div>' +
         '</div>' +
-        /* SAMPLE HISTORY section */
+        /* PEDIGREE (curated only) */
+        (pedigreeHtml ?
+          '<div class="vb-section open" data-vb-section>' +
+            '<div class="vb-section-head" data-vb-toggle><h4>Pedigree &amp; identity</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
+            '<div class="vb-section-body">' + pedigreeHtml + '</div>' +
+          '</div>' : '') +
+        /* STATS section (curated only) */
+        (statsHtml ?
+          '<div class="vb-section open" data-vb-section>' +
+            '<div class="vb-section-head" data-vb-toggle><h4>Stats</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
+            '<div class="vb-section-body">' + statsHtml + '</div>' +
+          '</div>' : '') +
+        /* SAMPLE HISTORY / FORM HISTORY section */
         '<div class="vb-section open" data-vb-section>' +
-          '<div class="vb-section-head" data-vb-toggle><h4>Sample history \u00B7 ' + appearancesCount + '</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
+          '<div class="vb-section-head" data-vb-toggle><h4>' + (isCurated ? 'Form history' : 'Sample history') + ' \u00B7 ' + appearancesCount + '</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
           '<div class="vb-section-body">' + hist + '</div>' +
         '</div>' +
+        /* SOURCES section (curated only) */
+        (sourcesHtml ?
+          '<div class="vb-section open" data-vb-section>' +
+            '<div class="vb-section-head" data-vb-toggle><h4>Sources</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
+            '<div class="vb-section-body">' + sourcesHtml + '</div>' +
+          '</div>' : '') +
         /* NOTES + TAGS section */
         '<div class="vb-section open" data-vb-section>' +
           '<div class="vb-section-head" data-vb-toggle><h4>Notes &amp; tags</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
@@ -14643,7 +14806,14 @@ document.addEventListener('keydown', e => {
     // Seed demo horses once, after app has warmed up a bit.
     setTimeout(function(){
       seedDemoHorses().then(function(){
+        // v2.21.2: always run curated-horse upsert (idempotent, non-destructive).
+        // This prepopulates Inspeightofcharlie and any other curated public-profile
+        // horses so the user gets them without manual entry, while preserving
+        // any user-added data on those horses.
+        return seedCuratedHorses();
+      }).then(function(res){
         applyBarnHighlights();
+        try { if (typeof barn_renderBarnTab === 'function') barn_renderBarnTab(); } catch(e){}
         try { if (typeof barn_updateBadge === 'function') barn_updateBadge(); } catch(e){}
       });
     }, 1400);

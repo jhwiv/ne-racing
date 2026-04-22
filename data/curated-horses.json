@@ -1,0 +1,179 @@
+{
+  "meta": {
+    "version": "v2.21.2",
+    "generated_at": "2026-04-22",
+    "data_status": "curated-public-profile",
+    "notes": "Curated from user-provided Equibase screenshot facts plus public horse-profile pages (Sky Sports, At The Races, IrishRacing). NOT an official or licensed data feed. No bulk scraping, no automated harvesting. Source URLs recorded per horse and per history row where available."
+  },
+  "horses": [
+    {
+      "name": "Inspeightofcharlie",
+      "suffix": "(NY)",
+      "breed": "TB",
+      "color": "Chestnut",
+      "sex": "G",
+      "colorSex": "CH G",
+      "age": 4,
+      "foaled": "2022-02-02",
+      "sire": "Speightster",
+      "dam": "Untaken",
+      "damsire": "Noonmark",
+      "trainer": "Barclay Tagg",
+      "jockey": "Nik Juarez",
+      "owner": "Two Lions Farm",
+      "breeder": "Sinatra Thoroughbred Racing & Breeding, LLC",
+      "equibaseRefno": "11094587",
+      "speedFigureLatest": 71,
+      "tags": ["curated", "tagg", "ny-bred"],
+      "watchReason": "Curated profile from Equibase + public form sources. Tagg runner, NY-bred Speightster gelding.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "Equibase profile",
+          "url": "https://www.equibase.com/profiles/Results.cfm?type=Horse&refno=11094587&registry=T",
+          "note": "User-provided screenshot/browser lookup. Canonical Equibase refno 11094587."
+        },
+        {
+          "label": "Sky Sports form profile",
+          "url": "https://www.skysports.com/racing/form-profiles/horse/1363465/inspeightofcharlie-usa",
+          "note": "Public profile page."
+        },
+        {
+          "label": "At The Races form",
+          "url": "https://www.attheraces.com/form/horse/Inspeightofcharlie/USA/3804332",
+          "note": "Public form summary; some column ambiguity in historical rows."
+        },
+        {
+          "label": "IrishRacing profile",
+          "url": "https://www.irishracing.com/horse/Inspeightofcharlie-USA/836322",
+          "note": "Public profile. Earnings figure here conflicts with Equibase; see caveat."
+        }
+      ],
+      "stats": {
+        "season2026": {
+          "label": "2026",
+          "starts": 2,
+          "firsts": 1,
+          "seconds": 0,
+          "thirds": 1,
+          "earnings": 47600,
+          "earningsDisplay": "$47,600",
+          "source": "Equibase screenshot"
+        },
+        "career": {
+          "label": "Career",
+          "starts": 7,
+          "firsts": 1,
+          "seconds": 2,
+          "thirds": 2,
+          "earnings": 84430,
+          "earningsDisplay": "$84,430",
+          "source": "Equibase screenshot"
+        },
+        "surface": [
+          { "label": "Turf", "starts": 4, "wins": 1, "places": 2, "source": "At The Races" },
+          { "label": "All Weather", "starts": 3, "wins": 0, "places": 2, "source": "At The Races" }
+        ],
+        "alternate": [
+          {
+            "label": "Lifetime (Flat USA) — IrishRacing alt",
+            "starts": 7,
+            "wins": 1,
+            "earnings": 96420,
+            "earningsDisplay": "$96,420",
+            "source": "IrishRacing",
+            "note": "Conflicts with Equibase career earnings ($84,430). Shown as source-specific alternate, not canonical."
+          }
+        ]
+      },
+      "history": [
+        {
+          "date": "2026-02-14",
+          "track": "Gulfstream",
+          "surface": "Firm",
+          "distance": "8F",
+          "conditions": "Maiden $52k",
+          "finish": "1",
+          "finishOf": "9",
+          "weight": "8-11",
+          "sp": "16/1",
+          "jockey": "Nik Juarez",
+          "trainer": "Barclay Tagg",
+          "owner": "Two Lions Farm",
+          "source": "At The Races (public form)",
+          "note": "Maiden win — public profile row; column ambiguity possible, labeled as public form line."
+        },
+        {
+          "date": "2026-01-09",
+          "track": "Gulfstream",
+          "surface": "Fast",
+          "distance": "9.5F",
+          "conditions": "Maiden $52k",
+          "finish": "3",
+          "finishOf": "8",
+          "weight": "8-11",
+          "sp": "9/2",
+          "source": "At The Races (public form)",
+          "note": "Public form summary line, not official chart."
+        },
+        {
+          "date": "2025-11-22",
+          "track": "Gulfstream",
+          "finish": "2",
+          "source": "At The Races (public form)",
+          "note": "Highlight row from public form."
+        },
+        {
+          "date": "2025-09-28",
+          "track": "Belmont At The Big A (USA)",
+          "distance": "1m 110y",
+          "surface": "Firm",
+          "conditions": "—",
+          "finish": "2",
+          "finishOf": "12",
+          "weight": "8-8",
+          "sp": "12/1",
+          "jockey": "Katie Davis",
+          "trainer": "Barclay Tagg",
+          "winner": "I Can See That (USA)",
+          "or": 81,
+          "source": "Sky Sports form profile"
+        },
+        {
+          "date": "2025-09-18",
+          "track": "Belmont At The Big A (USA)",
+          "distance": "1m 110y",
+          "surface": "Firm",
+          "finish": "5",
+          "finishOf": "7",
+          "weight": "8-8",
+          "sp": "8/1",
+          "jockey": "Katie Davis",
+          "trainer": "Barclay Tagg",
+          "winner": "Moe Eighty Eight (USA)",
+          "or": 76,
+          "source": "Sky Sports form profile"
+        },
+        {
+          "date": "2025-08-15",
+          "track": "Saratoga (USA)",
+          "distance": "1m",
+          "surface": "Fast",
+          "finish": "4",
+          "finishOf": "8",
+          "weight": "8-6",
+          "sp": "14/1",
+          "jockey": "Victor Espinoza",
+          "trainer": "Barclay Tagg",
+          "winner": "Undisputed (USA)",
+          "source": "Sky Sports form profile"
+        }
+      ],
+      "caveats": [
+        "IrishRacing lists lifetime earnings of $96,420, which disagrees with the Equibase career total of $84,430. Equibase is treated as canonical; the IrishRacing figure is retained as a source-specific alternate.",
+        "Some At The Races rows had ambiguous columns in the public summary and are labeled as public form lines, not official Railbird-calculated data."
+      ]
+    }
+  ]
+}

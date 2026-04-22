@@ -1,5 +1,65 @@
 # NE Racing — Changelog
 
+## v2.21.2 — Curated horse profiles in Virtual Barn (2026-04-22)
+
+Focused update: seed the Virtual Barn with a hand-curated public-profile
+horse (Inspeightofcharlie) so the user gets a richer profile modal
+without any manual entry.
+
+### Added
+- **`data/curated-horses.json`**: small curated dataset of public-profile
+  horse facts with explicit source labels and URLs (Equibase profile,
+  Sky Sports, At The Races, IrishRacing). Labeled as
+  `data_status: curated-public-profile` — **not** an official or
+  licensed data feed. No bulk scraping, no crawler, no automated
+  harvesting loop — only the specific hand-gathered facts.
+- **Auto-seed of curated horses** on Barn boot via `seedCuratedHorses()`.
+  Idempotent: uses the existing `upsertHorse` merge logic, which only
+  fills blank fields and appends non-duplicate history. User edits
+  (notes, tags, watchReason, favorite, user-added history) are
+  preserved. No manual entry required.
+- **Richer profile modal for curated horses**:
+  - New **CURATED · Public profile data** source badge.
+  - New **Pedigree & identity** section (foaled, sire, dam, damsire,
+    breeder, Equibase refno).
+  - New **Stats** section with season + career + surface + alternate
+    rows, each tagged with its source.
+  - **Form history** (renamed from Sample history for curated horses)
+    gains finish/finishOf, SP, OR, winner, and per-row source lines.
+  - New **Sources** section with clickable external profile links,
+    per-source notes, explicit caveats block (e.g. earnings conflicts
+    between Equibase and IrishRacing), and a disclaimer that the data
+    is curated from public profiles, not an official/licensed feed.
+- `window.virtualBarnSeedCurated()` exposed for manual re-seed.
+
+### Inspeightofcharlie specifics included
+- Name, suffix (NY), breed (TB), color/sex (CH G), foaled 2026-02-02.
+- Sire Speightster, dam Untaken, damsire Noonmark.
+- Jockey Nik Juarez, trainer Barclay Tagg, owner Two Lions Farm,
+  breeder Sinatra Thoroughbred Racing & Breeding, LLC.
+- Equibase refno 11094587, latest speed figure 71.
+- 2026 stats (Equibase): 2 starts / 1-0-1 / $47,600.
+- Career stats (Equibase): 7 starts / 1-2-2 / $84,430.
+- Surface splits (At The Races): Turf 4-1-2, AW 3-0-2.
+- Alternate career total (IrishRacing): 7 / 1 / $96,420 — retained as
+  source-specific alternate because it conflicts with Equibase canonical.
+- 6 form lines from Sky Sports + At The Races with finish, SP, weight,
+  jockey, trainer, winner, OR, and per-row source labels.
+
+### Internal
+- `version.json` bumped to `20260422-2215-curated-barn-v2.21.2`.
+- `RAILBIRD_VERSION` / `NE_APP_VERSION` bumped in `index.html`.
+- `upsertHorse` extended to carry curated profile fields (pedigree,
+  stats, sources, caveats) without overwriting user-set values.
+
+### Caveats
+- Earnings conflict between Equibase ($84,430) and IrishRacing
+  ($96,420) is preserved in the UI as an alternate stat row with a
+  visible note; Equibase is treated as canonical.
+- Some At The Races rows had ambiguous columns in the public summary;
+  they are labeled as public form lines, not official chart data.
+- No Cloudflare Worker deploy. No new external network calls.
+
 ## v2.21.1 — Barn contrast + horse-first hierarchy (2026-04-22)
 
 Focused corrective release against v2.21.0 based on real-device QA
