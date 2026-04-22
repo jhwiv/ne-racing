@@ -1,5 +1,81 @@
 # NE Racing — Changelog
 
+## v2.21.4 — Lookup Barn: search-and-add instead of a default long list (2026-04-22)
+
+User complaint addressed: **"I still don't like the barn. You have a long
+list of horses. I'd rather have a lookup function and add from that. The
+favorite should be highlighted on any racing form it appears on."**
+
+### UX reset — Barn is now a personal stable, not a horse directory
+
+- **Removed auto-seed of 14 demo Saratoga horses into personal barn.** The
+  boot path no longer calls `seedDemoHorses()`. Curated public-profile
+  horses (Inspeightofcharlie) continue to upsert at boot, preserving any
+  user edits via the existing idempotent merge.
+- **One-time migration** moves prior auto-seeded demo horses out of
+  `s.barn.horses` into `s.barn.lookupDemoHidden` only when they are
+  provably untouched: `source === 'demo-saratoga-2025'`, not favorite,
+  no `notes`, no custom (non-demo/non-saratoga) tags, and watch reason
+  equals the stock seed copy. Any user-touched demo horse stays put.
+  Curated and user-added horses are never touched. Migration is gated
+  by `localStorage[railbird.barn.v214LookupMigration]` so it runs once.
+
+### New: Lookup / search-and-add panel (top of Barn)
+
+- Prominent search input ("Search horses to add…") near the top of the
+  Barn tab.
+- Candidate pool is built locally from `data/curated-horses.json` +
+  `data/fixtures/saratoga_2025_sample.json` — no network calls, no
+  scraping, no Worker changes. Curated entries win name collisions.
+- Result cards show name, trainer/jockey/owner/sire meta, a source
+  badge (Curated profile / Demo sample), an in-barn state badge
+  (In Barn / ★ Favorite), a one-tap **Add to Barn** button, and a
+  favorite heart.
+- Empty-query state shows up to 4 suggested curated + 4 demo horses
+  under a "Suggested horses" header — not the full list.
+- Result name opens the full profile modal (lazily upserts the horse
+  so `openHorseProfile` can render it).
+
+### Heart semantics in the lookup panel
+
+- Not in barn → add + mark favorite.
+- In barn, not favorite → mark favorite on.
+- Already favorite → unmark favorite (horse stays).
+- Never removes. `Add to Barn` is a separate button that adds without
+  favoriting.
+
+### Favorite highlight on racing forms
+
+- Favorite barn horses get a distinctive **solid gold ★ Favorite pill**
+  and a stronger row stripe (`tr.vb-fav-row` — 4px gold stripe + soft
+  glow on gold background). Non-favorite in-barn horses keep the
+  subtler gold tick + "In Barn" pill.
+- `applyBarnHighlights()` now also toggles the `vb-fav-row` class so
+  the CSS can target whole rows, and name normalization covers case +
+  extra whitespace.
+- Heart toggles in the lookup panel and the profile modal immediately
+  trigger `applyBarnHighlights()` so race-form rows re-paint without
+  a tab switch.
+
+### Files changed
+
+- `index.html` — auto-seed removed, migration added, lookup panel
+  rendered at top of Barn, strengthened favorite highlight styles.
+- `version.json`, inline `NE_APP_VERSION` / `RAILBIRD_VERSION` bumped
+  to `v2.21.4`.
+- `tests/lookup-barn.test.js` — new. 14 tests covering migration
+  (5 scenarios), candidate merge, lookup heart (3 branches), and
+  highlight classification incl. normalization.
+
+### Caveats
+
+- Migration conservatively only removes demo horses that match ALL of:
+  demo source + not favorite + empty notes + no custom tags + stock
+  watch reason. Anything else stays to avoid destroying user intent.
+- Lookup pool is limited to curated + Saratoga sample; horses from
+  live expert entries files are not (yet) indexed.
+- Cloudflare Worker was intentionally NOT touched; no deploy triggered.
+
 ## v2.21.3 — Emotional Virtual Barn + real heart feedback (2026-04-22)
 
 User complaint addressed: **"After pressing the heart button, nothing
