@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260422-1005-barn-filter-tracks-v2.18.0';
+var NE_APP_VERSION = '20260422-1030-barn-icon-v2.18.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.18.0-barn-tracks';
+var RAILBIRD_VERSION = 'v2.18.1-barn-icon';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -6292,9 +6292,10 @@ tr:has(> td > .detail-stat-row),
   </button>
   <button class="tab-btn" id="tab-btn-barn" onclick="switchTab('barn')" aria-label="Barn" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M3 11 L12 4 L21 11 V20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z"/>
-      <path d="M8 21 V13 H16 V21"/>
-      <line x1="8" y1="17" x2="16" y2="17"/>
+      <path d="M3 12 L6 8 L12 4 L18 8 L21 12 V20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z"/>
+      <path d="M10 21 V14 H14 V21"/>
+      <path d="M10 14 L14 21 M14 14 L10 21"/>
+      <rect x="10.5" y="9" width="3" height="2.5" rx="0.3"/>
     </svg>
     <span>Barn</span>
     <span class="tab-badge hidden" id="barn-today-badge">0</span>
@@ -6383,7 +6384,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.18.0)
+          Export Data (v2.18.1)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
