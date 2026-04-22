@@ -1,5 +1,76 @@
 # NE Racing — Changelog
 
+## v2.21.1 — Barn contrast + horse-first hierarchy (2026-04-22)
+
+Focused corrective release against v2.21.0 based on real-device QA
+(iPhone 390px): Barn was reading as a Jockey/Trainer/Stable form with
+horses buried below the fold, and several text tones on navy were below
+readable contrast.
+
+### Fixes
+- **Barn is horse-first above the fold**: the Horses section now renders
+  with an elevated primary card (gold hairline, larger heading) as the
+  first thing after the summary row. Jockeys/Trainers are collapsed
+  under a secondary **Connections** accordion, and the Stables card is
+  nested inside that accordion instead of dominating the viewport.
+- **Load sample horses CTA**: when the Horses list is empty (including
+  for legacy v2.20 users who had Jockeys/Trainers but no horses) the
+  Barn now shows a prominent "Load sample Saratoga horses" button that
+  seeds 14 curated horses from the 2025 SAR sample fixture. The
+  auto-seeder was also fixed so a prior skipped attempt (flag set, 0
+  horses in barn) retries on next load.
+- **Contrast rewrite** (WCAG AA-friendly on navy/cream):
+  - Barn section headings upped to solid `#F7F2E6`.
+  - Empty-state copy raised from `alpha(0.82)` to solid `#E6DFC9`.
+  - Count dots replaced with a solid gold chip.
+  - Input placeholders on navy cards now `#B9B3A0`.
+  - Footer tip moved off pale-italic-on-cream to solid `#3A4256` text on
+    a soft navy tint pill.
+  - Meta / watch-reason rows now `#DCD6C2` / `#D9D2BC`.
+  - Inactive bottom-nav labels/icons lifted from `--lux-ink-mute`
+    (`rgba(237,232,220,0.62)`) to solid `#C8C2AD`, icons bumped to 0.9
+    opacity, min-height raised to 56px.
+  - Upcoming-at-SAR card: gold accents solidified, row text brightened,
+    empty-state italic replaced with plain readable copy.
+- **Tap targets**:
+  - `.icon-btn` (top-bar gear, track pill, close buttons) now
+    guaranteed ≥44×44px via `min-width`/`min-height`/flex centering.
+  - Bottom-nav buttons min-height 56px.
+  - Barn add-row inputs/buttons raised to 44px min height.
+  - Barn `Remove` button raised to 44px; `Open` button in Upcoming row
+    raised to 36px with proper hit area.
+- **Richer horse profile**: profile modal now has three collapsible
+  sections — **Overview**, **Sample history**, and **Notes & tags**.
+  Overview is a definition-list grid of Jockey / Trainer / Owner /
+  Age-Sex / Style / ML / sample-start count, with chips for quick
+  scanning. Sample history preserves every fixture field we have per
+  entry: date, track, race, post time, distance, surface, conditions,
+  purse, post position, weight, morning line, scratched flag, plus
+  jockey / trainer / owner for that race. Missing fields render as
+  *"not in sample"* rather than invented data.
+- **In-race highlighting preserved**: the gold left-stripe and "In Barn"
+  pill for horses in the active race card continue to work.
+
+### Internal
+- `version.json` bumped to `20260422-2200-virtual-barn-v2.21.1`.
+- `RAILBIRD_VERSION` / `NE_APP_VERSION` bumped in `index.html`.
+- `buildDemoHorsesFromFixture()` now carries per-race connection fields
+  (jockey, trainer, owner, pp, weight, ml, purse, conditions, postTime,
+  scratched) into the horse history so the profile modal has something
+  to render.
+- `seedDemoHorses()` accepts `{force:true}` and the CTA / settings
+  re-seed path uses it. The auto-seed path also retries when the flag
+  is set but the barn is still empty.
+- `window.__augmentBarn` now exposed so the seed CTA can refresh
+  Stables/Upcoming cards after seeding.
+
+### Out of scope / known limitations
+- No new data sources, no Worker deploy. The Worker token is unavailable
+  in this release loop; CORS / auth remain as shipped in v2.21.0.
+- "Sample history" is explicitly scheduled-entry data from the 2025 SAR
+  placeholder set. No finish positions / beaten lengths / speed figs
+  are shown because the fixture does not contain them.
+
 ## v2.21.0 — Virtual Barn + QC remediation (2026-04-22)
 
 ### Features

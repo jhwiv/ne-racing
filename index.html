@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260422-2130-virtual-barn-v2.21.0';
+var NE_APP_VERSION = '20260422-2200-virtual-barn-v2.21.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.21.0-virtual-barn';
+var RAILBIRD_VERSION = 'v2.21.1-virtual-barn';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1641,9 +1641,10 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .live-odds-status.on { background: rgba(45,106,79,0.15); color: var(--color-positive); animation: livePulse 2s ease-in-out infinite; }
 @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
 @media (min-width: 768px) { .sync-info { display: block; } .live-odds-status { display: block; } }
-.icon-btn { padding: 0.4rem; border-radius: var(--radius-sm); color: var(--color-muted); transition: all 0.15s; }
+/* v2.21.1: bump icon-btn to AA tap target (44x44 min). */
+.icon-btn { padding: 0.55rem; border-radius: var(--radius-sm); color: var(--color-muted); transition: all 0.15s; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn:hover { background: rgba(27,67,50,0.08); color: var(--color-racing-green); }
-.icon-btn svg { width: 20px; height: 20px; display: block; }
+.icon-btn svg { width: 22px; height: 22px; display: block; }
 
 /* =========================================================
    TRACK SELECTOR DRAWER
@@ -4304,9 +4305,13 @@ html, body { overscroll-behavior: none; }
   border-top: 1px solid var(--lux-hairline) !important;
   color: var(--lux-cream);
 }
-#bottom-tab-bar .tab-btn { color: var(--lux-ink-mute); font-family: var(--lux-font-display); letter-spacing: 0.1em; text-transform: uppercase; }
-#bottom-tab-bar .tab-btn span:not(.tab-badge) { font-size: 0.7rem; }
+/* v2.21.1: inactive bottom-nav labels/icons were near-invisible on navy.
+   Bumped from 0.62 alpha to a solid, readable warm-ink tone. */
+#bottom-tab-bar .tab-btn { color: #C8C2AD; font-family: var(--lux-font-display); letter-spacing: 0.1em; text-transform: uppercase; min-height: 56px; }
+#bottom-tab-bar .tab-btn span:not(.tab-badge) { font-size: 0.72rem; font-weight: 600; }
+#bottom-tab-bar .tab-btn svg { opacity: 0.9; }
 #bottom-tab-bar .tab-btn.active { color: var(--lux-gold); }
+#bottom-tab-bar .tab-btn.active svg { opacity: 1; }
 #bottom-tab-bar .tab-btn.active::before {
   content: ''; position: absolute; top: 0; left: 15%; right: 15%; height: 1px;
   background: var(--lux-gold);
@@ -6214,10 +6219,10 @@ tr:has(> td > .detail-stat-row),
       </div>
     </section>
 
-    <!-- BARN TAB — v2.18.0 -->
+    <!-- BARN TAB — v2.21.1 (horse-first above the fold) -->
     <section id="tab-barn" class="tab-panel" role="tabpanel" aria-label="Barn">
       <h2 class="section-title" id="barn-heading">Your Virtual Barn</h2>
-      <p class="section-sub" style="font-size:0.82rem;color:var(--color-muted);margin:-6px 0 10px;line-height:1.5">Horses you want to watch. Tap a name for the full profile, notes, tags, and history. Demo Saratoga horses are seeded so you can try it today.</p>
+      <p class="section-sub" style="font-size:0.9rem;color:#3A4256;margin:-6px 0 12px;line-height:1.55">Horses you want to watch. Tap a name for the full profile — notes, tags, watch reason, and sample history. Jockeys, trainers, and stables live under <em>Connections</em> below.</p>
       <div id="barn-container"></div>
     </section>
 
@@ -13041,24 +13046,51 @@ document.addEventListener('keydown', e => {
 
     var styleBlock =
       '<style>' +
+      /* v2.21.1: contrast-tuned Barn. All alpha-white text >= 0.85 on navy. */
       '.barn-section{background:' + C.navy + ';border-radius:12px;padding:14px 16px;margin-bottom:12px;color:' + C.ink + '}' +
-      '.barn-section h3{font-family:\'Cormorant Garamond\',serif;font-size:1.15rem;letter-spacing:0.04em;margin:0 0 8px;color:' + C.cream + ';display:flex;align-items:center;gap:8px}' +
-      '.barn-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-top:1px solid rgba(237,232,220,0.08)}' +
+      '.barn-section h3{font-family:\'Cormorant Garamond\',serif;font-size:1.2rem;letter-spacing:0.04em;margin:0 0 10px;color:#F7F2E6;display:flex;align-items:center;gap:8px}' +
+      '.barn-section h3 .barn-count{font-size:0.78rem;color:#E8E1CC;font-weight:600;letter-spacing:0.06em;background:rgba(201,168,76,0.18);padding:2px 8px;border-radius:999px}' +
+      '.barn-item{display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid rgba(237,232,220,0.12);min-height:44px}' +
       '.barn-item:first-child{border-top:none}' +
-      '.barn-item-name{flex:1;font-size:0.92rem}' +
-      '.barn-item-meta{font-size:0.78rem;color:rgba(237,232,220,0.82)}' +
-      '.barn-item-remove{background:transparent;border:1px solid rgba(217,134,122,0.6);color:' + C.rose + ';border-radius:6px;padding:6px 12px;font-size:0.78rem;min-height:36px;cursor:pointer}' +
-      '.barn-item-remove:hover{background:rgba(217,134,122,0.18)}' +
-      '.barn-empty{font-family:\'Crimson Pro\',serif;font-style:italic;color:rgba(237,232,220,0.82);font-size:0.92rem;text-align:center;padding:14px 8px;line-height:1.5}' +
-      '.barn-runs-today{background:rgba(201,168,76,0.14);color:' + C.gold + ';border-radius:999px;padding:2px 8px;font-size:0.7rem;font-weight:600;letter-spacing:0.03em}' +
-      '.barn-add-row{display:flex;gap:6px;margin-top:10px}' +
-      '.barn-add-row input{flex:1;background:rgba(10,22,40,0.55);color:' + C.ink + ';border:1px solid rgba(237,232,220,0.15);border-radius:8px;padding:7px 10px;font-size:0.85rem}' +
-      '.barn-add-row button{background:' + C.gold + ';color:' + C.floor + ';border:none;border-radius:8px;padding:7px 12px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase}' +
+      '.barn-item-name{flex:1;font-size:0.95rem;color:#F5F0E8}' +
+      '.barn-item-meta{font-size:0.82rem;color:#DCD6C2;margin-top:2px}' +
+      '.barn-item-remove{background:transparent;border:1px solid rgba(217,134,122,0.75);color:#E7A096;border-radius:8px;padding:8px 14px;font-size:0.8rem;min-height:44px;min-width:44px;cursor:pointer;font-weight:600}' +
+      '.barn-item-remove:hover{background:rgba(217,134,122,0.2)}' +
+      '.barn-empty{font-family:\'Crimson Pro\',serif;color:#E6DFC9;font-size:0.92rem;text-align:center;padding:14px 8px;line-height:1.55}' +
+      '.barn-empty em{font-style:italic;color:#E6DFC9}' +
+      '.barn-runs-today{background:rgba(201,168,76,0.22);color:#F0CB6A;border-radius:999px;padding:3px 10px;font-size:0.72rem;font-weight:700;letter-spacing:0.03em}' +
+      '.barn-add-row{display:flex;gap:8px;margin-top:12px}' +
+      '.barn-add-row input{flex:1;background:rgba(10,22,40,0.75);color:#F5F0E8;border:1px solid rgba(237,232,220,0.28);border-radius:8px;padding:10px 12px;font-size:0.9rem;min-height:44px}' +
+      '.barn-add-row input::placeholder{color:#B9B3A0;opacity:1}' +
+      '.barn-add-row button{background:' + C.gold + ';color:#0a1628;border:none;border-radius:8px;padding:10px 16px;font-size:0.8rem;font-weight:800;cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;min-height:44px;min-width:60px}' +
       '.barn-add-row button:hover{filter:brightness(1.08)}' +
       '.barn-summary{background:' + C.card + ';border-radius:12px;padding:12px 14px;margin-bottom:12px;color:' + C.ink + ';display:flex;gap:12px;align-items:center;flex-wrap:wrap}' +
       '.barn-summary-stat{display:flex;flex-direction:column;gap:2px}' +
-      '.barn-summary-num{font-family:\'Cormorant Garamond\',serif;font-size:1.6rem;color:' + C.gold + ';line-height:1}' +
-      '.barn-summary-lbl{font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:rgba(237,232,220,0.85);font-weight:600}' +
+      '.barn-summary-num{font-family:\'Cormorant Garamond\',serif;font-size:1.7rem;color:' + C.gold + ';line-height:1}' +
+      '.barn-summary-lbl{font-size:0.74rem;letter-spacing:0.08em;text-transform:uppercase;color:#EDE6D0;font-weight:700}' +
+      /* Horse-primary section styling */
+      '.barn-horses-primary{background:linear-gradient(180deg,#1F3353 0%,#1B2E4B 100%);border:1px solid rgba(201,168,76,0.35);box-shadow:0 2px 12px rgba(0,0,0,0.25)}' +
+      '.barn-horses-primary h3{font-size:1.32rem;color:#F7F2E6}' +
+      '.barn-horse-row{cursor:pointer;border-radius:8px;padding:12px 10px;transition:background 0.15s}' +
+      '.barn-horse-row:hover,.barn-horse-row:active{background:rgba(201,168,76,0.08)}' +
+      '.barn-horse-chevron{color:#C9A84C;font-size:1.1rem;margin-left:6px;flex-shrink:0}' +
+      /* Connections collapsible */
+      '.barn-connections{margin-top:8px}' +
+      '.barn-connections-head{background:#1F3353;border:1px solid rgba(237,232,220,0.14);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;min-height:48px;color:#E6DFC9;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;font-size:0.82rem}' +
+      '.barn-connections-head:hover{background:#243653}' +
+      '.barn-connections-caret{transition:transform 0.2s;color:#C9A84C;font-size:1.2rem;line-height:1}' +
+      '.barn-connections.open .barn-connections-caret{transform:rotate(90deg)}' +
+      '.barn-connections-body{display:none;margin-top:10px}' +
+      '.barn-connections.open .barn-connections-body{display:block}' +
+      '.barn-connections-body .barn-section{margin-bottom:10px;background:#1F3353}' +
+      '.barn-connections-body .barn-section h3{font-size:1.05rem;color:#EDE6D0}' +
+      /* Load-sample CTA */
+      '.barn-load-sample{display:block;width:100%;background:rgba(201,168,76,0.18);color:#F0CB6A;border:1px dashed rgba(201,168,76,0.55);border-radius:10px;padding:14px 16px;margin:10px 0;font-size:0.88rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;min-height:48px;text-align:center}' +
+      '.barn-load-sample:hover{background:rgba(201,168,76,0.28)}' +
+      '.barn-load-sample small{display:block;font-weight:500;font-size:0.76rem;color:#EDE6D0;margin-top:4px;letter-spacing:0.02em}' +
+      /* Footer tip — readable on cream page background */
+      '.barn-footer-tip{font-size:0.86rem;color:#3A4256;text-align:center;margin-top:14px;line-height:1.55;padding:10px 14px;background:rgba(27,46,75,0.06);border-radius:8px}' +
+      '.barn-footer-tip strong{color:#1B2E4B}' +
       '</style>';
 
     // Summary header
@@ -13071,7 +13103,7 @@ document.addEventListener('keydown', e => {
         '<div class="barn-summary-stat" style="margin-left:auto;text-align:right"><span class="barn-summary-num" style="color:' + (totalToday ? C.gold : 'rgba(237,232,220,0.5)') + '">' + totalToday + '</span><span class="barn-summary-lbl">Running today</span></div>' +
       '</div>';
 
-    // Horses section
+    // Horses section — primary, always first
     var horsesSection = buildListSection(
       'horses', 'Horses', barn.horses, matches.horses,
       'horse name (e.g. Thunder Creek)',
@@ -13080,6 +13112,17 @@ document.addEventListener('keydown', e => {
         return m.length ? '<span class="barn-runs-today">R' + m[0].race.num + ' today</span>' : '';
       }
     );
+
+    // If Horses list is empty, add a prominent Load-Sample CTA inside the card.
+    var loadSampleCta = '';
+    if (!barn.horses.length) {
+      loadSampleCta =
+        '<button type="button" class="barn-load-sample" onclick="window.virtualBarnSeedDemo && window.virtualBarnSeedDemo()">' +
+        'Load sample Saratoga horses' +
+        '<small>14 curated horses mined from the 2025 SAR sample fixture — labelled as demo.</small>' +
+        '</button>';
+    }
+
     var jockeysSection = buildListSection(
       'jockeys', 'Jockeys', barn.jockeys, matches.jockeys,
       'jockey name',
@@ -13097,42 +13140,76 @@ document.addEventListener('keydown', e => {
       }
     );
 
-    // Horse-first hint — Virtual Barn emphasizes horses; tap a name to open
-    // the horse profile (notes, tags, watch reason, history).
+    // Connections (jockeys + trainers) are now collapsed under a secondary
+    // "Connections" header, de-emphasizing them relative to horses. Stables
+    // card is injected by augmentBarn() after this render.
+    var connectionsCount = barn.jockeys.length + barn.trainers.length;
+    var connectionsOpen = window.__barnConnectionsOpen ? ' open' : '';
+    var connectionsSection =
+      '<div class="barn-connections' + connectionsOpen + '" id="barn-connections-wrap">' +
+        '<div class="barn-connections-head" id="barn-connections-toggle" role="button" tabindex="0" aria-expanded="' + (connectionsOpen ? 'true' : 'false') + '">' +
+          '<span>Connections <span style="color:#C9A84C;font-weight:700">\u00B7 ' + connectionsCount + '</span></span>' +
+          '<span class="barn-connections-caret" aria-hidden="true">\u203A</span>' +
+        '</div>' +
+        '<div class="barn-connections-body">' +
+          jockeysSection + trainersSection +
+        '</div>' +
+      '</div>';
+
+    // Footer tip — now on cream-compatible dark ink for contrast.
     var hint =
-      '<p style="font-size:0.8rem;color:rgba(237,232,220,0.82);font-style:italic;text-align:center;margin-top:12px;line-height:1.5">' +
-      'Tap a horse name to open its profile (notes, tags, watch reason, history). ' +
+      '<p class="barn-footer-tip">' +
+      '<strong>Tip:</strong> Tap a horse name to open its full profile (notes, tags, watch reason, history). ' +
       'Tap the heart beside any horse on Today to add it here.' +
       '</p>';
-    container.innerHTML = styleBlock + summaryHtml + horsesSection + jockeysSection + trainersSection + hint;
+    container.innerHTML = styleBlock + summaryHtml + horsesSection + loadSampleCta + connectionsSection + hint;
+
+    // Wire connections toggle
+    var toggle = document.getElementById('barn-connections-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', function(){
+        var wrap = document.getElementById('barn-connections-wrap');
+        if (!wrap) return;
+        wrap.classList.toggle('open');
+        window.__barnConnectionsOpen = wrap.classList.contains('open');
+        toggle.setAttribute('aria-expanded', window.__barnConnectionsOpen ? 'true' : 'false');
+      });
+      toggle.addEventListener('keydown', function(ev){
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle.click(); }
+      });
+    }
   }
 
   function buildListSection(kind, label, items, todayMatches, placeholder, todayBadgeFn) {
+    var rowClass = (kind === 'horses') ? ' barn-horse-row' : '';
     var rows = items.length
       ? items.map(function(item, idx) {
           var badge = todayBadgeFn(item);
           var esc = String(item.name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-          var favMark = (kind === 'horses' && item.favorite) ? '<span aria-label="favorite" style="color:#C9A84C;margin-right:4px" title="Favorite">\u2605</span>' : '';
+          var favMark = (kind === 'horses' && item.favorite) ? '<span aria-label="favorite" style="color:#F0CB6A;margin-right:4px" title="Favorite">\u2605</span>' : '';
           var tagStr = (kind === 'horses' && Array.isArray(item.tags) && item.tags.length)
             ? '<div class="barn-item-meta">' + item.tags.map(function(t){return '#' + String(t).replace(/[<>]/g,'');}).join(' ') + '</div>'
             : '';
           var reasonStr = (kind === 'horses' && item.watchReason)
-            ? '<div class="barn-item-meta" style="font-style:italic">' + String(item.watchReason).replace(/[<>]/g,'') + '</div>'
+            ? '<div class="barn-item-meta" style="font-style:italic;color:#D9D2BC">' + String(item.watchReason).replace(/[<>]/g,'') + '</div>'
             : '';
-          var namePart = favMark + '<span>' + item.name + '</span>' + tagStr + reasonStr;
-          var clickable = (kind === 'horses') ? ' role="button" tabindex="0" style="cursor:pointer" aria-label="Open profile for ' + esc + '"' : '';
-          return '<div class="barn-item">' +
+          var namePart = favMark + '<span style="font-weight:600">' + item.name + '</span>' + tagStr + reasonStr;
+          var chevron = (kind === 'horses') ? '<span class="barn-horse-chevron" aria-hidden="true">\u203A</span>' : '';
+          var clickable = (kind === 'horses') ? ' role="button" tabindex="0" aria-label="Open profile for ' + esc + '"' : '';
+          return '<div class="barn-item' + rowClass + '">' +
             '<div class="barn-item-name"' + clickable + '>' + namePart + '</div>' +
             (badge ? '<div>' + badge + '</div>' : '') +
-            '<button class="barn-item-remove" aria-label="Remove ' + esc + '" onclick="barnToggle(\'' + kind + '\',\'' + esc + '\')">Remove</button>' +
+            chevron +
+            '<button class="barn-item-remove" aria-label="Remove ' + esc + '" onclick="event.stopPropagation();barnToggle(\'' + kind + '\',\'' + esc + '\')">Remove</button>' +
           '</div>';
         }).join('')
-      : '<div class="barn-empty">No ' + kind + ' in your Virtual Barn yet. ' +
+      : '<div class="barn-empty"><em>No ' + kind + ' in your Virtual Barn yet.</em> ' +
         (kind === 'horses' ? 'Add horses you want to track — use the field below or tap the heart on Today.' : '') +
         '</div>';
 
-    return '<div class="barn-section">' +
-      '<h3>' + label + ' <span style="font-size:0.75rem;color:rgba(237,232,220,0.55);font-weight:normal">\u00B7 ' + items.length + '</span></h3>' +
+    var primaryCls = (kind === 'horses') ? ' barn-horses-primary' : '';
+    return '<div class="barn-section' + primaryCls + '">' +
+      '<h3>' + label + ' <span class="barn-count">' + items.length + '</span></h3>' +
       rows +
       '<div class="barn-add-row">' +
         '<input type="text" id="barn-add-input-' + kind + '" placeholder="Add ' + placeholder + '" onkeydown="if(event.key===\'Enter\'){barnAddFromInput(\'' + kind + '\');}">' +
@@ -13609,21 +13686,21 @@ document.addEventListener('keydown', e => {
       + '.sar-up-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;cursor:pointer;user-select:none}'
       + '.sar-up-head h3{margin:0;font-family:"Cormorant Garamond",serif;font-size:1.1rem;letter-spacing:0.04em;color:#F5F0E8}'
       + '.sar-up-count{background:rgba(201,168,76,0.2);color:#C9A84C;border:1px solid rgba(201,168,76,0.5);border-radius:999px;padding:2px 10px;font-size:0.7rem;letter-spacing:0.08em;font-weight:700}'
-      + '.sar-up-caret{color:rgba(237,232,220,0.6);font-size:1.1rem;transition:transform 0.15s}'
+      + '.sar-up-caret{color:#C9A84C;font-size:1.2rem;transition:transform 0.15s;line-height:1}'
       + '.sar-up-card.open .sar-up-caret{transform:rotate(90deg)}'
       + '.sar-up-body{display:none;margin-top:10px}'
       + '.sar-up-card.open .sar-up-body{display:block}'
-      + '.sar-up-empty{padding:10px 2px;font-style:italic;color:rgba(237,232,220,0.55);font-size:0.85rem;text-align:center}'
+      + '.sar-up-empty{padding:10px 2px;color:#E6DFC9;font-size:0.88rem;text-align:center;line-height:1.55}'
       + '.sar-up-day{margin-bottom:10px}'
-      + '.sar-up-day-head{font-family:"Cormorant Garamond",serif;font-size:0.95rem;color:#C9A84C;border-bottom:1px solid rgba(201,168,76,0.25);padding-bottom:3px;margin-bottom:6px}'
-      + '.sar-up-row{display:flex;gap:8px;padding:6px 2px;font-size:0.85rem;border-bottom:1px solid rgba(237,232,220,0.05);align-items:center}'
+      + '.sar-up-day-head{font-family:"Cormorant Garamond",serif;font-size:0.95rem;color:#F0CB6A;border-bottom:1px solid rgba(201,168,76,0.35);padding-bottom:3px;margin-bottom:6px}'
+      + '.sar-up-row{display:flex;gap:8px;padding:8px 2px;font-size:0.88rem;border-bottom:1px solid rgba(237,232,220,0.1);align-items:center;min-height:40px}'
       + '.sar-up-row:last-child{border-bottom:none}'
-      + '.sar-up-r{color:#C9A84C;font-weight:700;min-width:28px}'
-      + '.sar-up-time{color:rgba(237,232,220,0.6);font-size:0.78rem;min-width:48px}'
-      + '.sar-up-name{flex:1;min-width:0;color:#F5F0E8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
-      + '.sar-up-why{color:rgba(237,232,220,0.55);font-size:0.72rem;letter-spacing:0.04em;text-transform:uppercase;flex-shrink:0}'
-      + '.sar-up-go{background:transparent;border:1px solid rgba(201,168,76,0.5);color:#C9A84C;border-radius:6px;padding:3px 8px;font-size:0.72rem;cursor:pointer;flex-shrink:0}'
-      + '.sar-up-go:hover{background:rgba(201,168,76,0.15)}';
+      + '.sar-up-r{color:#F0CB6A;font-weight:700;min-width:28px}'
+      + '.sar-up-time{color:#DCD6C2;font-size:0.8rem;min-width:48px}'
+      + '.sar-up-name{flex:1;min-width:0;color:#F5F0E8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}'
+      + '.sar-up-why{color:#DCD6C2;font-size:0.72rem;letter-spacing:0.04em;text-transform:uppercase;flex-shrink:0}'
+      + '.sar-up-go{background:transparent;border:1px solid rgba(201,168,76,0.6);color:#F0CB6A;border-radius:8px;padding:8px 12px;font-size:0.78rem;cursor:pointer;flex-shrink:0;min-height:36px;font-weight:600}'
+      + '.sar-up-go:hover{background:rgba(201,168,76,0.2)}';
     var tag = document.createElement('style');
     tag.textContent = css;
     document.head.appendChild(tag);
@@ -13732,25 +13809,34 @@ document.addEventListener('keydown', e => {
   function augmentBarn() {
     var container = document.getElementById('barn-container');
     if (!container) return;
-    // Find the "Tip: tap the heart..." <p> that the existing Barn renderer
-    // always puts at the end, and insert our two cards before it.
-    var tip = container.querySelector('p[style*="italic"]:last-of-type') ||
+    // v2.21.1: Insert Stables INSIDE the Connections collapsible body, and
+    // Upcoming-at-SAR card before the footer tip (but always visible).
+    var connectionsBody = container.querySelector('.barn-connections-body');
+    var tip = container.querySelector('.barn-footer-tip') ||
               Array.prototype.find.call(container.querySelectorAll('p'), function(p){
-                return /tap the heart/i.test(p.textContent||'');
+                return /tap the heart|tap a horse name/i.test(p.textContent||'');
               });
     var anchor = tip || null;
 
-    // --- Stables card ---
+    // --- Stables card (now inside Connections) ---
     var stablesCard = container.querySelector('#sar-stables-card');
     if (!stablesCard) {
       stablesCard = document.createElement('div');
       stablesCard.id = 'sar-stables-card';
-      stablesCard.style.cssText = 'background:#243653;border-radius:12px;padding:12px 14px;margin-top:12px;color:#EDE8DC';
-      if (anchor) container.insertBefore(stablesCard, anchor); else container.appendChild(stablesCard);
+      stablesCard.style.cssText = 'background:#1F3353;border-radius:12px;padding:14px 16px;margin-top:10px;color:#F5F0E8';
+      if (connectionsBody) {
+        connectionsBody.appendChild(stablesCard);
+      } else if (anchor) {
+        container.insertBefore(stablesCard, anchor);
+      } else {
+        container.appendChild(stablesCard);
+      }
+    } else if (connectionsBody && stablesCard.parentNode !== connectionsBody) {
+      connectionsBody.appendChild(stablesCard);
     }
     renderStablesCard(stablesCard);
 
-    // --- Upcoming-at-SAR card ---
+    // --- Upcoming-at-SAR card — stays above footer tip ---
     var upCard = container.querySelector('#sar-up-card');
     if (!upCard) {
       upCard = document.createElement('div');
@@ -13774,15 +13860,15 @@ document.addEventListener('keydown', e => {
       : '<div class="barn-empty">No stables followed yet. Try "Dark Horse Racing" in sample mode.</div>';
 
     host.innerHTML =
-      '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">' +
-        '<h3 style="margin:0;font-family:\'Cormorant Garamond\',serif;font-size:1.2rem;color:#F5F0E8">Stables</h3>' +
-        '<span style="font-size:0.72rem;color:rgba(237,232,220,0.5);letter-spacing:0.08em">· ' + stables.length + '</span>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+        '<h3 style="margin:0;font-family:\'Cormorant Garamond\',serif;font-size:1.05rem;color:#EDE6D0">Stables</h3>' +
+        '<span style="font-size:0.78rem;color:#E8E1CC;font-weight:600;background:rgba(201,168,76,0.18);padding:2px 8px;border-radius:999px">' + stables.length + '</span>' +
       '</div>' +
-      '<div class="barn-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">' + rows + '</div>' +
-      '<div class="barn-add-row" style="display:flex;gap:6px;min-width:0">' +
+      '<div class="barn-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">' + rows + '</div>' +
+      '<div class="barn-add-row" style="display:flex;gap:8px;min-width:0">' +
         '<input id="sar-stable-add-input" type="text" placeholder="Add stable (e.g. Dark Horse Racing)" ' +
-          'style="flex:1;min-width:0;padding:7px 10px;border-radius:6px;border:1px solid rgba(237,232,220,0.2);background:rgba(10,22,40,0.5);color:#F5F0E8;font-size:0.85rem">' +
-        '<button id="sar-stable-add-btn" style="padding:7px 14px;border-radius:6px;border:none;background:#C9A84C;color:#1B2E4B;font-weight:700;font-size:0.8rem;cursor:pointer">ADD</button>' +
+          'style="flex:1;min-width:0;padding:10px 12px;border-radius:8px;border:1px solid rgba(237,232,220,0.28);background:rgba(10,22,40,0.75);color:#F5F0E8;font-size:0.9rem;min-height:44px">' +
+        '<button id="sar-stable-add-btn" style="padding:10px 16px;border-radius:8px;border:none;background:#C9A84C;color:#0a1628;font-weight:800;font-size:0.8rem;cursor:pointer;min-height:44px;min-width:60px;letter-spacing:0.06em">ADD</button>' +
       '</div>';
 
     // Wire add/remove
@@ -14052,6 +14138,9 @@ document.addEventListener('keydown', e => {
     obs.observe(host, { childList: true, subtree: true });
     scanBarnInputs();
     augmentBarn();
+    // v2.21.1: expose augmentBarn so the Virtual-Barn seed CTA can refresh
+    // the Stables/Upcoming cards after seeding.
+    try { window.__augmentBarn = augmentBarn; } catch(e){}
   }
 
   function observeRaces() {
@@ -14204,9 +14293,19 @@ document.addEventListener('keydown', e => {
           date: race.date,
           track: race.track || 'SAR',
           race: race.num,
+          race_id: race.id || null,
+          postTime: race.postTime || null,
           distance: race.distance || null,
           surface: race.surface || null,
           purse: race.purse || null,
+          conditions: race.conditions || null,
+          pp: h.pp || null,
+          weight: h.weight || null,
+          ml: h.ml || null,
+          jockey: h.jockey || null,
+          trainer: h.trainer || null,
+          owner: h.owner || null,
+          scratched: !!h.scratched,
           source: 'demo-saratoga-2025-sample',
           note: 'Scheduled entry (sample fixture — not an official result)'
         });
@@ -14227,11 +14326,18 @@ document.addEventListener('keydown', e => {
     });
   }
 
-  function seedDemoHorses(){
-    // Only seed once per device. User can re-seed from Settings.
+  function seedDemoHorses(opts){
+    opts = opts || {};
+    var force = !!opts.force;
+    // Only auto-seed once per device. Users can re-seed from Settings / CTA.
     var already = false;
     try { already = localStorage.getItem(DEMO_FLAG_KEY) === '1'; } catch(e){}
-    if (already) return Promise.resolve(false);
+    // v2.21.1: if the user ended up with 0 horses (common when they had
+    // legacy v2.20 Jockey/Trainer/Stable data but no horses), retry the
+    // seed even if the flag was set — the prior attempt effectively failed.
+    var s0 = getBarnStoreSafe();
+    var currentHorses = s0 ? (s0.barn.horses || []).length : 0;
+    if (already && currentHorses > 0 && !force) return Promise.resolve(false);
     return fetch(FIXTURE_URL, { cache: 'force-cache' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(doc){
@@ -14241,8 +14347,8 @@ document.addEventListener('keydown', e => {
         var s = getBarnStoreSafe();
         if (!s) return false;
         // Only seed if the user has fewer than 3 horses (avoid trampling
-        // an established barn).
-        if (s.barn.horses.length >= 3) {
+        // an established barn). Explicit force (CTA/Settings) bypasses this.
+        if (!force && s.barn.horses.length >= 3) {
           try { localStorage.setItem(DEMO_FLAG_KEY, '1'); } catch(e){}
           return false;
         }
@@ -14253,10 +14359,12 @@ document.addEventListener('keydown', e => {
   }
 
   // Expose public re-seed/export for user control.
+  // v2.21.1: the in-Barn "Load sample horses" CTA calls this with force=true
+  // so users can explicitly (re)seed without worrying about prior flag state.
   window.virtualBarnSeedDemo = function(){
     try { localStorage.removeItem(DEMO_FLAG_KEY); } catch(e){}
-    return seedDemoHorses().then(function(ok){
-      try { if (typeof showToast === 'function') showToast(ok ? 'Seeded demo Saratoga horses' : 'Demo seed skipped (barn not empty)', ok ? 'success' : 'info'); } catch(e){}
+    return seedDemoHorses({ force: true }).then(function(ok){
+      try { if (typeof showToast === 'function') showToast(ok ? 'Added sample Saratoga horses to your Barn' : 'Could not load sample (fixture unavailable)', ok ? 'success' : 'info'); } catch(e){}
       try { if (typeof barn_renderBarnTab === 'function') barn_renderBarnTab(); } catch(e){}
       try { var aug = window.__augmentBarn; if (typeof aug === 'function') aug(); } catch(e){}
     });
@@ -14281,11 +14389,29 @@ document.addEventListener('keydown', e => {
 
     function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
 
+    // v2.21.1: rich sample history — show every fixture field we have,
+    // clearly labelled, with "not in sample" for missing values.
+    function fmtVal(v, fallback){ return (v !== null && v !== undefined && v !== '') ? esc(v) : (fallback || '<span class="vb-na">not in sample</span>'); }
     var hist = (h.history||[]).map(function(row){
-      return '<div class="vb-hist-row"><span class="vb-hist-date">' + esc(row.date||'—') + '</span>' +
-        '<span class="vb-hist-meta">' + esc(row.track||'—') + ' R' + esc(row.race||'—') +
-        (row.distance ? ' · ' + esc(row.distance) : '') +
-        (row.surface ? ' · ' + esc(row.surface) : '') + '</span>' +
+      var chips = [];
+      if (row.track || row.race) chips.push('<span class="vb-chip vb-chip-key">' + esc(row.track||'—') + ' R' + esc(row.race||'—') + '</span>');
+      if (row.postTime) chips.push('<span class="vb-chip">PT ' + esc(row.postTime) + '</span>');
+      if (row.distance) chips.push('<span class="vb-chip">' + esc(row.distance) + '</span>');
+      if (row.surface) chips.push('<span class="vb-chip">' + esc(row.surface) + '</span>');
+      if (row.conditions) chips.push('<span class="vb-chip">' + esc(row.conditions) + '</span>');
+      if (row.purse) chips.push('<span class="vb-chip">$' + esc(row.purse.toLocaleString ? row.purse.toLocaleString() : row.purse) + '</span>');
+      if (row.pp) chips.push('<span class="vb-chip vb-chip-num">PP ' + esc(row.pp) + '</span>');
+      if (row.ml) chips.push('<span class="vb-chip vb-chip-ml">ML ' + esc(row.ml) + '</span>');
+      if (row.weight) chips.push('<span class="vb-chip">' + esc(row.weight) + 'lb</span>');
+      if (row.scratched) chips.push('<span class="vb-chip vb-chip-scratch">SCRATCHED</span>');
+      var connections = [];
+      if (row.jockey) connections.push('<b>J:</b> ' + esc(row.jockey));
+      if (row.trainer) connections.push('<b>T:</b> ' + esc(row.trainer));
+      if (row.owner) connections.push('<b>O:</b> ' + esc(row.owner));
+      return '<div class="vb-hist-row">' +
+        '<div class="vb-hist-head"><span class="vb-hist-date">' + esc(row.date||'—') + '</span>' +
+        '<span class="vb-hist-chips">' + chips.join('') + '</span></div>' +
+        (connections.length ? '<div class="vb-hist-conn">' + connections.join(' · ') + '</div>' : '') +
         (row.note ? '<div class="vb-hist-note">' + esc(row.note) + '</div>' : '') +
         '</div>';
     }).join('') || '<div class="vb-empty">No history on file yet. Add notes below.</div>';
@@ -14294,55 +14420,104 @@ document.addEventListener('keydown', e => {
     var srcBadge = h.source === 'demo-saratoga-2025'
       ? '<span class="vb-src-badge">DEMO · Saratoga sample</span>' : '';
 
+    // Overview chips drawn from top-level horse fields.
+    var overviewChips = [];
+    if (h.age) overviewChips.push('<span class="vb-chip">' + esc(h.age) + 'yo' + (h.sex ? ' ' + esc(h.sex) : '') + '</span>');
+    if (h.runningStyle) overviewChips.push('<span class="vb-chip">Style: ' + esc(h.runningStyle) + '</span>');
+    if (h.ml) overviewChips.push('<span class="vb-chip vb-chip-ml">ML ' + esc(h.ml) + '</span>');
+    var appearancesCount = (h.history||[]).length;
+    if (appearancesCount) overviewChips.push('<span class="vb-chip vb-chip-key">' + appearancesCount + ' sample start' + (appearancesCount === 1 ? '' : 's') + '</span>');
+    if (h.favorite) overviewChips.push('<span class="vb-chip vb-chip-fav">\u2605 Favorite</span>');
+    (h.tags||[]).forEach(function(t){ overviewChips.push('<span class="vb-chip vb-chip-tag">#' + esc(t) + '</span>'); });
+
     modal.innerHTML =
       '<style>' +
-      '#virtual-barn-profile-modal .vb-sheet{background:#1B2E4B;color:#EDE8DC;width:100%;max-width:420px;max-height:92vh;border-radius:16px 16px 0 0;padding:16px 16px 28px;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,0.4)}' +
-      '#virtual-barn-profile-modal h3{font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;color:#F5F0E8;margin:0 0 6px}' +
-      '#virtual-barn-profile-modal .vb-meta{font-size:0.82rem;color:#D0C9B8;margin-bottom:10px;line-height:1.55}' +
-      '#virtual-barn-profile-modal .vb-meta b{color:#C9A84C;font-weight:600}' +
-      '#virtual-barn-profile-modal .vb-src-badge{display:inline-block;background:rgba(201,168,76,0.16);color:#C9A84C;font-size:0.66rem;letter-spacing:0.08em;padding:3px 8px;border-radius:999px;margin-bottom:10px;text-transform:uppercase;font-weight:700}' +
-      '#virtual-barn-profile-modal label{display:block;font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:#C9A84C;margin:10px 0 4px;font-weight:700}' +
-      '#virtual-barn-profile-modal textarea,#virtual-barn-profile-modal input[type=text]{width:100%;background:rgba(10,22,40,0.6);color:#F5F0E8;border:1px solid rgba(237,232,220,0.2);border-radius:8px;padding:9px 11px;font-size:0.92rem;font-family:inherit;box-sizing:border-box;min-height:44px}' +
-      '#virtual-barn-profile-modal textarea{min-height:80px;resize:vertical}' +
-      '#virtual-barn-profile-modal .vb-row{display:flex;gap:8px;align-items:center}' +
-      '#virtual-barn-profile-modal .vb-hist-row{border-top:1px solid rgba(237,232,220,0.1);padding:8px 0;font-size:0.82rem}' +
-      '#virtual-barn-profile-modal .vb-hist-row:first-child{border-top:none}' +
-      '#virtual-barn-profile-modal .vb-hist-date{font-family:var(--font-mono,monospace);color:#F5F0E8;font-weight:600;margin-right:8px}' +
-      '#virtual-barn-profile-modal .vb-hist-meta{color:#D0C9B8}' +
-      '#virtual-barn-profile-modal .vb-hist-note{color:#AFA893;font-style:italic;font-size:0.78rem;margin-top:2px}' +
-      '#virtual-barn-profile-modal .vb-empty{color:#AFA893;font-style:italic;font-size:0.86rem;padding:6px 0}' +
-      '#virtual-barn-profile-modal .vb-btn{min-height:44px;min-width:44px;border-radius:10px;border:none;cursor:pointer;font-weight:700;letter-spacing:0.04em;font-size:0.82rem;padding:10px 14px}' +
+      '#virtual-barn-profile-modal .vb-sheet{background:#1B2E4B;color:#F5F0E8;width:100%;max-width:440px;max-height:92vh;border-radius:16px 16px 0 0;padding:16px 16px 28px;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,0.4)}' +
+      '#virtual-barn-profile-modal h3{font-family:\'Cormorant Garamond\',serif;font-size:1.6rem;color:#F7F2E6;margin:0 0 6px;line-height:1.15}' +
+      '#virtual-barn-profile-modal .vb-src-badge{display:inline-block;background:rgba(201,168,76,0.22);color:#F0CB6A;font-size:0.68rem;letter-spacing:0.08em;padding:3px 9px;border-radius:999px;margin-bottom:10px;text-transform:uppercase;font-weight:800}' +
+      '#virtual-barn-profile-modal .vb-section{background:#1F3353;border:1px solid rgba(237,232,220,0.12);border-radius:10px;margin-bottom:10px;overflow:hidden}' +
+      '#virtual-barn-profile-modal .vb-section-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;min-height:48px;user-select:none;background:#1F3353}' +
+      '#virtual-barn-profile-modal .vb-section-head:hover{background:#243653}' +
+      '#virtual-barn-profile-modal .vb-section-head h4{margin:0;font-family:\'Cormorant Garamond\',serif;font-size:1.05rem;color:#F7F2E6;letter-spacing:0.02em;font-weight:600}' +
+      '#virtual-barn-profile-modal .vb-section-caret{color:#C9A84C;font-size:1.2rem;transition:transform 0.2s;line-height:1}' +
+      '#virtual-barn-profile-modal .vb-section.open .vb-section-caret{transform:rotate(90deg)}' +
+      '#virtual-barn-profile-modal .vb-section-body{display:none;padding:12px 14px 14px;border-top:1px solid rgba(237,232,220,0.1)}' +
+      '#virtual-barn-profile-modal .vb-section.open .vb-section-body{display:block}' +
+      '#virtual-barn-profile-modal label{display:block;font-size:0.74rem;letter-spacing:0.08em;text-transform:uppercase;color:#F0CB6A;margin:10px 0 6px;font-weight:700}' +
+      '#virtual-barn-profile-modal textarea,#virtual-barn-profile-modal input[type=text]{width:100%;background:rgba(10,22,40,0.75);color:#F5F0E8;border:1px solid rgba(237,232,220,0.28);border-radius:8px;padding:10px 12px;font-size:0.95rem;font-family:inherit;box-sizing:border-box;min-height:44px}' +
+      '#virtual-barn-profile-modal textarea::placeholder,#virtual-barn-profile-modal input[type=text]::placeholder{color:#B9B3A0;opacity:1}' +
+      '#virtual-barn-profile-modal textarea{min-height:90px;resize:vertical}' +
+      '#virtual-barn-profile-modal .vb-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}' +
+      '#virtual-barn-profile-modal .vb-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}' +
+      '#virtual-barn-profile-modal .vb-chip{display:inline-block;background:rgba(237,232,220,0.1);color:#EDE6D0;font-size:0.76rem;padding:4px 10px;border-radius:999px;font-weight:600;letter-spacing:0.02em}' +
+      '#virtual-barn-profile-modal .vb-chip-key{background:rgba(201,168,76,0.22);color:#F0CB6A}' +
+      '#virtual-barn-profile-modal .vb-chip-ml{background:rgba(125,200,140,0.18);color:#A8D4B3}' +
+      '#virtual-barn-profile-modal .vb-chip-num{background:rgba(255,255,255,0.08);color:#F5F0E8}' +
+      '#virtual-barn-profile-modal .vb-chip-fav{background:rgba(240,203,106,0.2);color:#F0CB6A}' +
+      '#virtual-barn-profile-modal .vb-chip-tag{background:rgba(175,196,222,0.14);color:#C9D6E8}' +
+      '#virtual-barn-profile-modal .vb-chip-scratch{background:rgba(217,134,122,0.22);color:#E7A096;font-weight:700}' +
+      '#virtual-barn-profile-modal .vb-hist-row{border-top:1px solid rgba(237,232,220,0.1);padding:10px 0;font-size:0.85rem}' +
+      '#virtual-barn-profile-modal .vb-hist-row:first-child{border-top:none;padding-top:2px}' +
+      '#virtual-barn-profile-modal .vb-hist-head{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px}' +
+      '#virtual-barn-profile-modal .vb-hist-date{font-family:var(--font-mono,monospace);color:#F5F0E8;font-weight:700;font-size:0.85rem;background:rgba(201,168,76,0.15);padding:3px 8px;border-radius:6px}' +
+      '#virtual-barn-profile-modal .vb-hist-chips{display:flex;flex-wrap:wrap;gap:5px}' +
+      '#virtual-barn-profile-modal .vb-hist-conn{color:#DCD6C2;font-size:0.8rem;margin-top:3px;line-height:1.5}' +
+      '#virtual-barn-profile-modal .vb-hist-conn b{color:#F0CB6A;font-weight:700;margin-right:2px}' +
+      '#virtual-barn-profile-modal .vb-hist-note{color:#C8C2AD;font-style:italic;font-size:0.78rem;margin-top:3px;line-height:1.5}' +
+      '#virtual-barn-profile-modal .vb-empty{color:#C8C2AD;font-style:italic;font-size:0.88rem;padding:8px 0}' +
+      '#virtual-barn-profile-modal .vb-na{color:#8F8975;font-style:italic;font-size:0.78rem}' +
+      '#virtual-barn-profile-modal .vb-btn{min-height:44px;min-width:44px;border-radius:10px;border:none;cursor:pointer;font-weight:700;letter-spacing:0.04em;font-size:0.85rem;padding:10px 16px}' +
       '#virtual-barn-profile-modal .vb-btn-primary{background:#C9A84C;color:#0a1628}' +
-      '#virtual-barn-profile-modal .vb-btn-ghost{background:transparent;color:#EDE8DC;border:1px solid rgba(237,232,220,0.3)}' +
-      '#virtual-barn-profile-modal .vb-btn-danger{background:transparent;color:#D9867A;border:1px solid rgba(217,134,122,0.5)}' +
-      '#virtual-barn-profile-modal .vb-fav{background:transparent;border:1px solid rgba(201,168,76,0.5);color:#C9A84C;padding:9px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;min-height:44px}' +
-      '#virtual-barn-profile-modal .vb-fav.on{background:rgba(201,168,76,0.18)}' +
+      '#virtual-barn-profile-modal .vb-btn-ghost{background:transparent;color:#F5F0E8;border:1px solid rgba(237,232,220,0.4)}' +
+      '#virtual-barn-profile-modal .vb-btn-danger{background:transparent;color:#E7A096;border:1px solid rgba(217,134,122,0.7)}' +
+      '#virtual-barn-profile-modal .vb-fav{background:transparent;border:1px solid rgba(201,168,76,0.6);color:#F0CB6A;padding:10px 14px;border-radius:10px;font-size:0.85rem;font-weight:700;min-height:44px;cursor:pointer}' +
+      '#virtual-barn-profile-modal .vb-fav.on{background:rgba(201,168,76,0.22)}' +
+      '#virtual-barn-profile-modal .vb-overview-grid{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:0.88rem;line-height:1.55}' +
+      '#virtual-barn-profile-modal .vb-overview-grid dt{color:#F0CB6A;font-weight:700;font-size:0.78rem;letter-spacing:0.04em;text-transform:uppercase;align-self:center}' +
+      '#virtual-barn-profile-modal .vb-overview-grid dd{margin:0;color:#F5F0E8}' +
       '</style>' +
       '<div class="vb-sheet" role="document">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">' +
           '<div><h3>' + esc(h.name) + '</h3>' + srcBadge + '</div>' +
           '<button class="vb-btn vb-btn-ghost" data-act="close" aria-label="Close profile">Close</button>' +
         '</div>' +
-        '<div class="vb-meta">' +
-          (h.jockey ? '<b>Jockey:</b> ' + esc(h.jockey) + '<br>' : '') +
-          (h.trainer ? '<b>Trainer:</b> ' + esc(h.trainer) + '<br>' : '') +
-          (h.owner ? '<b>Owner:</b> ' + esc(h.owner) + '<br>' : '') +
-          (h.runningStyle ? '<b>Style:</b> ' + esc(h.runningStyle) + ' · ' : '') +
-          (h.age ? esc(h.age) + 'yo ' : '') + (h.sex ? esc(h.sex) : '') +
-          (h.ml ? ' · <b>ML:</b> ' + esc(h.ml) : '') +
-        '</div>' +
-        '<div class="vb-row" style="margin-bottom:8px">' +
-          '<button class="vb-fav ' + (h.favorite?'on':'') + '" data-act="fav" aria-pressed="' + (h.favorite?'true':'false') + '">' + (h.favorite ? '★ Favorite' : '☆ Favorite') + '</button>' +
+        (overviewChips.length ? '<div class="vb-chips">' + overviewChips.join('') + '</div>' : '') +
+        '<div class="vb-row" style="margin:10px 0 12px">' +
+          '<button class="vb-fav ' + (h.favorite?'on':'') + '" data-act="fav" aria-pressed="' + (h.favorite?'true':'false') + '">' + (h.favorite ? '\u2605 Favorite' : '\u2606 Favorite') + '</button>' +
           '<button class="vb-btn vb-btn-danger" data-act="remove">Remove</button>' +
         '</div>' +
-        '<label for="vb-watch-reason">Watch reason</label>' +
-        '<input id="vb-watch-reason" type="text" value="' + esc(h.watchReason||'') + '" placeholder="e.g. First off the claim for Brown">' +
-        '<label for="vb-tags">Tags (comma-separated)</label>' +
-        '<input id="vb-tags" type="text" value="' + esc(tagsStr) + '" placeholder="saratoga, turf, first-time-lasix">' +
-        '<label for="vb-notes">Notes</label>' +
-        '<textarea id="vb-notes" placeholder="Your observations — never shared">' + esc(h.notes||'') + '</textarea>' +
-        '<label>History / timeline</label>' +
-        '<div class="vb-hist">' + hist + '</div>' +
+        /* OVERVIEW section */
+        '<div class="vb-section open" data-vb-section>' +
+          '<div class="vb-section-head" data-vb-toggle><h4>Overview</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
+          '<div class="vb-section-body">' +
+            '<dl class="vb-overview-grid">' +
+              '<dt>Jockey</dt><dd>' + fmtVal(h.jockey) + '</dd>' +
+              '<dt>Trainer</dt><dd>' + fmtVal(h.trainer) + '</dd>' +
+              '<dt>Owner</dt><dd>' + fmtVal(h.owner) + '</dd>' +
+              '<dt>Age / Sex</dt><dd>' + (h.age ? esc(h.age) + 'yo' : '—') + (h.sex ? ' ' + esc(h.sex) : '') + '</dd>' +
+              '<dt>Style</dt><dd>' + fmtVal(h.runningStyle) + '</dd>' +
+              '<dt>Morning line</dt><dd>' + fmtVal(h.ml) + '</dd>' +
+              '<dt>Sample starts</dt><dd>' + appearancesCount + '</dd>' +
+            '</dl>' +
+          '</div>' +
+        '</div>' +
+        /* SAMPLE HISTORY section */
+        '<div class="vb-section open" data-vb-section>' +
+          '<div class="vb-section-head" data-vb-toggle><h4>Sample history \u00B7 ' + appearancesCount + '</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
+          '<div class="vb-section-body">' + hist + '</div>' +
+        '</div>' +
+        /* NOTES + TAGS section */
+        '<div class="vb-section open" data-vb-section>' +
+          '<div class="vb-section-head" data-vb-toggle><h4>Notes &amp; tags</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
+          '<div class="vb-section-body">' +
+            '<label for="vb-watch-reason">Watch reason</label>' +
+            '<input id="vb-watch-reason" type="text" value="' + esc(h.watchReason||'') + '" placeholder="e.g. First off the claim for Brown">' +
+            '<label for="vb-tags">Tags (comma-separated)</label>' +
+            '<input id="vb-tags" type="text" value="' + esc(tagsStr) + '" placeholder="saratoga, turf, first-time-lasix">' +
+            '<label for="vb-notes">Notes</label>' +
+            '<textarea id="vb-notes" placeholder="Your observations \u2014 never shared">' + esc(h.notes||'') + '</textarea>' +
+          '</div>' +
+        '</div>' +
         '<div style="display:flex;gap:8px;margin-top:14px">' +
           '<button class="vb-btn vb-btn-primary" data-act="save" style="flex:1">Save</button>' +
           '<button class="vb-btn vb-btn-ghost" data-act="close" style="flex:1">Cancel</button>' +
@@ -14354,6 +14529,13 @@ document.addEventListener('keydown', e => {
 
     modal.addEventListener('click', function(ev){
       if (ev.target === modal) { close(); return; }
+      // Toggle collapsible sections
+      var sectionHead = ev.target && ev.target.closest && ev.target.closest('[data-vb-toggle]');
+      if (sectionHead) {
+        var sec = sectionHead.closest('[data-vb-section]');
+        if (sec) sec.classList.toggle('open');
+        return;
+      }
       var act = ev.target.getAttribute && ev.target.getAttribute('data-act');
       if (act === 'close') close();
       if (act === 'remove') {
@@ -14479,18 +14661,38 @@ document.addEventListener('keydown', e => {
       if (t.closest('.barn-heart')) setTimeout(applyBarnHighlights, 80);
     }, true);
 
-    // Wire barn-item-name rows to open the profile on tap.
+    // Wire the whole horse row (name area + chevron) to open the profile.
+    // v2.21.1: clicks on the chevron or empty row area now also open, and
+    // we read the name from aria-label so it's not polluted by fav star or
+    // tag/reason text.
     document.addEventListener('click', function(ev){
       var t = ev.target;
       if (!t || !t.closest) return;
-      var nameEl = t.closest('.barn-item-name');
-      if (!nameEl) return;
-      // Only wire rows inside the main horses section, not jockey/trainer.
-      var section = nameEl.closest('.barn-section');
-      if (!section) return;
-      var h3 = section.querySelector('h3');
-      if (!h3 || !/horses/i.test(h3.textContent)) return;
-      var name = nameEl.textContent.trim();
+      // Skip remove buttons / inputs entirely.
+      if (t.closest('.barn-item-remove') || t.closest('input') || t.closest('button')) {
+        if (!t.closest('.barn-horse-chevron')) return;
+      }
+      var row = t.closest('.barn-horse-row');
+      if (!row) {
+        // Back-compat path: click inside legacy .barn-item-name
+        var nameEl = t.closest('.barn-item-name');
+        if (!nameEl) return;
+        var legacySection = nameEl.closest('.barn-section');
+        if (!legacySection) return;
+        var legacyH3 = legacySection.querySelector('h3');
+        if (!legacyH3 || !/horses/i.test(legacyH3.textContent)) return;
+        row = nameEl.closest('.barn-item') || nameEl;
+      }
+      var nameNode = row.querySelector('[aria-label^="Open profile for "]');
+      var name = '';
+      if (nameNode) {
+        var lbl = nameNode.getAttribute('aria-label') || '';
+        name = lbl.replace(/^Open profile for /, '').trim();
+      }
+      if (!name) {
+        var sp = row.querySelector('.barn-item-name span');
+        if (sp) name = sp.textContent.trim();
+      }
       if (name) openHorseProfile(name);
     });
   }

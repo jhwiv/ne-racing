@@ -46,3 +46,29 @@ test('demo horse builder picks horses with history (fixture shape)', () => {
   const multi = Object.values(byName).filter((n) => n >= 2).length;
   assert.ok(multi >= 8, `expected 8+ horses with 2+ scheduled starts, got ${multi}`);
 });
+
+test('v2.21.1: sample-history enrichment pulls per-race connection fields', () => {
+  // The Virtual Barn profile modal depends on per-race history rows
+  // carrying jockey/trainer/pp/ml/etc. This test verifies the fixture
+  // actually has those fields so the profile can render something richer
+  // than just a date + race number.
+  const doc = JSON.parse(fs.readFileSync(FIXTURE, 'utf8'));
+  let withJockey = 0, withTrainer = 0, withPP = 0, withML = 0;
+  let total = 0;
+  doc.races.forEach((r) => {
+    (r.horses || []).forEach((h) => {
+      total += 1;
+      if (h.jockey) withJockey += 1;
+      if (h.trainer) withTrainer += 1;
+      if (h.pp) withPP += 1;
+      if (h.ml) withML += 1;
+    });
+  });
+  assert.ok(total > 50, `expected a non-trivial fixture, got ${total} entries`);
+  // These are the fields the profile modal shows per sample start. If the
+  // fixture dropped them, the enriched profile would silently degrade.
+  assert.ok(withJockey / total > 0.8, `jockey coverage: ${withJockey}/${total}`);
+  assert.ok(withTrainer / total > 0.8, `trainer coverage: ${withTrainer}/${total}`);
+  assert.ok(withPP / total > 0.8, `pp coverage: ${withPP}/${total}`);
+  assert.ok(withML / total > 0.8, `ml coverage: ${withML}/${total}`);
+});
