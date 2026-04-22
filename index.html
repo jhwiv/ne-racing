@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260418-0330-fouc-kill-v2.17.2';
+var NE_APP_VERSION = '20260422-1005-barn-filter-tracks-v2.18.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.17.2-fouc-kill';
+var RAILBIRD_VERSION = 'v2.18.0-barn-tracks';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -6211,6 +6211,12 @@ tr:has(> td > .detail-stat-row),
       </div>
     </section>
 
+    <!-- BARN TAB — v2.18.0 -->
+    <section id="tab-barn" class="tab-panel" role="tabpanel" aria-label="Barn">
+      <h2 class="section-title" id="barn-heading">Your Barn</h2>
+      <div id="barn-container"></div>
+    </section>
+
   </main><!-- end main-content -->
 
   <!-- LUXURY: Floating Utility Menu -->
@@ -6283,6 +6289,15 @@ tr:has(> td > .detail-stat-row),
       <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
     </svg>
     <span>Results</span>
+  </button>
+  <button class="tab-btn" id="tab-btn-barn" onclick="switchTab('barn')" aria-label="Barn" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 11 L12 4 L21 11 V20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z"/>
+      <path d="M8 21 V13 H16 V21"/>
+      <line x1="8" y1="17" x2="16" y2="17"/>
+    </svg>
+    <span>Barn</span>
+    <span class="tab-badge hidden" id="barn-today-badge">0</span>
   </button>
   <button class="tab-btn" id="tab-btn-reference" onclick="switchTab('reference')" aria-label="Reference" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -6368,7 +6383,7 @@ tr:has(> td > .detail-stat-row),
       <div class="settings-action-row">
         <button class="btn btn-outline btn-sm" onclick="exportData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Data (v2.17.2)
+          Export Data (v2.18.0)
         </button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -12594,6 +12609,777 @@ document.addEventListener('keydown', e => {
     init();
   }
 })();
+
+/* =============================================================
+   v2.18.0 — BARN + JOCKEY/TRAINER FILTER (wrapper IIFE)
+   - Adds a "Barn" tab with followed horses / jockeys / trainers
+   - Heart icon on horse rows to toggle follow (post-render decoration)
+   - Filter chip strip on Today tab (jockey / trainer) — dims non-matches
+   - "Your Barn today" strip above race list when a followed horse runs
+   - All data in localStorage under store.barn; no protected-fn edits
+   ============================================================= */
+(function() {
+  var BARN_KEY_SUFFIX = 'barn'; // stored on main store
+
+  // --- Palette constants (v2.1 only)
+  var C = {
+    navy: '#1B2E4B', card: '#243653', cream: '#F5F0E8', ink: '#EDE8DC',
+    gold: '#C9A84C', rose: '#D9867A', floor: '#0a1628'
+  };
+
+  // --- Store helpers
+  function barnGet() {
+    var s = (typeof getStore === 'function') ? getStore() : null;
+    if (!s) return { horses: [], jockeys: [], trainers: [] };
+    if (!s.barn) s.barn = { horses: [], jockeys: [], trainers: [] };
+    if (!Array.isArray(s.barn.horses)) s.barn.horses = [];
+    if (!Array.isArray(s.barn.jockeys)) s.barn.jockeys = [];
+    if (!Array.isArray(s.barn.trainers)) s.barn.trainers = [];
+    return s.barn;
+  }
+  function barnSave(barn) {
+    var s = (typeof getStore === 'function') ? getStore() : null;
+    if (!s) return;
+    s.barn = barn;
+    try { saveStore(s); } catch(e) {}
+  }
+  function barnNormalize(name) {
+    return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+  function barnMatches(list, name) {
+    var n = barnNormalize(name);
+    if (!n) return false;
+    return list.some(function(item) { return barnNormalize(item.name) === n; });
+  }
+  function barnFindIdx(list, name) {
+    var n = barnNormalize(name);
+    for (var i = 0; i < list.length; i++) {
+      if (barnNormalize(list[i].name) === n) return i;
+    }
+    return -1;
+  }
+
+  // --- Public toggle API (used by UI)
+  function toggleFollow(kind, name) {
+    if (!name || name === 'N/A' || name === '—') return;
+    var barn = barnGet();
+    var list = barn[kind];
+    if (!list) return;
+    var idx = barnFindIdx(list, name);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+    } else {
+      list.push({ name: String(name).trim(), addedAt: new Date().toISOString() });
+    }
+    barnSave(barn);
+    // Refresh UI
+    try { barn_decorateHorseRows(); } catch(e) {}
+    try { barn_updateTodayStrip(); } catch(e) {}
+    try { barn_updateBadge(); } catch(e) {}
+    var activePanel = document.querySelector('.tab-panel.active');
+    if (activePanel && activePanel.id === 'tab-barn') barn_renderBarnTab();
+    var msg = (idx >= 0 ? 'Removed ' : 'Added ') + name + (kind === 'horses' ? ' from your barn' : (kind === 'jockeys' ? ' from followed jockeys' : ' from followed trainers'));
+    try { if (typeof showToast === 'function') showToast(msg, 'success'); } catch(e) {}
+  }
+  window.barnToggle = toggleFollow; // onclick hook
+
+  // --- Scan races in the currently-loaded track data for matches
+  function barn_scanRaces() {
+    var out = { horses: [], jockeys: [], trainers: [] };
+    try {
+      var td = getTrackData();
+      var races = td && td.races ? td.races : [];
+      var barn = barnGet();
+      races.forEach(function(race) {
+        (race.horses || []).forEach(function(h) {
+          if (h.scratched) return;
+          if (barnMatches(barn.horses, h.name)) {
+            out.horses.push({ race: race, horse: h });
+          }
+          if (barnMatches(barn.jockeys, h.jockey)) {
+            out.jockeys.push({ race: race, horse: h });
+          }
+          if (barnMatches(barn.trainers, h.trainer)) {
+            out.trainers.push({ race: race, horse: h });
+          }
+        });
+      });
+    } catch(e) {}
+    return out;
+  }
+
+  // --- Post-render decoration of horse rows with heart icon
+  function barn_heartSvg(filled) {
+    if (filled) {
+      return '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="vertical-align:-2px"><path fill="' + C.gold + '" d="M12 21s-7-4.35-9.5-8.5C.86 9.57 2.7 6 6 6c2 0 3.5 1.2 4 2.5C10.5 7.2 12 6 14 6c3.3 0 5.14 3.57 3.5 6.5C19 16.65 12 21 12 21z"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="vertical-align:-2px"><path fill="none" stroke="' + C.gold + '" stroke-width="1.8" d="M12 21s-7-4.35-9.5-8.5C.86 9.57 2.7 6 6 6c2 0 3.5 1.2 4 2.5C10.5 7.2 12 6 14 6c3.3 0 5.14 3.57 3.5 6.5C19 16.65 12 21 12 21z"/></svg>';
+  }
+  function barn_decorateHorseRows() {
+    var rows = document.querySelectorAll('tr[id^="horse-row-"]');
+    if (!rows.length) return;
+    var barn = barnGet();
+    rows.forEach(function(row) {
+      // Horse name cell is the 3rd TD
+      var tds = row.querySelectorAll('td');
+      if (tds.length < 3) return;
+      var nameCell = tds[2];
+      var nameSpan = nameCell.querySelector('.horse-name');
+      if (!nameSpan) return;
+      var name = nameSpan.textContent.trim();
+      if (!name || name === '—') return;
+
+      var followed = barnMatches(barn.horses, name);
+      var existing = nameCell.querySelector('.barn-heart');
+      var safeName = (name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      if (existing) {
+        existing.innerHTML = barn_heartSvg(followed);
+        existing.setAttribute('aria-pressed', followed ? 'true' : 'false');
+        existing.title = followed ? 'Remove ' + name + ' from barn' : 'Add ' + name + ' to barn';
+      } else {
+        var btn = document.createElement('button');
+        btn.className = 'barn-heart';
+        btn.type = 'button';
+        btn.setAttribute('aria-label', 'Toggle barn for ' + name);
+        btn.setAttribute('aria-pressed', followed ? 'true' : 'false');
+        btn.title = followed ? 'Remove ' + name + ' from barn' : 'Add ' + name + ' to barn';
+        btn.style.cssText = 'background:transparent;border:none;cursor:pointer;margin-left:6px;padding:2px;line-height:1;vertical-align:middle;';
+        btn.innerHTML = barn_heartSvg(followed);
+        btn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          toggleFollow('horses', name);
+        });
+        // Insert immediately after the name span
+        nameSpan.parentNode.insertBefore(btn, nameSpan.nextSibling);
+      }
+    });
+
+    // Also decorate jockey/trainer cells with small star toggles
+    rows.forEach(function(row) {
+      var tds = row.querySelectorAll('td');
+      if (tds.length < 7) return;
+      // Jockey is TD index 5, trainer is TD index 6 (per buildRaceCardHTML)
+      barn_decorateJTCell(tds[5], 'jockeys');
+      barn_decorateJTCell(tds[6], 'trainers');
+    });
+  }
+  function barn_starSvg(filled) {
+    if (filled) {
+      return '<svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="vertical-align:-1px"><path fill="' + C.gold + '" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true" style="vertical-align:-1px"><path fill="none" stroke="' + C.gold + '" stroke-width="1.8" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+  }
+  function barn_decorateJTCell(td, kind) {
+    if (!td) return;
+    var span = td.querySelector('span:first-child');
+    if (!span) return;
+    var name = span.textContent.trim();
+    if (!name || name === '—' || name === 'N/A') return;
+    var barn = barnGet();
+    var followed = barnMatches(barn[kind], name);
+    var existing = td.querySelector('.barn-jt-star');
+    if (existing) {
+      existing.innerHTML = barn_starSvg(followed);
+      existing.setAttribute('aria-pressed', followed ? 'true' : 'false');
+      return;
+    }
+    var btn = document.createElement('button');
+    btn.className = 'barn-jt-star';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', (followed ? 'Unfollow ' : 'Follow ') + name);
+    btn.setAttribute('aria-pressed', followed ? 'true' : 'false');
+    btn.title = (followed ? 'Unfollow ' : 'Follow ') + name;
+    btn.style.cssText = 'background:transparent;border:none;cursor:pointer;margin-left:4px;padding:0;line-height:1;vertical-align:middle;';
+    btn.innerHTML = barn_starSvg(followed);
+    btn.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      toggleFollow(kind, name);
+    });
+    span.parentNode.insertBefore(btn, span.nextSibling);
+  }
+
+  // --- "Your Barn today" strip above race list
+  function barn_updateTodayStrip() {
+    var container = document.getElementById('races-container');
+    if (!container) return;
+    // Only on today tab, and only when races are rendered
+    var activePanel = document.querySelector('.tab-panel.active');
+    if (!activePanel || activePanel.id !== 'tab-today') return;
+    var existing = document.getElementById('barn-today-strip');
+    if (existing) existing.remove();
+
+    var matches = barn_scanRaces();
+    var total = matches.horses.length + matches.jockeys.length + matches.trainers.length;
+    if (total === 0) return;
+
+    var horseList = matches.horses.map(function(m) {
+      return '<button class="barn-today-chip" onclick="barnJumpToRace(' + m.race.num + ')" title="R' + m.race.num + ' \u2014 ' + m.horse.name + '">' +
+        '<span class="barn-chip-dot" style="background:' + C.gold + '"></span>' +
+        '<span class="barn-chip-name">' + m.horse.name + '</span>' +
+        '<span class="barn-chip-race">R' + m.race.num + '</span>' +
+        '</button>';
+    }).join('');
+    var jockeyMap = {}, trainerMap = {};
+    matches.jockeys.forEach(function(m) {
+      var k = m.horse.jockey;
+      if (!jockeyMap[k]) jockeyMap[k] = [];
+      jockeyMap[k].push({ horse: m.horse.name, race: m.race.num });
+    });
+    matches.trainers.forEach(function(m) {
+      var k = m.horse.trainer;
+      if (!trainerMap[k]) trainerMap[k] = [];
+      trainerMap[k].push({ horse: m.horse.name, race: m.race.num });
+    });
+    var jockeyList = Object.keys(jockeyMap).map(function(j) {
+      return '<div class="barn-today-line"><span style="color:' + C.gold + ';font-weight:600">J:</span> ' + j +
+        ' <span style="color:rgba(237,232,220,0.65);font-size:0.78em">\u2014 ' +
+        jockeyMap[j].map(function(e){return 'R'+e.race+' '+e.horse;}).join(', ') + '</span></div>';
+    }).join('');
+    var trainerList = Object.keys(trainerMap).map(function(t) {
+      return '<div class="barn-today-line"><span style="color:' + C.gold + ';font-weight:600">T:</span> ' + t +
+        ' <span style="color:rgba(237,232,220,0.65);font-size:0.78em">\u2014 ' +
+        trainerMap[t].map(function(e){return 'R'+e.race+' '+e.horse;}).join(', ') + '</span></div>';
+    }).join('');
+
+    var html =
+      '<div id="barn-today-strip" style="background:' + C.navy + ';border:1px solid rgba(201,168,76,0.35);border-radius:12px;padding:12px 14px;margin:10px 0 14px;color:' + C.ink + ';box-shadow:0 2px 10px rgba(0,0,0,0.18)">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:' + (matches.horses.length ? '10' : '4') + 'px">' +
+          '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="' + C.gold + '" d="M12 21s-7-4.35-9.5-8.5C.86 9.57 2.7 6 6 6c2 0 3.5 1.2 4 2.5C10.5 7.2 12 6 14 6c3.3 0 5.14 3.57 3.5 6.5C19 16.65 12 21 12 21z"/></svg>' +
+          '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.05rem;letter-spacing:0.04em">Your Barn today</div>' +
+          '<div style="margin-left:auto;font-size:0.72rem;color:rgba(237,232,220,0.6)">' + total + ' match' + (total === 1 ? '' : 'es') + '</div>' +
+        '</div>' +
+        (horseList ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:' + (jockeyList || trainerList ? '8' : '0') + 'px">' + horseList + '</div>' : '') +
+        (jockeyList ? '<div style="font-size:0.82rem;line-height:1.55">' + jockeyList + '</div>' : '') +
+        (trainerList ? '<div style="font-size:0.82rem;line-height:1.55">' + trainerList + '</div>' : '') +
+      '</div>';
+
+    container.insertAdjacentHTML('afterbegin', html);
+  }
+  window.barnJumpToRace = function(raceNum) {
+    var card = document.querySelector('[data-race-num="' + raceNum + '"]') ||
+               document.querySelector('#race-card-' + raceNum) ||
+               document.querySelector('.race-card[data-race="' + raceNum + '"]');
+    // Try various anchor patterns; fall back to any heading containing "Race N"
+    if (!card) {
+      var all = document.querySelectorAll('.race-card, [id^="race-"], h3');
+      for (var i = 0; i < all.length; i++) {
+        var t = (all[i].textContent || '').trim();
+        if (/^Race\s*0?/i.test(t) && t.indexOf(String(raceNum)) !== -1) { card = all[i]; break; }
+        if (all[i].id && all[i].id.indexOf('race-' + raceNum) === 0) { card = all[i]; break; }
+      }
+    }
+    if (card) {
+      var headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 56;
+      var y = card.getBoundingClientRect().top + window.pageYOffset - headerH - 8;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
+
+  // --- Today tab badge (shows barn match count)
+  function barn_updateBadge() {
+    var badge = document.getElementById('barn-today-badge');
+    if (!badge) return;
+    var matches = barn_scanRaces();
+    var total = matches.horses.length + matches.jockeys.length + matches.trainers.length;
+    if (total > 0) {
+      badge.textContent = total;
+      badge.classList.remove('hidden');
+      badge.style.background = C.gold;
+      badge.style.color = C.floor;
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  // --- Filter chip strip on Today tab
+  function barn_renderFilterStrip() {
+    var activePanel = document.querySelector('.tab-panel.active');
+    if (!activePanel || activePanel.id !== 'tab-today') return;
+    var container = document.getElementById('races-container');
+    if (!container) return;
+
+    var td = getTrackData();
+    var races = td && td.races ? td.races : [];
+    if (!races.length) return;
+
+    // Collect all jockeys and trainers from today's card
+    var jockeyCounts = {}, trainerCounts = {};
+    races.forEach(function(r) {
+      (r.horses || []).forEach(function(h) {
+        if (h.scratched) return;
+        if (h.jockey && h.jockey !== 'N/A' && h.jockey !== '—') {
+          jockeyCounts[h.jockey] = (jockeyCounts[h.jockey] || 0) + 1;
+        }
+        if (h.trainer && h.trainer !== 'N/A' && h.trainer !== '—') {
+          trainerCounts[h.trainer] = (trainerCounts[h.trainer] || 0) + 1;
+        }
+      });
+    });
+
+    var existing = document.getElementById('barn-filter-strip');
+    if (existing) existing.remove();
+
+    var active = window.__barnFilter || { kind: null, name: null };
+    var hasJ = Object.keys(jockeyCounts).length > 0;
+    var hasT = Object.keys(trainerCounts).length > 0;
+    if (!hasJ && !hasT) return;
+
+    var html =
+      '<div id="barn-filter-strip" style="background:transparent;margin:6px 0 10px;color:' + C.ink + '">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:rgba(237,232,220,0.7);font-family:\'Cormorant Garamond\',serif">Filter by</span>' +
+          '<select id="barn-filter-select" onchange="barnApplyFilterFromSelect(this.value)" ' +
+            'style="background:' + C.navy + ';color:' + C.ink + ';border:1px solid rgba(201,168,76,0.35);border-radius:8px;padding:5px 8px;font-size:0.8rem;max-width:220px">' +
+              '<option value="">\u2014 none \u2014</option>' +
+              (hasJ ? ('<optgroup label="Jockeys">' + Object.keys(jockeyCounts).sort().map(function(j){
+                var sel = (active.kind === 'jockey' && active.name === j) ? ' selected' : '';
+                return '<option value="jockey::' + j.replace(/"/g, '&quot;') + '"' + sel + '>' + j + ' (' + jockeyCounts[j] + ')</option>';
+              }).join('') + '</optgroup>') : '') +
+              (hasT ? ('<optgroup label="Trainers">' + Object.keys(trainerCounts).sort().map(function(t){
+                var sel = (active.kind === 'trainer' && active.name === t) ? ' selected' : '';
+                return '<option value="trainer::' + t.replace(/"/g, '&quot;') + '"' + sel + '>' + t + ' (' + trainerCounts[t] + ')</option>';
+              }).join('') + '</optgroup>') : '') +
+          '</select>' +
+          (active.kind ? '<button onclick="barnClearFilter()" style="background:transparent;border:1px solid rgba(201,168,76,0.5);color:' + C.gold + ';border-radius:8px;padding:4px 10px;font-size:0.75rem;cursor:pointer">Clear</button>' : '') +
+        '</div>' +
+      '</div>';
+
+    // Insert at top of container (but below barn-today-strip if present)
+    var strip = document.getElementById('barn-today-strip');
+    if (strip) strip.insertAdjacentHTML('afterend', html);
+    else container.insertAdjacentHTML('afterbegin', html);
+  }
+
+  window.barnApplyFilterFromSelect = function(val) {
+    if (!val) { window.__barnFilter = null; barn_applyFilter(); return; }
+    var parts = val.split('::');
+    window.__barnFilter = { kind: parts[0], name: parts.slice(1).join('::') };
+    barn_applyFilter();
+  };
+  window.barnClearFilter = function() {
+    window.__barnFilter = null;
+    barn_applyFilter();
+    var sel = document.getElementById('barn-filter-select');
+    if (sel) sel.value = '';
+    var strip = document.getElementById('barn-filter-strip');
+    if (strip) strip.remove();
+    barn_renderFilterStrip();
+  };
+  function barn_applyFilter() {
+    var f = window.__barnFilter;
+    var rows = document.querySelectorAll('tr[id^="horse-row-"]');
+    rows.forEach(function(row) {
+      if (!f) {
+        row.style.opacity = '';
+        row.style.filter = '';
+        row.style.background = '';
+        row.classList.remove('barn-filter-match');
+        return;
+      }
+      var tds = row.querySelectorAll('td');
+      if (tds.length < 7) return;
+      var name = (f.kind === 'jockey' ? tds[5] : tds[6]).querySelector('span:first-child');
+      var nameTxt = name ? name.textContent.trim() : '';
+      if (nameTxt === f.name) {
+        row.style.opacity = '';
+        row.style.filter = '';
+        row.style.background = 'rgba(201,168,76,0.10)';
+        row.classList.add('barn-filter-match');
+      } else {
+        row.style.opacity = '0.32';
+        row.style.filter = 'saturate(0.6)';
+        row.style.background = '';
+        row.classList.remove('barn-filter-match');
+      }
+    });
+  }
+
+  // --- Barn tab rendering
+  function barn_renderBarnTab() {
+    var container = document.getElementById('barn-container');
+    if (!container) return;
+    var barn = barnGet();
+    var matches = barn_scanRaces();
+
+    var styleBlock =
+      '<style>' +
+      '.barn-section{background:' + C.navy + ';border-radius:12px;padding:14px 16px;margin-bottom:12px;color:' + C.ink + '}' +
+      '.barn-section h3{font-family:\'Cormorant Garamond\',serif;font-size:1.15rem;letter-spacing:0.04em;margin:0 0 8px;color:' + C.cream + ';display:flex;align-items:center;gap:8px}' +
+      '.barn-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-top:1px solid rgba(237,232,220,0.08)}' +
+      '.barn-item:first-child{border-top:none}' +
+      '.barn-item-name{flex:1;font-size:0.92rem}' +
+      '.barn-item-meta{font-size:0.74rem;color:rgba(237,232,220,0.62)}' +
+      '.barn-item-remove{background:transparent;border:1px solid rgba(217,134,122,0.5);color:' + C.rose + ';border-radius:6px;padding:3px 9px;font-size:0.72rem;cursor:pointer}' +
+      '.barn-item-remove:hover{background:rgba(217,134,122,0.12)}' +
+      '.barn-empty{font-family:\'Crimson Pro\',serif;font-style:italic;color:rgba(237,232,220,0.55);font-size:0.9rem;text-align:center;padding:14px 0}' +
+      '.barn-runs-today{background:rgba(201,168,76,0.14);color:' + C.gold + ';border-radius:999px;padding:2px 8px;font-size:0.7rem;font-weight:600;letter-spacing:0.03em}' +
+      '.barn-add-row{display:flex;gap:6px;margin-top:10px}' +
+      '.barn-add-row input{flex:1;background:rgba(10,22,40,0.55);color:' + C.ink + ';border:1px solid rgba(237,232,220,0.15);border-radius:8px;padding:7px 10px;font-size:0.85rem}' +
+      '.barn-add-row button{background:' + C.gold + ';color:' + C.floor + ';border:none;border-radius:8px;padding:7px 12px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase}' +
+      '.barn-add-row button:hover{filter:brightness(1.08)}' +
+      '.barn-summary{background:' + C.card + ';border-radius:12px;padding:12px 14px;margin-bottom:12px;color:' + C.ink + ';display:flex;gap:12px;align-items:center;flex-wrap:wrap}' +
+      '.barn-summary-stat{display:flex;flex-direction:column;gap:2px}' +
+      '.barn-summary-num{font-family:\'Cormorant Garamond\',serif;font-size:1.6rem;color:' + C.gold + ';line-height:1}' +
+      '.barn-summary-lbl{font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:rgba(237,232,220,0.65)}' +
+      '</style>';
+
+    // Summary header
+    var totalToday = matches.horses.length + matches.jockeys.length + matches.trainers.length;
+    var summaryHtml =
+      '<div class="barn-summary">' +
+        '<div class="barn-summary-stat"><span class="barn-summary-num">' + barn.horses.length + '</span><span class="barn-summary-lbl">Horses</span></div>' +
+        '<div class="barn-summary-stat"><span class="barn-summary-num">' + barn.jockeys.length + '</span><span class="barn-summary-lbl">Jockeys</span></div>' +
+        '<div class="barn-summary-stat"><span class="barn-summary-num">' + barn.trainers.length + '</span><span class="barn-summary-lbl">Trainers</span></div>' +
+        '<div class="barn-summary-stat" style="margin-left:auto;text-align:right"><span class="barn-summary-num" style="color:' + (totalToday ? C.gold : 'rgba(237,232,220,0.5)') + '">' + totalToday + '</span><span class="barn-summary-lbl">Running today</span></div>' +
+      '</div>';
+
+    // Horses section
+    var horsesSection = buildListSection(
+      'horses', 'Horses', barn.horses, matches.horses,
+      'horse name (e.g. Thunder Creek)',
+      function(item) {
+        var m = matches.horses.filter(function(x){ return barnNormalize(x.horse.name) === barnNormalize(item.name); });
+        return m.length ? '<span class="barn-runs-today">R' + m[0].race.num + ' today</span>' : '';
+      }
+    );
+    var jockeysSection = buildListSection(
+      'jockeys', 'Jockeys', barn.jockeys, matches.jockeys,
+      'jockey name',
+      function(item) {
+        var cnt = matches.jockeys.filter(function(x){ return barnNormalize(x.horse.jockey) === barnNormalize(item.name); }).length;
+        return cnt ? '<span class="barn-runs-today">' + cnt + ' ride' + (cnt === 1 ? '' : 's') + ' today</span>' : '';
+      }
+    );
+    var trainersSection = buildListSection(
+      'trainers', 'Trainers', barn.trainers, matches.trainers,
+      'trainer name',
+      function(item) {
+        var cnt = matches.trainers.filter(function(x){ return barnNormalize(x.horse.trainer) === barnNormalize(item.name); }).length;
+        return cnt ? '<span class="barn-runs-today">' + cnt + ' starter' + (cnt === 1 ? '' : 's') + ' today</span>' : '';
+      }
+    );
+
+    container.innerHTML = styleBlock + summaryHtml + horsesSection + jockeysSection + trainersSection +
+      '<p style="font-size:0.75rem;color:rgba(237,232,220,0.55);font-style:italic;text-align:center;margin-top:12px">Tip: tap the heart beside any horse name (or the star beside a jockey/trainer) in the Today tab to add them here.</p>';
+  }
+
+  function buildListSection(kind, label, items, todayMatches, placeholder, todayBadgeFn) {
+    var rows = items.length
+      ? items.map(function(item, idx) {
+          var badge = todayBadgeFn(item);
+          var esc = String(item.name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          return '<div class="barn-item">' +
+            '<div class="barn-item-name">' + item.name + '</div>' +
+            (badge ? '<div>' + badge + '</div>' : '') +
+            '<button class="barn-item-remove" onclick="barnToggle(\'' + kind + '\',\'' + esc + '\')">Remove</button>' +
+          '</div>';
+        }).join('')
+      : '<div class="barn-empty">No ' + kind + ' followed yet.</div>';
+
+    return '<div class="barn-section">' +
+      '<h3>' + label + ' <span style="font-size:0.75rem;color:rgba(237,232,220,0.55);font-weight:normal">\u00B7 ' + items.length + '</span></h3>' +
+      rows +
+      '<div class="barn-add-row">' +
+        '<input type="text" id="barn-add-input-' + kind + '" placeholder="Add ' + placeholder + '" onkeydown="if(event.key===\'Enter\'){barnAddFromInput(\'' + kind + '\');}">' +
+        '<button onclick="barnAddFromInput(\'' + kind + '\')">Add</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  window.barnAddFromInput = function(kind) {
+    var inp = document.getElementById('barn-add-input-' + kind);
+    if (!inp) return;
+    var v = (inp.value || '').trim();
+    if (!v) return;
+    var barn = barnGet();
+    if (barnMatches(barn[kind], v)) {
+      inp.value = '';
+      try { showToast('Already in your barn', 'info'); } catch(e) {}
+      return;
+    }
+    toggleFollow(kind, v);
+    inp.value = '';
+  };
+
+  // --- Monkey-patch renderTabContent to dispatch Barn tab
+  function installTabDispatch() {
+    if (typeof renderTabContent !== 'function') { setTimeout(installTabDispatch, 200); return; }
+    var orig = renderTabContent;
+    renderTabContent = function(name) {
+      if (name === 'barn') {
+        barn_renderBarnTab();
+        return;
+      }
+      return orig.apply(this, arguments);
+    };
+  }
+
+  // --- Hook: after renderTodayTab, decorate + add strip
+  function installRenderHooks() {
+    if (typeof renderTodayTab !== 'function') { setTimeout(installRenderHooks, 200); return; }
+    var origToday = renderTodayTab;
+    renderTodayTab = function() {
+      var r = origToday.apply(this, arguments);
+      try {
+        barn_decorateHorseRows();
+        barn_updateTodayStrip();
+        barn_renderFilterStrip();
+        barn_updateBadge();
+        if (window.__barnFilter) barn_applyFilter();
+      } catch(e) {}
+      return r;
+    };
+  }
+
+  // --- Also redecorate after live-odds refresh redraws rows
+  var decorationObserver = null;
+  function installMutationWatcher() {
+    var container = document.getElementById('races-container');
+    if (!container) { setTimeout(installMutationWatcher, 400); return; }
+    if (decorationObserver) return;
+    var pending = false;
+    decorationObserver = new MutationObserver(function() {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(function() {
+        pending = false;
+        try {
+          barn_decorateHorseRows();
+          barn_updateBadge();
+          if (window.__barnFilter) barn_applyFilter();
+        } catch(e) {}
+      });
+    });
+    decorationObserver.observe(container, { childList: true, subtree: true });
+  }
+
+  function boot() {
+    installTabDispatch();
+    installRenderHooks();
+    installMutationWatcher();
+    // Initial decoration if Today is already rendered
+    setTimeout(function() {
+      try {
+        barn_decorateHorseRows();
+        barn_updateTodayStrip();
+        barn_renderFilterStrip();
+        barn_updateBadge();
+      } catch(e) {}
+    }, 500);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+
+
+/* =============================================================
+   v2.18.0 — HERO TRACK PICKER (wrapper IIFE)
+   "Racing today" chip row rendered under the hero tagline.
+   Probes every TRACKS code once per session for today's card;
+   tapping a live chip calls selectTrack(code) + enterApp().
+   If no tracks are live, shows 2-3 upcoming meets from t.seasons.
+   ============================================================= */
+(function(){
+  var HERO_CACHE = null; // { date, status: { CODE: 'live'|'none' } }
+  var STYLE_INJECTED = false;
+
+  function trk_injectStyles() {
+    if (STYLE_INJECTED) return; STYLE_INJECTED = true;
+    var css = ''
+      + '#hero-track-picker{position:relative;z-index:3;margin:14px auto 0;max-width:560px;padding:0 16px;text-align:center;opacity:0;transform:translateY(4px);transition:opacity .45s ease,transform .45s ease;}'
+      + '#hero-track-picker.ht-ready{opacity:1;transform:none;}'
+      + '.ht-label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#C9A84C;margin-bottom:8px;font-weight:600;opacity:.85;}'
+      + '.ht-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;}'
+      + '.ht-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:rgba(27,46,75,.82);border:1px solid rgba(201,168,76,.45);color:#EDE8DC;font-size:12.5px;font-weight:600;letter-spacing:.02em;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:background .18s,border-color .18s,transform .12s;}'
+      + '.ht-chip:hover,.ht-chip:active{background:rgba(36,54,83,.95);border-color:#C9A84C;transform:translateY(-1px);}'
+      + '.ht-chip .ht-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,.7);flex-shrink:0;}'
+      + '.ht-chip.ht-upcoming{background:rgba(27,46,75,.55);border-color:rgba(237,232,220,.22);color:rgba(237,232,220,.75);cursor:default;font-weight:500;}'
+      + '.ht-chip.ht-upcoming .ht-dot{background:rgba(237,232,220,.35);box-shadow:none;}'
+      + '.ht-empty{font-size:12px;color:rgba(237,232,220,.65);margin-bottom:6px;font-style:italic;}'
+      + '.ht-probing{font-size:11.5px;color:rgba(237,232,220,.55);letter-spacing:.1em;}'
+      + '@media(max-width:380px){.ht-chip{font-size:11.5px;padding:6px 9px;}.ht-label{font-size:10.5px;}}';
+    var s = document.createElement('style'); s.id = 'ht-styles'; s.textContent = css;
+    document.head.appendChild(s);
+  }
+
+  function trk_todayStr() {
+    try { return (typeof getTodayStr === 'function') ? getTodayStr() : new Date().toISOString().slice(0,10); }
+    catch(_) { return new Date().toISOString().slice(0,10); }
+  }
+
+  function trk_getTracks() {
+    try { if (typeof TRACKS !== 'undefined' && TRACKS) return TRACKS; } catch(_){}
+    return window.TRACKS || {};
+  }
+
+  // Generic meet-status helper (mirrors getSarStatus but for any code)
+  function trk_meetStatus(code) {
+    try {
+      var t = trk_getTracks()[code];
+      if (!t || !Array.isArray(t.seasons) || !t.seasons.length) return { phase:'ended', label:'', daysUntil:null, from:null };
+      var today = trk_todayStr();
+      for (var i=0;i<t.seasons.length;i++) {
+        var s = t.seasons[i];
+        if (today >= s.from && today <= s.to) return { phase:'live', label:s.label, daysUntil:0, from:s.from };
+      }
+      var future = t.seasons.filter(function(s){ return s.from > today; }).sort(function(a,b){ return a.from < b.from ? -1 : 1; });
+      if (future.length) {
+        var next = future[0];
+        var ms = new Date(next.from+'T12:00:00') - new Date(today+'T12:00:00');
+        var days = Math.max(0, Math.round(ms/86400000));
+        return { phase:'upcoming', label:next.label, daysUntil:days, from:next.from };
+      }
+      return { phase:'ended', label:'', daysUntil:null, from:null };
+    } catch(e) { return { phase:'ended', label:'', daysUntil:null, from:null }; }
+  }
+
+  function trk_fmtOpens(fromStr, daysUntil) {
+    try {
+      var d = new Date(fromStr+'T12:00:00');
+      var label = d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      if (daysUntil === 0) return 'opens today';
+      if (daysUntil === 1) return 'opens tomorrow';
+      if (daysUntil != null && daysUntil <= 14) return 'opens '+label+' ('+daysUntil+'d)';
+      return 'opens '+label;
+    } catch(_) { return 'upcoming'; }
+  }
+
+  async function trk_probe() {
+    try {
+      var today = trk_todayStr();
+      if (HERO_CACHE && HERO_CACHE.date === today) return HERO_CACHE.status;
+      var store = (typeof getStore === 'function') ? getStore() : null;
+      var workerUrl = store && store.settings && store.settings.workerUrl;
+      var codes = Object.keys(trk_getTracks());
+      var status = {};
+      if (!workerUrl) {
+        codes.forEach(function(c){ status[c] = 'unknown'; });
+        HERO_CACHE = { date: today, status: status };
+        return status;
+      }
+      await Promise.all(codes.map(async function(code){
+        try {
+          var url = workerUrl + '/api/entries?track=' + code + '&date=' + today + '&_hp=' + Date.now();
+          var res = await fetch(url, { cache:'no-store' });
+          if (!res.ok) { status[code] = 'none'; return; }
+          var json = await res.json();
+          status[code] = (json && Array.isArray(json.races) && json.races.length) ? 'live' : 'none';
+        } catch(_) { status[code] = 'none'; }
+      }));
+      HERO_CACHE = { date: today, status: status };
+      return status;
+    } catch(e) { return {}; }
+  }
+
+  function trk_chipLive(code, trackName) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ht-chip';
+    btn.setAttribute('data-track', code);
+    btn.innerHTML = '<span class="ht-dot" aria-hidden="true"></span><span>'+code+'</span>';
+    btn.setAttribute('aria-label', trackName + ' — racing today');
+    btn.addEventListener('click', function(e){
+      e.stopPropagation(); e.preventDefault();
+      try { if (typeof selectTrack === 'function') selectTrack(code); } catch(_){}
+      try { if (typeof window.dismissHero === 'function') window.dismissHero(); } catch(_){}
+    });
+    return btn;
+  }
+
+  function trk_chipUpcoming(code, meet) {
+    var span = document.createElement('span');
+    span.className = 'ht-chip ht-upcoming';
+    span.innerHTML = '<span class="ht-dot" aria-hidden="true"></span><span>'+code+' \u00B7 '+trk_fmtOpens(meet.from, meet.daysUntil)+'</span>';
+    return span;
+  }
+
+  function trk_render(status) {
+    var wrap = document.getElementById('hero-track-picker');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    var liveCodes = Object.keys(status || {}).filter(function(c){ return status[c] === 'live'; });
+
+    var label = document.createElement('div');
+    label.className = 'ht-label';
+    var row = document.createElement('div');
+    row.className = 'ht-row';
+
+    if (liveCodes.length) {
+      label.textContent = 'Racing today';
+      wrap.appendChild(label);
+      liveCodes.sort().forEach(function(code){
+        var t = trk_getTracks()[code];
+        if (t) row.appendChild(trk_chipLive(code, t.name));
+      });
+      wrap.appendChild(row);
+    } else {
+      // Fallback: find nearest upcoming meets across all tracks
+      label.textContent = 'No live cards today';
+      wrap.appendChild(label);
+      var codes = Object.keys(trk_getTracks());
+      var upcoming = [];
+      codes.forEach(function(code){
+        var ms = trk_meetStatus(code);
+        if (ms.phase === 'upcoming' && ms.daysUntil != null) upcoming.push({ code:code, meet:ms });
+      });
+      upcoming.sort(function(a,b){ return (a.meet.daysUntil - b.meet.daysUntil); });
+      var top = upcoming.slice(0, 3);
+      if (top.length === 0) {
+        var empty = document.createElement('div');
+        empty.className = 'ht-empty';
+        empty.textContent = 'Check back on race morning for live cards.';
+        wrap.appendChild(empty);
+      } else {
+        top.forEach(function(o){ row.appendChild(trk_chipUpcoming(o.code, o.meet)); });
+        wrap.appendChild(row);
+      }
+    }
+
+    wrap.classList.add('ht-ready');
+  }
+
+  function trk_ensureContainer() {
+    var hero = document.getElementById('hero-screen');
+    if (!hero) return null;
+    var existing = document.getElementById('hero-track-picker');
+    if (existing) return existing;
+    var wrap = document.createElement('div');
+    wrap.id = 'hero-track-picker';
+    wrap.innerHTML = '<div class="ht-label ht-probing">Checking today\u2019s cards\u2026</div>';
+    // Insert right after the .hero-title-block (which holds the tagline)
+    var titleBlock = hero.querySelector('.hero-title-block');
+    if (titleBlock && titleBlock.parentNode === hero) {
+      if (titleBlock.nextSibling) hero.insertBefore(wrap, titleBlock.nextSibling);
+      else hero.appendChild(wrap);
+    } else {
+      hero.appendChild(wrap);
+    }
+    return wrap;
+  }
+
+  async function trk_boot() {
+    try {
+      trk_injectStyles();
+      var wrap = trk_ensureContainer();
+      if (!wrap) return;
+      var status = await trk_probe();
+      trk_render(status);
+    } catch(e) { /* fail silently — hero still works */ }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(trk_boot, 60); });
+  } else {
+    setTimeout(trk_boot, 60);
+  }
+})();
+
+
 </script>
 
 </body>
