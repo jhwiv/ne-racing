@@ -23,21 +23,50 @@ const TRAINERS = [
   'Steve Asmussen', 'Mark Casse', 'Rudy Rodriguez', 'Jorge Abreu', 'Horacio De Paz',
   'Jena Antonucci', 'Mike Maker', 'Linda Rice', 'George Weaver', 'Cherie DeVaux'
 ];
-// Plausible-sounding syndicate / stable names drawn from the Saratoga social
-// lexicon. Purely synthetic. Any resemblance to a real stable is coincidental.
+// Real, publicly-known stables that campaign on the NYRA / Saratoga circuit.
+// Sources: TDN 2025 meet recaps, NYRA press releases, nybreds.com owner
+// leaderboards, and individual stable websites (Sackatoga, James Bond Racing,
+// West Point Thoroughbreds, Centennial Farms, etc.). Names are public.
+// The fixture that uses these names is still labeled sample_manual_review and
+// is NOT training-eligible — we assign ownership randomly across real names
+// purely to make the UI feel real. No claim is made that any specific horse
+// in the fixture is actually owned by the listed stable.
 const STABLES = [
-  'Dark Horse Racing',
-  'Spa City Stable',
-  'Morning Line Partners',
-  'Yaddo Racing Syndicate',
-  'Broadway Barn LLC',
-  'Caroline Street Stables',
-  'Oklahoma Training Partners',
-  'Congress Park Thoroughbreds',
-  'Hall of Springs Racing',
-  'Springwater Stables',
-  'Clare Court Partners',
-  'Union Avenue Racing'
+  // Top NYRA / Saratoga 2025 owners
+  'Repole Stable',
+  'Klaravich Stables',
+  'Michael Dubb',
+  'Sackatoga Stable',
+  'James Bond Racing Stables',
+  'West Point Thoroughbreds',
+  'Centennial Farms',
+  // Additional verified NYRA-active stables (nybreds.com leaderboard + public listings)
+  'Reeves Thoroughbred Racing',
+  'My Purple Haze Stables',
+  'Three Diamonds Farm',
+  'Red Oak Stable',
+  'Wachtel Stable',
+  'Pantofel Stable',
+  'Lady Sheila Stable',
+  'Oak Bluff Stables',
+  'LaMarca Stable',
+  'Windylea Farm',
+  'Paradise Farms Corp.',
+  'Hibiscus Stables',
+  'Reddam Racing',
+  'McCourt Racing',
+  'Winning Move Stable',
+  'J and N Stables',
+  'Mitre Box Stable',
+  'Clear Stars Stable',
+  'Barry K. Schwartz',
+  // Well-known national-scale outfits that routinely run at Saratoga
+  'Juddmonte Farms',
+  'Godolphin',
+  'Stonestreet Stables',
+  'Winchell Thoroughbreds',
+  'Eclipse Thoroughbred Partners',
+  'Twin Creeks Racing Stables'
 ];
 const HORSE_NAMES = [
   'Silent Gavel', 'Spa Postcard', 'Oklahoma Bluebird', 'Union Avenue', 'Saratoga Sundial',

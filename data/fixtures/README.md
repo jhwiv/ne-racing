@@ -5,7 +5,9 @@
 ## What it is
 
 - A deterministic random sample of **30 racing days** drawn from the real 2025 Saratoga Summer Meet calendar (July 10 – September 1, 2025, 40 total race days). The specific 30 dates are listed in `meta.sampled_dates` inside the JSON. Re-running the builder with the same `SAMPLE_SEED` (20250710) reproduces the same 30 days.
-- Horse/jockey/trainer names drawn from a pool of real, well-known 2025 NYRA circuit names so typeahead feels realistic. These names are **publicly known**; their appearance in this file is **not** an assertion that any specific horse ran in any specific race on any specific date.
+- Horse/jockey/trainer names drawn from a pool of real, well-known 2025 NYRA circuit names so typeahead feels realistic.
+- **Stable / owner names are real, publicly-known NYRA and Saratoga outfits** (e.g. Repole Stable, Klaravich Stables, Sackatoga Stable, James Bond Racing Stables, West Point Thoroughbreds, Centennial Farms, Juddmonte Farms, Godolphin, Stonestreet Stables, etc.). Sources: TDN 2025 meet recaps, NYRA press releases, nybreds.com owner leaderboards, individual stable websites.
+- These names are **publicly known**; their appearance in this file is **not** an assertion that any specific horse ran in any specific race on any specific date, nor that any listed stable actually owned any specific horse in this fixture. Ownership is assigned pseudo-randomly across the real-name pool purely to make the UI feel real.
 - Every race carries `"data_status": "placeholder_sample_for_ui_dev"`.
 - Every race's `source_provenance.license_tier` is `"sample_manual_review"`, `training_eligible: false`.
 

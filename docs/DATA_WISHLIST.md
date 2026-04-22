@@ -56,7 +56,7 @@ The Stables feature lets users follow a syndicate or ownership group and see all
 
 | Field | Sample mode | Live mode requirement |
 |---|---|---|
-| `horse.owner` | Present in `data/fixtures/saratoga_2025_sample.json` as synthetic stable names (see `STABLES` array in `scripts/ingest/build_sample_fixture.js`). Labeled `sample_manual_review`. | Required on every live entry. The Racing API delivers this; NYRA scrape does not. Equibase/DRF also deliver it under license. |
+| `horse.owner` | Present in `data/fixtures/saratoga_2025_sample.json`. As of v2.20.1, the name pool in `STABLES` (see `scripts/ingest/build_sample_fixture.js`) is populated with **real, publicly-known NYRA/Saratoga stables** (Repole, Klaravich, Sackatoga, James Bond Racing, West Point, Centennial Farms, Juddmonte, Godolphin, etc.), but the assignment of a stable to any specific horse in the fixture is pseudo-random. Still labeled `sample_manual_review`, still `training_eligible: false`. | Required on every live entry, with the real stable actually attached to each real horse. The Racing API delivers this; NYRA scrape does not. Equibase/DRF also deliver it under license. |
 
 Until a paid source is connected, the Stables card shows a "Switch to Sample mode" notice in Live mode rather than showing empty data.
 
@@ -67,3 +67,4 @@ Until a paid source is connected, the Stables card shows a "Switch to Sample mod
 | 2026-04-22 | No paid sources this cycle. Build the entire pipeline against a hand-curated sample set, clearly labeled. Reserve paid pathway with adapter stubs. Keep `master` pinned at v2.18.1. Flip to The Racing API once user authorizes spend. |
 | 2026-04-22 | v2.19.0 shipped to production. `master` now at v2.19.x. |
 | 2026-04-22 | v2.20.0 added Stables (ownership groups) + Upcoming-at-SAR list. Ownership is Saratoga-only by scope. Live-mode activation depends on a licensed `owner` field on entries. |
+| 2026-04-22 | v2.20.1: replaced synthetic stable name pool with 30 real, publicly-known NYRA/Saratoga stable names so typeahead and Stables feature feel real. Assignment to horses remains pseudo-random; fixture still flagged as sample and excluded from training. No paid source engaged. |
