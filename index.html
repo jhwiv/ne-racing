@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260422-1124-saratoga-pipeline-v2.19.0';
+var NE_APP_VERSION = '20260422-1325-barn-width-fix-v2.19.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.19.0-saratoga-pipeline';
+var RAILBIRD_VERSION = 'v2.19.1-barn-width-fix';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -13493,8 +13493,12 @@ document.addEventListener('keydown', e => {
     if (STYLE_INJECTED) return;
     STYLE_INJECTED = true;
     var css = ''
-      + '.sar-ta-wrap{position:relative;flex:1}'
-      + '.barn-add-row > .sar-ta-wrap > input{width:100%;box-sizing:border-box}'
+      + '.sar-ta-wrap{position:relative;flex:1 1 0;min-width:0}'
+      + '.sar-ta-wrap > input{width:100%;box-sizing:border-box;min-width:0}'
+      // Fix pre-existing flex overflow: long horse names pushed Remove off-screen
+      + '.barn-item{min-width:0}'
+      + '.barn-item-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+      + '.barn-add-row{min-width:0}'
       + '.sar-ta-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#243653;border:1px solid rgba(237,232,220,0.15);border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,0.45);max-height:200px;overflow-y:auto;z-index:1200;display:none}'
       + '.sar-ta-menu.open{display:block}'
       + '.sar-ta-opt{padding:7px 10px;font-size:0.88rem;color:#EDE8DC;cursor:pointer;border-top:1px solid rgba(237,232,220,0.06)}'
