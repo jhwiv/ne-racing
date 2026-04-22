@@ -1,5 +1,88 @@
 # NE Racing — Changelog
 
+## v2.21.3 — Emotional Virtual Barn + real heart feedback (2026-04-22)
+
+User complaint addressed: **"After pressing the heart button, nothing
+happens. We see all the horses but no indication of a curated personal
+virtual barn."** The heart now has a visible, emotional consequence, and
+the Barn reads as a personal stable — not a horse directory.
+
+### Heart button — reliable, visible, emotional
+
+- **New semantics (horses).** Heart is now a *favorite* gesture, not an
+  add/remove switch:
+  - Not in barn → adds the horse AND marks favorite (heart fills gold).
+  - In barn, not favorite → marks favorite.
+  - In barn, favorite → unmarks favorite (horse stays in barn).
+  - Removal is a distinct explicit action in the profile modal / Barn list.
+  The old "tap heart to remove" behavior was fighting the curated auto-
+  seed (a tap removed the horse, boot re-seeded it, so the tap looked
+  like a no-op). This was the user's "nothing happens" bug.
+- **Three-state heart icon:** outline (not in barn), soft-fill + border
+  (in barn, not favorite), solid gold with drop-shadow (favorite).
+- **Pulse + glow + floating label.** Every heart tap now plays a 0.55s
+  scale pulse, a gold radial glow, and a floating pill near the heart
+  ("★ In Barn", "★ Favorite", "Favorite off"). Combined with the
+  existing toast, the feedback is unmistakable on desktop and mobile.
+- **Toast microcopy** is horse-specific:
+  *"Inspeightofcharlie is in your Virtual Barn"*,
+  *"Marked Inspeightofcharlie as favorite"*,
+  *"Removed favorite on Inspeightofcharlie"*.
+- **Event guarded.** Heart clicks call `stopPropagation` + `preventDefault`
+  before the row-click or profile-open handlers can swallow them.
+
+### "My Virtual Barn" — emotional ownership
+
+- **New hero card at the top of the Barn tab:**
+  *"Your Virtual Barn — N horses under your eye"* / *"Watching for the
+  next start."* Large gold heart mark, navy→dark-navy gradient, italic
+  serif sub-line — warm, not clinical.
+- **Summary strip now includes a Favorites count**, next to Horses,
+  Jockeys, Trainers, and Running-today.
+- **Stall metaphor.** Each horse in *In My Barn* is rendered as its own
+  stall card: inset gold stripe, rounded border, serif name, and a
+  stack of badges (`In Barn`, `★ Favorite`, `Curated profile` or `Demo`).
+  Personal line: *"You're keeping tabs on this one."*
+- **Inline favorite heart** on every stall in the Barn tab, so the
+  favorite toggle is reachable from the Barn view — not just from Today
+  or the profile modal.
+- **Section renamed** `Horses` → `In My Barn`, with a secondary
+  `★ N` count beside the horse count to show favorites at a glance.
+- **In Barn row highlighting on Today** now shows distinct pills:
+  `In Barn` (gold), `★ Favorite` (solid gold), and `Curated` (green),
+  replacing the single ambiguous pill.
+
+### Profile modal — unmistakable ownership state
+
+- **Ownership ribbon** at the top of every horse profile:
+  *"In your Virtual Barn · ★ Favorite"* (or without the star if not a
+  favorite). Updates live when the favorite button is tapped.
+- Favorite button label sharpened: `☆ Mark as favorite` vs `★ Favorite`.
+- **Remove button relabeled** `Remove from Barn` so it's visibly distinct
+  from the favorite heart.
+- Favorite toggle inside the modal now also pops a toast and refreshes
+  all row highlights and heart states across the app.
+
+### Preserved
+
+- Curated horse data (`data/curated-horses.json`) and the
+  Inspeightofcharlie seed are unchanged. `upsertHorse` merge semantics
+  (non-destructive of user notes / tags / favorite / watchReason) are
+  unchanged.
+- Demo Saratoga fixture seed is unchanged.
+- All 22 prior tests still pass. 5 new heart-semantics tests added
+  in `tests/heart-semantics.test.js` lock in the contract that a heart
+  tap never silently removes a horse from the barn.
+
+### Files changed
+
+- `index.html` — heart semantics, pulse/glow/pop CSS, hero card,
+  stall cards, ownership ribbon, section relabel, highlight pills,
+  footer tip copy, version constants.
+- `version.json` — bumped to `20260422-2315-emotional-barn-v2.21.3`.
+- `CHANGELOG.md` — this entry.
+- `tests/heart-semantics.test.js` — new.
+
 ## v2.21.2 — Curated horse profiles in Virtual Barn (2026-04-22)
 
 Focused update: seed the Virtual Barn with a hand-curated public-profile
