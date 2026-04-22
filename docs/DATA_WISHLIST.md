@@ -50,8 +50,20 @@ All of the following currently show as placeholders or are absent in the sample 
 - **Never** re-enable the `unofficial_nyra_adapter` in the production ingest pipeline. It exists only as reference code.
 - **Every** record written to `data/normalized/` must carry a `source_provenance` envelope. Records without provenance are considered untrusted and excluded from training.
 
+## Ownership-specific needs (Stables feature, v2.20.0)
+
+The Stables feature lets users follow a syndicate or ownership group and see all their upcoming Saratoga runners. Requires **owner** data on every entry.
+
+| Field | Sample mode | Live mode requirement |
+|---|---|---|
+| `horse.owner` | Present in `data/fixtures/saratoga_2025_sample.json` as synthetic stable names (see `STABLES` array in `scripts/ingest/build_sample_fixture.js`). Labeled `sample_manual_review`. | Required on every live entry. The Racing API delivers this; NYRA scrape does not. Equibase/DRF also deliver it under license. |
+
+Until a paid source is connected, the Stables card shows a "Switch to Sample mode" notice in Live mode rather than showing empty data.
+
 ## Decision log
 
 | Date | Decision |
 |---|---|
 | 2026-04-22 | No paid sources this cycle. Build the entire pipeline against a hand-curated sample set, clearly labeled. Reserve paid pathway with adapter stubs. Keep `master` pinned at v2.18.1. Flip to The Racing API once user authorizes spend. |
+| 2026-04-22 | v2.19.0 shipped to production. `master` now at v2.19.x. |
+| 2026-04-22 | v2.20.0 added Stables (ownership groups) + Upcoming-at-SAR list. Ownership is Saratoga-only by scope. Live-mode activation depends on a licensed `owner` field on entries. |

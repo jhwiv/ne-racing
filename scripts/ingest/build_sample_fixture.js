@@ -23,6 +23,22 @@ const TRAINERS = [
   'Steve Asmussen', 'Mark Casse', 'Rudy Rodriguez', 'Jorge Abreu', 'Horacio De Paz',
   'Jena Antonucci', 'Mike Maker', 'Linda Rice', 'George Weaver', 'Cherie DeVaux'
 ];
+// Plausible-sounding syndicate / stable names drawn from the Saratoga social
+// lexicon. Purely synthetic. Any resemblance to a real stable is coincidental.
+const STABLES = [
+  'Dark Horse Racing',
+  'Spa City Stable',
+  'Morning Line Partners',
+  'Yaddo Racing Syndicate',
+  'Broadway Barn LLC',
+  'Caroline Street Stables',
+  'Oklahoma Training Partners',
+  'Congress Park Thoroughbreds',
+  'Hall of Springs Racing',
+  'Springwater Stables',
+  'Clare Court Partners',
+  'Union Avenue Racing'
+];
 const HORSE_NAMES = [
   'Silent Gavel', 'Spa Postcard', 'Oklahoma Bluebird', 'Union Avenue', 'Saratoga Sundial',
   'Whitney Breeze', 'Travers Lantern', 'Reading Room', 'Morning Line Myth', 'Congress Spring',
@@ -103,6 +119,7 @@ function buildRace(dateStr, raceNum, rng) {
     name: nm,
     jockey: pick(JOCKEYS, rng),
     trainer: pick(TRAINERS, rng),
+    owner: pick(STABLES, rng),
     ml: pick(mlPool, rng),
     speedFigs: [null, null, null], // figures gated behind licensed source
     runningStyle: pick(['E', 'EP', 'P', 'S', 'NA'], rng),

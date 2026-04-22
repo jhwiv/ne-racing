@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260422-1325-barn-width-fix-v2.19.1';
+var NE_APP_VERSION = '20260422-1620-stables-upcoming-v2.20.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.19.1-barn-width-fix';
+var RAILBIRD_VERSION = 'v2.20.0-stables-upcoming';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -13404,8 +13404,9 @@ document.addEventListener('keydown', e => {
   var MEET_END   = '2025-09-01';
   var FIXTURE = null;      // loaded doc
   var LOAD_PROMISE = null; // singleflight loader
-  var DICT = { horses: [], jockeys: [], trainers: [] };
+  var DICT = { horses: [], jockeys: [], trainers: [], stables: [] };
   var STYLE_INJECTED = false;
+  var STABLES_KEY = 'sar_stables_follow_v1';
 
   function inSarWindow(dateStr) {
     return dateStr >= MEET_START && dateStr <= MEET_END;
@@ -13426,6 +13427,10 @@ document.addEventListener('keydown', e => {
       .then(function(doc){
         FIXTURE = doc;
         buildDict(doc);
+        // If the Barn is already on-screen, re-render now that data is in.
+        try {
+          if (document.getElementById('barn-container')) augmentBarn();
+        } catch(e) {}
         return doc;
       })
       .catch(function(e){
@@ -13440,17 +13445,50 @@ document.addEventListener('keydown', e => {
     var horseSet = Object.create(null);
     var jockSet  = Object.create(null);
     var trSet    = Object.create(null);
+    var stSet    = Object.create(null);
     (doc.races || []).forEach(function(r){
       (r.horses || []).forEach(function(h){
         if (h.name)    horseSet[h.name] = true;
         if (h.jockey)  jockSet[h.jockey] = true;
         if (h.trainer) trSet[h.trainer] = true;
+        if (h.owner)   stSet[h.owner]   = true;
       });
     });
     DICT.horses   = Object.keys(horseSet).sort();
     DICT.jockeys  = Object.keys(jockSet).sort();
     DICT.trainers = Object.keys(trSet).sort();
+    DICT.stables  = Object.keys(stSet).sort();
   }
+
+  // Stables follow list (separate from the legacy barn store which only
+  // knows horses/jockeys/trainers). Persisted in localStorage.
+  function stablesGet() {
+    try {
+      var raw = localStorage.getItem(STABLES_KEY);
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch(e) { return []; }
+  }
+  function stablesSave(arr) {
+    try { localStorage.setItem(STABLES_KEY, JSON.stringify(arr)); } catch(e) {}
+  }
+  function stablesAdd(name) {
+    name = String(name || '').trim();
+    if (!name) return false;
+    var cur = stablesGet();
+    if (cur.some(function(x){ return x.toLowerCase() === name.toLowerCase(); })) return false;
+    cur.push(name);
+    stablesSave(cur);
+    return true;
+  }
+  function stablesRemove(name) {
+    var cur = stablesGet().filter(function(x){ return x.toLowerCase() !== String(name).toLowerCase(); });
+    stablesSave(cur);
+  }
+  window.sarStablesGet = stablesGet;
+  window.sarStablesAdd = stablesAdd;
+  window.sarStablesRemove = stablesRemove;
 
   // Build a racesByDate lookup on demand.
   var BY_DATE_CACHE = null;
@@ -13512,8 +13550,30 @@ document.addEventListener('keydown', e => {
       + '.sar-mode-pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;font-weight:700}'
       + '.sar-mode-pill.sample{background:rgba(201,168,76,0.2);color:#C9A84C;border:1px solid rgba(201,168,76,0.5)}'
       + '.sar-mode-pill.live{background:rgba(125,200,140,0.14);color:#8FD89F;border:1px solid rgba(125,200,140,0.4)}'
-      + '.sar-data-banner{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);color:#F5F0E8;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:0.78rem;display:flex;gap:8px;align-items:center}'
-      + '.sar-data-banner strong{color:#C9A84C;letter-spacing:0.06em;text-transform:uppercase;font-size:0.72rem}';
+      // Higher-contrast sample banner on cream backgrounds
+      + '.sar-data-banner{background:#1B2E4B;border:1px solid #C9A84C;color:#F5F0E8;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:0.82rem;display:flex;gap:10px;align-items:flex-start;line-height:1.4}'
+      + '.sar-data-banner strong{color:#C9A84C;letter-spacing:0.06em;text-transform:uppercase;font-size:0.72rem;flex-shrink:0;padding-top:2px}'
+      + '.sar-data-banner span{color:#F5F0E8}'
+      // Upcoming-at-SAR section
+      + '.sar-up-card{background:#243653;border-radius:12px;padding:12px 14px;margin-top:12px;color:#EDE8DC}'
+      + '.sar-up-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;cursor:pointer;user-select:none}'
+      + '.sar-up-head h3{margin:0;font-family:"Cormorant Garamond",serif;font-size:1.1rem;letter-spacing:0.04em;color:#F5F0E8}'
+      + '.sar-up-count{background:rgba(201,168,76,0.2);color:#C9A84C;border:1px solid rgba(201,168,76,0.5);border-radius:999px;padding:2px 10px;font-size:0.7rem;letter-spacing:0.08em;font-weight:700}'
+      + '.sar-up-caret{color:rgba(237,232,220,0.6);font-size:1.1rem;transition:transform 0.15s}'
+      + '.sar-up-card.open .sar-up-caret{transform:rotate(90deg)}'
+      + '.sar-up-body{display:none;margin-top:10px}'
+      + '.sar-up-card.open .sar-up-body{display:block}'
+      + '.sar-up-empty{padding:10px 2px;font-style:italic;color:rgba(237,232,220,0.55);font-size:0.85rem;text-align:center}'
+      + '.sar-up-day{margin-bottom:10px}'
+      + '.sar-up-day-head{font-family:"Cormorant Garamond",serif;font-size:0.95rem;color:#C9A84C;border-bottom:1px solid rgba(201,168,76,0.25);padding-bottom:3px;margin-bottom:6px}'
+      + '.sar-up-row{display:flex;gap:8px;padding:6px 2px;font-size:0.85rem;border-bottom:1px solid rgba(237,232,220,0.05);align-items:center}'
+      + '.sar-up-row:last-child{border-bottom:none}'
+      + '.sar-up-r{color:#C9A84C;font-weight:700;min-width:28px}'
+      + '.sar-up-time{color:rgba(237,232,220,0.6);font-size:0.78rem;min-width:48px}'
+      + '.sar-up-name{flex:1;min-width:0;color:#F5F0E8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+      + '.sar-up-why{color:rgba(237,232,220,0.55);font-size:0.72rem;letter-spacing:0.04em;text-transform:uppercase;flex-shrink:0}'
+      + '.sar-up-go{background:transparent;border:1px solid rgba(201,168,76,0.5);color:#C9A84C;border-radius:6px;padding:3px 8px;font-size:0.72rem;cursor:pointer;flex-shrink:0}'
+      + '.sar-up-go:hover{background:rgba(201,168,76,0.15)}';
     var tag = document.createElement('style');
     tag.textContent = css;
     document.head.appendChild(tag);
@@ -13612,6 +13672,224 @@ document.addEventListener('keydown', e => {
       var inp = document.getElementById('barn-add-input-' + kind);
       if (inp) wireTypeahead(inp, kind);
     });
+    var stInp = document.getElementById('sar-stable-add-input');
+    if (stInp) wireTypeahead(stInp, 'stables');
+  }
+
+  // ------ Stables + Upcoming at Saratoga injection ------
+  // Inserts a Stables card and an Upcoming-at-SAR card into the Barn view
+  // after the existing horses/jockeys/trainers sections have rendered.
+  function augmentBarn() {
+    var container = document.getElementById('barn-container');
+    if (!container) return;
+    // Find the "Tip: tap the heart..." <p> that the existing Barn renderer
+    // always puts at the end, and insert our two cards before it.
+    var tip = container.querySelector('p[style*="italic"]:last-of-type') ||
+              Array.prototype.find.call(container.querySelectorAll('p'), function(p){
+                return /tap the heart/i.test(p.textContent||'');
+              });
+    var anchor = tip || null;
+
+    // --- Stables card ---
+    var stablesCard = container.querySelector('#sar-stables-card');
+    if (!stablesCard) {
+      stablesCard = document.createElement('div');
+      stablesCard.id = 'sar-stables-card';
+      stablesCard.style.cssText = 'background:#243653;border-radius:12px;padding:12px 14px;margin-top:12px;color:#EDE8DC';
+      if (anchor) container.insertBefore(stablesCard, anchor); else container.appendChild(stablesCard);
+    }
+    renderStablesCard(stablesCard);
+
+    // --- Upcoming-at-SAR card ---
+    var upCard = container.querySelector('#sar-up-card');
+    if (!upCard) {
+      upCard = document.createElement('div');
+      upCard.id = 'sar-up-card';
+      upCard.className = 'sar-up-card';
+      if (anchor) container.insertBefore(upCard, anchor); else container.appendChild(upCard);
+    }
+    renderUpcomingCard(upCard);
+  }
+
+  function renderStablesCard(host) {
+    var stables = stablesGet();
+    var rows = stables.length
+      ? stables.map(function(nm){
+          var esc = String(nm).replace(/"/g,'&quot;').replace(/'/g,"&#39;");
+          return '<div class="barn-item" style="min-width:0">' +
+            '<div class="barn-item-name" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + nm + '</div>' +
+            '<button class="barn-item-remove" data-stable="' + esc + '">Remove</button>' +
+          '</div>';
+        }).join('')
+      : '<div class="barn-empty">No stables followed yet. Try "Dark Horse Racing" in sample mode.</div>';
+
+    host.innerHTML =
+      '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">' +
+        '<h3 style="margin:0;font-family:\'Cormorant Garamond\',serif;font-size:1.2rem;color:#F5F0E8">Stables</h3>' +
+        '<span style="font-size:0.72rem;color:rgba(237,232,220,0.5);letter-spacing:0.08em">· ' + stables.length + '</span>' +
+      '</div>' +
+      '<div class="barn-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">' + rows + '</div>' +
+      '<div class="barn-add-row" style="display:flex;gap:6px;min-width:0">' +
+        '<input id="sar-stable-add-input" type="text" placeholder="Add stable (e.g. Dark Horse Racing)" ' +
+          'style="flex:1;min-width:0;padding:7px 10px;border-radius:6px;border:1px solid rgba(237,232,220,0.2);background:rgba(10,22,40,0.5);color:#F5F0E8;font-size:0.85rem">' +
+        '<button id="sar-stable-add-btn" style="padding:7px 14px;border-radius:6px;border:none;background:#C9A84C;color:#1B2E4B;font-weight:700;font-size:0.8rem;cursor:pointer">ADD</button>' +
+      '</div>';
+
+    // Wire add/remove
+    var input = host.querySelector('#sar-stable-add-input');
+    var btn = host.querySelector('#sar-stable-add-btn');
+    function doAdd() {
+      var v = input.value.trim();
+      if (!v) return;
+      if (stablesAdd(v)) {
+        input.value = '';
+        augmentBarn(); // refresh card + upcoming
+        if (typeof showToast === 'function') showToast('Added stable: ' + v, 'info');
+      }
+    }
+    btn.addEventListener('click', doAdd);
+    input.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') { ev.preventDefault(); doAdd(); } });
+    // Wire remove buttons
+    host.querySelectorAll('button[data-stable]').forEach(function(b){
+      b.addEventListener('click', function(){
+        stablesRemove(b.getAttribute('data-stable'));
+        augmentBarn();
+      });
+    });
+    // Wire typeahead fresh
+    if (input && DICT.stables.length) wireTypeahead(input, 'stables');
+  }
+
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  // Compute matches across all loaded SAR races (sample mode) for the
+  // user's followed horses/jockeys/trainers/stables. Returns a flat list of
+  // { date, race, horse, reasons[] } keyed by date.
+  function computeUpcoming() {
+    if (!FIXTURE) return null; // not loaded yet
+    var barn = (typeof window.barnGet === 'function') ? window.barnGet() : {horses:[],jockeys:[],trainers:[]};
+    var stables = stablesGet();
+    var hasAny = (barn.horses && barn.horses.length) ||
+                 (barn.jockeys && barn.jockeys.length) ||
+                 (barn.trainers && barn.trainers.length) ||
+                 stables.length;
+    if (!hasAny) return { hasFollows: false, days: [] };
+
+    function norm(s) { return String(s||'').toLowerCase().trim(); }
+    var horseNames = (barn.horses || []).map(function(x){ return norm(x.name); });
+    var jockNames  = (barn.jockeys || []).map(function(x){ return norm(x.name); });
+    var trNames    = (barn.trainers || []).map(function(x){ return norm(x.name); });
+    var stNames    = stables.map(norm);
+
+    var today = todayIso();
+    var byDate = Object.create(null);
+
+    (FIXTURE.races || []).forEach(function(race){
+      // Only include dates >= today so "Upcoming" means upcoming. For the
+      // sample fixture (2025 dates), we fall back to showing all dates when
+      // the user is in sample mode and the meet is historical.
+      // We include all fixture dates — user is exploring a historical meet.
+      (race.horses || []).forEach(function(h){
+        var reasons = [];
+        if (horseNames.indexOf(norm(h.name)) !== -1) reasons.push('horse');
+        if (jockNames.indexOf(norm(h.jockey)) !== -1) reasons.push('jockey');
+        if (trNames.indexOf(norm(h.trainer)) !== -1) reasons.push('trainer');
+        if (stNames.indexOf(norm(h.owner)) !== -1) reasons.push('stable');
+        if (reasons.length) {
+          (byDate[race.date] = byDate[race.date] || []).push({
+            race: race, horse: h, reasons: reasons
+          });
+        }
+      });
+    });
+
+    var days = Object.keys(byDate).sort().map(function(dt){
+      byDate[dt].sort(function(a, b){
+        if (a.race.num !== b.race.num) return a.race.num - b.race.num;
+        return (a.horse.pp || 0) - (b.horse.pp || 0);
+      });
+      return { date: dt, rows: byDate[dt] };
+    });
+    return { hasFollows: true, days: days, today: today };
+  }
+
+  function fmtDate(iso) {
+    try {
+      var d = new Date(iso + 'T12:00:00');
+      return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    } catch(e) { return iso; }
+  }
+
+  function renderUpcomingCard(host) {
+    // If we don't have fixture + aren't in sample mode, keep the card but
+    // render an "only-works-in-sample-mode" notice.
+    var sample = isSampleMode();
+    var up = computeUpcoming();
+    var totalStarters = up && up.days ? up.days.reduce(function(s,d){ return s + d.rows.length; }, 0) : 0;
+
+    // Preserve open/closed state across re-renders
+    var wasOpen = host.classList.contains('open');
+
+    var bodyHtml;
+    if (!sample) {
+      bodyHtml = '<div class="sar-up-empty">Switch Data Mode to "Sample · SAR 2025" in Settings to preview upcoming matches. Live mode will light up when the 2026 meet opens and a licensed SAR feed is connected.</div>';
+    } else if (!up) {
+      bodyHtml = '<div class="sar-up-empty">Loading Saratoga 2025 sample…</div>';
+    } else if (!up.hasFollows) {
+      bodyHtml = '<div class="sar-up-empty">Follow a horse, jockey, trainer, or stable above and upcoming Saratoga runs will show here.</div>';
+    } else if (!up.days.length) {
+      bodyHtml = '<div class="sar-up-empty">No matches in the loaded Saratoga sample. Try adding "Irad Ortiz Jr." or "Chad Brown" to see hits.</div>';
+    } else {
+      bodyHtml = up.days.map(function(day){
+        var rows = day.rows.map(function(r){
+          var why = r.reasons.join(' · ');
+          var safeName = (r.horse.name || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          return '<div class="sar-up-row">' +
+            '<span class="sar-up-r">R' + r.race.num + '</span>' +
+            '<span class="sar-up-time">' + (r.race.postTime || '') + '</span>' +
+            '<span class="sar-up-name">' + safeName + '</span>' +
+            '<span class="sar-up-why">' + why + '</span>' +
+            '<button class="sar-up-go" data-date="' + day.date + '">Open</button>' +
+          '</div>';
+        }).join('');
+        return '<div class="sar-up-day">' +
+          '<div class="sar-up-day-head">' + fmtDate(day.date) + '</div>' +
+          rows +
+        '</div>';
+      }).join('');
+    }
+
+    host.innerHTML =
+      '<div class="sar-up-head" data-sar-toggle="1">' +
+        '<h3>Upcoming at Saratoga</h3>' +
+        (totalStarters ? '<span class="sar-up-count">' + totalStarters + '</span>' : '') +
+        '<span class="sar-up-caret">›</span>' +
+      '</div>' +
+      '<div class="sar-up-body">' + bodyHtml + '</div>';
+
+    // Restore open state (auto-open first time if there are matches)
+    if (wasOpen || (totalStarters && !host.dataset.userCollapsed)) host.classList.add('open');
+
+    host.querySelector('.sar-up-head').addEventListener('click', function(){
+      host.classList.toggle('open');
+      host.dataset.userCollapsed = host.classList.contains('open') ? '' : '1';
+    });
+    host.querySelectorAll('.sar-up-go').forEach(function(b){
+      b.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var dt = b.getAttribute('data-date');
+        try {
+          if (typeof setActiveTrack === 'function') setActiveTrack('SAR');
+          if (typeof switchTab === 'function') switchTab('today');
+          if (typeof selectCalendarDate === 'function') {
+            setTimeout(function(){ selectCalendarDate(dt); }, 80);
+          }
+        } catch(e) { console.warn('[sar2025] open race failed:', e); }
+      });
+    });
   }
 
   // --- 3. Row highlight for barn-followed horses ---
@@ -13701,11 +13979,29 @@ document.addEventListener('keydown', e => {
   function observeBarnContainer() {
     var host = document.getElementById('barn-container');
     if (!host) { setTimeout(observeBarnContainer, 300); return; }
-    var obs = new MutationObserver(function(){
-      scanBarnInputs();
+    var pending = false;
+    var obs = new MutationObserver(function(muts){
+      // Skip if the only mutations are inside our own injected cards
+      // (prevents infinite loop when augmentBarn rewrites them)
+      var onlyOurs = muts.every(function(m){
+        var t = m.target;
+        while (t && t !== host) {
+          if (t.id === 'sar-up-card' || t.id === 'sar-stables-card') return true;
+          t = t.parentNode;
+        }
+        return false;
+      });
+      if (onlyOurs) return;
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(function(){
+        pending = false;
+        try { scanBarnInputs(); augmentBarn(); } catch(e) { console.warn('[sar2025] barn augment failed:', e); }
+      });
     });
     obs.observe(host, { childList: true, subtree: true });
     scanBarnInputs();
+    augmentBarn();
   }
 
   function observeRaces() {
