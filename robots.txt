@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /$
+Allow: /index.html
+Allow: /manifest.json
+Allow: /icons/
+Allow: /images/
+Disallow: /dev/
+Disallow: /qc.html
+Disallow: /debug.html
+Disallow: /clear.html
+
+Sitemap: https://railbirdai.com/sitemap.xml

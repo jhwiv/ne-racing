@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260422-1630-real-stables-v2.20.1';
+var NE_APP_VERSION = '20260422-2130-virtual-barn-v2.21.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.20.1-real-stables';
+var RAILBIRD_VERSION = 'v2.21.0-virtual-barn';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -115,8 +115,10 @@ function neForceUpdate(newVersion) {
     })
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        if (d.v && d.v !== NE_APP_VERSION) {
-          neForceUpdate(d.v);
+        // version.json source of truth uses `version`. Fall back to `v` for legacy.
+        var remote = (d && (d.version || d.v)) || null;
+        if (remote && remote !== NE_APP_VERSION) {
+          neForceUpdate(remote);
         }
       }).catch(function(){});
   }
@@ -1194,7 +1196,7 @@ function neForceUpdate(newVersion) {
   --color-burgundy: #6B1D2A;
   --color-slate: #2D3436;
   --color-white: #FFFFFF;
-  --color-muted: #636B7F;
+  --color-muted: #4A5368; /* v2.21 AA contrast bump from #636B7F */
   --color-positive: #2D6A4F;
   --color-negative: #C1121F;
   --color-green-light: #D8F3DC;
@@ -1463,9 +1465,10 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
    ========================================================= */
 .tab-btn {
   flex: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 3px; color: var(--color-muted);
-  font-size: 0.65rem; font-weight: 500; text-transform: uppercase;
+  justify-content: center; gap: 3px; color: #3A4256;
+  font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
   letter-spacing: 0.04em; padding: 0.5rem 0.25rem;
+  min-height: 52px; /* AA tap target */
   transition: color 0.15s, background 0.15s;
   position: relative;
   border-radius: 0;
@@ -6213,7 +6216,8 @@ tr:has(> td > .detail-stat-row),
 
     <!-- BARN TAB — v2.18.0 -->
     <section id="tab-barn" class="tab-panel" role="tabpanel" aria-label="Barn">
-      <h2 class="section-title" id="barn-heading">Your Barn</h2>
+      <h2 class="section-title" id="barn-heading">Your Virtual Barn</h2>
+      <p class="section-sub" style="font-size:0.82rem;color:var(--color-muted);margin:-6px 0 10px;line-height:1.5">Horses you want to watch. Tap a name for the full profile, notes, tags, and history. Demo Saratoga horses are seeded so you can try it today.</p>
       <div id="barn-container"></div>
     </section>
 
@@ -8174,8 +8178,8 @@ function runAdviceEngine() {
       const mlNum = parseOddsToNum(ml);
       // Value overlay badges
       let valueFlag = '';
-      if (s.overlay > 0.15) valueFlag = '<span class="badge-strong-value" style="margin-left:4px">Strong Value</span>';
-      else if (s.overlay > 0.08) valueFlag = '<span class="badge-value" style="margin-left:4px">Value</span>';
+      if (s.overlay > 0.15) valueFlag = '<span class="badge-strong-value" style="margin-left:4px" title="Large morning-line overlay — not calibrated to tote odds">Big Overlay</span>';
+      else if (s.overlay > 0.08) valueFlag = '<span class="badge-value" style="margin-left:4px" title="Morning-line overlay — not calibrated to tote odds">Overlay</span>';
       else if (s.overlay < -0.05) valueFlag = '<span class="badge-underlay" style="margin-left:4px">Underlay</span>';
       // Overlay percentage next to ML
       const overlayPct = s.impliedProb > 0 ? (s.overlay > 0 ? `<span class="overlay-pct">+${(s.overlay * 100).toFixed(0)}%</span>` : `<span class="overlay-pct negative">${(s.overlay * 100).toFixed(0)}%</span>`) : '';
@@ -8246,14 +8250,43 @@ function runAdviceEngine() {
   updateAdviceRaceSelect(races);
 }
 
+// Expert-consensus matching: prefer program-number (pp) match, fall back to
+// name match. AND-with-fallback avoids double-counting when a picker record
+// could ambiguously match two horses via pp vs name. A picker's record is
+// counted at most once per race.
+function _expertPickMatchesHorse(ep, horse) {
+  if (ep == null) return false;
+  var hasPp = (ep.pick != null && ep.pick !== '');
+  if (hasPp) return ep.pick === horse.pp;
+  return ep.horseName && horse.name && ep.horseName === horse.name;
+}
 function countExpertPicks(race, horse) {
   if (!race.expertPicks || !race.expertPicks.length) return 0;
-  return race.expertPicks.filter(ep => ep.pick === horse.pp || ep.horseName === horse.name).length;
+  // Dedupe by source so the same picker can't be counted twice for one horse.
+  var seen = {};
+  var n = 0;
+  race.expertPicks.forEach(function (ep) {
+    if (!_expertPickMatchesHorse(ep, horse)) return;
+    var key = ep.source || ('__' + n);
+    if (seen[key]) return;
+    seen[key] = 1;
+    n++;
+  });
+  return n;
 }
 
 function getExpertNames(race, horse) {
   if (!race.expertPicks || !race.expertPicks.length) return [];
-  return race.expertPicks.filter(ep => ep.pick === horse.pp || ep.horseName === horse.name).map(ep => ep.source.replace('NYRA - ', ''));
+  var seen = {};
+  var out = [];
+  race.expertPicks.forEach(function (ep) {
+    if (!_expertPickMatchesHorse(ep, horse)) return;
+    var src = (ep.source || '').replace('NYRA - ', '');
+    if (seen[src]) return;
+    seen[src] = 1;
+    out.push(src);
+  });
+  return out;
 }
 
 function buildConfidenceBar(level) {
@@ -9130,8 +9163,8 @@ function renderAdviceEnginePanel() {
       const ml = s.horse.ml || '';
       // Value overlay badges (same as Today tab)
       let valueFlag = '';
-      if (s.overlay > 0.15) valueFlag = '<span class="badge-strong-value" style="margin-left:4px">Strong Value</span>';
-      else if (s.overlay > 0.08) valueFlag = '<span class="badge-value" style="margin-left:4px">Value</span>';
+      if (s.overlay > 0.15) valueFlag = '<span class="badge-strong-value" style="margin-left:4px" title="Large morning-line overlay — not calibrated to tote odds">Big Overlay</span>';
+      else if (s.overlay > 0.08) valueFlag = '<span class="badge-value" style="margin-left:4px" title="Morning-line overlay — not calibrated to tote odds">Overlay</span>';
       else if (s.overlay < -0.05) valueFlag = '<span class="badge-underlay" style="margin-left:4px">Underlay</span>';
       const overlayPct = s.impliedProb > 0 ? (s.overlay > 0 ? `<span class="overlay-pct">+${(s.overlay * 100).toFixed(0)}%</span>` : `<span class="overlay-pct negative">${(s.overlay * 100).toFixed(0)}%</span>`) : '';
       let convictionBadge = '';
@@ -12746,7 +12779,7 @@ document.addEventListener('keydown', e => {
         btn.setAttribute('aria-label', 'Toggle barn for ' + name);
         btn.setAttribute('aria-pressed', followed ? 'true' : 'false');
         btn.title = followed ? 'Remove ' + name + ' from barn' : 'Add ' + name + ' to barn';
-        btn.style.cssText = 'background:transparent;border:none;cursor:pointer;margin-left:6px;padding:2px;line-height:1;vertical-align:middle;';
+        btn.style.cssText = 'background:transparent;border:none;cursor:pointer;margin-left:4px;padding:10px;line-height:1;vertical-align:middle;min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;';
         btn.innerHTML = barn_heartSvg(followed);
         btn.addEventListener('click', function(ev) {
           ev.stopPropagation();
@@ -13013,10 +13046,10 @@ document.addEventListener('keydown', e => {
       '.barn-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-top:1px solid rgba(237,232,220,0.08)}' +
       '.barn-item:first-child{border-top:none}' +
       '.barn-item-name{flex:1;font-size:0.92rem}' +
-      '.barn-item-meta{font-size:0.74rem;color:rgba(237,232,220,0.62)}' +
-      '.barn-item-remove{background:transparent;border:1px solid rgba(217,134,122,0.5);color:' + C.rose + ';border-radius:6px;padding:3px 9px;font-size:0.72rem;cursor:pointer}' +
-      '.barn-item-remove:hover{background:rgba(217,134,122,0.12)}' +
-      '.barn-empty{font-family:\'Crimson Pro\',serif;font-style:italic;color:rgba(237,232,220,0.55);font-size:0.9rem;text-align:center;padding:14px 0}' +
+      '.barn-item-meta{font-size:0.78rem;color:rgba(237,232,220,0.82)}' +
+      '.barn-item-remove{background:transparent;border:1px solid rgba(217,134,122,0.6);color:' + C.rose + ';border-radius:6px;padding:6px 12px;font-size:0.78rem;min-height:36px;cursor:pointer}' +
+      '.barn-item-remove:hover{background:rgba(217,134,122,0.18)}' +
+      '.barn-empty{font-family:\'Crimson Pro\',serif;font-style:italic;color:rgba(237,232,220,0.82);font-size:0.92rem;text-align:center;padding:14px 8px;line-height:1.5}' +
       '.barn-runs-today{background:rgba(201,168,76,0.14);color:' + C.gold + ';border-radius:999px;padding:2px 8px;font-size:0.7rem;font-weight:600;letter-spacing:0.03em}' +
       '.barn-add-row{display:flex;gap:6px;margin-top:10px}' +
       '.barn-add-row input{flex:1;background:rgba(10,22,40,0.55);color:' + C.ink + ';border:1px solid rgba(237,232,220,0.15);border-radius:8px;padding:7px 10px;font-size:0.85rem}' +
@@ -13025,7 +13058,7 @@ document.addEventListener('keydown', e => {
       '.barn-summary{background:' + C.card + ';border-radius:12px;padding:12px 14px;margin-bottom:12px;color:' + C.ink + ';display:flex;gap:12px;align-items:center;flex-wrap:wrap}' +
       '.barn-summary-stat{display:flex;flex-direction:column;gap:2px}' +
       '.barn-summary-num{font-family:\'Cormorant Garamond\',serif;font-size:1.6rem;color:' + C.gold + ';line-height:1}' +
-      '.barn-summary-lbl{font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:rgba(237,232,220,0.65)}' +
+      '.barn-summary-lbl{font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:rgba(237,232,220,0.85);font-weight:600}' +
       '</style>';
 
     // Summary header
@@ -13064,8 +13097,14 @@ document.addEventListener('keydown', e => {
       }
     );
 
-    container.innerHTML = styleBlock + summaryHtml + horsesSection + jockeysSection + trainersSection +
-      '<p style="font-size:0.75rem;color:rgba(237,232,220,0.55);font-style:italic;text-align:center;margin-top:12px">Tip: tap the heart beside any horse name (or the star beside a jockey/trainer) in the Today tab to add them here.</p>';
+    // Horse-first hint — Virtual Barn emphasizes horses; tap a name to open
+    // the horse profile (notes, tags, watch reason, history).
+    var hint =
+      '<p style="font-size:0.8rem;color:rgba(237,232,220,0.82);font-style:italic;text-align:center;margin-top:12px;line-height:1.5">' +
+      'Tap a horse name to open its profile (notes, tags, watch reason, history). ' +
+      'Tap the heart beside any horse on Today to add it here.' +
+      '</p>';
+    container.innerHTML = styleBlock + summaryHtml + horsesSection + jockeysSection + trainersSection + hint;
   }
 
   function buildListSection(kind, label, items, todayMatches, placeholder, todayBadgeFn) {
@@ -13073,13 +13112,24 @@ document.addEventListener('keydown', e => {
       ? items.map(function(item, idx) {
           var badge = todayBadgeFn(item);
           var esc = String(item.name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          var favMark = (kind === 'horses' && item.favorite) ? '<span aria-label="favorite" style="color:#C9A84C;margin-right:4px" title="Favorite">\u2605</span>' : '';
+          var tagStr = (kind === 'horses' && Array.isArray(item.tags) && item.tags.length)
+            ? '<div class="barn-item-meta">' + item.tags.map(function(t){return '#' + String(t).replace(/[<>]/g,'');}).join(' ') + '</div>'
+            : '';
+          var reasonStr = (kind === 'horses' && item.watchReason)
+            ? '<div class="barn-item-meta" style="font-style:italic">' + String(item.watchReason).replace(/[<>]/g,'') + '</div>'
+            : '';
+          var namePart = favMark + '<span>' + item.name + '</span>' + tagStr + reasonStr;
+          var clickable = (kind === 'horses') ? ' role="button" tabindex="0" style="cursor:pointer" aria-label="Open profile for ' + esc + '"' : '';
           return '<div class="barn-item">' +
-            '<div class="barn-item-name">' + item.name + '</div>' +
+            '<div class="barn-item-name"' + clickable + '>' + namePart + '</div>' +
             (badge ? '<div>' + badge + '</div>' : '') +
-            '<button class="barn-item-remove" onclick="barnToggle(\'' + kind + '\',\'' + esc + '\')">Remove</button>' +
+            '<button class="barn-item-remove" aria-label="Remove ' + esc + '" onclick="barnToggle(\'' + kind + '\',\'' + esc + '\')">Remove</button>' +
           '</div>';
         }).join('')
-      : '<div class="barn-empty">No ' + kind + ' followed yet.</div>';
+      : '<div class="barn-empty">No ' + kind + ' in your Virtual Barn yet. ' +
+        (kind === 'horses' ? 'Add horses you want to track — use the field below or tap the heart on Today.' : '') +
+        '</div>';
 
     return '<div class="barn-section">' +
       '<h3>' + label + ' <span style="font-size:0.75rem;color:rgba(237,232,220,0.55);font-weight:normal">\u00B7 ' + items.length + '</span></h3>' +
@@ -14053,6 +14103,402 @@ document.addEventListener('keydown', e => {
     document.addEventListener('DOMContentLoaded', boot);
   } else {
     setTimeout(boot, 50);
+  }
+})();
+
+/* ==============================================================
+   Virtual Barn v2.21 — horse-first, local-only, demo-aware
+   --------------------------------------------------------------
+   Extends the existing s.barn.horses array (shape: {name,addedAt})
+   with optional fields: notes, tags[], watchReason, favorite,
+   addedFromRace, history[{date,track,race,finish,beatenLengths,
+   source}], source: 'user'|'demo-saratoga-2025'.
+   No network calls. No invented "official" stats.
+   ============================================================== */
+(function(){
+  var FIXTURE_URL = 'data/fixtures/saratoga_2025_sample.json';
+  var DEMO_FLAG_KEY = 'railbird.barn.demoSeeded.v1';
+
+  function getBarnStoreSafe(){
+    var s = (typeof getStore === 'function') ? getStore() : null;
+    if (!s) return null;
+    if (!s.barn) s.barn = { horses: [], jockeys: [], trainers: [] };
+    if (!Array.isArray(s.barn.horses)) s.barn.horses = [];
+    return s;
+  }
+  function saveBarnStoreSafe(s){
+    try { saveStore(s); } catch(e) {}
+  }
+
+  function findHorseIdx(list, name){
+    var n = String(name||'').trim().toLowerCase().replace(/\s+/g,' ');
+    for (var i=0;i<list.length;i++){
+      var x = String(list[i].name||'').trim().toLowerCase().replace(/\s+/g,' ');
+      if (x === n) return i;
+    }
+    return -1;
+  }
+
+  // Upsert horse — preserves user edits; merges tags/history.
+  function upsertHorse(entry){
+    var s = getBarnStoreSafe();
+    if (!s) return;
+    var list = s.barn.horses;
+    var idx = findHorseIdx(list, entry.name);
+    if (idx < 0){
+      list.push(Object.assign({ addedAt: new Date().toISOString() }, entry));
+    } else {
+      var existing = list[idx];
+      // merge — never overwrite user notes/tags silently
+      if (entry.history && Array.isArray(entry.history)){
+        existing.history = dedupeHistory((existing.history||[]).concat(entry.history));
+      }
+      if (entry.tags && Array.isArray(entry.tags)){
+        var t = {}; (existing.tags||[]).forEach(function(x){t[x]=1;});
+        entry.tags.forEach(function(x){t[x]=1;});
+        existing.tags = Object.keys(t);
+      }
+      if (!existing.source && entry.source) existing.source = entry.source;
+      if (!existing.jockey && entry.jockey) existing.jockey = entry.jockey;
+      if (!existing.trainer && entry.trainer) existing.trainer = entry.trainer;
+      if (!existing.owner && entry.owner) existing.owner = entry.owner;
+      if (!existing.addedFromRace && entry.addedFromRace) existing.addedFromRace = entry.addedFromRace;
+    }
+    saveBarnStoreSafe(s);
+  }
+
+  function dedupeHistory(arr){
+    var seen = {};
+    return arr.filter(function(h){
+      var k = (h.date||'') + '|' + (h.track||'') + '|' + (h.race||'');
+      if (seen[k]) return false;
+      seen[k] = 1;
+      return true;
+    }).sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
+  }
+
+  // Mine the 2025 Saratoga sample fixture for curated demo horses.
+  // We take ~12 horses that appear in multiple races (to give history),
+  // keeping only fields actually present in the fixture.
+  function buildDemoHorsesFromFixture(doc){
+    if (!doc || !Array.isArray(doc.races)) return [];
+    var byName = {};
+    doc.races.forEach(function(race){
+      (race.horses || []).forEach(function(h){
+        if (!h.name) return;
+        var key = h.name;
+        if (!byName[key]){
+          byName[key] = {
+            name: h.name,
+            jockey: h.jockey || null,
+            trainer: h.trainer || null,
+            owner: h.owner || null,
+            ml: h.ml || null,
+            runningStyle: h.runningStyle || null,
+            sex: h.sex || null,
+            age: h.age || null,
+            history: []
+          };
+        }
+        byName[key].history.push({
+          date: race.date,
+          track: race.track || 'SAR',
+          race: race.num,
+          distance: race.distance || null,
+          surface: race.surface || null,
+          purse: race.purse || null,
+          source: 'demo-saratoga-2025-sample',
+          note: 'Scheduled entry (sample fixture — not an official result)'
+        });
+      });
+    });
+    // Keep horses with 2+ scheduled starts, take top 14 for curated demo set.
+    var rich = Object.values(byName)
+      .filter(function(x){ return x.history.length >= 2; })
+      .sort(function(a,b){ return b.history.length - a.history.length; })
+      .slice(0, 14);
+    return rich.map(function(x){
+      x.history = dedupeHistory(x.history).slice(0, 6);
+      x.source = 'demo-saratoga-2025';
+      x.tags = ['demo', 'saratoga'];
+      x.watchReason = 'Prepopulated from 2026 Saratoga sample card — use to explore the Virtual Barn.';
+      x.favorite = false;
+      return x;
+    });
+  }
+
+  function seedDemoHorses(){
+    // Only seed once per device. User can re-seed from Settings.
+    var already = false;
+    try { already = localStorage.getItem(DEMO_FLAG_KEY) === '1'; } catch(e){}
+    if (already) return Promise.resolve(false);
+    return fetch(FIXTURE_URL, { cache: 'force-cache' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(doc){
+        if (!doc) return false;
+        var demo = buildDemoHorsesFromFixture(doc);
+        if (!demo.length) return false;
+        var s = getBarnStoreSafe();
+        if (!s) return false;
+        // Only seed if the user has fewer than 3 horses (avoid trampling
+        // an established barn).
+        if (s.barn.horses.length >= 3) {
+          try { localStorage.setItem(DEMO_FLAG_KEY, '1'); } catch(e){}
+          return false;
+        }
+        demo.forEach(upsertHorse);
+        try { localStorage.setItem(DEMO_FLAG_KEY, '1'); } catch(e){}
+        return true;
+      }).catch(function(){ return false; });
+  }
+
+  // Expose public re-seed/export for user control.
+  window.virtualBarnSeedDemo = function(){
+    try { localStorage.removeItem(DEMO_FLAG_KEY); } catch(e){}
+    return seedDemoHorses().then(function(ok){
+      try { if (typeof showToast === 'function') showToast(ok ? 'Seeded demo Saratoga horses' : 'Demo seed skipped (barn not empty)', ok ? 'success' : 'info'); } catch(e){}
+      try { if (typeof barn_renderBarnTab === 'function') barn_renderBarnTab(); } catch(e){}
+      try { var aug = window.__augmentBarn; if (typeof aug === 'function') aug(); } catch(e){}
+    });
+  };
+
+  // Build a profile modal for a single horse.
+  function openHorseProfile(name){
+    var s = getBarnStoreSafe();
+    if (!s) return;
+    var idx = findHorseIdx(s.barn.horses, name);
+    if (idx < 0) return;
+    var h = s.barn.horses[idx];
+    var existing = document.getElementById('virtual-barn-profile-modal');
+    if (existing) existing.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'virtual-barn-profile-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Horse profile: ' + h.name);
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(10,22,40,0.82);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+
+    var hist = (h.history||[]).map(function(row){
+      return '<div class="vb-hist-row"><span class="vb-hist-date">' + esc(row.date||'—') + '</span>' +
+        '<span class="vb-hist-meta">' + esc(row.track||'—') + ' R' + esc(row.race||'—') +
+        (row.distance ? ' · ' + esc(row.distance) : '') +
+        (row.surface ? ' · ' + esc(row.surface) : '') + '</span>' +
+        (row.note ? '<div class="vb-hist-note">' + esc(row.note) + '</div>' : '') +
+        '</div>';
+    }).join('') || '<div class="vb-empty">No history on file yet. Add notes below.</div>';
+
+    var tagsStr = (h.tags||[]).join(', ');
+    var srcBadge = h.source === 'demo-saratoga-2025'
+      ? '<span class="vb-src-badge">DEMO · Saratoga sample</span>' : '';
+
+    modal.innerHTML =
+      '<style>' +
+      '#virtual-barn-profile-modal .vb-sheet{background:#1B2E4B;color:#EDE8DC;width:100%;max-width:420px;max-height:92vh;border-radius:16px 16px 0 0;padding:16px 16px 28px;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,0.4)}' +
+      '#virtual-barn-profile-modal h3{font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;color:#F5F0E8;margin:0 0 6px}' +
+      '#virtual-barn-profile-modal .vb-meta{font-size:0.82rem;color:#D0C9B8;margin-bottom:10px;line-height:1.55}' +
+      '#virtual-barn-profile-modal .vb-meta b{color:#C9A84C;font-weight:600}' +
+      '#virtual-barn-profile-modal .vb-src-badge{display:inline-block;background:rgba(201,168,76,0.16);color:#C9A84C;font-size:0.66rem;letter-spacing:0.08em;padding:3px 8px;border-radius:999px;margin-bottom:10px;text-transform:uppercase;font-weight:700}' +
+      '#virtual-barn-profile-modal label{display:block;font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:#C9A84C;margin:10px 0 4px;font-weight:700}' +
+      '#virtual-barn-profile-modal textarea,#virtual-barn-profile-modal input[type=text]{width:100%;background:rgba(10,22,40,0.6);color:#F5F0E8;border:1px solid rgba(237,232,220,0.2);border-radius:8px;padding:9px 11px;font-size:0.92rem;font-family:inherit;box-sizing:border-box;min-height:44px}' +
+      '#virtual-barn-profile-modal textarea{min-height:80px;resize:vertical}' +
+      '#virtual-barn-profile-modal .vb-row{display:flex;gap:8px;align-items:center}' +
+      '#virtual-barn-profile-modal .vb-hist-row{border-top:1px solid rgba(237,232,220,0.1);padding:8px 0;font-size:0.82rem}' +
+      '#virtual-barn-profile-modal .vb-hist-row:first-child{border-top:none}' +
+      '#virtual-barn-profile-modal .vb-hist-date{font-family:var(--font-mono,monospace);color:#F5F0E8;font-weight:600;margin-right:8px}' +
+      '#virtual-barn-profile-modal .vb-hist-meta{color:#D0C9B8}' +
+      '#virtual-barn-profile-modal .vb-hist-note{color:#AFA893;font-style:italic;font-size:0.78rem;margin-top:2px}' +
+      '#virtual-barn-profile-modal .vb-empty{color:#AFA893;font-style:italic;font-size:0.86rem;padding:6px 0}' +
+      '#virtual-barn-profile-modal .vb-btn{min-height:44px;min-width:44px;border-radius:10px;border:none;cursor:pointer;font-weight:700;letter-spacing:0.04em;font-size:0.82rem;padding:10px 14px}' +
+      '#virtual-barn-profile-modal .vb-btn-primary{background:#C9A84C;color:#0a1628}' +
+      '#virtual-barn-profile-modal .vb-btn-ghost{background:transparent;color:#EDE8DC;border:1px solid rgba(237,232,220,0.3)}' +
+      '#virtual-barn-profile-modal .vb-btn-danger{background:transparent;color:#D9867A;border:1px solid rgba(217,134,122,0.5)}' +
+      '#virtual-barn-profile-modal .vb-fav{background:transparent;border:1px solid rgba(201,168,76,0.5);color:#C9A84C;padding:9px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;min-height:44px}' +
+      '#virtual-barn-profile-modal .vb-fav.on{background:rgba(201,168,76,0.18)}' +
+      '</style>' +
+      '<div class="vb-sheet" role="document">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">' +
+          '<div><h3>' + esc(h.name) + '</h3>' + srcBadge + '</div>' +
+          '<button class="vb-btn vb-btn-ghost" data-act="close" aria-label="Close profile">Close</button>' +
+        '</div>' +
+        '<div class="vb-meta">' +
+          (h.jockey ? '<b>Jockey:</b> ' + esc(h.jockey) + '<br>' : '') +
+          (h.trainer ? '<b>Trainer:</b> ' + esc(h.trainer) + '<br>' : '') +
+          (h.owner ? '<b>Owner:</b> ' + esc(h.owner) + '<br>' : '') +
+          (h.runningStyle ? '<b>Style:</b> ' + esc(h.runningStyle) + ' · ' : '') +
+          (h.age ? esc(h.age) + 'yo ' : '') + (h.sex ? esc(h.sex) : '') +
+          (h.ml ? ' · <b>ML:</b> ' + esc(h.ml) : '') +
+        '</div>' +
+        '<div class="vb-row" style="margin-bottom:8px">' +
+          '<button class="vb-fav ' + (h.favorite?'on':'') + '" data-act="fav" aria-pressed="' + (h.favorite?'true':'false') + '">' + (h.favorite ? '★ Favorite' : '☆ Favorite') + '</button>' +
+          '<button class="vb-btn vb-btn-danger" data-act="remove">Remove</button>' +
+        '</div>' +
+        '<label for="vb-watch-reason">Watch reason</label>' +
+        '<input id="vb-watch-reason" type="text" value="' + esc(h.watchReason||'') + '" placeholder="e.g. First off the claim for Brown">' +
+        '<label for="vb-tags">Tags (comma-separated)</label>' +
+        '<input id="vb-tags" type="text" value="' + esc(tagsStr) + '" placeholder="saratoga, turf, first-time-lasix">' +
+        '<label for="vb-notes">Notes</label>' +
+        '<textarea id="vb-notes" placeholder="Your observations — never shared">' + esc(h.notes||'') + '</textarea>' +
+        '<label>History / timeline</label>' +
+        '<div class="vb-hist">' + hist + '</div>' +
+        '<div style="display:flex;gap:8px;margin-top:14px">' +
+          '<button class="vb-btn vb-btn-primary" data-act="save" style="flex:1">Save</button>' +
+          '<button class="vb-btn vb-btn-ghost" data-act="close" style="flex:1">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+    function close(){ if (modal && modal.parentNode) modal.parentNode.removeChild(modal); }
+
+    modal.addEventListener('click', function(ev){
+      if (ev.target === modal) { close(); return; }
+      var act = ev.target.getAttribute && ev.target.getAttribute('data-act');
+      if (act === 'close') close();
+      if (act === 'remove') {
+        if (confirm('Remove ' + h.name + ' from your Virtual Barn?')) {
+          var s2 = getBarnStoreSafe();
+          var ix = findHorseIdx(s2.barn.horses, h.name);
+          if (ix >= 0) s2.barn.horses.splice(ix, 1);
+          saveBarnStoreSafe(s2);
+          close();
+          try { barn_renderBarnTab(); } catch(e){}
+          try { applyBarnHighlights(); } catch(e){}
+          try { if (typeof showToast === 'function') showToast('Removed ' + h.name, 'info'); } catch(e){}
+        }
+      }
+      if (act === 'fav') {
+        var s3 = getBarnStoreSafe();
+        var ix2 = findHorseIdx(s3.barn.horses, h.name);
+        if (ix2 >= 0) {
+          s3.barn.horses[ix2].favorite = !s3.barn.horses[ix2].favorite;
+          saveBarnStoreSafe(s3);
+          h.favorite = s3.barn.horses[ix2].favorite;
+          var btn = modal.querySelector('.vb-fav');
+          if (btn) {
+            btn.classList.toggle('on', h.favorite);
+            btn.setAttribute('aria-pressed', h.favorite?'true':'false');
+            btn.textContent = h.favorite ? '★ Favorite' : '☆ Favorite';
+          }
+          try { barn_renderBarnTab(); } catch(e){}
+        }
+      }
+      if (act === 'save') {
+        var s4 = getBarnStoreSafe();
+        var ix3 = findHorseIdx(s4.barn.horses, h.name);
+        if (ix3 >= 0) {
+          var horse = s4.barn.horses[ix3];
+          horse.watchReason = (modal.querySelector('#vb-watch-reason').value || '').trim();
+          horse.notes = (modal.querySelector('#vb-notes').value || '').trim();
+          horse.tags = (modal.querySelector('#vb-tags').value || '').split(',').map(function(t){return t.trim();}).filter(Boolean);
+          saveBarnStoreSafe(s4);
+        }
+        close();
+        try { barn_renderBarnTab(); } catch(e){}
+        try { if (typeof showToast === 'function') showToast('Saved', 'success'); } catch(e){}
+      }
+    });
+    // ESC to close
+    document.addEventListener('keydown', function onKey(ev){
+      if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+    });
+  }
+
+  window.openVirtualBarnProfile = openHorseProfile;
+
+  // Add the "In Barn" pill + row highlight to active race rows.
+  function applyBarnHighlights(){
+    var s = getBarnStoreSafe();
+    if (!s) return;
+    var names = {};
+    s.barn.horses.forEach(function(h){
+      var n = String(h.name||'').trim().toLowerCase();
+      if (n) names[n] = h;
+    });
+    var rows = document.querySelectorAll('tr[id^="horse-row-"]');
+    rows.forEach(function(row){
+      var nameSpan = row.querySelector('.horse-name');
+      if (!nameSpan) return;
+      var n = nameSpan.textContent.trim().toLowerCase();
+      var hit = names[n];
+      if (hit){
+        row.classList.add('in-virtual-barn');
+        var cell = nameSpan.parentElement;
+        if (cell && !cell.querySelector('.vb-row-pill')){
+          var pill = document.createElement('span');
+          pill.className = 'vb-row-pill';
+          pill.textContent = hit.favorite ? '★ Barn' : 'In Barn';
+          pill.title = 'This horse is in your Virtual Barn';
+          pill.setAttribute('aria-label', hit.name + ' is in your Virtual Barn');
+          cell.appendChild(pill);
+        }
+      } else {
+        row.classList.remove('in-virtual-barn');
+        var ex = row.querySelector('.vb-row-pill');
+        if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
+      }
+    });
+  }
+
+  // Add pill styles + row highlight + a subtle gold left-stripe.
+  function injectVBStyles(){
+    if (document.getElementById('virtual-barn-styles')) return;
+    var st = document.createElement('style');
+    st.id = 'virtual-barn-styles';
+    st.textContent =
+      '.vb-row-pill{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;' +
+        'background:rgba(201,168,76,0.18);color:#9A7B2F;font-size:0.62rem;font-weight:700;' +
+        'letter-spacing:0.05em;text-transform:uppercase;vertical-align:middle}' +
+      'tr.in-virtual-barn{box-shadow:inset 3px 0 0 #C9A84C;background:rgba(201,168,76,0.06)}' +
+      'tr.in-virtual-barn .horse-name{color:#9A7B2F}' +
+      '.vb-profile-link{cursor:pointer}';
+    document.head.appendChild(st);
+  }
+
+  function boot(){
+    injectVBStyles();
+    // Seed demo horses once, after app has warmed up a bit.
+    setTimeout(function(){
+      seedDemoHorses().then(function(){
+        applyBarnHighlights();
+        try { if (typeof barn_updateBadge === 'function') barn_updateBadge(); } catch(e){}
+      });
+    }, 1400);
+
+    // Re-apply highlights whenever race rows mount / re-render.
+    var host = document.getElementById('races-container');
+    if (host){
+      var mo = new MutationObserver(function(){ applyBarnHighlights(); });
+      mo.observe(host, { childList: true, subtree: true });
+    }
+    // Also after barn heart toggles:
+    document.addEventListener('click', function(ev){
+      var t = ev.target;
+      if (!t || !t.closest) return;
+      if (t.closest('.barn-heart')) setTimeout(applyBarnHighlights, 80);
+    }, true);
+
+    // Wire barn-item-name rows to open the profile on tap.
+    document.addEventListener('click', function(ev){
+      var t = ev.target;
+      if (!t || !t.closest) return;
+      var nameEl = t.closest('.barn-item-name');
+      if (!nameEl) return;
+      // Only wire rows inside the main horses section, not jockey/trainer.
+      var section = nameEl.closest('.barn-section');
+      if (!section) return;
+      var h3 = section.querySelector('h3');
+      if (!h3 || !/horses/i.test(h3.textContent)) return;
+      var name = nameEl.textContent.trim();
+      if (name) openHorseProfile(name);
+    });
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    setTimeout(boot, 60);
   }
 })();
 

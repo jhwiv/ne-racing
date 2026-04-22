@@ -1,6 +1,4 @@
-var APP_VERSION = '20260416-1331';
-
-// SELF-DESTRUCTING SERVICE WORKER v4
+// SELF-DESTRUCTING SERVICE WORKER v5
 // Purpose: Replace ANY previously-cached service worker.
 // On install: skip waiting (take over immediately).
 // On activate: nuke all caches, then unregister itself.

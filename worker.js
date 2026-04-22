@@ -6,13 +6,15 @@
  *
  *   DATA_SOURCE = "free" (default)
  *   ────────────────────────────────────────────────────────────────────
- *   • Entries  — Static JSON files hosted on GitHub Pages
+ *   • Entries  — Static JSON files + local fixtures bundled with the app
  *                https://jhwiv.github.io/ne-racing/data/entries-{TRACK}-{DATE}.json
- *   • Scratches — Live XML feed from Equibase (free, no auth required)
- *                 https://www.equibase.com/premium/eqbLateChangeXMLDownload.cfm
- *   • Odds     — Not available; returns graceful empty response
- *   • Results  — Equibase mobile site (free, no auth required)
- *                 https://mobile.equibase.com/html/results{TRACK}{YYYYMMDD}{RR}.html
+ *   • Scratches — Returns empty list (no unauthorized scraping).
+ *   • Odds      — Returns empty list; app falls back to morning-line odds.
+ *   • Results   — Returns empty list (no unauthorized scraping).
+ *
+ *   NOTE: The Equibase/NYRA fetch helpers below (fetchFreeScratches,
+ *   fetchFreeOdds, fetchFreeResults) are retained as ARCHITECTURE ONLY
+ *   for a future licensed adapter. They are NOT called by the free path.
  *
  *   DATA_SOURCE = "theracingapi"  (requires API_KEY secret)
  *   ────────────────────────────────────────────────────────────────────
@@ -1409,8 +1411,16 @@ async function handleScratches(request, env, origin) {
       );
       body = normaliseScratches(data.racecards || [], track, venue, date);
     } else {
-      // ── Free / Equibase XML path ──────────────────────────────────────────
-      body = await fetchFreeScratches(track, date, venue);
+      // ── Free mode: no unauthorized scraping. Return empty list. ───────────
+      // The Equibase XML feed fetch (fetchFreeScratches) is preserved below
+      // for licensed/permitted future use but is intentionally NOT called here.
+      body = {
+        track, date, venue,
+        lastUpdated: new Date().toISOString(),
+        source: "unavailable",
+        message: "Free mode: scratches require a licensed data source.",
+        scratches: [],
+      };
     }
 
     const response = jsonOk(body, origin, CACHE_TTL.scratches);
@@ -1445,27 +1455,18 @@ async function handleOdds(request, env, origin) {
     return jsonError("Invalid race number. Must be a positive integer.", 400, origin);
   }
 
-  // Free mode: attempt to fetch live odds from NYRA/Equibase
+  // Free mode: no unauthorized scraping. Return graceful empty response so the
+  // app falls back to morning-line odds baked into entries JSON.
+  // The NYRA / Equibase fetchers (fetchFreeOdds) remain in this file for
+  // licensed/permitted future use but are intentionally NOT invoked here.
   if (!usePaidSource(env)) {
-    const cacheKeyFree = new Request(`https://ne-racing-cache/odds-free/${track}/${date}/${raceNumber}`);
-    const cachedFree = await readCache(cacheKeyFree);
-    if (cachedFree) return cachedFree;
-
-    try {
-      const body = await fetchFreeOdds(track, date, venue, raceNumber);
-      const ttl = body.source === 'unavailable' ? 0 : CACHE_TTL.odds;
-      const response = jsonOk(body, origin, ttl);
-      if (ttl > 0) await writeCache(cacheKeyFree, response);
-      return response;
-    } catch (_) {
-      return jsonOk({
-        track, date, venue, raceNumber,
-        lastUpdated: new Date().toISOString(),
-        source: 'unavailable',
-        message: 'Live odds fetch failed. Falling back to morning line.',
-        odds: [],
-      }, origin, 0);
-    }
+    return jsonOk({
+      track, date, venue, raceNumber,
+      lastUpdated: new Date().toISOString(),
+      source: 'unavailable',
+      message: 'Free mode: live odds require a licensed data source. Using morning line.',
+      odds: [],
+    }, origin, 0);
   }
 
   // Paid mode: fetch from The Racing API
@@ -1507,19 +1508,16 @@ async function handleResults(request, env, origin) {
 
   const cacheKey = new Request(`https://ne-racing-cache/results/${track}/${date}`);
 
-  // Free mode: fetch from Equibase mobile site
+  // Free mode: no unauthorized scraping. Return empty results list.
+  // fetchFreeResults is preserved for licensed/permitted future use.
   if (!usePaidSource(env)) {
-    const cached = await readCache(cacheKey);
-    if (cached) return cached;
-
-    try {
-      const body = await fetchFreeResults(track, date, venue);
-      const response = jsonOk(body, origin, CACHE_TTL.results);
-      await writeCache(cacheKey, response);
-      return response;
-    } catch (err) {
-      return jsonError(`Results fetch failed: ${err.message}`, 503, origin);
-    }
+    return jsonOk({
+      track, date, venue,
+      lastUpdated: new Date().toISOString(),
+      source: 'unavailable',
+      message: 'Free mode: official results require a licensed data source.',
+      results: [],
+    }, origin, 0);
   }
 
   // Paid mode: fetch from The Racing API
@@ -1634,7 +1632,21 @@ export default {
    *   The Racing API (paid):           DATA_SOURCE=theracingapi  +  API_KEY=<token>
    */
   async fetch(request, env, ctx) {
-    const origin = env.ALLOWED_ORIGIN || "*";
+    // CORS: prefer an explicit allowlist (comma-separated) when set.
+    // Falls back to "*" only if no allowlist is configured.
+    const allowed = (env.ALLOWED_ORIGIN || "*")
+      .split(",")
+      .map(function (s) { return s.trim(); })
+      .filter(Boolean);
+    const reqOrigin = request.headers.get("Origin") || "";
+    let origin = "*";
+    if (allowed.length === 1 && allowed[0] === "*") {
+      origin = "*";
+    } else if (reqOrigin && allowed.indexOf(reqOrigin) !== -1) {
+      origin = reqOrigin;
+    } else {
+      origin = allowed[0] || "*";
+    }
     const url    = new URL(request.url);
 
     // ── CORS preflight ────────────────────────────────────────────────────

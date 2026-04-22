@@ -1,5 +1,68 @@
 # NE Racing — Changelog
 
+## v2.21.0 — Virtual Barn + QC remediation (2026-04-22)
+
+### Features
+- **Virtual Barn**: the Barn tab is now horse-first. Each followed horse has a
+  full profile (notes, tags, watch reason, favorite, history/timeline).
+  Profiles open by tapping a horse name; data persists in localStorage.
+- **Demo Saratoga horses**: on first load the Barn is seeded with ~14 curated
+  demo horses mined from `data/fixtures/saratoga_2025_sample.json`, each
+  labelled `DEMO · Saratoga sample` so nothing gets confused with official
+  stats. Skipped if the user already has 3+ horses. Re-seedable via
+  `window.virtualBarnSeedDemo()`.
+- **In-race highlighting**: when a Virtual Barn horse is entered in the loaded
+  card, the row is highlighted with a gold left-stripe and an "In Barn" pill
+  (★ Barn for favorites).
+
+### Fixes
+- **Auto-update polling bug**: app was reading `d.v` from `version.json`, but
+  the file uses `{ "version": "…" }`. Updates were not propagating. Now reads
+  `d.version` with a `d.v` legacy fallback.
+- **Expert consensus double-count**: `countExpertPicks` / `getExpertNames` now
+  match on pp *with fallback* to name (not OR), and dedupe by source so the
+  same picker can't be counted twice in one race.
+- **Value badge overclaiming**: renamed `Value` → `Overlay` and
+  `Strong Value` → `Big Overlay` with tooltips clarifying the badge compares
+  morning-line implied probability to the model, not tote odds. No
+  calibration claim implied.
+
+### Security / compliance
+- **Worker CORS locked** to `https://railbirdai.com` via `wrangler.toml`. The
+  Worker now honors an allowlist instead of wildcard `*`.
+- **Worker observability enabled** in `wrangler.toml`.
+- **Unauthorized scraping disabled**: the Worker's free-mode handlers for
+  scratches / live odds / results no longer hit Equibase or NYRA; they
+  return `source: "unavailable"` with a graceful empty payload. The
+  licensed-adapter code (`fetchFreeScratches`, `fetchFreeOdds`,
+  `fetchFreeResults`) is retained as architecture-only for a future
+  permitted data feed.
+- **Daily entries workflow disabled** — `.github/workflows/daily-entries.yml`
+  no longer runs on a cron. Re-enable only against a licensed feed.
+- **Dev pages relocated** to `/dev/` (`dev/qc.html`, `dev/debug.html`,
+  `dev/clear.html`) and excluded via `robots.txt` — no longer discoverable at
+  the apex domain.
+- **Stale `APP_VERSION`** constant removed from `sw.js` (the self-destruct SW
+  doesn't need a version; the app's `version.json` poll is the source of
+  truth).
+- **`robots.txt`** added, disallowing `/dev/` and the old root dev pages.
+
+### Accessibility / contrast
+- Bumped `--color-muted` from `#636B7F` → `#4A5368` (AA on cream bg).
+- Bottom nav labels: larger, bolder, darker color; min-height 52px.
+- Barn heart toggle: enlarged tap target (40×40 min).
+- Barn empty states, meta, summary labels: higher contrast (`0.82`/`0.85`
+  alpha) + added aria-labels.
+- Barn item remove: bumped font-size + min-height for mobile.
+
+### Testing
+- Added `scripts/lib/advice-utils.js` — a tiny, dependency-free pure module
+  holding expert-consensus matching, overlay classification, and exotic
+  box-cost combinatorics.
+- Added `tests/advice-utils.test.js` + `tests/fixture.test.js` using
+  `node:test`. 17 tests covering consensus matching, value thresholds,
+  exotic math, and the Saratoga fixture shape. Run with `node --test tests/`.
+
 ## v2.16 — Landing hero no-grey-flash (2026-04-17)
 
 ### Fix

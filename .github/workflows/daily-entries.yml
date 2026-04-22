@@ -1,29 +1,20 @@
-name: Daily Entries Pipeline
+name: Daily Entries Pipeline (DISABLED)
+
+# This workflow is intentionally disabled.
+# It previously fetched NYRA entries on a daily cron, but the app has
+# been refactored to use local fixtures + licensed adapters only.
+# Re-enable ONLY against a permitted / licensed data source.
+#
+# To re-enable for a licensed feed: restore the `schedule:` trigger below
+# and point the step at the licensed adapter (e.g. scripts/ingest/run.js
+# with an adapter that has signed terms of service).
+
 on:
-  schedule:
-    - cron: '0 12 * * 1-5'  # 8:00 AM ET (12:00 UTC) weekdays
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
-  build-entries:
+  noop:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        run: npm install --production || true
-      - name: Build entries
-        run: node scripts/build-entries.js
-        env:
-          NYRA_BASE: https://www.nyra.com
-      - name: Commit and push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/
-          git diff --staged --quiet || git commit -m "chore: auto-update entries $(date +%Y-%m-%d)"
-          git push
+      - name: Notice
+        run: echo "Daily entries pipeline is disabled. Use a licensed adapter to re-enable."
