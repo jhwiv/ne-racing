@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://railbirdai.com/schema/meet.json",
+  "title": "Meet",
+  "description": "A scheduled race meet at one track.",
+  "type": "object",
+  "required": ["id", "track", "name", "start_date", "end_date"],
+  "properties": {
+    "id": { "type": "string", "description": "e.g. SAR-2025-SUMMER" },
+    "track": { "type": "string" },
+    "name": { "type": "string", "description": "e.g. '2025 Saratoga Summer Meet'" },
+    "year": { "type": "integer" },
+    "start_date": { "type": "string", "format": "date" },
+    "end_date": { "type": "string", "format": "date" },
+    "race_days": { "type": "integer", "description": "Official count of racing days in this meet." },
+    "stakes_count": { "type": "integer" },
+    "notes": { "type": "string" },
+    "source_provenance": { "$ref": "source_provenance.schema.json" }
+  },
+  "additionalProperties": true
+}

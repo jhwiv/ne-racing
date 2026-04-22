@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260422-1030-barn-icon-v2.18.1';
+var NE_APP_VERSION = '20260422-1124-saratoga-pipeline-v2.19.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.18.1-barn-icon';
+var RAILBIRD_VERSION = 'v2.19.0-saratoga-pipeline';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -6261,6 +6261,16 @@ tr:has(> td > .detail-stat-row),
 <!-- BOTTOM TAB BAR — placed outside app-frame to prevent iOS Safari
      position:fixed breakage when ancestors have overflow/transform -->
 <nav id="bottom-tab-bar" role="navigation" aria-label="Tab navigation">
+  <button class="tab-btn" id="tab-btn-barn" onclick="switchTab('barn')" aria-label="Barn" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 12 L6 8 L12 4 L18 8 L21 12 V20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z"/>
+      <path d="M10 21 V14 H14 V21"/>
+      <path d="M10 14 L14 21 M14 14 L10 21"/>
+      <rect x="10.5" y="9" width="3" height="2.5" rx="0.3"/>
+    </svg>
+    <span>Barn</span>
+    <span class="tab-badge hidden" id="barn-today-badge">0</span>
+  </button>
   <button class="tab-btn active" id="tab-btn-today" onclick="switchTab('today')" aria-label="Today's Card" aria-selected="true">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 20 C4 14 7 10 9 9 L9 7 C9 5 11 4 13 4 C15 4 17 5 18 7 L20 9 C21 10 21 12 20 13 L18 14 C17 15 17 16 18 17 L20 20"/>
@@ -6289,16 +6299,6 @@ tr:has(> td > .detail-stat-row),
       <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
     </svg>
     <span>Results</span>
-  </button>
-  <button class="tab-btn" id="tab-btn-barn" onclick="switchTab('barn')" aria-label="Barn" aria-selected="false">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M3 12 L6 8 L12 4 L18 8 L21 12 V20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z"/>
-      <path d="M10 21 V14 H14 V21"/>
-      <path d="M10 14 L14 21 M14 14 L10 21"/>
-      <rect x="10.5" y="9" width="3" height="2.5" rx="0.3"/>
-    </svg>
-    <span>Barn</span>
-    <span class="tab-badge hidden" id="barn-today-badge">0</span>
   </button>
   <button class="tab-btn" id="tab-btn-reference" onclick="switchTab('reference')" aria-label="Reference" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -7144,8 +7144,10 @@ function initApp() {
   renderGlossary();
   updateBiasDateDefault();
 
-  // Ensure data mode is always live
-  if (store.settings.dataMode !== 'live') {
+  // Ensure data mode is a known value; default to 'live'.
+  // Valid values: 'live' | 'sample_sar_2025' (historical placeholder, SAR only)
+  var _validModes = ['live', 'sample_sar_2025'];
+  if (_validModes.indexOf(store.settings.dataMode) === -1) {
     store.settings.dataMode = 'live';
     saveStore(store);
   }
@@ -13377,6 +13379,380 @@ document.addEventListener('keydown', e => {
     document.addEventListener('DOMContentLoaded', function(){ setTimeout(trk_boot, 60); });
   } else {
     setTimeout(trk_boot, 60);
+  }
+})();
+
+
+/* =============================================================
+   v2.19.0 — SARATOGA 2025 PIPELINE (wrapper IIFE)
+   - Loads hand-curated SAR 2025 sample fixtures (data/fixtures/
+     saratoga_2025_sample.json) on demand and intercepts
+     getCachedRacesForDate for SAR dates in the 2025 meet range
+     when dataMode === 'sample_sar_2025'.
+   - Adds typeahead autocomplete to Barn add-inputs sourced from
+     the sample dataset's horse/jockey/trainer pools.
+   - Adds a gold row-highlight behind barn-followed horses in the
+     race card (decoration only — does not touch buildRaceCardHTML
+     or renderRaces).
+   - Adds a Data Mode toggle to the Settings modal.
+   All existing protected functions untouched.
+   ============================================================= */
+(function(){
+  'use strict';
+  var FIXTURE_URL = 'data/fixtures/saratoga_2025_sample.json';
+  var MEET_START = '2025-07-10';
+  var MEET_END   = '2025-09-01';
+  var FIXTURE = null;      // loaded doc
+  var LOAD_PROMISE = null; // singleflight loader
+  var DICT = { horses: [], jockeys: [], trainers: [] };
+  var STYLE_INJECTED = false;
+
+  function inSarWindow(dateStr) {
+    return dateStr >= MEET_START && dateStr <= MEET_END;
+  }
+
+  function isSampleMode() {
+    try {
+      var s = (typeof getStore === 'function') ? getStore() : null;
+      return s && s.settings && s.settings.dataMode === 'sample_sar_2025';
+    } catch(e) { return false; }
+  }
+
+  function loadFixture() {
+    if (FIXTURE) return Promise.resolve(FIXTURE);
+    if (LOAD_PROMISE) return LOAD_PROMISE;
+    LOAD_PROMISE = fetch(FIXTURE_URL, { cache: 'force-cache' })
+      .then(function(r){ if (!r.ok) throw new Error('fixture HTTP ' + r.status); return r.json(); })
+      .then(function(doc){
+        FIXTURE = doc;
+        buildDict(doc);
+        return doc;
+      })
+      .catch(function(e){
+        console.warn('[sar2025] fixture load failed:', e);
+        LOAD_PROMISE = null;
+        return null;
+      });
+    return LOAD_PROMISE;
+  }
+
+  function buildDict(doc) {
+    var horseSet = Object.create(null);
+    var jockSet  = Object.create(null);
+    var trSet    = Object.create(null);
+    (doc.races || []).forEach(function(r){
+      (r.horses || []).forEach(function(h){
+        if (h.name)    horseSet[h.name] = true;
+        if (h.jockey)  jockSet[h.jockey] = true;
+        if (h.trainer) trSet[h.trainer] = true;
+      });
+    });
+    DICT.horses   = Object.keys(horseSet).sort();
+    DICT.jockeys  = Object.keys(jockSet).sort();
+    DICT.trainers = Object.keys(trSet).sort();
+  }
+
+  // Build a racesByDate lookup on demand.
+  var BY_DATE_CACHE = null;
+  function racesForDate(dateStr) {
+    if (!FIXTURE) return null;
+    if (!BY_DATE_CACHE) {
+      BY_DATE_CACHE = Object.create(null);
+      (FIXTURE.races || []).forEach(function(r){
+        (BY_DATE_CACHE[r.date] = BY_DATE_CACHE[r.date] || []).push(r);
+      });
+    }
+    return BY_DATE_CACHE[dateStr] || null;
+  }
+
+  // --- 1. Wrap getCachedRacesForDate so SAR+2025 resolves to fixture ---
+  function wrapCacheLookup() {
+    if (typeof window.getCachedRacesForDate !== 'function') {
+      setTimeout(wrapCacheLookup, 200); return;
+    }
+    if (window.__sar2025_cache_wrapped) return;
+    window.__sar2025_cache_wrapped = true;
+    var orig = window.getCachedRacesForDate;
+    window.getCachedRacesForDate = function(dateStr, code) {
+      // Only intercept when explicitly opted into sample mode
+      if (code === 'SAR' && inSarWindow(dateStr) && isSampleMode()) {
+        var fx = racesForDate(dateStr);
+        if (fx && fx.length) return fx;
+        // fixture not yet loaded — kick a load; call returns null, caller will retry after network path
+        loadFixture().then(function(){
+          // Rerender if the user is sitting on this date
+          try { if (typeof renderTodayTab === 'function') renderTodayTab(); } catch(e) {}
+        });
+      }
+      return orig.apply(this, arguments);
+    };
+  }
+
+  // --- 2. Typeahead autocomplete on the Barn add-inputs ---
+  function injectStyles() {
+    if (STYLE_INJECTED) return;
+    STYLE_INJECTED = true;
+    var css = ''
+      + '.sar-ta-wrap{position:relative;flex:1}'
+      + '.barn-add-row > .sar-ta-wrap > input{width:100%;box-sizing:border-box}'
+      + '.sar-ta-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#243653;border:1px solid rgba(237,232,220,0.15);border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,0.45);max-height:200px;overflow-y:auto;z-index:1200;display:none}'
+      + '.sar-ta-menu.open{display:block}'
+      + '.sar-ta-opt{padding:7px 10px;font-size:0.88rem;color:#EDE8DC;cursor:pointer;border-top:1px solid rgba(237,232,220,0.06)}'
+      + '.sar-ta-opt:first-child{border-top:none}'
+      + '.sar-ta-opt:hover,.sar-ta-opt.active{background:rgba(201,168,76,0.18);color:#F5F0E8}'
+      + '.sar-ta-empty{padding:7px 10px;font-size:0.82rem;color:rgba(237,232,220,0.5);font-style:italic}'
+      // Barn row highlight in race card
+      + 'tr.sar-barn-row > td{background:rgba(201,168,76,0.14) !important}'
+      + 'tr.sar-barn-row > td:first-child{box-shadow:inset 3px 0 0 #C9A84C}'
+      // Data-mode pill in settings
+      + '.sar-mode-pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;font-weight:700}'
+      + '.sar-mode-pill.sample{background:rgba(201,168,76,0.2);color:#C9A84C;border:1px solid rgba(201,168,76,0.5)}'
+      + '.sar-mode-pill.live{background:rgba(125,200,140,0.14);color:#8FD89F;border:1px solid rgba(125,200,140,0.4)}'
+      + '.sar-data-banner{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);color:#F5F0E8;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:0.78rem;display:flex;gap:8px;align-items:center}'
+      + '.sar-data-banner strong{color:#C9A84C;letter-spacing:0.06em;text-transform:uppercase;font-size:0.72rem}';
+    var tag = document.createElement('style');
+    tag.textContent = css;
+    document.head.appendChild(tag);
+  }
+
+  function wireTypeahead(input, kind) {
+    if (!input || input.__sarTaWired) return;
+    input.__sarTaWired = true;
+    injectStyles();
+
+    // Wrap input in a positioned container without moving it
+    var parent = input.parentNode;
+    var wrap = document.createElement('div');
+    wrap.className = 'sar-ta-wrap';
+    parent.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    var menu = document.createElement('div');
+    menu.className = 'sar-ta-menu';
+    menu.setAttribute('role', 'listbox');
+    wrap.appendChild(menu);
+
+    var activeIdx = -1;
+    var currentOpts = [];
+
+    function normalize(s) { return String(s||'').toLowerCase().trim(); }
+
+    function compute(q) {
+      var pool = DICT[kind] || [];
+      if (!q) return pool.slice(0, 8);
+      q = normalize(q);
+      var starts = [], includes = [];
+      pool.forEach(function(nm){
+        var ln = nm.toLowerCase();
+        if (ln.indexOf(q) === 0) starts.push(nm);
+        else if (ln.indexOf(q) !== -1) includes.push(nm);
+      });
+      return starts.concat(includes).slice(0, 8);
+    }
+
+    function render(opts) {
+      currentOpts = opts;
+      activeIdx = -1;
+      if (!opts.length) {
+        menu.innerHTML = '<div class="sar-ta-empty">No suggestions · you can still add any name</div>';
+      } else {
+        menu.innerHTML = opts.map(function(nm, i){
+          return '<div class="sar-ta-opt" role="option" data-idx="' + i + '">' + nm.replace(/[<>&]/g, function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}) + '</div>';
+        }).join('');
+      }
+      menu.classList.add('open');
+    }
+
+    function close() { menu.classList.remove('open'); activeIdx = -1; }
+
+    function choose(nm) {
+      input.value = nm;
+      close();
+      // Trigger the existing add flow
+      try { if (typeof window.barnAddFromInput === 'function') window.barnAddFromInput(kind); } catch(e) {}
+    }
+
+    input.addEventListener('focus', function(){ render(compute(input.value)); });
+    input.addEventListener('input', function(){ render(compute(input.value)); });
+    input.addEventListener('keydown', function(ev){
+      if (!menu.classList.contains('open')) {
+        if (ev.key === 'ArrowDown') { render(compute(input.value)); ev.preventDefault(); return; }
+        return;
+      }
+      if (ev.key === 'ArrowDown') { activeIdx = Math.min(activeIdx + 1, currentOpts.length - 1); updateActive(); ev.preventDefault(); }
+      else if (ev.key === 'ArrowUp') { activeIdx = Math.max(activeIdx - 1, -1); updateActive(); ev.preventDefault(); }
+      else if (ev.key === 'Enter') {
+        if (activeIdx >= 0 && currentOpts[activeIdx]) { choose(currentOpts[activeIdx]); ev.preventDefault(); ev.stopPropagation(); }
+        // else: let the existing Enter handler on the input run (barnAddFromInput)
+      }
+      else if (ev.key === 'Escape') { close(); }
+    });
+    input.addEventListener('blur', function(){ setTimeout(close, 160); });
+
+    menu.addEventListener('mousedown', function(ev){
+      var opt = ev.target.closest('.sar-ta-opt');
+      if (!opt) return;
+      ev.preventDefault();
+      choose(currentOpts[Number(opt.getAttribute('data-idx'))]);
+    });
+
+    function updateActive() {
+      menu.querySelectorAll('.sar-ta-opt').forEach(function(n, i){
+        if (i === activeIdx) n.classList.add('active'); else n.classList.remove('active');
+      });
+    }
+  }
+
+  function scanBarnInputs() {
+    ['horses','jockeys','trainers'].forEach(function(kind){
+      var inp = document.getElementById('barn-add-input-' + kind);
+      if (inp) wireTypeahead(inp, kind);
+    });
+  }
+
+  // --- 3. Row highlight for barn-followed horses ---
+  function applyRowHighlight() {
+    if (typeof window.barnGet !== 'function' || typeof window.barnMatches !== 'function') return;
+    var barn = window.barnGet();
+    var rows = document.querySelectorAll('tr[id^="horse-row-"]');
+    rows.forEach(function(row){
+      var tds = row.querySelectorAll('td');
+      if (tds.length < 3) return;
+      var span = tds[2].querySelector('.horse-name');
+      if (!span) return;
+      var name = span.textContent.trim();
+      var match = name && name !== '—' && window.barnMatches(barn.horses, name);
+      row.classList.toggle('sar-barn-row', !!match);
+    });
+  }
+
+  // --- 4. Data-mode banner in Today tab (reminds user when sample is active) ---
+  function renderDataModeBanner() {
+    var host = document.getElementById('races-container');
+    if (!host) return;
+    var existing = document.getElementById('sar-data-mode-banner');
+    if (!isSampleMode()) { if (existing) existing.remove(); return; }
+    var code = (typeof getActiveTrack === 'function') ? getActiveTrack() : '';
+    if (code !== 'SAR') { if (existing) existing.remove(); return; }
+    if (existing) return;
+    var banner = document.createElement('div');
+    banner.id = 'sar-data-mode-banner';
+    banner.className = 'sar-data-banner';
+    banner.innerHTML = '<strong>Sample data</strong>' +
+      '<span>Showing placeholder 2025 Saratoga scaffolds for UI testing. Flip Data Mode to "Live" in Settings once the 2026 meet opens.</span>';
+    host.parentNode.insertBefore(banner, host);
+  }
+
+  // --- 5. Settings modal: inject Data Mode card ---
+  function injectSettingsCard() {
+    var modal = document.getElementById('settings-modal') || document.querySelector('.settings-modal, #settings');
+    if (!modal) return;
+    if (modal.querySelector('#sar-data-mode-card')) return;
+    injectStyles();
+    var s = (typeof getStore === 'function') ? getStore() : null;
+    var mode = (s && s.settings && s.settings.dataMode) || 'live';
+    var card = document.createElement('div');
+    card.id = 'sar-data-mode-card';
+    card.style.cssText = 'margin:14px 0;padding:12px 14px;background:rgba(10,22,40,0.55);border:1px solid rgba(237,232,220,0.1);border-radius:10px;color:#EDE8DC';
+    card.innerHTML =
+      '<h4 style="margin:0 0 8px;font-family:\'Cormorant Garamond\',serif;font-size:1.05rem;letter-spacing:0.04em;display:flex;align-items:center;gap:8px">Data Mode ' +
+        '<span class="sar-mode-pill ' + (mode === 'sample_sar_2025' ? 'sample' : 'live') + '" id="sar-mode-pill">' + (mode === 'sample_sar_2025' ? 'SAMPLE · SAR 2025' : 'LIVE') + '</span>' +
+      '</h4>' +
+      '<p style="margin:0 0 10px;font-size:0.78rem;color:rgba(237,232,220,0.7);line-height:1.4">Sample mode populates the Saratoga tab from a hand-curated 2025 placeholder set so you can try the Barn, typeahead, and race card while no paid data source is connected. Never used for training. Flip to Live when the 2026 meet opens and a licensed source is configured.</p>' +
+      '<div style="display:flex;gap:6px">' +
+        '<button type="button" id="sar-mode-btn-sample" class="settings-btn" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(201,168,76,0.5);background:' + (mode === 'sample_sar_2025' ? 'rgba(201,168,76,0.2)' : 'transparent') + ';color:#F5F0E8;cursor:pointer;font-size:0.8rem;letter-spacing:0.04em">Sample · SAR 2025</button>' +
+        '<button type="button" id="sar-mode-btn-live" class="settings-btn" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(125,200,140,0.4);background:' + (mode === 'live' ? 'rgba(125,200,140,0.14)' : 'transparent') + ';color:#F5F0E8;cursor:pointer;font-size:0.8rem;letter-spacing:0.04em">Live</button>' +
+      '</div>';
+
+    // Find a good insertion point — prefer before the Worker URL section
+    var workerHeader = Array.prototype.find.call(modal.querySelectorAll('h4'), function(h){ return /worker url/i.test(h.textContent); });
+    if (workerHeader && workerHeader.parentNode) {
+      workerHeader.parentNode.insertBefore(card, workerHeader);
+    } else {
+      modal.appendChild(card);
+    }
+
+    card.querySelector('#sar-mode-btn-sample').addEventListener('click', function(){ setMode('sample_sar_2025'); });
+    card.querySelector('#sar-mode-btn-live').addEventListener('click', function(){ setMode('live'); });
+  }
+
+  function setMode(mode) {
+    try {
+      var s = getStore();
+      if (!s) return;
+      s.settings.dataMode = mode;
+      saveStore(s);
+      if (typeof showToast === 'function') showToast('Data mode: ' + (mode === 'sample_sar_2025' ? 'Sample · SAR 2025' : 'Live'), 'info');
+      // If switching to sample, pre-fetch fixture
+      if (mode === 'sample_sar_2025') loadFixture();
+      // Refresh UI
+      var card = document.getElementById('sar-data-mode-card');
+      if (card) card.remove();
+      injectSettingsCard();
+      if (typeof renderTodayTab === 'function') renderTodayTab();
+    } catch(e) { console.warn('[sar2025] setMode failed:', e); }
+  }
+
+  // --- Mutation observers: wire typeahead when Barn tab renders, highlight when races re-render ---
+  function observeBarnContainer() {
+    var host = document.getElementById('barn-container');
+    if (!host) { setTimeout(observeBarnContainer, 300); return; }
+    var obs = new MutationObserver(function(){
+      scanBarnInputs();
+    });
+    obs.observe(host, { childList: true, subtree: true });
+    scanBarnInputs();
+  }
+
+  function observeRaces() {
+    var host = document.getElementById('races-container');
+    if (!host) { setTimeout(observeRaces, 300); return; }
+    var pending = false;
+    var obs = new MutationObserver(function(){
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(function(){
+        pending = false;
+        try { applyRowHighlight(); renderDataModeBanner(); } catch(e) {}
+      });
+    });
+    obs.observe(host, { childList: true, subtree: true });
+    applyRowHighlight();
+    renderDataModeBanner();
+  }
+
+  function observeSettings() {
+    // Settings modal is built dynamically; watch body for it to appear.
+    var obs = new MutationObserver(function(){
+      var modal = document.getElementById('settings-modal') || document.querySelector('.settings-modal');
+      if (modal && modal.offsetParent !== null) injectSettingsCard();
+    });
+    obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style','class'] });
+    // Also try once on load
+    setTimeout(injectSettingsCard, 800);
+  }
+
+  function boot() {
+    injectStyles();
+    wrapCacheLookup();
+    loadFixture(); // warm cache regardless — cheap (single fetch, file-cached)
+    observeBarnContainer();
+    observeRaces();
+    observeSettings();
+    // Also refresh highlights when the user toggles barn state elsewhere
+    document.addEventListener('click', function(ev){
+      var t = ev.target;
+      if (!t) return;
+      if ((t.closest && (t.closest('.barn-heart') || t.closest('.barn-jt-star') || t.closest('.barn-item-remove'))) ) {
+        setTimeout(applyRowHighlight, 60);
+      }
+    }, true);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    setTimeout(boot, 50);
   }
 })();
 

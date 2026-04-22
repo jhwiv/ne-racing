@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://railbirdai.com/schema/race.json",
+  "title": "Race",
+  "description": "One race on one day at one track. Shape is a superset of the existing client race object so existing render functions read it unchanged.",
+  "type": "object",
+  "required": ["id", "track", "date", "num", "horses", "source_provenance"],
+  "properties": {
+    "id": { "type": "string", "description": "Stable ID: TRACK-YYYYMMDD-Rn" },
+    "track": { "type": "string", "pattern": "^[A-Z]{2,4}$" },
+    "date": { "type": "string", "format": "date", "description": "YYYY-MM-DD (local to track)" },
+    "meet_id": { "type": "string", "description": "Meet this race belongs to (e.g. 'SAR-2025-SUMMER')." },
+    "num": { "type": "integer", "minimum": 1 },
+    "postTime": { "type": "string", "description": "Local post time, e.g. '13:05'" },
+    "distance": { "type": "string", "description": "Free-form, e.g. '6 Furlongs', '1 1/16 Miles'" },
+    "distance_furlongs": { "type": "number", "description": "Normalized to furlongs (useful for features)." },
+    "surface": { "type": "string", "enum": ["Dirt", "Turf", "Synthetic", "Inner Turf", "Unknown"] },
+    "purse": { "type": "number" },
+    "conditions": { "type": "string" },
+    "status": { "type": "string", "enum": ["Scheduled", "Off", "Final", "Cancelled", "Unknown"] },
+    "horses": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "entry.schema.json" }
+    },
+    "expertPicks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "pick"],
+        "properties": {
+          "source": { "type": "string" },
+          "pick": { "type": ["string", "integer"] },
+          "horseName": { "type": "string" }
+        }
+      }
+    },
+    "results": {
+      "type": "object",
+      "properties": {
+        "official_order": { "type": "array", "items": { "type": "string" } },
+        "finish_positions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pp": { "type": "integer" },
+              "horseName": { "type": "string" },
+              "position": { "type": "integer" },
+              "beaten_lengths": { "type": "number" },
+              "win_payout": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "updated": { "type": "string", "format": "date-time" },
+    "source_provenance": { "$ref": "source_provenance.schema.json" }
+  },
+  "additionalProperties": true
+}
