@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://railbirdai.com/schema/entry.json",
+  "title": "Entry",
+  "description": "One horse entered in one race. Shape is a superset of the existing client horse object.",
+  "type": "object",
+  "required": ["id", "pp", "name"],
+  "properties": {
+    "id": { "type": "string" },
+    "pp": { "type": "integer", "minimum": 1, "description": "Post position / program number." },
+    "name": { "type": "string" },
+    "jockey": { "type": "string" },
+    "trainer": { "type": "string" },
+    "owner": { "type": "string" },
+    "ml": { "type": "string", "description": "Morning-line odds, e.g. '5/2'" },
+    "liveOdds": { "type": ["string", "number"] },
+    "speedFigs": {
+      "type": "array",
+      "items": { "type": ["number", "null"] },
+      "maxItems": 5,
+      "description": "Last N speed figures. Each value's license tier is recorded at race.source_provenance; excluded from training unless tier permits."
+    },
+    "runningStyle": { "type": "string", "enum": ["E", "EP", "P", "S", "NA", ""] },
+    "lastClass": { "type": "string" },
+    "jockeyPct": { "type": ["number", "null"] },
+    "trainerPct": { "type": ["number", "null"] },
+    "lastRaceDate": { "type": ["string", "null"] },
+    "scratched": { "type": "boolean", "default": false },
+    "workouts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "track": { "type": "string" },
+          "distance": { "type": "string" },
+          "time": { "type": "string" },
+          "rank": { "type": "string" },
+          "surface": { "type": "string" }
+        }
+      }
+    },
+    "age": { "type": "integer" },
+    "sex": { "type": "string" },
+    "weight": { "type": "number" },
+    "equipment": { "type": "string" },
+    "medication": { "type": "string" }
+  },
+  "additionalProperties": true
+}

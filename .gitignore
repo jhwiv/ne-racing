@@ -1,0 +1,17 @@
+# Secrets
+.env
+.env.local
+.dev.vars
+
+# Ingest outputs (regenerated on demand)
+data/normalized/
+data/ingest_log.jsonl
+training/
+
+# Wrangler / Cloudflare
+.wrangler/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
