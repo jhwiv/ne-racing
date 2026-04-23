@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260423-1049-simple-barn-v2.22.0';
+var NE_APP_VERSION = '20260423-1200-simple-barn-cleanup-v2.22.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.22.0-simple-barn';
+var RAILBIRD_VERSION = 'v2.22.1-simple-barn-cleanup';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -12719,7 +12719,9 @@ document.addEventListener('keydown', e => {
     var msg = '';
     if (kind === 'horses') {
       if (idx < 0) {
-        // New horse: add and mark favorite immediately so the heart visibly fills.
+        // v2.22.1 — simple-barn: tap adds; no favorite bit surfaced in UI.
+        // The `favorite:true` write is preserved for legacy helpers/tests;
+        // nothing visible branches on it anymore.
         list.push({
           name: String(name).trim(),
           addedAt: new Date().toISOString(),
@@ -12729,13 +12731,16 @@ document.addEventListener('keydown', e => {
         action = 'added-fav';
         msg = String(name).trim() + ' is in your Virtual Barn';
       } else {
-        // Already in barn: toggle favorite flag. Do NOT remove the horse.
+        // Already in barn: tap is a no-op from the user's perspective.
+        // Internally we still toggle the favorite flag so pure-function tests
+        // that port this logic keep their semantics, but the visible message
+        // is membership-centric.
         var h = list[idx];
         h.favorite = !h.favorite;
         action = h.favorite ? 'fav-on' : 'fav-off';
         msg = h.favorite
-          ? 'Marked ' + h.name + ' as favorite'
-          : 'Removed favorite on ' + h.name;
+          ? h.name + ' is in your Virtual Barn'
+          : h.name + ' is in your Virtual Barn';
       }
     } else {
       if (idx >= 0) {
@@ -12788,16 +12793,12 @@ document.addEventListener('keydown', e => {
   }
 
   // --- Post-render decoration of horse rows with heart icon
-  // v2.21.3: heart can now be in three visual states:
-  //   'empty'  — not in barn (outline, small)
-  //   'inbarn' — in barn but not favorite (soft fill, gold border)
-  //   'fav'    — in barn and favorite (solid gold heart, glow)
+  // v2.22.1 — simple-barn cleanup: only two visual states. A horse is in the
+  // barn or not. The prior 'fav' glow state is gone — legacy favorite data
+  // still normalizes to the membership icon.
   function barn_heartSvg(state) {
     var path = 'M12 21s-7-4.35-9.5-8.5C.86 9.57 2.7 6 6 6c2 0 3.5 1.2 4 2.5C10.5 7.2 12 6 14 6c3.3 0 5.14 3.57 3.5 6.5C19 16.65 12 21 12 21z';
-    if (state === 'fav') {
-      return '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="vertical-align:-2px;filter:drop-shadow(0 0 3px rgba(240,203,106,0.7))"><path fill="' + C.gold + '" d="' + path + '"/></svg>';
-    }
-    if (state === 'inbarn') {
+    if (state === 'inbarn' || state === 'fav') {
       return '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="vertical-align:-2px"><path fill="rgba(201,168,76,0.35)" stroke="' + C.gold + '" stroke-width="1.8" d="' + path + '"/></svg>';
     }
     return '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="vertical-align:-2px"><path fill="none" stroke="' + C.gold + '" stroke-width="1.8" d="' + path + '"/></svg>';
@@ -12831,13 +12832,10 @@ document.addEventListener('keydown', e => {
       void btn.offsetWidth;
       btn.classList.add('barn-heart-pulse');
       setTimeout(function(){ btn.classList.remove('barn-heart-pulse'); }, 760);
-      // Floating micro-label near heart
+      // v2.22.1 — simple-barn: membership-only micro-label. No favorite copy.
       var label = '';
-      if (action === 'added-fav') label = '\u2605 In Barn';
-      else if (action === 'fav-on') label = '\u2605 Favorite';
-      else if (action === 'fav-off') label = 'Favorite off';
-      else if (action === 'added') label = 'Added';
-      else if (action === 'removed') label = 'Removed';
+      if (action === 'added-fav' || action === 'added' || action === 'fav-on') label = 'In Barn';
+      else if (action === 'fav-off' || action === 'removed') label = 'Removed';
       if (label) {
         var pop = document.createElement('span');
         pop.className = 'barn-heart-pop';
@@ -12864,9 +12862,10 @@ document.addEventListener('keydown', e => {
 
       var state = barn_horseState(barn.horses, name);
       var existing = nameCell.querySelector('.barn-heart');
+      // v2.22.1 — simple-barn: only two tooltips. Either the horse is in the
+      // barn (tap to remove from Today's quick action) or it isn't.
       var titleFor = function(st){
-        if (st === 'fav') return 'Unfavorite ' + name + ' (stays in barn)';
-        if (st === 'inbarn') return 'Mark ' + name + ' as favorite';
+        if (st === 'inbarn' || st === 'fav') return name + ' is in your Virtual Barn';
         return 'Add ' + name + ' to your Virtual Barn';
       };
       if (existing) {
@@ -13273,7 +13272,6 @@ document.addEventListener('keydown', e => {
       /* Stall cards — each horse a stable door */
       '.stall-card{background:#FFFDF7;border:1px solid rgba(27,46,75,0.12);border-radius:12px;padding:14px 14px 12px;display:flex;gap:12px;align-items:flex-start;box-shadow:inset 4px 0 0 #C9A84C,0 1px 3px rgba(27,46,75,0.06);transition:background 0.15s,border-color 0.15s,transform 0.1s;cursor:pointer}' +
       '.stall-card:hover,.stall-card:focus-within{background:#FBF4DE;border-color:rgba(201,168,76,0.6)}' +
-      '.stall-card.is-fav{box-shadow:inset 4px 0 0 #F0CB6A,0 2px 10px rgba(240,203,106,0.16)}' +
       '.stall-card-main{flex:1;min-width:0}' +
       '.stall-card-name{font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;color:#1B2E4B;font-weight:700;letter-spacing:0.01em;line-height:1.15}' +
       '.stall-card-meta{font-size:0.82rem;color:#4A5269;margin-top:4px;line-height:1.45}' +
@@ -13320,7 +13318,10 @@ document.addEventListener('keydown', e => {
     // Lookup moves to an on-demand drawer opened by the "Add horse" CTA.
     var totalToday = matches.horses.length + matches.jockeys.length + matches.trainers.length;
     var horsesToday = matches.horses.length;
-    var favCount = (barn.horses || []).filter(function(h){ return !!h.favorite; }).length;
+    // v2.22.1 — simple-barn cleanup: hero no longer surfaces a favorites stat.
+    // Connections = jockeys + trainers already followed. A horse in the barn
+    // is just "in the barn"; there is no second-tier "favorite" membership.
+    var connectionsCount = (barn.jockeys || []).length + (barn.trainers || []).length;
     var horseCount = barn.horses.length;
 
     var heroHeadline, heroSub;
@@ -13340,8 +13341,8 @@ document.addEventListener('keydown', e => {
     var statsHtml =
       '<div class="barn-stat-chips" role="group" aria-label="Barn summary">' +
         '<div class="barn-stat-chip"><span class="barn-stat-chip-num">' + horseCount + '</span><span class="barn-stat-chip-lbl">In barn</span></div>' +
-        '<div class="barn-stat-chip barn-stat-fav' + (favCount ? '' : ' is-zero') + '"><span class="barn-stat-chip-num">\u2605 ' + favCount + '</span><span class="barn-stat-chip-lbl">Favorites</span></div>' +
         '<div class="barn-stat-chip barn-stat-today' + (horsesToday ? '' : ' is-zero') + '"><span class="barn-stat-chip-num">' + horsesToday + '</span><span class="barn-stat-chip-lbl">Running today</span></div>' +
+        '<div class="barn-stat-chip' + (connectionsCount ? '' : ' is-zero') + '"><span class="barn-stat-chip-num">' + connectionsCount + '</span><span class="barn-stat-chip-lbl">Connections</span></div>' +
       '</div>';
 
     var ctaLabel = horseCount === 0 ? 'Choose a horse' : 'Add horse';
@@ -13379,7 +13380,6 @@ document.addEventListener('keydown', e => {
         return cnt ? '<span class="barn-runs-today">' + cnt + ' starter' + (cnt === 1 ? '' : 's') + ' today</span>' : '';
       }
     );
-    var connectionsCount = barn.jockeys.length + barn.trainers.length;
     var connectionsOpen = window.__barnConnectionsOpen ? ' open' : '';
     var connectionsSection =
       '<div class="barn-connections' + connectionsOpen + '" id="barn-connections-wrap">' +
@@ -13406,7 +13406,7 @@ document.addEventListener('keydown', e => {
           '<button type="button" class="barn-drawer-close" id="barn-drawer-close" aria-label="Close">Done</button>' +
         '</div>' +
         '<div class="barn-drawer-body">' +
-          '<p class="barn-drawer-sub">Search curated profiles and the 2025 Saratoga sample. Tap <em>Add to Barn</em> to put a horse in your stable, or the heart to add as a favorite.</p>' +
+          '<p class="barn-drawer-sub">Search curated profiles and the 2025 Saratoga sample. Tap <em>Add to Barn</em> to put a horse in your stable.</p>' +
           '<input type="search" class="barn-lookup-input" id="barn-lookup-input" placeholder="Search by horse, trainer, owner, or jockey\u2026" autocomplete="off" spellcheck="false" />' +
           '<div class="barn-lookup-results" id="barn-lookup-results"><div class="barn-lookup-empty">Start typing to search, or pick from the suggestions below.</div></div>' +
         '</div>' +
@@ -13414,9 +13414,8 @@ document.addEventListener('keydown', e => {
 
     var hint =
       '<p class="barn-footer-tip">' +
-      '<strong>Tip:</strong> Tap a horse name to open its full profile. ' +
-      'Tap the heart on Today to give a horse a stall in your barn \u2014 tap it again to mark a favorite. ' +
-      'Removing a horse is a separate action.' +
+      '<strong>Tip:</strong> Tap a horse to open its profile. ' +
+      'Use <em>Add horse</em> to choose more for your Virtual Barn.' +
       '</p>';
 
     container.innerHTML = styleBlock + heroHtml + myBarnHtml + connectionsSection + hint + drawerHtml;
@@ -13529,7 +13528,6 @@ document.addEventListener('keydown', e => {
     var cards = horses.map(function(h){
       var safeName = esc(h.name);
       var onclickName = attr(h.name);
-      var favOn = !!h.favorite;
       var isCurated = h.source === 'curated-public-profile' || !!(h.sources && h.sources.length);
       var isDemo = h.source === 'demo-saratoga-2025';
       var todayHit = todayMatches.filter(function(x){ return barnNormalize(x.horse.name) === barnNormalize(h.name); });
@@ -13679,36 +13677,25 @@ document.addEventListener('keydown', e => {
         if (p.owner) metaBits.push('O: ' + esc(p.owner));
         if (p.sire) metaBits.push('Sire: ' + esc(p.sire));
         var meta = metaBits.length ? '<div class="barn-lookup-meta">' + metaBits.join(' \u00B7 ') + '</div>' : '';
+        // v2.22.1 — simple-barn cleanup: no star/heart in the drawer. A horse
+        // is either in the barn or not. Legacy favorite state collapses to
+        // plain "In Barn" for display purposes.
         var state = window.__classifyBarnCandidate ? window.__classifyBarnCandidate(c) : 'new';
+        var inBarn = (state === 'inbarn' || state === 'fav');
         var badges = '';
         badges += '<span class="barn-lookup-badge ' + (c.source === 'curated' ? 'barn-lookup-badge-curated' : 'barn-lookup-badge-demo') + '">' +
           (c.source === 'curated' ? 'Curated profile' : 'Demo sample') + '</span>';
-        if (state === 'fav') badges += '<span class="barn-lookup-badge barn-lookup-badge-fav">\u2605 Favorite</span>';
-        else if (state === 'inbarn') badges += '<span class="barn-lookup-badge barn-lookup-badge-inbarn">In Barn</span>';
-        // Actions
-        var addBtn, heartPressed, heartLabel;
-        if (state === 'new') {
-          addBtn = '<button class="barn-lookup-add" onclick="event.stopPropagation();window.barnAddFromLookup(\'' + onclickName + '\')">Add to Barn</button>';
-          heartPressed = 'false';
-          heartLabel = 'Add ' + safeName + ' as favorite';
-        } else if (state === 'inbarn') {
-          addBtn = '<button class="barn-lookup-add" disabled>In Barn</button>';
-          heartPressed = 'false';
-          heartLabel = 'Mark ' + safeName + ' as favorite';
-        } else {
-          addBtn = '<button class="barn-lookup-add" disabled>\u2605 Favorite</button>';
-          heartPressed = 'true';
-          heartLabel = 'Unfavorite ' + safeName;
-        }
-        var heartGlyph = (state === 'fav') ? '\u2605' : '\u2661';
-        var heartBtn = '<button class="barn-lookup-heart" aria-pressed="' + heartPressed + '" aria-label="' + heartLabel + '" title="' + heartLabel + '" onclick="event.stopPropagation();window.barnLookupHeart(\'' + onclickName + '\')">' + heartGlyph + '</button>';
+        if (inBarn) badges += '<span class="barn-lookup-badge barn-lookup-badge-inbarn">In Barn</span>';
+        var addBtn = inBarn
+          ? '<button class="barn-lookup-add" disabled>In Barn</button>'
+          : '<button class="barn-lookup-add" onclick="event.stopPropagation();window.barnAddFromLookup(\'' + onclickName + '\')">Add to Barn</button>';
         return '<div class="barn-lookup-result" data-horse-name="' + safeName + '">' +
           '<div class="barn-lookup-main">' +
             '<div class="barn-lookup-name vb-profile-link" role="button" tabindex="0" aria-label="Open profile for ' + safeName + '" onclick="event.stopPropagation();window.__openLookupProfile && window.__openLookupProfile(\'' + onclickName + '\')">' + safeName + '</div>' +
             meta +
             '<div class="barn-lookup-badges">' + badges + '</div>' +
           '</div>' +
-          '<div class="barn-lookup-actions">' + heartBtn + addBtn + '</div>' +
+          '<div class="barn-lookup-actions">' + addBtn + '</div>' +
         '</div>';
       }).join('');
       host.innerHTML = html;
@@ -13748,67 +13735,26 @@ document.addEventListener('keydown', e => {
   };
 
   function buildListSection(kind, label, items, todayMatches, placeholder, todayBadgeFn) {
-    var rowClass = (kind === 'horses') ? ' barn-horse-row barn-stall' : '';
+    // v2.22.1 — simple-barn cleanup: this helper is only used for jockeys and
+    // trainers in the redesigned Barn (horses render via buildMyBarnSection).
+    // All favorite/heart branches have been removed — membership is the only
+    // state. The horses branch is kept structurally for back-compat but no
+    // longer emits any favorite UI.
     var rows = items.length
-      ? items.map(function(item, idx) {
+      ? items.map(function(item) {
           var badge = todayBadgeFn(item);
           var esc = String(item.name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-          var isCurated = kind === 'horses' &&
-            (item.source === 'curated-public-profile' || !!(item.sources && item.sources.length));
-          var isDemo = kind === 'horses' && item.source === 'demo-saratoga-2025';
-          // v2.21.3: badges communicate ownership + origin strongly.
-          var stallBadges = '';
-          if (kind === 'horses') {
-            stallBadges += '<span class="vb-stall-badge">In Barn</span>';
-            if (item.favorite) stallBadges += '<span class="vb-stall-badge vb-stall-fav">\u2605 Favorite</span>';
-            if (isCurated) stallBadges += '<span class="vb-stall-badge vb-stall-curated">Curated profile</span>';
-            else if (isDemo) stallBadges += '<span class="vb-stall-badge">Demo</span>';
-          }
-          var tagStr = (kind === 'horses' && Array.isArray(item.tags) && item.tags.length)
-            ? '<div class="barn-item-meta">' + item.tags.filter(function(t){return t!=='demo' && t!=='saratoga';}).map(function(t){return '#' + String(t).replace(/[<>]/g,'');}).join(' ') + '</div>'
-            : '';
-          var reasonStr = (kind === 'horses' && item.watchReason)
-            ? '<div class="barn-item-meta" style="font-style:italic;color:#D9D2BC">\u201C' + String(item.watchReason).replace(/[<>]/g,'') + '\u201D</div>'
-            : '';
-          var personalLine = (kind === 'horses')
-            ? '<div class="barn-item-meta barn-item-personal">You\u2019re keeping tabs on this one.</div>'
-            : '';
-          var namePart = '<span class="barn-item-horse-name">' + item.name + '</span>' +
-            (kind === 'horses' ? '<div class="barn-stall-badges">' + stallBadges + '</div>' : '') +
-            tagStr + reasonStr + personalLine;
-          var chevron = (kind === 'horses') ? '<span class="barn-horse-chevron" aria-hidden="true">\u203A</span>' : '';
-          var clickable = (kind === 'horses') ? ' role="button" tabindex="0" aria-label="Open profile for ' + esc + '"' : '';
-          // v2.21.3: inline favorite heart toggle (horses only) — visible consequence on Barn tab too.
-          var heartBtn = '';
-          if (kind === 'horses') {
-            var favOn = !!item.favorite;
-            heartBtn = '<button class="barn-stall-heart" aria-pressed="' + (favOn?'true':'false') +
-              '" aria-label="' + (favOn?'Unfavorite ':'Mark as favorite ') + esc + '" title="' + (favOn?'Unfavorite':'Mark as favorite') +
-              '" onclick="event.stopPropagation();barnToggle(\'horses\',\'' + esc + '\')">' +
-              (favOn ? '\u2605' : '\u2606') + '</button>';
-          }
-          return '<div class="barn-item' + rowClass + '">' +
-            '<div class="barn-item-name"' + clickable + '>' + namePart + '</div>' +
+          var namePart = '<span class="barn-item-horse-name">' + item.name + '</span>';
+          return '<div class="barn-item">' +
+            '<div class="barn-item-name">' + namePart + '</div>' +
             (badge ? '<div>' + badge + '</div>' : '') +
-            heartBtn +
-            chevron +
             '<button class="barn-item-remove" aria-label="Remove ' + esc + '" onclick="event.stopPropagation();barnRemoveHorse(\'' + kind + '\',\'' + esc + '\')">Remove</button>' +
           '</div>';
         }).join('')
-      : '<div class="barn-empty"><em>' +
-        (kind === 'horses' ? 'Build your barn one horse at a time.' : 'No ' + kind + ' followed yet.') +
-        '</em> ' +
-        (kind === 'horses' ? '<br>Search above, or tap the heart on any horse on Today.' : '') +
-        '</div>';
+      : '<div class="barn-empty"><em>No ' + kind + ' followed yet.</em></div>';
 
-    var primaryCls = (kind === 'horses') ? ' barn-horses-primary' : '';
-    var headerExtra = '';
-    if (kind === 'horses' && items.length) {
-      var favN = items.filter(function(x){return !!x.favorite;}).length;
-      headerExtra = '<span class="barn-count barn-count-fav" title="Favorites">\u2605 ' + favN + '</span>';
-    }
-    return '<div class="barn-section' + primaryCls + '">' +
-      '<h3>' + label + ' <span class="barn-count">' + items.length + '</span>' + headerExtra + '</h3>' +
+    return '<div class="barn-section">' +
+      '<h3>' + label + ' <span class="barn-count">' + items.length + '</span></h3>' +
       rows +
       '<div class="barn-add-row">' +
         '<input type="text" id="barn-add-input-' + kind + '" placeholder="Add ' + placeholder + '" onkeydown="if(event.key===\'Enter\'){barnAddFromInput(\'' + kind + '\');}">' +
@@ -15120,10 +15066,7 @@ document.addEventListener('keydown', e => {
       try { if (typeof barn_updateBadge === 'function') barn_updateBadge(); } catch(e){}
       try {
         if (typeof showToast === 'function') {
-          showToast(
-            (opts.favorite ? '\u2605 ' : '') + name + ' added to your Virtual Barn',
-            'success'
-          );
+          showToast(name + ' added to your Virtual Barn', 'success');
         }
       } catch(e){}
     });
@@ -15178,6 +15121,11 @@ document.addEventListener('keydown', e => {
 
     var modal = document.createElement('div');
     modal.id = 'virtual-barn-profile-modal';
+    // v2.22.1 — explicit open marker so visibility is observable by tests
+    // and by Playwright (previously we relied on presence of the element;
+    // this adds a stable .is-open + data-open="true" hook).
+    modal.className = 'vb-profile-modal is-open';
+    modal.setAttribute('data-open', 'true');
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
     modal.setAttribute('aria-label', 'Horse profile: ' + h.name);
@@ -15237,7 +15185,6 @@ document.addEventListener('keydown', e => {
     var appearancesCount = (h.history||[]).length;
     var histLabel = isCurated ? 'public form line' : 'sample start';
     if (appearancesCount) overviewChips.push('<span class="vb-chip vb-chip-key">' + appearancesCount + ' ' + histLabel + (appearancesCount === 1 ? '' : 's') + '</span>');
-    if (h.favorite) overviewChips.push('<span class="vb-chip vb-chip-fav">\u2605 Favorite</span>');
     (h.tags||[]).forEach(function(t){ overviewChips.push('<span class="vb-chip vb-chip-tag">#' + esc(t) + '</span>'); });
 
     // v2.21.2: Build Stats block for curated horses (season + career + surface + alt).
@@ -15320,7 +15267,6 @@ document.addEventListener('keydown', e => {
       '#virtual-barn-profile-modal .vb-chip-key{background:rgba(201,168,76,0.22);color:#F0CB6A}' +
       '#virtual-barn-profile-modal .vb-chip-ml{background:rgba(125,200,140,0.18);color:#A8D4B3}' +
       '#virtual-barn-profile-modal .vb-chip-num{background:rgba(255,255,255,0.08);color:#F5F0E8}' +
-      '#virtual-barn-profile-modal .vb-chip-fav{background:rgba(240,203,106,0.2);color:#F0CB6A}' +
       '#virtual-barn-profile-modal .vb-chip-tag{background:rgba(175,196,222,0.14);color:#C9D6E8}' +
       '#virtual-barn-profile-modal .vb-chip-scratch{background:rgba(217,134,122,0.22);color:#E7A096;font-weight:700}' +
       '#virtual-barn-profile-modal .vb-hist-row{border-top:1px solid rgba(237,232,220,0.1);padding:10px 0;font-size:0.85rem}' +
@@ -15337,8 +15283,6 @@ document.addEventListener('keydown', e => {
       '#virtual-barn-profile-modal .vb-btn-primary{background:#C9A84C;color:#0a1628}' +
       '#virtual-barn-profile-modal .vb-btn-ghost{background:transparent;color:#F5F0E8;border:1px solid rgba(237,232,220,0.4)}' +
       '#virtual-barn-profile-modal .vb-btn-danger{background:transparent;color:#E7A096;border:1px solid rgba(217,134,122,0.7)}' +
-      '#virtual-barn-profile-modal .vb-fav{background:transparent;border:1px solid rgba(201,168,76,0.6);color:#F0CB6A;padding:10px 14px;border-radius:10px;font-size:0.85rem;font-weight:700;min-height:44px;cursor:pointer}' +
-      '#virtual-barn-profile-modal .vb-fav.on{background:rgba(201,168,76,0.22)}' +
       '#virtual-barn-profile-modal .vb-overview-grid{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:0.88rem;line-height:1.55}' +
       '#virtual-barn-profile-modal .vb-overview-grid dt{color:#F0CB6A;font-weight:700;font-size:0.78rem;letter-spacing:0.04em;text-transform:uppercase;align-self:center}' +
       '#virtual-barn-profile-modal .vb-overview-grid dd{margin:0;color:#F5F0E8}' +
@@ -15376,13 +15320,10 @@ document.addEventListener('keydown', e => {
           '<span class="vb-ownership-dot" aria-hidden="true">' +
             '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="#F0CB6A" d="M12 21s-7-4.35-9.5-8.5C.86 9.57 2.7 6 6 6c2 0 3.5 1.2 4 2.5C10.5 7.2 12 6 14 6c3.3 0 5.14 3.57 3.5 6.5C19 16.65 12 21 12 21z"/></svg>' +
           '</span>' +
-          '<span class="vb-ownership-text">In your Virtual Barn' +
-            (h.favorite ? ' \u00B7 \u2605 Favorite' : '') +
-          '</span>' +
+          '<span class="vb-ownership-text">In your Virtual Barn</span>' +
         '</div>' +
         (overviewChips.length ? '<div class="vb-chips">' + overviewChips.join('') + '</div>' : '') +
         '<div class="vb-row" style="margin:10px 0 12px">' +
-          '<button class="vb-fav ' + (h.favorite?'on':'') + '" data-act="fav" aria-pressed="' + (h.favorite?'true':'false') + '">' + (h.favorite ? '\u2605 Favorite' : '\u2606 Mark as favorite') + '</button>' +
           '<button class="vb-btn vb-btn-danger" data-act="remove">Remove from Barn</button>' +
         '</div>' +
         /* OVERVIEW section */
@@ -15467,28 +15408,6 @@ document.addEventListener('keydown', e => {
           try { if (typeof showToast === 'function') showToast('Removed ' + h.name, 'info'); } catch(e){}
         }
       }
-      if (act === 'fav') {
-        var s3 = getBarnStoreSafe();
-        var ix2 = findHorseIdx(s3.barn.horses, h.name);
-        if (ix2 >= 0) {
-          s3.barn.horses[ix2].favorite = !s3.barn.horses[ix2].favorite;
-          saveBarnStoreSafe(s3);
-          h.favorite = s3.barn.horses[ix2].favorite;
-          var btn = modal.querySelector('.vb-fav');
-          if (btn) {
-            btn.classList.toggle('on', h.favorite);
-            btn.setAttribute('aria-pressed', h.favorite?'true':'false');
-            btn.textContent = h.favorite ? '\u2605 Favorite' : '\u2606 Mark as favorite';
-          }
-          // v2.21.3: update ownership ribbon text immediately.
-          var ribbon = modal.querySelector('.vb-ownership-text');
-          if (ribbon) ribbon.textContent = 'In your Virtual Barn' + (h.favorite ? ' \u00B7 \u2605 Favorite' : '');
-          try { barn_renderBarnTab(); } catch(e){}
-          try { applyBarnHighlights(); } catch(e){}
-          try { barn_decorateHorseRows(); } catch(e){}
-          try { if (typeof showToast === 'function') showToast(h.favorite ? ('Marked ' + h.name + ' as favorite') : ('Removed favorite on ' + h.name), h.favorite ? 'success' : 'info', 2400); } catch(e){}
-        }
-      }
       if (act === 'save') {
         var s4 = getBarnStoreSafe();
         var ix3 = findHorseIdx(s4.barn.horses, h.name);
@@ -15533,24 +15452,17 @@ document.addEventListener('keydown', e => {
         cell.querySelectorAll('.vb-row-pill').forEach(function(p){ p.parentNode.removeChild(p); });
       }
       if (hit){
+        // v2.22.1 — simple-barn: membership-only highlight. No favorite class
+        // or pill; a horse is either In Barn or it is not.
         row.classList.add('in-virtual-barn');
-        if (hit.favorite) row.classList.add('vb-fav-row');
-        else row.classList.remove('vb-fav-row');
+        row.classList.remove('vb-fav-row');
         if (cell){
           var isCurated = hit.source === 'curated-public-profile' || !!(hit.sources && hit.sources.length);
-          if (hit.favorite) {
-            var favPill = document.createElement('span');
-            favPill.className = 'vb-row-pill vb-row-pill-fav';
-            favPill.textContent = '\u2605 Favorite';
-            favPill.title = hit.name + ' is a favorite in your Virtual Barn';
-            cell.appendChild(favPill);
-          } else {
-            var inPill = document.createElement('span');
-            inPill.className = 'vb-row-pill';
-            inPill.textContent = 'In Barn';
-            inPill.title = hit.name + ' is in your Virtual Barn';
-            cell.appendChild(inPill);
-          }
+          var inPill = document.createElement('span');
+          inPill.className = 'vb-row-pill';
+          inPill.textContent = 'In Barn';
+          inPill.title = hit.name + ' is in your Virtual Barn';
+          cell.appendChild(inPill);
           if (isCurated) {
             var cPill = document.createElement('span');
             cPill.className = 'vb-row-pill vb-row-pill-curated';

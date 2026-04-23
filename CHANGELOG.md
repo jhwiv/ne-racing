@@ -1,5 +1,79 @@
 # NE Racing — Changelog
 
+## v2.22.1 — Simple Barn cleanup (2026-04-23)
+
+Finishes the simplification that v2.22.0 started. Live Playwright QA on
+railbirdai.com after v2.22.0 still surfaced favorite/star semantics in
+several active places: the hero showed a `★ 0 FAVORITES` stat chip, the
+footer tip still said "Tap the heart on Today to give a horse a stall in
+your barn — tap it again to mark a favorite", the lookup drawer still
+rendered a heart toggle next to Add to Barn, the rich profile modal still
+exposed a `★ Favorite` chip + a `.vb-fav` toggle button, and race-form
+rows still branched into a `vb-fav-row` highlight with a solid-gold
+"★ Favorite" pill. Per the user: *"If a horse is in the barn, it is by
+definition a favorite. Remove the star that highlights the Horse being
+a favorite. Make it just simple. Click on Add to Barn button."*
+
+Changes to active UI:
+
+- **Hero stats**: `★ 0 FAVORITES` chip removed. Chips are now
+  `In barn`, `Running today`, `Connections` (jockeys + trainers count).
+- **Footer tip**: replaced with
+  *"Tap a horse to open its profile. Use Add horse to choose more for
+  your Virtual Barn."* No heart/favorite wording.
+- **Drawer subtitle**: drops "…or the heart to add as a favorite."
+- **Lookup drawer row**: the `.barn-lookup-heart` button is gone. The
+  only action is `Add to Barn`; if the horse is already saved the
+  button becomes a disabled `In Barn`. Legacy `state === 'fav'`
+  collapses to `inbarn` for display. The `barn-lookup-badge-fav`
+  badge and `Unfavorite`/`Mark as favorite` labels are removed.
+- **Profile modal (`openHorseProfile`)**: removes the
+  `★ Favorite`/`☆ Mark as favorite` toggle button (`.vb-fav`) and its
+  `data-act="fav"` handler, the `vb-chip-fav` overview chip, and the
+  "· ★ Favorite" suffix on the ownership ribbon. Modal now gets a
+  stable `.vb-profile-modal.is-open` class and `data-open="true"`
+  attribute so Playwright / tests can verify visibility without
+  relying on hidden DOM text.
+- **Race-form highlight (`applyBarnHighlights`)**: membership-only.
+  Every barn row gets the `In Barn` pill and the `in-virtual-barn`
+  stripe — no `vb-fav-row` class, no `★ Favorite` pill. Legacy
+  `vb-fav-row` is proactively stripped on every rerender.
+- **Stall cards & `buildListSection`**: any remaining
+  `barn-stall-heart` button, `vb-stall-fav` badge, or
+  `barn-count-fav` star counter removed. `is-fav` CSS rule on
+  `.stall-card` removed.
+- **Today-tab heart** (`barn_decorateHorseRows` + `barn_heartSvg`):
+  collapses to two visual states — outline (not in barn) or soft
+  gold fill (in barn). No solid-gold "fav" glow. Tooltip is
+  membership-centric. Micro-label on tap is `In Barn` or `Removed`.
+- **Toast copy**: "Marked as favorite" / "Removed favorite on …"
+  replaced with "<Name> is in your Virtual Barn". The star emoji is
+  no longer concatenated into add-to-barn toasts.
+
+Data compatibility:
+
+- The `h.favorite` property is still read/written by `toggleFollow` and
+  `barnLookupHeart` so the pure-function heart-semantics tests (which
+  port those helpers) keep their contract. Nothing visible branches on
+  `h.favorite` anymore — it's purely legacy state that becomes a no-op
+  in the UI.
+
+Tests:
+
+- New `tests/simple-barn-cleanup.test.js` — 10 invariants covering: no
+  Favorites chip in hero stats, no heart/favorite copy in footer tip or
+  drawer subtitle, no heart button in the lookup render, no fav
+  elements in stall card or list section, membership-only
+  `applyBarnHighlights` output, no `.vb-fav`/`vb-chip-fav` in the
+  profile modal, stable `is-open`/`data-open` marker on the modal,
+  stall-card wiring still routes click and chevron to
+  `barnOpenHorseProfile`, and version bumped past v2.22.0.
+- `tests/stall-card-profile.test.js` invariants from v2.22.0 preserved.
+- `tests/heart-semantics.test.js` and `tests/lookup-barn.test.js`
+  preserved unchanged — they test pure-function ports, not the DOM.
+- Version bumped to `20260423-1200-simple-barn-cleanup-v2.22.1`
+  across `index.html` constants and `version.json`.
+
 ## v2.22.0 — Simple Barn semantics + click-to-expand profile (2026-04-23)
 
 Fixes the reported Barn bug: *"When I click on horses in the barn, it just
