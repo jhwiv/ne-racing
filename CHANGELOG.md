@@ -1,5 +1,34 @@
 # NE Racing — Changelog
 
+## v2.21.8 — Barn stable: fix version mismatch / reload loop (2026-04-23)
+
+Fix: production shipped v2.21.7 with `version.json` updated to
+`20260423-0300-barn-drawer-fix-v2.21.7`, but the baked-in app-shell
+constants in `index.html` (`NE_APP_VERSION`, `RAILBIRD_VERSION`) were
+still pinned to `v2.21.6-redesigned-barn`. The on-load version poller
+fetches `version.json` every page load and reloads via
+`neForceUpdate(remote)` when `remote !== NE_APP_VERSION`, so every
+client bounced between `_v=...v2.21.6` and `_v=...v2.21.7`, which made
+Playwright QA unable to interact with the Barn.
+
+Fix applied:
+
+- Bumped `NE_APP_VERSION` to `20260423-0400-barn-stable-v2.21.8` and
+  `RAILBIRD_VERSION` to `v2.21.8-barn-stable` in `index.html`.
+- Bumped `version.json` to the same `20260423-0400-barn-stable-v2.21.8`
+  string so the polling comparison (`remote === NE_APP_VERSION`)
+  succeeds on first load and no reload is triggered.
+- Added `tests/version-sync.test.js` to lock the invariant: the
+  `NE_APP_VERSION` literal in `index.html` must equal `version.json`'s
+  `version` field exactly, and no stale active-build constant
+  (`v2.21.6`/`v2.21.7` in `NE_APP_VERSION` or `RAILBIRD_VERSION`) may
+  remain in `index.html`.
+
+v2.21.7's Barn drawer hidden-until-opened behavior is preserved: closed
+drawer/scrim still resolve to `display:none !important`, initial render
+still emits `hidden` + `aria-hidden="true"`, and main Barn still shows
+only saved horses until *Add horse* is tapped.
+
 ## v2.21.7 — Barn drawer fully hidden until opened (2026-04-23)
 
 Fix: automated QA at 390px found that the closed lookup drawer's text
