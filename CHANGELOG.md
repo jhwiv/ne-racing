@@ -1,5 +1,83 @@
 # NE Racing — Changelog
 
+## v2.21.5 — Light Barn: softer surfaces + gentler Virtual-Barn copy (2026-04-23)
+
+User feedback addressed: **"Remove 'Find a horse to add.' Have search and
+choose for virtual barn. Lighten up colors. Blues are too strong."** The
+Barn tab was dominated by deep navy cards; headings sounded transactional
+("Find a horse to add"). v2.21.5 lightens the surface palette and warms
+the copy while preserving Railbird's navy-and-gold identity.
+
+### Wording — warmer, Virtual-Barn-native
+
+- Lookup heading `Find a horse to add` → `Search & choose for your Virtual Barn`.
+- Helper copy `Search the curated profiles and 2025 Saratoga sample — tap
+  Add to Barn or the heart to keep.` → `Search available profiles, then
+  choose the horses you want to keep tabs on.`
+- Placeholder `Search horses to add…` → `Search by horse, trainer, or owner…`
+- Loading line `Loading horses you can add…` → `Loading available profiles…`
+- Empty-state line now acknowledges trainer/owner search, e.g. `No profiles
+  match "…". Try another horse, trainer, or owner — the pool is limited
+  to curated profiles and the 2025 Saratoga sample.`
+- Lookup filter extended to match across **name + trainer + owner +
+  jockey** so the placeholder promise holds. (Previously name-only.)
+
+### Visual — Light Barn palette
+
+Barn-tab surfaces now sit on a cream/slate ground rather than deep navy.
+Identity cues (gold accent, navy hero) are preserved; the dense "all navy,
+all dark" feeling from the screenshot is gone.
+
+- **Lookup panel**: `#F7F2E6` cream surface with soft `rgba(27,46,75,0.14)`
+  border; dark-ink (`#1B2E4B`) heading + `#3A4256` sub-copy.
+- **Result rows**: standalone cream cards (`#FFFDF7`) with 10px radius,
+  1px soft border, subtle shadow — not a dense stacked list. 8px gap
+  between rows.
+- **In-Barn stall cards**: cream background with gold left-stripe preserved
+  for identity; dark-ink horse name + muted slate meta.
+- **Summary strip + section chrome**: cream (`#FFFDF7` / `#F7F2E6`) with
+  gold numeric accent tone shifted to `#7A5F1F` for contrast on cream.
+- **Connections drawer**: cream head, soft navy ink on hover lighten.
+- **Hero card**: navy preserved but lightened from `#15253F → #1B2E4B →
+  #24385A` to `#2A3B5B → #344767 → #3E5277` — still navy, less heavy.
+- **Footer tip**: softened from translucent navy panel to a pale gold pill
+  (`rgba(201,168,76,0.1)` + 1px gold-25% border) with dark-ink body.
+- **Badges**: moved from white-on-navy to muted color-coded ink-on-tint
+  (curated = green, demo = slate-blue, in-barn = gold, fav = warm gold).
+- **Add-to-Barn / Favorite buttons**: keep gold fill but with a dark-ink
+  border, dark-ink label, and subtle shadow for a refined (not muddy)
+  press target on cream.
+
+### Accessibility
+
+- Body-text tokens on cream surfaces (`#1B2E4B`, `#3A4256`, `#4A5269`)
+  clear WCAG AA at 4.5:1 against `#F7F2E6` / `#FFFDF7`.
+- No pale-gray-on-cream combinations: the old `#DCD6C2` / `#C8C2AD` meta
+  colors (unreadable on light ground) are retired in Barn scope.
+- 40×40 heart and 44×44 remove hit targets preserved; input min-height
+  48px preserved.
+
+### Layout — FAB no longer obscures Add to Barn
+
+- Added a 64px bottom-spacer after the lookup result list
+  (`.barn-lookup-results:after`) so at 390px viewport the floating `+`
+  FAB (bottom ≈ tab-bar 64px + safe-area + 24px) never sits directly on
+  top of the last row's `Add to Barn` button.
+
+### Preserved
+
+- Lookup candidate pool + add-from-lookup flow from v2.21.4.
+- Heart semantics (tap-to-add-and-favorite / tap-to-toggle / tap-to-remove-only).
+- Migration of auto-seeded demo horses via `lookupDemoHidden`.
+- Favorite highlight pills and row stripe in the main grid (unchanged).
+- All 41 existing tests.
+
+### Files
+
+- `index.html` — Barn CSS palette + lookup-panel copy + filter fields.
+- `version.json` / inline `NE_APP_VERSION` / `RAILBIRD_VERSION` → v2.21.5.
+- `CHANGELOG.md`.
+
 ## v2.21.4 — Lookup Barn: search-and-add instead of a default long list (2026-04-22)
 
 User complaint addressed: **"I still don't like the barn. You have a long
