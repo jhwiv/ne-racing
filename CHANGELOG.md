@@ -1,5 +1,25 @@
 # NE Racing — Changelog
 
+## v2.23.1 — Header cleanup + mobile heading clipping fix (2026-04-23)
+
+Surgical UI polish. No feature, data, or advice logic changed. Version-sync
+and all prior tests remain green.
+
+- Top header: removed the `SAR — Saratoga` track pill and the settings gear
+  button. Track switching still works via the track drawer logic (the pill
+  was just one entry point); Settings remains reachable from the bankroll
+  banner and the floating utility menu.
+- Landing page heading clipping on iPhone (Dynamic Island / notch): the
+  tab-switch scroll math used `--header-height` (56px) but the real sticky
+  header is `56px + env(safe-area-inset-top)`. On tall iPhones this tucked
+  the first heading (e.g. Barn's "Your Virtual Barn", Bets' "Straight
+  Bets") ~50px under the header. Switched to a measured header height
+  (`getBoundingClientRect`) plus a small buffer; also extended
+  `scroll-margin-top` on tab panels / callouts to include
+  `env(safe-area-inset-top)`.
+- Hardened `toggleTrackDrawer` and the outside-click handler to tolerate
+  the now-absent `track-pill-btn` element.
+
 ## v2.23.0 — Light Program re-skin (2026-04-23)
 
 Full visual re-skin only. No feature, data, advice, bankroll, Worker, or

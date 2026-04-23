@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260423-1400-light-program-v2.23.0';
+var NE_APP_VERSION = '20260423-1500-header-cleanup-v2.23.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.23.0-light-program';
+var RAILBIRD_VERSION = 'v2.23.1-header-cleanup';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -3833,8 +3833,8 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
   box-shadow: 0 8px 18px -12px rgba(27,46,75,0.55);
 }
 /* v2.3: top chip-nav removed — bottom nav is the sole tab switcher. Offset just the sticky header. */
-.tab-panel { scroll-margin-top: calc(var(--header-height, 56px) + 8px); }
-#best-bet-callout, .race-card-wrap, #results-summary { scroll-margin-top: calc(var(--header-height, 56px) + 8px); }
+.tab-panel { scroll-margin-top: calc(var(--header-height, 56px) + env(safe-area-inset-top, 0px) + 8px); }
+#best-bet-callout, .race-card-wrap, #results-summary { scroll-margin-top: calc(var(--header-height, 56px) + env(safe-area-inset-top, 0px) + 8px); }
 /* v2.1: prevent iOS rubber-band breaking sticky nav */
 html, body { overscroll-behavior: none; }
 .chip-nav-inner {
@@ -6676,12 +6676,6 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <div class="header-right">
       <span class="live-odds-status" id="live-odds-status" title="Live tote odds feed status">LIVE ODDS: OFF</span>
       <span class="sync-info" id="sync-time">Last synced: --:-- --</span>
-      <button class="icon-btn" id="track-pill-btn" onclick="toggleTrackDrawer()" title="Switch track" aria-label="Switch track" aria-expanded="false">
-        <span class="track-pill" id="track-pill-text">SAR — Saratoga</span>
-      </button>
-      <button class="icon-btn" onclick="openSettings()" title="Settings" aria-label="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
     </div>
   </header>
 
@@ -8517,9 +8511,13 @@ function switchTab(name) {
   var scrollTarget = (name === 'today' && el('rec-bets-card') && !el('rec-bets-card').classList.contains('hidden'))
     ? el('rec-bets-card') : panel;
   if (scrollTarget) {
-    var headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 56;
-    var tgtTop = scrollTarget.getBoundingClientRect().top + window.pageYOffset - headerH;
-    window.scrollTo(0, tgtTop);
+    // Measure the real header height (includes safe-area inset on iOS) so
+    // the landing heading isn't tucked under the Dynamic Island / notch.
+    var hdr = document.getElementById('top-header');
+    var headerH = hdr ? hdr.getBoundingClientRect().height
+                      : (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 56);
+    var tgtTop = scrollTarget.getBoundingClientRect().top + window.pageYOffset - headerH - 8;
+    window.scrollTo(0, Math.max(0, tgtTop));
   }
 }
 
@@ -8582,9 +8580,10 @@ function buildDrawerLists() {
 function toggleTrackDrawer() {
   const drawer = el('track-drawer');
   const btn = el('track-pill-btn');
+  if (!drawer) return;
   const isOpen = drawer.classList.contains('open');
   drawer.classList.toggle('open');
-  btn.setAttribute('aria-expanded', String(!isOpen));
+  if (btn) btn.setAttribute('aria-expanded', String(!isOpen));
   buildDrawerLists();
 }
 
@@ -13690,9 +13689,9 @@ document.addEventListener('click', e => {
   const drawer = el('track-drawer');
   const btn = el('track-pill-btn');
   if (drawer && drawer.classList.contains('open')) {
-    if (!drawer.contains(e.target) && !btn.contains(e.target)) {
+    if (!drawer.contains(e.target) && !(btn && btn.contains(e.target))) {
       drawer.classList.remove('open');
-      btn.setAttribute('aria-expanded', 'false');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
     }
   }
 });
@@ -13873,7 +13872,9 @@ document.addEventListener('keydown', e => {
       setTimeout(function(){
         var bb = document.getElementById('best-bet-callout');
         if (bb && !bb.classList.contains('hidden')) {
-          var headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 56;
+          var hdr = document.getElementById('top-header');
+          var headerH = hdr ? hdr.getBoundingClientRect().height
+                            : (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 56);
           var y = bb.getBoundingClientRect().top + window.pageYOffset - headerH - 50;
           window.scrollTo({ top: y, behavior: 'smooth' });
         } else if (typeof window.showToast === 'function') {
