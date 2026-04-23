@@ -1,5 +1,51 @@
 # NE Racing — Changelog
 
+## v2.22.0 — Simple Barn semantics + click-to-expand profile (2026-04-23)
+
+Fixes the reported Barn bug: *"When I click on horses in the barn, it just
+highlights them. It doesn't provide any information expansion when you press
+the button."* Root cause was not that the click wasn't wired — the card click
+already called `openHorseProfile(name)` — it was that the call was wrapped
+in a silent `try/catch` with no fallback, so any throw surfaced only as the
+CSS :hover / :focus-within highlight with no modal.
+
+Simple-barn semantics also lands here: the stall card drops the star/favorite
+button and the favorite sub-line from My Barn, leaving two unambiguous
+actions: **tap the card** (or press Enter/Space, or tap the explicit `›`
+chevron) to open the rich horse profile, and **Remove** to delete. The card
+click handler now short-circuits only on `.stall-card-remove`; everything
+else — including the chevron — falls through to the profile.
+
+Changes:
+
+- `buildMyBarnSection` no longer renders `.stall-card-fav`, `data-fav-for`,
+  or the "★ Favorite" badge. Adds `.stall-card-view` chevron button that
+  carries `data-view-for`. `is-fav` class removed from the card element.
+- New `barnOpenHorseProfile(name)` helper centralizes profile-open: it
+  dispatches to the closure-local `openHorseProfile` first, then falls back
+  to `window.openVirtualBarnProfile`. Failures are logged, not swallowed,
+  so the "highlights but never expands" silent failure cannot recur invisibly.
+- `barn_wireStallCards` rewires:
+  - Card click → `barnOpenHorseProfile(name)` (unless target is inside
+    `.stall-card-remove`).
+  - Enter/Space on the card → `barnOpenHorseProfile(name)`.
+  - `.stall-card-view` chevron → `ev.stopPropagation()` + `barnOpenHorseProfile`.
+  - `.stall-card-remove` → `barnRemoveHorse('horses', n)` only. Never opens
+    the profile.
+- Profile modal itself is unchanged: curated horses (Inspeightofcharlie
+  included) still render Overview, Pedigree, Stats, Form history, Sources,
+  and Notes/Tags. Demo horses still show the sample history, and missing
+  fields render as "not in sample".
+- `tests/stall-card-profile.test.js` — new 9-test suite locking: no fav
+  control in markup, View chevron + Remove present, card click routes to
+  `barnOpenHorseProfile`, Enter/Space opens profile, chevron stopPropagation
+  + opens profile, Remove does not open profile, `barnOpenHorseProfile`
+  helper is defined with closure + window fallback, lookup drawer does not
+  double-call the stall-card helper, Inspeightofcharlie curated record
+  carries the fields the profile modal needs.
+- Version bumped to `20260423-1049-simple-barn-v2.22.0` across
+  `index.html` constants and `version.json` (version-sync test preserved).
+
 ## v2.21.8 — Barn stable: fix version mismatch / reload loop (2026-04-23)
 
 Fix: production shipped v2.21.7 with `version.json` updated to

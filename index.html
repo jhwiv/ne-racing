@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260423-0400-barn-stable-v2.21.8';
+var NE_APP_VERSION = '20260423-1049-simple-barn-v2.22.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.21.8-barn-stable';
+var RAILBIRD_VERSION = 'v2.22.0-simple-barn';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -13285,9 +13285,9 @@ document.addEventListener('keydown', e => {
       '.stall-card-badge.badge-curated{background:rgba(125,180,140,0.22);color:#2F6E46}' +
       '.stall-card-badge.badge-today{background:rgba(47,110,70,0.16);color:#1F5436}' +
       '.stall-card-side{display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0}' +
-      '.stall-card-fav{background:#FFFDF7;border:1px solid rgba(201,168,76,0.6);color:#C9A84C;min-width:40px;min-height:40px;width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:1.2rem;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.12s,background 0.15s}' +
-      '.stall-card-fav[aria-pressed="true"]{background:rgba(240,203,106,0.35);color:#7A5F1F;box-shadow:0 0 10px rgba(240,203,106,0.4)}' +
-      '.stall-card-fav:active{transform:scale(0.9)}' +
+      '.stall-card-view{background:#FFFDF7;border:1px solid rgba(27,46,75,0.2);color:#1B2E4B;min-width:40px;min-height:40px;width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:1.35rem;line-height:1;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.12s,background 0.15s,border-color 0.15s;font-weight:700}' +
+      '.stall-card-view:hover{background:#FBF4DE;border-color:rgba(201,168,76,0.6);color:#7A5F1F}' +
+      '.stall-card-view:active{transform:scale(0.92)}' +
       '.stall-card-remove{background:transparent;border:1px solid rgba(183,85,75,0.45);color:#A84A3F;border-radius:8px;padding:6px 10px;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;cursor:pointer;min-height:32px}' +
       '.stall-card-remove:hover{background:rgba(217,134,122,0.14)}' +
       /* Empty state — stable illustration */
@@ -13542,15 +13542,13 @@ document.addEventListener('keydown', e => {
         ? '<div class="stall-card-reason">\u201C' + esc(h.watchReason) + '\u201D</div>' : '';
 
       var badges = '<span class="stall-card-badge badge-in-barn">In Barn</span>';
-      if (favOn) badges += '<span class="stall-card-badge badge-fav">\u2605 Favorite</span>';
       if (isCurated) badges += '<span class="stall-card-badge badge-curated">Curated</span>';
       else if (isDemo) badges += '<span class="stall-card-badge">Sample</span>';
       if (todayHit.length) badges += '<span class="stall-card-badge badge-today">R' + todayHit[0].race.num + ' today</span>';
 
-      var favLabel = favOn ? 'Unfavorite ' + safeName : 'Mark ' + safeName + ' as favorite';
-      var favGlyph = favOn ? '\u2605' : '\u2606';
-
-      return '<div class="stall-card' + (favOn ? ' is-fav' : '') + '" data-horse-name="' + safeName + '" role="button" tabindex="0" aria-label="Open profile for ' + safeName + '">' +
+      // v2.22.0 — simple-barn semantics: no star/favorite on the stall card.
+      // Card click opens profile; explicit chevron opens profile; Remove only removes.
+      return '<div class="stall-card" data-horse-name="' + safeName + '" role="button" tabindex="0" aria-label="Open profile for ' + safeName + '">' +
         '<div class="stall-card-main">' +
           '<div class="stall-card-name">' + safeName + '</div>' +
           metaLine +
@@ -13558,15 +13556,15 @@ document.addEventListener('keydown', e => {
           '<div class="stall-card-badges">' + badges + '</div>' +
         '</div>' +
         '<div class="stall-card-side">' +
-          '<button type="button" class="stall-card-fav" aria-pressed="' + (favOn?'true':'false') + '" aria-label="' + favLabel + '" title="' + favLabel + '" data-fav-for="' + onclickName + '">' + favGlyph + '</button>' +
+          '<button type="button" class="stall-card-view" aria-label="View profile for ' + safeName + '" title="View profile" data-view-for="' + onclickName + '">' +
+            '<span aria-hidden="true">\u203A</span>' +
+          '</button>' +
           '<button type="button" class="stall-card-remove" aria-label="Remove ' + safeName + '" data-remove-for="' + onclickName + '">Remove</button>' +
         '</div>' +
       '</div>';
     }).join('');
 
-    var favN = horses.filter(function(x){return !!x.favorite;}).length;
-    var subLine = horses.length + ' ' + (horses.length === 1 ? 'horse' : 'horses') +
-      (favN ? ' \u00B7 \u2605 ' + favN + ' favorite' + (favN === 1 ? '' : 's') : '');
+    var subLine = horses.length + ' ' + (horses.length === 1 ? 'horse' : 'horses');
 
     return '<section class="my-barn-section" aria-labelledby="my-barn-head">' +
       '<div class="my-barn-head">' +
@@ -13577,34 +13575,52 @@ document.addEventListener('keydown', e => {
     '</section>';
   }
 
-  // Wire clicks on stall cards: card → open profile; star → favorite; remove → delete.
+  // Wire clicks on stall cards: card → open profile; chevron → open profile; remove → delete.
+  // v2.22.0: star/favorite removed; click-anywhere-but-Remove opens the rich profile.
+  function barnOpenHorseProfile(name){
+    // Centralized helper so any stall-card handler opens the profile the same
+    // way. Uses the closure-local openHorseProfile if available, else the
+    // window bridge (`openVirtualBarnProfile`). No silent swallow: we log on
+    // failure so the "highlights but does not open" bug cannot recur invisibly.
+    try {
+      if (typeof openHorseProfile === 'function') { openHorseProfile(name); return true; }
+    } catch(e) { try { console.warn('[barn] openHorseProfile threw', e); } catch(_){} }
+    try {
+      if (typeof window.openVirtualBarnProfile === 'function') { window.openVirtualBarnProfile(name); return true; }
+    } catch(e) { try { console.warn('[barn] openVirtualBarnProfile threw', e); } catch(_){} }
+    return false;
+  }
+  window.barnOpenHorseProfile = barnOpenHorseProfile;
+
   function barn_wireStallCards(container) {
     var cards = container.querySelectorAll('.stall-card');
     Array.prototype.forEach.call(cards, function(card){
       var nameAttr = card.getAttribute('data-horse-name') || '';
-      // Decode HTML entities in aria-label-style attr back to a plain name by
-      // asking the barn store for the nearest match.
+      // Decode HTML entities from the attribute so the name matches the
+      // persisted barn entry for findHorseIdx.
       var name = nameAttr
         .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
         .replace(/&quot;/g,'"').replace(/&#39;/g,"'");
       card.addEventListener('click', function(ev){
-        if (ev.target && ev.target.closest && (ev.target.closest('.stall-card-fav') || ev.target.closest('.stall-card-remove'))) return;
-        try { openHorseProfile(name); } catch(e){}
+        // Only Remove short-circuits the card click. The View chevron falls
+        // through (it opens the profile too).
+        if (ev.target && ev.target.closest && ev.target.closest('.stall-card-remove')) return;
+        barnOpenHorseProfile(name);
       });
       card.addEventListener('keydown', function(ev){
         if (ev.key === 'Enter' || ev.key === ' ') {
           ev.preventDefault();
-          try { openHorseProfile(name); } catch(e){}
+          barnOpenHorseProfile(name);
         }
       });
     });
-    var favBtns = container.querySelectorAll('.stall-card-fav');
-    Array.prototype.forEach.call(favBtns, function(btn){
+    var viewBtns = container.querySelectorAll('.stall-card-view');
+    Array.prototype.forEach.call(viewBtns, function(btn){
       btn.addEventListener('click', function(ev){
         ev.stopPropagation();
-        var n = btn.getAttribute('data-fav-for') || '';
+        var n = btn.getAttribute('data-view-for') || '';
         n = n.replace(/\\'/g,"'").replace(/\\\\/g,'\\');
-        try { window.barnToggle('horses', n); } catch(e){}
+        barnOpenHorseProfile(n);
       });
     });
     var rmBtns = container.querySelectorAll('.stall-card-remove');

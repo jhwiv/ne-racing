@@ -110,9 +110,10 @@ test('redesign: no "Suggested horses" label is emitted into the main render', ()
     'Suggested horses must not appear in main Barn render');
 });
 
-test('redesign: version bumped to v2.21.8 (barn stable)', () => {
+test('redesign: version bumped to at least v2.22.0 (simple barn)', () => {
   const versionJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'));
-  assert.match(versionJson.version, /v2\.21\.8|2\.21\.8/);
+  assert.match(versionJson.version, /v2\.2[2-9]\.\d+|v2\.[3-9]\d*\.\d+|v[3-9]\./,
+    'version.json must track v2.22.0 or later');
 });
 
 // v2.21.7 — closed drawer must be fully hidden (no visible text, no interactable input)
