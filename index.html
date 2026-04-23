@@ -18,9 +18,9 @@ html,body{background:#0a1628;margin:0;color:#EDE8DC}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260423-0100-light-barn-v2.21.5';
+var NE_APP_VERSION = '20260423-0200-redesigned-barn-v2.21.6';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.21.5-light-barn';
+var RAILBIRD_VERSION = 'v2.21.6-redesigned-barn';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -13136,7 +13136,11 @@ document.addEventListener('keydown', e => {
     });
   }
 
-  // --- Barn tab rendering
+  // --- Barn tab rendering — v2.21.6 redesigned barn
+  //
+  // Primary page shows ONLY saved horses. Lookup/search lives in a drawer
+  // opened by an explicit "Add horse" CTA in the hero action row. No
+  // suggested horses are ever rendered on the main Barn surface.
   function barn_renderBarnTab() {
     var container = document.getElementById('barn-container');
     if (!container) return;
@@ -13145,8 +13149,8 @@ document.addEventListener('keydown', e => {
 
     var styleBlock =
       '<style>' +
-      /* v2.21.5: Light-Barn — softer slate surfaces, cream cards, lower-contrast dividers.
-         All body text remains >= 4.5:1 against its background. */
+      /* v2.21.6: Redesigned barn — cream surfaces, restrained navy, focused on
+         saved horses. My Barn is primary; lookup is a drawer. */
       '.barn-section{background:#F7F2E6;border:1px solid rgba(27,46,75,0.12);border-radius:12px;padding:14px 16px;margin-bottom:12px;color:#1B2E4B;box-shadow:0 1px 4px rgba(27,46,75,0.06)}' +
       '.barn-section h3{font-family:\'Cormorant Garamond\',serif;font-size:1.2rem;letter-spacing:0.04em;margin:0 0 10px;color:#1B2E4B;display:flex;align-items:center;gap:8px}' +
       '.barn-section h3 .barn-count{font-size:0.78rem;color:#7A5F1F;font-weight:700;letter-spacing:0.06em;background:rgba(201,168,76,0.22);padding:2px 8px;border-radius:999px}' +
@@ -13236,75 +13240,125 @@ document.addEventListener('keydown', e => {
       '.barn-lookup-heart[aria-pressed="true"]{background:rgba(201,168,76,0.25);color:#7A5F1F;box-shadow:0 0 8px rgba(201,168,76,0.3)}' +
       '.barn-lookup-empty{color:#4A5269;font-style:italic;font-size:0.88rem;padding:10px 6px;line-height:1.55}' +
       '.barn-lookup-suggested-label{font-size:0.72rem;color:#4A5269;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;margin:6px 4px 4px}' +
-      /* v2.21.5: leave room below the last result so the FAB never sits atop "Add to Barn" */
-      '.barn-lookup-results:after{content:"";display:block;height:64px}' +
-      /* Sample horses drawer — cream surface */
-      '.barn-sample-drawer{margin-top:10px;background:#FBF7EB;border:1px solid rgba(27,46,75,0.12);border-radius:10px;overflow:hidden}' +
-      '.barn-sample-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;min-height:48px;color:#1B2E4B;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;font-size:0.8rem}' +
-      '.barn-sample-drawer-head:hover{background:#F1EADB}' +
-      '.barn-sample-drawer-caret{color:#C9A84C;font-size:1.2rem;transition:transform 0.2s}' +
-      '.barn-sample-drawer.open .barn-sample-drawer-caret{transform:rotate(90deg)}' +
-      '.barn-sample-drawer-body{display:none;padding:10px 14px 14px;border-top:1px solid rgba(27,46,75,0.1)}' +
-      '.barn-sample-drawer.open .barn-sample-drawer-body{display:block}' +
+      /* v2.21.6: leave room below the last result so the tab bar/FAB never sits atop "Add to Barn" */
+      '.barn-lookup-results:after{content:"";display:block;height:96px}' +
+      /* v2.21.6 — Redesigned hero with integrated CTA row */
+      '.barn-hero-redesign{background:linear-gradient(135deg,#FBF7EB 0%,#F7F0DC 60%,#F4EBCF 100%);border:1px solid rgba(201,168,76,0.45);border-radius:16px;padding:18px 18px 16px;margin-bottom:14px;color:#1B2E4B;box-shadow:0 2px 10px rgba(27,46,75,0.08),inset 0 1px 0 rgba(255,255,255,0.4)}' +
+      '.barn-hero-redesign .barn-hero-kicker{font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;color:#7A5F1F;font-weight:700;margin-bottom:4px}' +
+      '.barn-hero-redesign .barn-hero-title{font-family:\'Cormorant Garamond\',serif;font-size:1.75rem;line-height:1.12;color:#1B2E4B;letter-spacing:0.01em;margin:0}' +
+      '.barn-hero-redesign .barn-hero-sub{font-family:\'Crimson Pro\',serif;color:#3A4256;font-size:0.98rem;line-height:1.5;margin:6px 0 0;font-style:italic}' +
+      /* Stat chips row */
+      '.barn-stat-chips{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}' +
+      '.barn-stat-chip{flex:1 1 0;min-width:92px;background:#FFFDF7;border:1px solid rgba(27,46,75,0.14);border-radius:12px;padding:10px 10px;display:flex;flex-direction:column;gap:2px;box-shadow:0 1px 2px rgba(27,46,75,0.05)}' +
+      '.barn-stat-chip-num{font-family:\'Cormorant Garamond\',serif;font-size:1.55rem;color:#1B2E4B;line-height:1;font-weight:700}' +
+      '.barn-stat-chip-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:#4A5269;font-weight:700}' +
+      '.barn-stat-chip.barn-stat-fav .barn-stat-chip-num{color:#7A5F1F}' +
+      '.barn-stat-chip.barn-stat-today .barn-stat-chip-num{color:#2F6E46}' +
+      '.barn-stat-chip.barn-stat-today.is-zero .barn-stat-chip-num{color:rgba(27,46,75,0.35)}' +
+      '.barn-stat-chip.barn-stat-fav.is-zero .barn-stat-chip-num{color:rgba(122,95,31,0.35)}' +
+      /* Primary CTA row (hero) */
+      '.barn-cta-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}' +
+      '.barn-cta-primary{flex:1 1 60%;background:#1B2E4B;color:#F7F2E6;border:1px solid rgba(27,46,75,0.8);border-radius:12px;padding:14px 16px;font-size:0.92rem;font-weight:700;letter-spacing:0.04em;cursor:pointer;min-height:52px;display:inline-flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 8px rgba(27,46,75,0.2);transition:background 0.15s,transform 0.1s}' +
+      '.barn-cta-primary:hover{background:#26406B}' +
+      '.barn-cta-primary:active{transform:translateY(1px)}' +
+      '.barn-cta-primary .barn-cta-icon{font-size:1.1rem;line-height:1;color:#C9A84C;font-weight:900}' +
+      '.barn-cta-secondary{flex:0 0 auto;background:#FFFDF7;color:#1B2E4B;border:1px solid rgba(27,46,75,0.22);border-radius:12px;padding:14px 14px;font-size:0.88rem;font-weight:600;cursor:pointer;min-height:52px;display:inline-flex;align-items:center;justify-content:center}' +
+      '.barn-cta-secondary:hover{background:#F7F2E6}' +
+      /* My Barn grid — stall cards */
+      '.my-barn-section{background:#FBF7EB;border:1px solid rgba(201,168,76,0.45);border-radius:14px;padding:14px 14px 14px;margin-bottom:12px;box-shadow:0 2px 10px rgba(27,46,75,0.08)}' +
+      '.my-barn-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}' +
+      '.my-barn-head h3{font-family:\'Cormorant Garamond\',serif;font-size:1.35rem;color:#1B2E4B;margin:0;letter-spacing:0.02em}' +
+      '.my-barn-head .my-barn-sub{font-size:0.78rem;color:#4A5269;font-style:italic}' +
+      '.my-barn-grid{display:flex;flex-direction:column;gap:10px}' +
+      /* Stall cards — each horse a stable door */
+      '.stall-card{background:#FFFDF7;border:1px solid rgba(27,46,75,0.12);border-radius:12px;padding:14px 14px 12px;display:flex;gap:12px;align-items:flex-start;box-shadow:inset 4px 0 0 #C9A84C,0 1px 3px rgba(27,46,75,0.06);transition:background 0.15s,border-color 0.15s,transform 0.1s;cursor:pointer}' +
+      '.stall-card:hover,.stall-card:focus-within{background:#FBF4DE;border-color:rgba(201,168,76,0.6)}' +
+      '.stall-card.is-fav{box-shadow:inset 4px 0 0 #F0CB6A,0 2px 10px rgba(240,203,106,0.16)}' +
+      '.stall-card-main{flex:1;min-width:0}' +
+      '.stall-card-name{font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;color:#1B2E4B;font-weight:700;letter-spacing:0.01em;line-height:1.15}' +
+      '.stall-card-meta{font-size:0.82rem;color:#4A5269;margin-top:4px;line-height:1.45}' +
+      '.stall-card-reason{font-family:\'Crimson Pro\',serif;font-style:italic;color:#3A4256;font-size:0.86rem;margin-top:6px;line-height:1.5;padding-left:8px;border-left:2px solid rgba(201,168,76,0.4)}' +
+      '.stall-card-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}' +
+      '.stall-card-badge{display:inline-block;font-size:0.65rem;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(27,46,75,0.08);color:#3A4256}' +
+      '.stall-card-badge.badge-in-barn{background:rgba(201,168,76,0.22);color:#7A5F1F}' +
+      '.stall-card-badge.badge-fav{background:rgba(240,203,106,0.35);color:#5C4616}' +
+      '.stall-card-badge.badge-curated{background:rgba(125,180,140,0.22);color:#2F6E46}' +
+      '.stall-card-badge.badge-today{background:rgba(47,110,70,0.16);color:#1F5436}' +
+      '.stall-card-side{display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0}' +
+      '.stall-card-fav{background:#FFFDF7;border:1px solid rgba(201,168,76,0.6);color:#C9A84C;min-width:40px;min-height:40px;width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:1.2rem;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.12s,background 0.15s}' +
+      '.stall-card-fav[aria-pressed="true"]{background:rgba(240,203,106,0.35);color:#7A5F1F;box-shadow:0 0 10px rgba(240,203,106,0.4)}' +
+      '.stall-card-fav:active{transform:scale(0.9)}' +
+      '.stall-card-remove{background:transparent;border:1px solid rgba(183,85,75,0.45);color:#A84A3F;border-radius:8px;padding:6px 10px;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;cursor:pointer;min-height:32px}' +
+      '.stall-card-remove:hover{background:rgba(217,134,122,0.14)}' +
+      /* Empty state — stable illustration */
+      '.my-barn-empty{text-align:center;padding:28px 16px 22px;color:#4A5269}' +
+      '.my-barn-empty-illo{width:140px;height:96px;margin:0 auto 12px;display:block;opacity:0.85}' +
+      '.my-barn-empty-head{font-family:\'Cormorant Garamond\',serif;font-size:1.35rem;color:#1B2E4B;margin:0 0 6px;letter-spacing:0.01em}' +
+      '.my-barn-empty-sub{font-family:\'Crimson Pro\',serif;color:#4A5269;font-size:0.96rem;line-height:1.55;margin:0 0 14px;font-style:italic}' +
+      '.my-barn-empty-cta{background:#1B2E4B;color:#F7F2E6;border:1px solid rgba(27,46,75,0.8);border-radius:12px;padding:12px 22px;font-size:0.9rem;font-weight:700;letter-spacing:0.04em;cursor:pointer;min-height:48px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(27,46,75,0.2)}' +
+      '.my-barn-empty-cta:hover{background:#26406B}' +
+      '.my-barn-empty-cta .barn-cta-icon{color:#C9A84C;font-weight:900}' +
+      /* Add-horse drawer (sheet) */
+      '.barn-drawer-scrim{position:fixed;inset:0;background:rgba(10,22,40,0.55);z-index:299;opacity:0;pointer-events:none;transition:opacity 0.2s ease}' +
+      '.barn-drawer-scrim.open{opacity:1;pointer-events:auto}' +
+      '.barn-drawer{position:fixed;left:0;right:0;bottom:0;z-index:300;background:#FBF7EB;border-top-left-radius:18px;border-top-right-radius:18px;box-shadow:0 -10px 30px rgba(10,22,40,0.4);transform:translateY(100%);transition:transform 0.25s ease;max-height:92vh;display:flex;flex-direction:column;color:#1B2E4B}' +
+      '.barn-drawer.open{transform:translateY(0)}' +
+      '.barn-drawer-handle{width:42px;height:4px;border-radius:999px;background:rgba(27,46,75,0.22);margin:10px auto 4px;flex-shrink:0}' +
+      '.barn-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 12px;border-bottom:1px solid rgba(27,46,75,0.08);flex-shrink:0}' +
+      '.barn-drawer-title{font-family:\'Cormorant Garamond\',serif;font-size:1.25rem;color:#1B2E4B;margin:0;letter-spacing:0.02em;font-weight:700}' +
+      '.barn-drawer-close{background:transparent;border:1px solid rgba(27,46,75,0.18);color:#1B2E4B;border-radius:999px;min-width:40px;min-height:40px;font-size:1.1rem;cursor:pointer;padding:0 12px;font-weight:700}' +
+      '.barn-drawer-close:hover{background:rgba(27,46,75,0.06)}' +
+      '.barn-drawer-body{flex:1;overflow-y:auto;padding:14px 16px;padding-bottom:calc(var(--tab-bar-height,64px) + env(safe-area-inset-bottom,0px) + 32px)}' +
+      '.barn-drawer-sub{font-size:0.88rem;color:#3A4256;margin:0 0 10px;line-height:1.5}' +
       '</style>';
 
-    // v2.21.3: warm "Your Virtual Barn" hero summary — emotional ownership card.
+    // v2.21.6 — Redesigned Barn: My Barn is the sole primary content.
+    // Lookup moves to an on-demand drawer opened by the "Add horse" CTA.
     var totalToday = matches.horses.length + matches.jockeys.length + matches.trainers.length;
+    var horsesToday = matches.horses.length;
     var favCount = (barn.horses || []).filter(function(h){ return !!h.favorite; }).length;
     var horseCount = barn.horses.length;
-    var heroHeadline;
-    if (horseCount === 0) {
-      heroHeadline = 'Your Virtual Barn is empty';
-    } else if (horseCount === 1) {
-      heroHeadline = 'Your Virtual Barn \u2014 1 horse under your eye';
-    } else {
-      heroHeadline = 'Your Virtual Barn \u2014 ' + horseCount + ' horses under your eye';
-    }
-    var heroSub;
-    if (horseCount === 0) {
-      heroSub = 'Tap the heart on any horse to start building your stable.';
-    } else if (totalToday > 0) {
-      heroSub = 'Watching for the next start \u2014 ' + totalToday + ' of your follows run today.';
-    } else {
-      heroSub = 'Watching for the next start. We\u2019ll flag any of your horses the moment they\u2019re entered.';
-    }
-    var heroHtml =
-      '<div class="barn-hero">' +
-        '<div class="barn-hero-mark" aria-hidden="true">' +
-          '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="#F0CB6A" d="M12 21s-7-4.35-9.5-8.5C.86 9.57 2.7 6 6 6c2 0 3.5 1.2 4 2.5C10.5 7.2 12 6 14 6c3.3 0 5.14 3.57 3.5 6.5C19 16.65 12 21 12 21z"/></svg>' +
-        '</div>' +
-        '<div class="barn-hero-text">' +
-          '<div class="barn-hero-title">' + heroHeadline + '</div>' +
-          '<div class="barn-hero-sub">' + heroSub + '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="barn-summary">' +
-        '<div class="barn-summary-stat"><span class="barn-summary-num">' + horseCount + '</span><span class="barn-summary-lbl">In Barn</span></div>' +
-        '<div class="barn-summary-stat"><span class="barn-summary-num" style="color:' + (favCount ? '#F0CB6A' : 'rgba(237,232,220,0.5)') + '">' + favCount + '</span><span class="barn-summary-lbl">Favorites</span></div>' +
-        '<div class="barn-summary-stat"><span class="barn-summary-num">' + barn.jockeys.length + '</span><span class="barn-summary-lbl">Jockeys</span></div>' +
-        '<div class="barn-summary-stat"><span class="barn-summary-num">' + barn.trainers.length + '</span><span class="barn-summary-lbl">Trainers</span></div>' +
-        '<div class="barn-summary-stat" style="margin-left:auto;text-align:right"><span class="barn-summary-num" style="color:' + (totalToday ? C.gold : 'rgba(237,232,220,0.5)') + '">' + totalToday + '</span><span class="barn-summary-lbl">Running today</span></div>' +
-      '</div>';
 
-    // Horses section — primary, always first. v2.21.3: re-labeled "In My Barn".
-    var horsesSection = buildListSection(
-      'horses', 'In My Barn', barn.horses, matches.horses,
-      'horse name (e.g. Thunder Creek)',
-      function(item) {
-        var m = matches.horses.filter(function(x){ return barnNormalize(x.horse.name) === barnNormalize(item.name); });
-        return m.length ? '<span class="barn-runs-today">R' + m[0].race.num + ' today</span>' : '';
+    var heroHeadline, heroSub;
+    if (horseCount === 0) {
+      heroHeadline = 'Your Virtual Barn';
+      heroSub = 'The horses you\u2019re keeping close. Start by choosing your first.';
+    } else {
+      heroHeadline = 'Your Virtual Barn';
+      heroSub = horseCount === 1
+        ? 'The one horse you\u2019re keeping close.'
+        : 'The ' + horseCount + ' horses you\u2019re keeping close.';
+      if (horsesToday > 0) {
+        heroSub += ' ' + horsesToday + ' running today.';
       }
-    );
+    }
 
-    // v2.21.5: Lookup panel HTML shell — softer Virtual Barn copy, lighter surface.
-    var lookupHtml =
-      '<div class="barn-lookup" id="barn-lookup-panel">' +
-        '<h3>\u2315 Search &amp; choose for your Virtual Barn</h3>' +
-        '<div class="barn-lookup-sub">Search available profiles, then choose the horses you want to keep tabs on.</div>' +
-        '<input type="search" class="barn-lookup-input" id="barn-lookup-input" placeholder="Search by horse, trainer, or owner\u2026" autocomplete="off" spellcheck="false" />' +
-        '<div class="barn-lookup-results" id="barn-lookup-results"><div class="barn-lookup-empty">Loading available profiles\u2026</div></div>' +
+    var statsHtml =
+      '<div class="barn-stat-chips" role="group" aria-label="Barn summary">' +
+        '<div class="barn-stat-chip"><span class="barn-stat-chip-num">' + horseCount + '</span><span class="barn-stat-chip-lbl">In barn</span></div>' +
+        '<div class="barn-stat-chip barn-stat-fav' + (favCount ? '' : ' is-zero') + '"><span class="barn-stat-chip-num">\u2605 ' + favCount + '</span><span class="barn-stat-chip-lbl">Favorites</span></div>' +
+        '<div class="barn-stat-chip barn-stat-today' + (horsesToday ? '' : ' is-zero') + '"><span class="barn-stat-chip-num">' + horsesToday + '</span><span class="barn-stat-chip-lbl">Running today</span></div>' +
       '</div>';
 
+    var ctaLabel = horseCount === 0 ? 'Choose a horse' : 'Add horse';
+    var heroHtml =
+      '<div class="barn-hero-redesign" role="region" aria-labelledby="barn-hero-title">' +
+        '<div class="barn-hero-kicker">The Stable</div>' +
+        '<h3 class="barn-hero-title" id="barn-hero-title">' + heroHeadline + '</h3>' +
+        '<p class="barn-hero-sub">' + heroSub + '</p>' +
+        statsHtml +
+        '<div class="barn-cta-row">' +
+          '<button class="barn-cta-primary" id="barn-open-add" type="button">' +
+            '<span class="barn-cta-icon" aria-hidden="true">+</span>' +
+            '<span>' + ctaLabel + '</span>' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+
+    // Primary: My Barn — ONLY saved horses. Never shows lookup candidates.
+    var myBarnHtml = buildMyBarnSection(barn.horses, matches.horses);
+
+    // Secondary: Connections (jockeys + trainers, collapsed).
     var jockeysSection = buildListSection(
       'jockeys', 'Jockeys', barn.jockeys, matches.jockeys,
       'jockey name',
@@ -13321,10 +13375,6 @@ document.addEventListener('keydown', e => {
         return cnt ? '<span class="barn-runs-today">' + cnt + ' starter' + (cnt === 1 ? '' : 's') + ' today</span>' : '';
       }
     );
-
-    // Connections (jockeys + trainers) are now collapsed under a secondary
-    // "Connections" header, de-emphasizing them relative to horses. Stables
-    // card is injected by augmentBarn() after this render.
     var connectionsCount = barn.jockeys.length + barn.trainers.length;
     var connectionsOpen = window.__barnConnectionsOpen ? ' open' : '';
     var connectionsSection =
@@ -13338,18 +13388,44 @@ document.addEventListener('keydown', e => {
         '</div>' +
       '</div>';
 
-    // Footer tip — now on cream-compatible dark ink for contrast.
+    // Add-horse drawer (hidden until CTA pressed). The ONLY place lookup/search
+    // results ever render.
+    var drawerOpen = window.__barnDrawerOpen ? ' open' : '';
+    var drawerHtml =
+      '<div class="barn-drawer-scrim' + drawerOpen + '" id="barn-drawer-scrim" aria-hidden="true"></div>' +
+      '<div class="barn-drawer' + drawerOpen + '" id="barn-drawer" role="dialog" aria-modal="true" aria-labelledby="barn-drawer-title" ' + (drawerOpen ? '' : 'aria-hidden="true"') + '>' +
+        '<div class="barn-drawer-handle" aria-hidden="true"></div>' +
+        '<div class="barn-drawer-head">' +
+          '<h3 class="barn-drawer-title" id="barn-drawer-title">Choose a horse</h3>' +
+          '<button type="button" class="barn-drawer-close" id="barn-drawer-close" aria-label="Close">Done</button>' +
+        '</div>' +
+        '<div class="barn-drawer-body">' +
+          '<p class="barn-drawer-sub">Search curated profiles and the 2025 Saratoga sample. Tap <em>Add to Barn</em> to put a horse in your stable, or the heart to add as a favorite.</p>' +
+          '<input type="search" class="barn-lookup-input" id="barn-lookup-input" placeholder="Search by horse, trainer, owner, or jockey\u2026" autocomplete="off" spellcheck="false" />' +
+          '<div class="barn-lookup-results" id="barn-lookup-results"><div class="barn-lookup-empty">Start typing to search, or pick from the suggestions below.</div></div>' +
+        '</div>' +
+      '</div>';
+
     var hint =
       '<p class="barn-footer-tip">' +
       '<strong>Tip:</strong> Tap a horse name to open its full profile. ' +
       'Tap the heart on Today to give a horse a stall in your barn \u2014 tap it again to mark a favorite. ' +
       'Removing a horse is a separate action.' +
       '</p>';
-    // v2.21.4: lookup panel renders FIRST — primary call-to-action is "find
-    // a horse to add", not a long auto-seeded list.
-    container.innerHTML = styleBlock + heroHtml + lookupHtml + horsesSection + connectionsSection + hint;
 
-    // Wire lookup panel
+    container.innerHTML = styleBlock + heroHtml + myBarnHtml + connectionsSection + hint + drawerHtml;
+
+    // Wire drawer open/close + CTA.
+    var openBtns = container.querySelectorAll('#barn-open-add, .my-barn-empty-cta');
+    Array.prototype.forEach.call(openBtns, function(btn){
+      btn.addEventListener('click', function(){ barn_openDrawer(); });
+    });
+    var closeBtn = document.getElementById('barn-drawer-close');
+    if (closeBtn) closeBtn.addEventListener('click', barn_closeDrawer);
+    var scrim = document.getElementById('barn-drawer-scrim');
+    if (scrim) scrim.addEventListener('click', barn_closeDrawer);
+
+    // Wire lookup input (only renders INSIDE the drawer).
     var lookupInput = document.getElementById('barn-lookup-input');
     if (lookupInput) {
       if (window.__barnLookupQuery) lookupInput.value = window.__barnLookupQuery;
@@ -13359,7 +13435,7 @@ document.addEventListener('keydown', e => {
         barn_renderLookupResults(q);
       };
       lookupInput.addEventListener('input', renderLookup);
-      renderLookup();
+      if (window.__barnDrawerOpen) renderLookup();
     }
 
     // Wire connections toggle
@@ -13376,6 +13452,164 @@ document.addEventListener('keydown', e => {
         if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle.click(); }
       });
     }
+
+    // Wire stall-card interactions
+    barn_wireStallCards(container);
+
+    // Esc closes the drawer
+    if (!window.__barnEscBound) {
+      window.__barnEscBound = true;
+      document.addEventListener('keydown', function(ev){
+        if (ev.key === 'Escape' && window.__barnDrawerOpen) {
+          barn_closeDrawer();
+        }
+      });
+    }
+  }
+
+  function barn_openDrawer() {
+    window.__barnDrawerOpen = true;
+    var scrim = document.getElementById('barn-drawer-scrim');
+    var drawer = document.getElementById('barn-drawer');
+    if (scrim) scrim.classList.add('open');
+    if (drawer) { drawer.classList.add('open'); drawer.removeAttribute('aria-hidden'); }
+    // First render of results (suggestions) happens here on demand.
+    var input = document.getElementById('barn-lookup-input');
+    if (input) {
+      var q = String(input.value || '').trim().toLowerCase();
+      window.__barnLookupQuery = q;
+      try { barn_renderLookupResults(q); } catch(e){}
+      setTimeout(function(){ try { input.focus({ preventScroll: true }); } catch(_) { try { input.focus(); } catch(e){} } }, 220);
+    }
+  }
+  window.__barnOpenDrawer = barn_openDrawer;
+
+  function barn_closeDrawer() {
+    window.__barnDrawerOpen = false;
+    var scrim = document.getElementById('barn-drawer-scrim');
+    var drawer = document.getElementById('barn-drawer');
+    if (scrim) scrim.classList.remove('open');
+    if (drawer) { drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); }
+  }
+  window.__barnCloseDrawer = barn_closeDrawer;
+
+  // Build the primary "In My Barn" section — stall cards or empty state.
+  function buildMyBarnSection(horses, todayMatches) {
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+    function attr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+    if (!horses || !horses.length) {
+      return '<section class="my-barn-section" aria-labelledby="my-barn-head">' +
+        '<div class="my-barn-head"><h3 id="my-barn-head">In My Barn</h3><span class="my-barn-sub">No horses yet</span></div>' +
+        '<div class="my-barn-empty">' +
+          '<svg class="my-barn-empty-illo" viewBox="0 0 140 96" aria-hidden="true">' +
+            '<defs><linearGradient id="mbg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#FBF7EB"/><stop offset="1" stop-color="#EDE2C4"/></linearGradient></defs>' +
+            '<rect x="8" y="24" width="124" height="60" fill="url(#mbg)" stroke="#C9A84C" stroke-width="1.5" rx="3"/>' +
+            '<polygon points="4,28 70,2 136,28" fill="#C9A84C" opacity="0.92"/>' +
+            '<polygon points="12,28 70,6 128,28" fill="#7A5F1F" opacity="0.55"/>' +
+            '<rect x="32" y="46" width="24" height="38" fill="#1B2E4B" opacity="0.85" rx="2"/>' +
+            '<rect x="84" y="46" width="24" height="38" fill="#1B2E4B" opacity="0.85" rx="2"/>' +
+            '<rect x="36" y="50" width="16" height="16" fill="#F7F2E6" opacity="0.45"/>' +
+            '<rect x="88" y="50" width="16" height="16" fill="#F7F2E6" opacity="0.45"/>' +
+            '<line x1="8" y1="84" x2="132" y2="84" stroke="#7A5F1F" stroke-width="1.2"/>' +
+          '</svg>' +
+          '<h4 class="my-barn-empty-head">Your barn is quiet.</h4>' +
+          '<p class="my-barn-empty-sub">Add the first horse you want to follow \u2014 curated profiles and the Saratoga sample are a tap away.</p>' +
+          '<button type="button" class="my-barn-empty-cta"><span class="barn-cta-icon" aria-hidden="true">+</span><span>Choose a horse</span></button>' +
+        '</div>' +
+      '</section>';
+    }
+
+    var cards = horses.map(function(h){
+      var safeName = esc(h.name);
+      var onclickName = attr(h.name);
+      var favOn = !!h.favorite;
+      var isCurated = h.source === 'curated-public-profile' || !!(h.sources && h.sources.length);
+      var isDemo = h.source === 'demo-saratoga-2025';
+      var todayHit = todayMatches.filter(function(x){ return barnNormalize(x.horse.name) === barnNormalize(h.name); });
+      var metaBits = [];
+      if (h.trainer) metaBits.push('T: ' + esc(h.trainer));
+      if (h.jockey) metaBits.push('J: ' + esc(h.jockey));
+      if (h.owner) metaBits.push('O: ' + esc(h.owner));
+      var metaLine = metaBits.length ? '<div class="stall-card-meta">' + metaBits.join(' \u00B7 ') + '</div>' : '';
+      var reason = (h.watchReason && String(h.watchReason).trim())
+        ? '<div class="stall-card-reason">\u201C' + esc(h.watchReason) + '\u201D</div>' : '';
+
+      var badges = '<span class="stall-card-badge badge-in-barn">In Barn</span>';
+      if (favOn) badges += '<span class="stall-card-badge badge-fav">\u2605 Favorite</span>';
+      if (isCurated) badges += '<span class="stall-card-badge badge-curated">Curated</span>';
+      else if (isDemo) badges += '<span class="stall-card-badge">Sample</span>';
+      if (todayHit.length) badges += '<span class="stall-card-badge badge-today">R' + todayHit[0].race.num + ' today</span>';
+
+      var favLabel = favOn ? 'Unfavorite ' + safeName : 'Mark ' + safeName + ' as favorite';
+      var favGlyph = favOn ? '\u2605' : '\u2606';
+
+      return '<div class="stall-card' + (favOn ? ' is-fav' : '') + '" data-horse-name="' + safeName + '" role="button" tabindex="0" aria-label="Open profile for ' + safeName + '">' +
+        '<div class="stall-card-main">' +
+          '<div class="stall-card-name">' + safeName + '</div>' +
+          metaLine +
+          reason +
+          '<div class="stall-card-badges">' + badges + '</div>' +
+        '</div>' +
+        '<div class="stall-card-side">' +
+          '<button type="button" class="stall-card-fav" aria-pressed="' + (favOn?'true':'false') + '" aria-label="' + favLabel + '" title="' + favLabel + '" data-fav-for="' + onclickName + '">' + favGlyph + '</button>' +
+          '<button type="button" class="stall-card-remove" aria-label="Remove ' + safeName + '" data-remove-for="' + onclickName + '">Remove</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var favN = horses.filter(function(x){return !!x.favorite;}).length;
+    var subLine = horses.length + ' ' + (horses.length === 1 ? 'horse' : 'horses') +
+      (favN ? ' \u00B7 \u2605 ' + favN + ' favorite' + (favN === 1 ? '' : 's') : '');
+
+    return '<section class="my-barn-section" aria-labelledby="my-barn-head">' +
+      '<div class="my-barn-head">' +
+        '<h3 id="my-barn-head">In My Barn</h3>' +
+        '<span class="my-barn-sub">' + subLine + '</span>' +
+      '</div>' +
+      '<div class="my-barn-grid">' + cards + '</div>' +
+    '</section>';
+  }
+
+  // Wire clicks on stall cards: card → open profile; star → favorite; remove → delete.
+  function barn_wireStallCards(container) {
+    var cards = container.querySelectorAll('.stall-card');
+    Array.prototype.forEach.call(cards, function(card){
+      var nameAttr = card.getAttribute('data-horse-name') || '';
+      // Decode HTML entities in aria-label-style attr back to a plain name by
+      // asking the barn store for the nearest match.
+      var name = nameAttr
+        .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+        .replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+      card.addEventListener('click', function(ev){
+        if (ev.target && ev.target.closest && (ev.target.closest('.stall-card-fav') || ev.target.closest('.stall-card-remove'))) return;
+        try { openHorseProfile(name); } catch(e){}
+      });
+      card.addEventListener('keydown', function(ev){
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          try { openHorseProfile(name); } catch(e){}
+        }
+      });
+    });
+    var favBtns = container.querySelectorAll('.stall-card-fav');
+    Array.prototype.forEach.call(favBtns, function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var n = btn.getAttribute('data-fav-for') || '';
+        n = n.replace(/\\'/g,"'").replace(/\\\\/g,'\\');
+        try { window.barnToggle('horses', n); } catch(e){}
+      });
+    });
+    var rmBtns = container.querySelectorAll('.stall-card-remove');
+    Array.prototype.forEach.call(rmBtns, function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var n = btn.getAttribute('data-remove-for') || '';
+        n = n.replace(/\\'/g,"'").replace(/\\\\/g,'\\');
+        try { window.barnRemoveHorse('horses', n); } catch(e){}
+      });
+    });
   }
 
   // v2.21.4: Render lookup results. Empty query → suggested curated horses.

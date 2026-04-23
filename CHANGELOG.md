@@ -1,5 +1,75 @@
 # NE Racing — Changelog
 
+## v2.21.6 — Redesigned Barn: My Barn is primary, lookup moves to a drawer (2026-04-23)
+
+User feedback addressed: **"The design of the page is terrible. It still
+has a floating search bar that covers things and it includes horses that
+were not picked to be part of the Barn. Come up with a proper redesign
+that scores greater than an 8/10 for visual, emotional attachment,
+usability."** Prior versions (v2.21.4/5) showed a long list of curated +
+demo horses inside the Barn tab above "In My Barn" — which made the page
+feel like a catalog, not a personal stable. v2.21.6 is a decisive
+redesign that restores the personal-stable feeling.
+
+### Information architecture — My Barn is the only primary content
+
+- The **Barn page now renders ONLY horses the user has actually saved.**
+  No suggested horses, no demo horses, no lookup candidates on the main
+  page by default.
+- Lookup/search is a **deliberate secondary flow** opened by an explicit
+  "Add horse" / "Choose a horse" CTA in the hero action row.
+- Lookup results render inside a **bottom sheet drawer** with scrim,
+  drag-handle, clear `Done` close button, Esc support, and 32px+ bottom
+  padding so nothing is covered by the tab bar or FAB.
+- No floating search bar. The previous inline "Lookup" panel that sat
+  above "In My Barn" is gone.
+
+### Emotional design — the private stable
+
+- Hero: `Your Virtual Barn` with italic subtitle `The N horses you're
+  keeping close.` and kicker `The Stable`. Cream gradient panel, navy
+  ink, gold accents — warm instead of the old heavy navy block.
+- **Stat chips** (In barn · Favorites · Running today) on cream cards
+  with tonal accents (gold for favorites, green for running today).
+- **Stall cards**: each saved horse is a cream card with a gold
+  left-stripe (the stall door), large Cormorant horse name, trainer/
+  jockey/owner line, italic watch-reason excerpt in a left-bordered
+  pull-quote, and a row of semantic badges (In Barn, ★ Favorite,
+  Curated/Sample, R4 today).
+- **Empty state**: SVG stable illustration (cream barn with gold roof
+  and two dark stall doors), headline "Your barn is quiet.", sub-copy
+  "Add the first horse you want to follow", primary CTA "Choose a horse".
+
+### Usability
+
+- Card tap → open profile. Star → toggle favorite (visible inline
+  feedback — fill + warm glow). Remove → delete with confirm.
+- Drawer: search matches horse/trainer/owner/jockey. Lookup candidates
+  never leak onto the main page. Favorite-highlight on race forms is
+  preserved.
+- 390px-first layout: hero padding + stat chip flex, CTA row wraps,
+  stall cards stack, drawer sheet max-height 92vh with internal scroll.
+
+### Technical
+
+- New `buildMyBarnSection(horses, todayMatches)` — stall-card renderer
+  driven only by `barn.horses`; lookup candidates never flow into it.
+- New `barn_openDrawer` / `barn_closeDrawer` — drawer state lives on
+  `window.__barnDrawerOpen`; focus the search input on open; Esc closes.
+- New `barn_wireStallCards` — event delegation for card/fav/remove.
+- `barn_renderLookupResults` unchanged semantically; it now only targets
+  the drawer-internal `#barn-lookup-results` host.
+- Migration (`migrateDemoHorsesToLookup`) untouched — already hides
+  untouched demo horses from My Barn on boot.
+- New test suite `tests/redesigned-barn.test.js` pins the invariants:
+  My Barn renders before the drawer; there is no inline lookup panel on
+  the main render; `#barn-lookup-input` exists exactly once and inside
+  the drawer; empty-state copy + CTA are present; version is v2.21.6.
+
+Version bumps:
+- `version.json`: `20260423-0100-light-barn-v2.21.5` → `20260423-0200-redesigned-barn-v2.21.6`
+- `RAILBIRD_VERSION`: `v2.21.5-light-barn` → `v2.21.6-redesigned-barn`
+
 ## v2.21.5 — Light Barn: softer surfaces + gentler Virtual-Barn copy (2026-04-23)
 
 User feedback addressed: **"Remove 'Find a horse to add.' Have search and
