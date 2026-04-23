@@ -1,5 +1,27 @@
 # NE Racing — Changelog
 
+## v2.23.2 — Tab landing hardening (2026-04-23)
+
+Follow-up to v2.23.1. The header track pill / gear removal already shipped
+in the prior revision; this patch tightens tab-landing behavior so the
+fix survives across every code path.
+
+- `switchTab`: always scroll to the tab panel's top (no longer to the
+  ticket card when it exists). The panel top lands cleanly under the
+  sticky header on Today, Barn, Bets, Handicap, Results, Reference.
+  Previously, when the Today ticket card was visible, scroll landed on
+  the ticket instead of the date strip.
+- Measurement timing: the scroll math now runs inside two nested
+  `requestAnimationFrame` callbacks so it happens after the tab's render
+  + layout step. Fixes a sub-pixel race on first tab paint.
+- Race-card deep-link scroll (`scrollToRace`): measures real header
+  height via `getBoundingClientRect` instead of the 56px CSS var, so
+  on iOS Dynamic-Island phones the landed race card is not tucked
+  under the safe-area inset.
+- Version bump to `v2.23.2` / `20260423-1600-header-cleanup-v2.23.2`
+  so the on-load version poller detects the new bundle and does not
+  loop between mismatched strings.
+
 ## v2.23.1 — Header cleanup + mobile heading clipping fix (2026-04-23)
 
 Surgical UI polish. No feature, data, or advice logic changed. Version-sync
