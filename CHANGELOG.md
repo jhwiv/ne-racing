@@ -1,5 +1,106 @@
 # NE Racing — Changelog
 
+## v2.23.0 — Light Program re-skin (2026-04-23)
+
+Full visual re-skin only. No feature, data, advice, bankroll, Worker, or
+scraping behavior changed. The Barn data model stays intact (main Barn
+shows only saved horses; lookup/add is a drawer; tapping a horse opens
+its profile; no favorite/star concept reintroduced). Version-sync and
+all prior tests remain green.
+
+Goal: move from the previous "luxury navy" skin to a **Modern Saratoga
+Program** visual system — ivory page, paper cards, dark ink text, turf
+green main accent, brass/gold sparingly for highlights, navy demoted to
+ink/header accent only. Elegant racing-program feel, not a casino or
+dark luxury lounge.
+
+### New palette tokens (appended, not removed — legacy `--lux-*` tokens
+are remapped to these so every existing rule flips light):
+
+- App background: `#F8F4EA` (ivory)
+- Card surface: `#FFFDF7` (paper)
+- Soft panel: `#F1E8D8`
+- Border: `#D8CDB8` (tan hairline)
+- Primary ink: `#1E2A36`
+- Secondary ink: `#526070`
+- Muted: `#6F7782`
+- Turf green: `#2F6B4F` (primary accent)
+- Deep rail green: `#184C38`
+- Brass: `#C8A13A` (highlights only)
+- Saddle tan: `#B98957`
+- Loss red: `#9F3F38`
+- Navy ink (accent only): `#243B5A`
+
+### Components re-skinned
+
+- **App shell**: ivory page background (`#F8F4EA`), FOUC paint and
+  `theme-color` meta now match. No full-screen navy.
+- **Top header**: white/paper with a thin tan border and an ivory-safe
+  turf-green track pill. Icon buttons hover turf-green.
+- **Bottom tab bar**: cream with muted-ink inactive labels/icons and a
+  turf-green active label underlined by a brass rule. Safe-area + 56px
+  tap target preserved.
+- **Cards** (`.card`, `.race-card-wrap`, `.rec-bets-card`, etc.): paper
+  cream surface, thin tan border, soft shadow, dark ink text. Active
+  race card gets a turf-green left rule. Race-number badge is turf
+  green + white.
+- **Buttons**: primary = turf green with white text; gold reserved for
+  "In Barn"/highlight; outline = turf on cream; danger = red on cream.
+  All 8px radius, sans font, readable weight.
+- **Forms**: cream surfaces, dark ink, muted placeholders, turf-green
+  focus ring (`0 0 0 3px rgba(47,107,79,0.18)`).
+- **Badges/pills**: tinted backgrounds with dark readable text.
+  `In Barn` = brass-on-cream, `Running Today` / `Winner` / `Curated` =
+  turf-tint, `Action/Value` = brass-tint, `Scratch` = red-tint. No
+  gold-on-cream or pale-gray-on-ivory reused.
+- **Barn tab**: cream hero with paper stall cards, clean stats chips,
+  brass `In Barn` badge. Primary CTA (Add horse / empty-state) is turf
+  green. Stall-card left rule stays brass for the "stable-door" feel.
+- **Today / race form**: paper race cards, turf-green horse links,
+  readable muted-ink metadata, turf-green active-race accent, no heavy
+  dark rows.
+- **Modals/drawers**: light paper with soft dark translucent scrim.
+  The virtual-barn profile modal (previously a dark navy sheet) is now
+  cream/paper with dark ink and turf/brass-tinted chips.
+- **Toasts, banners, winner strip, FAB menu, P&L panel, bankroll
+  banner**: all flipped to paper/cream surfaces with turf/brass
+  accents.
+
+### Contrast fixes
+
+- No light text on light cream: v2.15 inline-rgba(255,255,255,α) remap
+  now targets `--msp-ink` / `--msp-ink-2` / `--msp-muted` (dark ink on
+  cream) instead of a deep navy-on-navy.
+- Bottom-nav inactive labels: were warm #C8C2AD on navy, now muted ink
+  (`#526070`) on cream — AA compliant body text.
+- Horse-detail expanded panel: was dark navy; now `--msp-panel` (soft
+  cream) with dark ink, avoiding a heavy dark block in the middle of a
+  cream list.
+- Grade badges: A+/A now brass on cream, B+ turf-tint, everything else
+  ink/tan — every color passes 4.5:1 against its paper surface.
+- Placeholders, disabled `Add to Barn`, `.barn-empty`, captions,
+  helper text, tips — all force `--msp-ink-2` or `--msp-muted` rather
+  than inheriting cream.
+
+### Typography
+
+- Brand/hero/display moments keep the serif (Playfair / Cormorant).
+  Horse names keep the serif for racing-program character.
+- Everything else — app UI, nav, labels, buttons, forms, bankroll,
+  race metadata, advice, lookup, profile, tabs — is clean sans
+  (`-apple-system, Inter, system-ui, sans-serif`). No tiny all-caps
+  labels on mobile.
+- Numeric data uses tabular lining figures.
+
+### Files changed
+
+- `index.html`: FOUC script, early paint style, `theme-color`, baked
+  `NE_APP_VERSION` / `RAILBIRD_VERSION`, and a large "v2.23.0 — Modern
+  Saratoga Program" override block appended inside the main
+  `<style>`. No markup or JS touched.
+- `version.json`: bumped to match baked constant.
+- `CHANGELOG.md`: this entry.
+
 ## v2.22.1 — Simple Barn cleanup (2026-04-23)
 
 Finishes the simplification that v2.22.0 started. Live Playwright QA on

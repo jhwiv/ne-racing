@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>/* v2.17.2 FOUC kill: paint dark + hide doc until shell is ready. Uses app's actual dark (#0a1628) so any flash is invisible against the rendered app. Reveals on DOMContentLoaded + one rAF so at least one styled frame paints, with a 1500ms failsafe to avoid a stuck-hidden page. */
-(function(){var d=document.documentElement;d.style.backgroundColor='#0a1628';d.style.visibility='hidden';var revealed=false;function reveal(){if(revealed)return;revealed=true;d.style.visibility='visible';}document.addEventListener('DOMContentLoaded',function(){requestAnimationFrame(function(){requestAnimationFrame(reveal);});});setTimeout(reveal,1500);window.__railbirdReveal=reveal;})();</script>
+<script>/* v2.23.0 FOUC kill: paint ivory + hide doc until shell is ready. Uses Modern Saratoga Program page bg (#F8F4EA) so any flash matches the light theme. Reveals on DOMContentLoaded + one rAF so at least one styled frame paints, with a 1500ms failsafe to avoid a stuck-hidden page. */
+(function(){var d=document.documentElement;d.style.backgroundColor='#F8F4EA';d.style.visibility='hidden';var revealed=false;function reveal(){if(revealed)return;revealed=true;d.style.visibility='visible';}document.addEventListener('DOMContentLoaded',function(){requestAnimationFrame(function(){requestAnimationFrame(reveal);});});setTimeout(reveal,1500);window.__railbirdReveal=reveal;})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="theme-color" content="#0a1628">
+<meta name="theme-color" content="#F8F4EA">
 <style>
-/* v2.16.2: kill white flash — paint the first frame navy, before any stylesheet loads.
-   Deliberately early + tiny so the browser can paint it during HTML streaming.
-   v2.17.2: also set html bg explicitly at the top so any flash is dark, not white. */
-html, body { background-color: #0a1628; }
-html,body{background:#0a1628;margin:0;color:#EDE8DC}
+/* v2.23.0: paint the first frame ivory (Modern Saratoga Program) so there
+   is no dark flash before the main stylesheet loads. Hero screen has its own
+   dark photo background handled by its own rules. */
+html, body { background-color: #F8F4EA; }
+html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260423-1200-simple-barn-cleanup-v2.22.1';
+var NE_APP_VERSION = '20260423-1400-light-program-v2.23.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.22.1-simple-barn-cleanup';
+var RAILBIRD_VERSION = 'v2.23.0-light-program';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -4319,7 +4319,7 @@ html, body { overscroll-behavior: none; }
 
 /* Settings sheet type tune-up */
 #settings-modal .settings-sheet h2, #settings-modal .settings-sheet h3 {
-  font-family: var(--lux-font-display); color: var(--lux-navy); letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--lux-font-display); color: var(--lux-ink); letter-spacing: 0.08em; text-transform: uppercase;
 }
 
 /* =========================================================
@@ -5262,6 +5262,1300 @@ tr:has(> td > .detail-stat-row),
 /* =========================================================
    END LUXURY THEME OVERLAY
    ========================================================= */
+
+/* =========================================================
+   v2.23.0 — MODERN SARATOGA PROGRAM (light re-skin)
+   Ivory/cream page, paper cards, dark ink, turf-green accents,
+   brass highlights, navy demoted to ink/accent only.
+   Hierarchy via type and rule, not dark panels.
+   ========================================================= */
+:root {
+  /* New semantic tokens (Modern Saratoga Program) */
+  --msp-bg:         #F8F4EA;    /* ivory / cream page */
+  --msp-surface:    #FFFDF7;    /* paper card */
+  --msp-panel:      #F1E8D8;    /* soft panel / raised strip */
+  --msp-border:     #D8CDB8;    /* hairline, tan */
+  --msp-border-soft:#E3D9C4;
+  --msp-ink:        #1E2A36;    /* primary text */
+  --msp-ink-2:      #4A5663;    /* secondary text — AA on cream */
+  --msp-muted:      #636B7A;    /* tertiary / captions — AA on cream for 12px+ */
+  --msp-turf:       #2F6B4F;    /* turf green — primary accent */
+  --msp-turf-deep:  #184C38;
+  --msp-turf-tint:  #E3EFE7;
+  --msp-brass:      #C8A13A;    /* brass / gold — highlights only */
+  --msp-brass-deep: #8A6D1F;
+  --msp-brass-tint: #F4EAC8;
+  --msp-tan:        #B98957;
+  --msp-red:        #9F3F38;
+  --msp-red-tint:   #F2DED9;
+  --msp-navy-ink:   #243B5A;    /* navy used only as ink/accent */
+  --msp-shadow-sm:  0 1px 2px rgba(30,42,54,0.05), 0 1px 1px rgba(30,42,54,0.04);
+  --msp-shadow-md:  0 2px 6px rgba(30,42,54,0.07), 0 1px 2px rgba(30,42,54,0.04);
+
+  /* Re-map the existing luxury tokens so cascading rules flip light. */
+  --lux-navy:        var(--msp-bg);
+  --lux-navy-2:      var(--msp-bg);
+  --lux-navy-3:      var(--msp-surface);
+  --lux-surface:     var(--msp-surface);
+  --lux-slate:       var(--msp-ink);
+  --lux-slate-2:     var(--msp-ink-2);
+  --lux-gold:        var(--msp-brass);
+  --lux-gold-soft:   var(--msp-brass-deep);
+  --lux-gold-muted:  var(--msp-brass-deep);
+  --lux-gold-glow:   rgba(200,161,58,0.25);
+  --lux-cream:       var(--msp-surface);
+  --lux-cream-2:     var(--msp-bg);
+  --lux-ink:         var(--msp-ink);
+  --lux-ink-soft:    var(--msp-ink);   /* body on cards is now dark ink */
+  --lux-ink-mute:    var(--msp-muted);
+  --lux-amber:       #B9822B;
+  --lux-rose:        var(--msp-red);
+  --lux-green:       var(--msp-turf);
+  --lux-hairline:    var(--msp-border);
+  --lux-hairline-2:  var(--msp-border-soft);
+
+  /* Re-map legacy tokens too */
+  --color-racing-green: var(--msp-turf);
+  --color-cream:        var(--msp-surface);
+  --color-white:        var(--msp-surface);
+  --color-gold:         var(--msp-brass);
+  --color-gold-text:    var(--msp-brass-deep);
+  --color-gold-light:   var(--msp-brass-tint);
+  --color-burgundy:     var(--msp-red);
+  --color-burgundy-light:var(--msp-red-tint);
+  --color-slate:        var(--msp-ink);
+  --color-muted:        var(--msp-muted);
+  --color-positive:     var(--msp-turf);
+  --color-negative:     var(--msp-red);
+  --color-amber:        #B9822B;
+  --color-amber-light:  #F5E3BF;
+  --color-emerald:      var(--msp-turf);
+  --color-emerald-light:var(--msp-turf-tint);
+  --color-green-light:  var(--msp-turf-tint);
+
+  --lux-ink-soft-on-cream: var(--msp-ink-2);
+  --lux-ink-muted-cream:   var(--msp-muted);
+
+  /* Clean sans for app UI — keep serif for display only */
+  --msp-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+}
+
+/* Base page surface — ivory, not navy */
+html, body {
+  background: var(--msp-bg) !important;
+  color: var(--msp-ink) !important;
+  overscroll-behavior: none;
+}
+body {
+  background:
+    radial-gradient(900px 700px at 90% -10%, rgba(200,161,58,0.06), transparent 60%),
+    linear-gradient(180deg, var(--msp-bg) 0%, #F3EEE1 100%) !important;
+  background-attachment: fixed;
+  font-family: var(--msp-sans) !important;
+  font-size: 16px !important;
+  line-height: 1.55;
+  color: var(--msp-ink) !important;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* Keep display serif for brand / horse name moments only.
+   App UI (buttons, labels, nav, forms, metadata) uses a clean sans. */
+h1, h2, h3, .display,
+.header-logo-text,
+.hero-title-main, .hero-title-sub,
+.best-bet-title, .best-bet-horse,
+.barn-hero-title, .my-barn-head h3,
+.barn-hero-redesign .barn-hero-title,
+.stall-card-name,
+.barn-item-horse-name,
+.barn-lookup-name {
+  font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif !important;
+  color: var(--msp-ink);
+}
+
+/* Standard app chrome on sans */
+.card-body, .card-section, p, span, div, li, td, th, input, textarea, select,
+button, label, .btn, .chip, .badge, .tab-btn, .tab-btn *, .form-label,
+.form-control, .advice-rationale, .advice-score, .bankroll-banner,
+.mode-pill, .chip-pill, .status-pill, .toast, .sim-mode-banner, .banner,
+.date-strip, .date-strip-day, .track-pill, .stat-label, .stat-val,
+.race-meta, .race-title, .race-num, .entry-table, .entry-table *,
+.advice-horse-name, .best-bet-eyebrow, .best-bet-race,
+.rec-bet-detail, .rec-bet-reason, .rec-bet-sub, .rec-bet-amount,
+.pnl-hero-label, .pnl-hero-value, .pnl-hero-sub,
+.lux-winner-title, .lux-winner-kicker, .lux-winner-meta,
+.barn-section, .barn-item, .barn-item *, .stall-card *,
+.barn-cta-primary, .barn-cta-secondary, .my-barn-empty-cta,
+.barn-drawer-title, .barn-drawer-sub,
+.barn-stat-chip, .barn-stat-chip *,
+.vb-btn, .vb-chip, .vb-section-head h4,
+#virtual-barn-profile-modal *,
+.fab-item, .fab-item-label {
+  font-family: var(--msp-sans) !important;
+}
+/* But preserve display serif for the curated moments listed above */
+h1, h2, h3, .hero-title-main, .hero-title-sub,
+.best-bet-title, .best-bet-horse,
+.barn-hero-title, .my-barn-head h3,
+.barn-hero-redesign .barn-hero-title,
+.my-barn-empty-head,
+.stall-card-name, .barn-item-horse-name,
+.barn-lookup-name, .barn-drawer-title {
+  font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif !important;
+}
+/* Tabular numerics for racing data */
+.odds-cell, .mono, .bankroll-banner .stat-val, .advice-score,
+.live-odds-status, .track-pill, .entry-table .pp-cell,
+.race-num, .jt-pct, .pnl-hero-value, .bet-amount-input,
+.notes-input, .sf-input, .barn-summary-num, .barn-stat-chip-num,
+.stall-card-meta .odds {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Top header — light ivory with slim border */
+#top-header {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border-bottom: 1px solid var(--msp-border) !important;
+  box-shadow: 0 1px 0 rgba(30,42,54,0.03) !important;
+}
+#top-header .icon-btn { color: var(--msp-ink-2) !important; }
+#top-header .icon-btn:hover { color: var(--msp-turf) !important; background: rgba(47,107,79,0.08) !important; }
+.header-logo-text {
+  color: var(--msp-turf-deep) !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase;
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+}
+#top-header .track-pill {
+  background: var(--msp-turf-tint) !important;
+  border: 1px solid rgba(47,107,79,0.28) !important;
+  color: var(--msp-turf-deep) !important;
+  font-family: var(--msp-sans) !important;
+  letter-spacing: 0.04em !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+  font-size: 0.82rem !important;
+}
+#top-header .track-pill:hover { background: #D3E5D8 !important; }
+#top-header .sync-info { color: var(--msp-muted) !important; }
+#top-header .live-odds-status.off { background: rgba(30,42,54,0.05) !important; border-color: var(--msp-border) !important; color: var(--msp-muted) !important; }
+#top-header .live-odds-status.on  { background: var(--msp-turf-tint) !important; border-color: rgba(47,107,79,0.28) !important; color: var(--msp-turf-deep) !important; }
+
+/* Bottom tab bar — ivory / cream nav with turf active accent */
+#bottom-tab-bar {
+  background: var(--msp-surface) !important;
+  border-top: 1px solid var(--msp-border) !important;
+  box-shadow: 0 -1px 6px rgba(30,42,54,0.05) !important;
+  color: var(--msp-ink) !important;
+}
+#bottom-tab-bar .tab-btn {
+  color: var(--msp-ink-2) !important;
+  font-family: var(--msp-sans) !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+  font-size: 0.7rem !important;
+  min-height: 56px;
+}
+#bottom-tab-bar .tab-btn span:not(.tab-badge) { font-size: 0.7rem !important; font-weight: 600 !important; }
+#bottom-tab-bar .tab-btn svg { opacity: 0.85 !important; }
+#bottom-tab-bar .tab-btn.active { color: var(--msp-turf) !important; }
+#bottom-tab-bar .tab-btn.active svg { opacity: 1 !important; }
+#bottom-tab-bar .tab-btn.active::before {
+  content: ''; position: absolute; top: 0; left: 22%; right: 22%; height: 2px;
+  background: var(--msp-brass) !important;
+  border-radius: 0 0 2px 2px;
+}
+.tab-btn.active::after { background: var(--msp-brass) !important; }
+
+/* Chip nav (if still rendered) — light */
+.chip-nav {
+  background: var(--msp-surface) !important;
+  border-bottom: 1px solid var(--msp-border) !important;
+  box-shadow: none !important;
+}
+.chip {
+  color: var(--msp-ink-2) !important;
+  font-family: var(--msp-sans) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  font-size: 0.85rem !important;
+}
+.chip:hover { color: var(--msp-turf) !important; }
+.chip.active { color: var(--msp-turf) !important; }
+.chip.active::after { background: var(--msp-brass) !important; }
+.chip:active { background: var(--msp-brass-tint) !important; }
+
+/* Desktop nav */
+.desktop-nav-btn { color: var(--msp-ink-2) !important; }
+.desktop-nav-btn:hover { color: var(--msp-turf) !important; background: rgba(47,107,79,0.06) !important; }
+.desktop-nav-btn.active { color: var(--msp-turf) !important; background: transparent !important; }
+.desktop-nav-btn.active::after { background: var(--msp-brass) !important; }
+
+/* Cards — paper on ivory */
+.card, .section-block, .rec-bets-card, .bet-slip-item, .exotic-bet-card,
+.advice-panel, .bankroll-card, .pnl-panel, .race-card-wrap,
+.top-picks-card, #settings-modal .settings-sheet {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--msp-shadow-sm) !important;
+  color: var(--msp-ink);
+}
+.card-header, .race-card-header {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border-bottom: 1px solid var(--msp-border) !important;
+  padding: 0.9rem 1rem !important;
+}
+.card-header h3, .card-header h2,
+.race-card-header h3, .race-card-header h4 {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  color: var(--msp-ink) !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+}
+.card-section + .card-section { border-top: 1px solid var(--msp-border-soft) !important; }
+.card-body, .card-section { color: var(--msp-ink) !important; }
+
+/* Race card — paper with thin turf left-rule for active */
+.race-card-wrap {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  border-left: 3px solid transparent !important;
+  border-radius: 10px !important;
+  box-shadow: var(--msp-shadow-sm) !important;
+  overflow: hidden;
+  color: var(--msp-ink) !important;
+}
+.race-card-wrap.race-active,
+.race-card-wrap.lux-top-rated {
+  border-left: 3px solid var(--msp-turf) !important;
+  box-shadow: var(--msp-shadow-md) !important;
+}
+.race-card-header::before { background: var(--msp-brass) !important; opacity: 1; width: 3px; }
+.race-card-header .race-num,
+.race-card-header .race-number,
+.race-number-badge {
+  background: var(--msp-turf) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--msp-turf-deep) !important;
+  border-radius: 6px !important;
+  font-family: var(--msp-sans) !important;
+  font-weight: 700 !important;
+}
+.race-card-header .post-time,
+.race-card-header .race-time,
+.race-post-time {
+  color: var(--msp-ink) !important;
+  font-weight: 700 !important;
+  font-family: var(--msp-sans) !important;
+}
+.race-card-header .race-meta,
+.race-card-header .surface,
+.race-card-header .distance,
+.race-card-header .surf-dist {
+  color: var(--msp-ink-2) !important;
+  font-style: normal !important;
+  font-family: var(--msp-sans) !important;
+}
+.race-meta, .race-title { color: var(--msp-ink) !important; font-family: var(--msp-sans) !important; }
+.race-meta { color: var(--msp-ink-2) !important; }
+
+/* Entry table */
+.entry-table th {
+  background: var(--msp-panel) !important;
+  color: var(--msp-ink-2) !important;
+  border-bottom: 1px solid var(--msp-border) !important;
+  font-family: var(--msp-sans) !important;
+}
+.entry-table td { border-bottom: 1px solid var(--msp-border-soft) !important; color: var(--msp-ink); }
+.entry-table tr:hover td { background: var(--msp-brass-tint) !important; }
+.horse-name { color: var(--msp-turf-deep) !important; font-family: 'Playfair Display', Georgia, serif !important; font-weight: 700 !important; }
+.horse-name:hover { color: var(--msp-turf) !important; }
+.odds-dropping { color: var(--msp-turf) !important; }
+.odds-drifting { color: var(--msp-red) !important; }
+.jt-pct, .scratch-toggle { color: var(--msp-muted) !important; }
+
+/* Buttons — primary turf, secondary cream, brass for highlights */
+.btn {
+  border-radius: 8px !important;
+  font-family: var(--msp-sans) !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  min-height: 40px;
+  padding: 0.55rem 1rem;
+}
+.btn-primary {
+  background: var(--msp-turf) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--msp-turf-deep) !important;
+}
+.btn-primary:hover { background: var(--msp-turf-deep) !important; color: #FFFFFF !important; }
+.btn-gold {
+  background: var(--msp-brass) !important;
+  color: #1E2A36 !important;
+  border: 1px solid var(--msp-brass-deep) !important;
+}
+.btn-gold:hover { background: #B8922F !important; color: #1E2A36 !important; }
+.btn-outline {
+  background: var(--msp-surface) !important;
+  color: var(--msp-turf-deep) !important;
+  border: 1.5px solid var(--msp-turf-deep) !important;
+}
+.btn-outline:hover { background: var(--msp-turf-tint) !important; color: var(--msp-turf-deep) !important; }
+.btn-ghost { background: rgba(30,42,54,0.05) !important; color: var(--msp-ink) !important; border: 1px solid transparent; }
+.btn-ghost:hover { background: rgba(30,42,54,0.09) !important; }
+.btn-burgundy, .btn-danger {
+  background: var(--msp-red) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #7E2D27 !important;
+}
+.btn-sm { border-radius: 6px !important; min-height: 32px; padding: 0.35rem 0.75rem; font-size: 0.8rem !important; }
+.btn-xs { border-radius: 6px !important; min-height: 28px; padding: 0.25rem 0.6rem; font-size: 0.72rem !important; }
+.mode-pill { border-radius: 999px !important; font-family: var(--msp-sans) !important; letter-spacing: 0.02em; text-transform: none; }
+
+.wps-btn.w { border-color: var(--msp-turf) !important; color: var(--msp-turf) !important; }
+.wps-btn.w.active { background: var(--msp-turf) !important; color: #fff !important; }
+.wps-btn.p { border-color: var(--msp-brass-deep) !important; color: var(--msp-brass-deep) !important; }
+.wps-btn.p.active { background: var(--msp-brass) !important; color: #1E2A36 !important; }
+.wps-btn.s { border-color: var(--msp-red) !important; color: var(--msp-red) !important; }
+.wps-btn.s.active { background: var(--msp-red) !important; color: #fff !important; }
+
+/* Form controls — light surface, readable placeholder, tasteful focus ring */
+.form-control, .bet-amount-input, .notes-input, .sf-input,
+input[type="text"]:not(.barn-lookup-input):not(#sar-stable-add-input),
+input[type="number"], input[type="search"], input[type="email"],
+textarea:not(#virtual-barn-profile-modal textarea) {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1.5px solid var(--msp-border) !important;
+  border-radius: 8px !important;
+  font-family: var(--msp-sans) !important;
+}
+.form-control::placeholder,
+input::placeholder, textarea::placeholder { color: var(--msp-muted) !important; opacity: 1 !important; }
+.form-control:focus, input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: var(--msp-turf) !important;
+  box-shadow: 0 0 0 3px rgba(47,107,79,0.18) !important;
+}
+.form-label { color: var(--msp-ink-2) !important; font-family: var(--msp-sans) !important; font-weight: 600 !important; font-size: 0.8rem !important; letter-spacing: 0.02em !important; text-transform: none !important; }
+
+/* Badges / pills — tinted on light, dark readable text */
+.badge {
+  font-family: var(--msp-sans) !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  border-radius: 999px !important;
+  padding: 0.18rem 0.55rem !important;
+  border: 1px solid transparent;
+}
+.badge-green, .tag-live, .badge-live, .badge-next {
+  background: var(--msp-turf-tint) !important;
+  color: var(--msp-turf-deep) !important;
+  border: 1px solid rgba(47,107,79,0.28) !important;
+}
+.badge-gold, .tag-conviction, .badge-lock {
+  background: var(--msp-brass-tint) !important;
+  color: var(--msp-brass-deep) !important;
+  border: 1px solid rgba(200,161,58,0.45) !important;
+}
+.badge-conviction {
+  background: var(--msp-brass) !important;
+  color: #1E2A36 !important;
+  border: 1px solid var(--msp-brass-deep) !important;
+}
+.badge-red, .badge-burgundy {
+  background: var(--msp-red-tint) !important;
+  color: #7E2D27 !important;
+  border: 1px solid rgba(159,63,56,0.3) !important;
+}
+.tag-accent, .badge-value, .badge-strong-value {
+  background: var(--msp-brass-tint) !important;
+  color: var(--msp-brass-deep) !important;
+  border: 1px solid rgba(200,161,58,0.5) !important;
+}
+.tag-neutral, .badge-muted, .badge-underlay, .badge-equip {
+  background: rgba(30,42,54,0.06) !important;
+  color: var(--msp-ink) !important;
+  border: 1px solid rgba(30,42,54,0.15) !important;
+}
+.badge-scratch {
+  background: var(--msp-red-tint) !important;
+  color: #7E2D27 !important;
+  border: 1px solid rgba(159,63,56,0.35) !important;
+}
+.suggested-bet-chip {
+  background: var(--msp-brass-tint) !important;
+  color: var(--msp-brass-deep) !important;
+  border: 1px solid rgba(200,161,58,0.45) !important;
+  font-family: var(--msp-sans) !important;
+  border-radius: 999px !important;
+}
+.track-pill {
+  background: var(--msp-turf-tint) !important;
+  border: 1px solid rgba(47,107,79,0.28) !important;
+  color: var(--msp-turf-deep) !important;
+  font-family: var(--msp-sans) !important;
+}
+
+/* Best Bet / featured callouts — paper, brass top-rule */
+.best-bet-callout, .todays-pnl-hero {
+  background: linear-gradient(180deg, var(--msp-surface) 0%, #FBF6E8 100%) !important;
+  border: 1px solid var(--msp-border) !important;
+  border-radius: 10px !important;
+  color: var(--msp-ink) !important;
+  box-shadow: var(--msp-shadow-md) !important;
+}
+.best-bet-callout::before, .todays-pnl-hero::before {
+  background: linear-gradient(90deg, transparent, var(--msp-brass) 30%, var(--msp-brass) 70%, transparent) !important;
+  height: 2px !important;
+}
+.best-bet-callout::after { background: linear-gradient(90deg, transparent, var(--msp-border), transparent) !important; }
+.best-bet-eyebrow { color: var(--msp-brass-deep) !important; font-family: var(--msp-sans) !important; font-style: normal !important; letter-spacing: 0.18em !important; }
+.best-bet-title { color: var(--msp-turf-deep) !important; letter-spacing: 0.02em !important; }
+.best-bet-horse { color: var(--msp-ink) !important; }
+.best-bet-rationale { color: var(--msp-ink-2) !important; font-family: var(--msp-sans) !important; font-style: normal !important; }
+.best-bet-race {
+  background: var(--msp-brass-tint) !important;
+  border: 1px solid rgba(200,161,58,0.4) !important;
+  color: var(--msp-brass-deep) !important;
+  font-family: var(--msp-sans) !important;
+}
+.best-bet-grade { background: var(--msp-brass) !important; color: #1E2A36 !important; }
+.best-bet-rule { background: var(--msp-brass) !important; }
+
+/* Bankroll banner — paper with turf values */
+.bankroll-banner {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  color: var(--msp-ink) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--msp-shadow-sm) !important;
+}
+.bankroll-banner::before { background: linear-gradient(90deg, transparent, var(--msp-brass), transparent) !important; opacity: 0.8 !important; }
+.bankroll-banner .stat-label {
+  color: var(--msp-ink-2) !important;
+  font-family: var(--msp-sans) !important;
+  font-variant-caps: normal !important;
+  font-style: normal !important;
+  letter-spacing: 0.06em !important;
+  font-size: 0.72rem !important;
+  text-transform: uppercase;
+}
+.bankroll-banner .stat-val { color: var(--msp-turf-deep) !important; font-family: var(--msp-sans) !important; }
+.bankroll-banner .stat-val.warn { color: #B9822B !important; }
+.bankroll-banner .stat-val.positive { color: var(--msp-turf) !important; }
+.bankroll-banner .stat-val.negative, .bankroll-banner .stat-val.danger { color: var(--msp-red) !important; }
+.bankroll-grid .bankroll-stat { background: var(--msp-surface) !important; border: 1px solid var(--msp-border) !important; color: var(--msp-ink) !important; }
+.bankroll-grid .bankroll-stat .stat-label { color: var(--msp-ink-2) !important; font-style: normal !important; }
+.bankroll-grid .bankroll-stat .stat-value { color: var(--msp-turf-deep) !important; }
+
+/* P&L panel — paper, turf line */
+.pnl-panel, .sparkline-panel, #pnl-sparkline-wrap, .pnl-chart-wrap {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1px solid var(--msp-border) !important;
+}
+.pnl-panel svg line, .sparkline-panel svg line { stroke: rgba(30,42,54,0.12) !important; }
+.pnl-panel svg path, .sparkline-panel svg path { stroke: var(--msp-turf) !important; }
+.pnl-panel svg text, .sparkline-panel svg text,
+.pnl-axis, .chart-axis text { fill: var(--msp-muted) !important; }
+.roi-headline, .total-roi, #total-roi, .pnl-headline { color: var(--msp-turf-deep) !important; }
+.pnl-hero-label { color: var(--msp-brass-deep) !important; font-style: normal !important; font-variant-caps: normal !important; }
+.pnl-hero-value { color: var(--msp-ink) !important; }
+.pnl-hero-value.pnl-positive { color: var(--msp-turf) !important; }
+.pnl-hero-value.pnl-negative { color: var(--msp-red) !important; }
+.pnl-hero-value.pnl-zero { color: var(--msp-ink-2) !important; }
+.pnl-hero-sub { color: var(--msp-ink-2) !important; font-style: normal !important; }
+
+/* Advice / grade badges */
+.advice-grade { border-radius: 6px !important; }
+.grade-a-plus {
+  background: var(--msp-brass) !important;
+  color: #1E2A36 !important;
+  border: 1px solid var(--msp-brass-deep) !important;
+  box-shadow: 0 0 0 2px rgba(200,161,58,0.18) !important;
+  animation: none !important;
+}
+.grade-a {
+  background: var(--msp-brass-tint) !important;
+  color: var(--msp-brass-deep) !important;
+  border: 1px solid rgba(200,161,58,0.45) !important;
+}
+.grade-b-plus {
+  background: var(--msp-turf-tint) !important;
+  color: var(--msp-turf-deep) !important;
+  border: 1px solid rgba(47,107,79,0.35) !important;
+}
+.grade-b {
+  background: var(--msp-panel) !important;
+  color: var(--msp-ink) !important;
+  border: 1px solid var(--msp-border) !important;
+}
+.grade-c {
+  background: rgba(30,42,54,0.05) !important;
+  color: var(--msp-ink-2) !important;
+  border: 1px solid rgba(30,42,54,0.12) !important;
+}
+.grade-d {
+  background: var(--msp-red-tint) !important;
+  color: #7E2D27 !important;
+  border: 1px solid rgba(159,63,56,0.3) !important;
+}
+.advice-horse-name { color: var(--msp-ink) !important; }
+.advice-rationale { color: var(--msp-ink-2) !important; font-style: normal !important; font-family: var(--msp-sans) !important; }
+.advice-score { color: var(--msp-brass-deep) !important; font-family: var(--msp-sans) !important; }
+
+/* Bet-slip ticket — paper with turf/brass rail */
+.bet-slip-item {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  border-left: 4px solid var(--msp-brass) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--msp-shadow-sm) !important;
+  color: var(--msp-ink);
+}
+.bet-slip-item.straight { border-left-color: var(--msp-turf) !important; }
+.bet-slip-item::before, .bet-slip-item::after { display: none !important; }
+.bet-slip-item.locked,
+.bet-slip-item[data-locked="true"],
+.bet-slip-item.is-locked {
+  border-left-color: var(--msp-brass-deep) !important;
+  box-shadow: 0 0 0 1px var(--msp-brass), var(--msp-shadow-md) !important;
+}
+.bet-slip-item .bet-slip-label { color: var(--msp-muted) !important; font-family: var(--msp-sans) !important; }
+.bet-slip-item .bet-slip-horse { color: var(--msp-ink) !important; font-family: 'Playfair Display', Georgia, serif !important; }
+
+/* Banners / sim-mode */
+.sim-mode-banner, .banner {
+  background: var(--msp-brass-tint) !important;
+  border: 1px solid rgba(200,161,58,0.4) !important;
+  color: var(--msp-ink) !important;
+  font-family: var(--msp-sans) !important;
+  font-style: normal !important;
+  border-radius: 8px !important;
+}
+.banner-warning { background: #FAECCD !important; border-color: #D8B770 !important; color: #6E4C10 !important; }
+.banner-danger { background: var(--msp-red-tint) !important; border-color: rgba(159,63,56,0.3) !important; color: #7E2D27 !important; }
+.banner-info { background: var(--msp-turf-tint) !important; border-color: rgba(47,107,79,0.28) !important; color: var(--msp-turf-deep) !important; }
+
+/* Toasts — ink on cream with colored rule */
+.toast {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1px solid var(--msp-border) !important;
+  border-left: 4px solid var(--msp-brass) !important;
+  box-shadow: var(--msp-shadow-md) !important;
+  font-family: var(--msp-sans) !important;
+}
+.toast.success { border-left-color: var(--msp-turf) !important; }
+.toast.warning { border-left-color: #B9822B !important; }
+.toast.danger, .toast.scratch { border-left-color: var(--msp-red) !important; }
+
+/* Track selector drawer — paper */
+#track-drawer {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  color: var(--msp-ink) !important;
+}
+.track-drawer-group-label { color: var(--msp-muted) !important; font-family: var(--msp-sans) !important; }
+.track-drawer-item { color: var(--msp-ink) !important; }
+.track-drawer-item:hover { background: var(--msp-brass-tint) !important; }
+.track-drawer-item.selected { background: var(--msp-turf) !important; color: #FFFFFF !important; }
+.track-drawer-item.selected .track-code { color: var(--msp-brass) !important; }
+.track-drawer-item.selected div { color: #FFFFFF !important; }
+.track-drawer-item .track-code { color: var(--msp-turf-deep) !important; font-family: var(--msp-sans) !important; font-weight: 700 !important; }
+
+/* Track options inside drawer (dark-designed ones) — relight */
+.track-option {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1.5px solid var(--msp-border) !important;
+}
+.track-option:hover { background: var(--msp-brass-tint) !important; border-color: var(--msp-brass-deep) !important; }
+.track-option.selected { background: var(--msp-turf-tint) !important; border-color: var(--msp-turf) !important; color: var(--msp-turf-deep) !important; }
+.track-code { color: var(--msp-turf-deep) !important; }
+.track-location-sm, .track-section-header { color: var(--msp-muted) !important; }
+.sar-aqu-btn { border: 1px solid var(--msp-border) !important; background: var(--msp-surface) !important; color: var(--msp-ink) !important; }
+.sar-aqu-btn.selected { background: var(--msp-turf) !important; color: #FFFFFF !important; border-color: var(--msp-turf-deep) !important; }
+
+/* Date strip */
+.date-strip-day { background: var(--msp-surface) !important; border-color: transparent !important; color: var(--msp-ink) !important; }
+.date-strip-day .ds-dow, .date-strip-day .ds-month { color: var(--msp-muted) !important; }
+.date-strip-day .ds-date { color: var(--msp-ink) !important; font-family: 'Playfair Display', Georgia, serif !important; }
+.date-strip-day.ds-today { background: var(--msp-turf-tint) !important; border-color: var(--msp-turf) !important; }
+.date-strip-day.ds-today .ds-dow, .date-strip-day.ds-today .ds-month { color: var(--msp-turf-deep) !important; }
+.date-strip-day.ds-today .ds-date { color: var(--msp-turf-deep) !important; }
+.date-strip-day.ds-selected { background: var(--msp-brass-tint) !important; border-color: var(--msp-brass-deep) !important; box-shadow: 0 0 0 2px rgba(200,161,58,0.18) !important; }
+.date-strip-day.ds-selected .ds-dow, .date-strip-day.ds-selected .ds-month { color: var(--msp-brass-deep) !important; }
+.date-strip-day.ds-selected .ds-date { color: var(--msp-ink) !important; }
+.date-strip-nav-btn { color: var(--msp-turf-deep) !important; }
+.date-strip-nav-btn:active { background: var(--msp-turf-tint) !important; }
+.date-strip-nav-label { color: var(--msp-muted) !important; }
+
+/* FAB — brass fill, ink icon, visible on ivory */
+.fab-main {
+  background: var(--msp-brass) !important;
+  color: #1E2A36 !important;
+  border: 1px solid var(--msp-brass-deep) !important;
+  box-shadow: 0 8px 20px rgba(200,161,58,0.35), 0 2px 4px rgba(30,42,54,0.1) !important;
+}
+.fab-main:hover { background: #B8922F !important; }
+.fab-item {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1px solid var(--msp-border) !important;
+  box-shadow: var(--msp-shadow-md) !important;
+  font-family: var(--msp-sans) !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+  font-size: 0.85rem !important;
+}
+.fab-item:hover { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; }
+.fab-item-icon { background: var(--msp-turf) !important; color: #FFFFFF !important; font-family: var(--msp-sans) !important; }
+
+/* Winner banner — paper / brass */
+.lux-winner-inner {
+  background: linear-gradient(90deg, var(--msp-surface) 0%, #FBF6E8 50%, var(--msp-surface) 100%) !important;
+  border-top: 1px solid var(--msp-brass) !important;
+  border-bottom: 1px solid var(--msp-brass) !important;
+  box-shadow: 0 8px 20px rgba(30,42,54,0.15) !important;
+}
+.lux-winner-kicker { color: var(--msp-brass-deep) !important; font-style: normal !important; }
+.lux-winner-title  { color: var(--msp-turf-deep) !important; letter-spacing: 0.12em !important; }
+.lux-winner-meta   { color: var(--msp-ink-2) !important; font-style: normal !important; }
+
+/* App footer */
+#app-footer {
+  background: var(--msp-panel) !important;
+  color: var(--msp-ink-2) !important;
+  border-top: 1px solid var(--msp-border) !important;
+  font-style: normal !important;
+  font-family: var(--msp-sans) !important;
+}
+
+/* Inline result strip */
+.race-inline-result { background: var(--msp-turf-tint) !important; border-left-color: var(--msp-turf) !important; }
+.inline-result-badge { background: var(--msp-turf) !important; color: #fff !important; }
+.inline-result-winner { color: var(--msp-turf-deep) !important; }
+.inline-result-place, .inline-result-show { color: var(--msp-ink-2) !important; }
+
+/* Rec-bets / ticket on cream — keep dark ink (already existed, reinforce) */
+.rec-bets-card, .rec-bets-card * { color: inherit; }
+.rec-bets-card { color: var(--msp-ink) !important; }
+.rec-bets-card .ticket-header h3 { color: var(--msp-ink) !important; }
+.rec-bets-card .ticket-subtitle { color: var(--msp-ink-2) !important; }
+.rec-bets-card .rec-bet-amount { color: var(--msp-turf-deep) !important; }
+.rec-bets-card .rec-bet-reason, .rec-bets-card .rec-bet-sub, .rec-bets-card .ticket-payout,
+.rec-bets-card .card-explainer, .rec-bets-card .pass-races-line { color: var(--msp-ink-2) !important; }
+.rec-bets-card .rec-bet-summary .val { color: var(--msp-turf-deep) !important; }
+.rec-bets-card .rec-bet-summary .label { color: var(--msp-ink-2) !important; }
+.rec-bets-card .copy-ticket-btn {
+  background: var(--msp-turf-tint) !important;
+  color: var(--msp-turf-deep) !important;
+  border: 1px solid rgba(47,107,79,0.35) !important;
+}
+.rec-bets-card .copy-ticket-btn:hover { background: #D3E5D8 !important; }
+.rec-bets-card .rec-bet-tag.rec-tag-action {
+  background: var(--msp-turf-tint) !important;
+  color: var(--msp-turf-deep) !important;
+  border: 1px solid rgba(47,107,79,0.35) !important;
+}
+.rec-bets-card .rec-bet-tag.rec-tag-value {
+  background: var(--msp-brass-tint) !important;
+  color: var(--msp-brass-deep) !important;
+  border: 1px solid rgba(200,161,58,0.45) !important;
+}
+.rec-bets-card .rec-bet-tag.rec-tag-pass {
+  background: rgba(30,42,54,0.06) !important;
+  color: var(--msp-ink-2) !important;
+}
+.rec-bets-card .ticket-exotic {
+  background: var(--msp-brass-tint) !important;
+  border: 1px solid rgba(200,161,58,0.45) !important;
+}
+
+/* Empty states on light surfaces */
+:where(#tab-bets, #tab-handicap, #tab-results, #tab-reference) .empty-state { color: var(--msp-ink-2) !important; }
+:where(#tab-bets, #tab-handicap, #tab-results, #tab-reference) .empty-state p { color: var(--msp-ink-2) !important; }
+
+/* Expanded horse-detail panel — keep it distinct but light */
+.rec-bet-details:has(.detail-stat-row),
+.rec-bet-details:has(.detail-hero-row),
+tr:has(> td > .detail-stat-row),
+.horse-expand:has(.detail-stat-row),
+[class*="expand"]:has(.detail-stat-row),
+[id^="horse-detail-"],
+.horse-detail-panel {
+  background: var(--msp-panel) !important;
+  color: var(--msp-ink) !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 0 0 1px var(--msp-border) !important;
+}
+[id^="horse-detail-"] *, .horse-detail-panel *,
+.rec-bet-details:has(.detail-stat-row) *,
+.rec-bet-details:has(.detail-hero-row) *,
+[class*="expand"]:has(.detail-stat-row) * { color: var(--msp-ink) !important; }
+[id^="horse-detail-"] .detail-stat-card .stat-label,
+.horse-detail-panel .detail-stat-card .stat-label,
+.rec-bet-details .detail-stat-card .stat-label,
+[class*="expand"] .detail-stat-card .stat-label,
+[id^="horse-detail-"] .detail-experts-title,
+[id^="horse-detail-"] .detail-completeness { color: var(--msp-ink-2) !important; }
+[id^="horse-detail-"] .detail-stat-card .stat-val { color: var(--msp-ink) !important; }
+
+/* Relight inline white-alpha text on cream (v2.15 remap) — now to MSP ink */
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output, #handicapper-profiles-body,
+  #breakdown-empty, .card, .hcp-tool
+)
+:is(
+  [style*="rgba(255,255,255,0.9"], [style*="rgba(255, 255, 255, 0.9"],
+  [style*="rgba(255,255,255,0.85"], [style*="rgba(255, 255, 255, 0.85"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  color: var(--msp-ink) !important;
+}
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output, #handicapper-profiles-body,
+  #breakdown-empty, .card, .hcp-tool
+)
+:is(
+  [style*="rgba(255,255,255,0.7"], [style*="rgba(255, 255, 255, 0.7"],
+  [style*="rgba(255,255,255,0.8"], [style*="rgba(255, 255, 255, 0.8"],
+  [style*="rgba(255,255,255,0.6"], [style*="rgba(255, 255, 255, 0.6"],
+  [style*="rgba(255,255,255,0.5"], [style*="rgba(255, 255, 255, 0.5"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  color: var(--msp-ink-2) !important;
+}
+:where(
+  #tab-today, #tab-bets, #tab-handicap, #tab-results, #tab-reference,
+  .rec-bets-card, .race-card-wrap, #rec-bets-card, #todays-locked-bets-list,
+  #exotic-bets-list, #advice-output, #handicapper-profiles-body,
+  #breakdown-empty, .card, .hcp-tool
+)
+:is(
+  [style*="rgba(255,255,255,0.4"], [style*="rgba(255, 255, 255, 0.4"],
+  [style*="rgba(255,255,255,0.35"], [style*="rgba(255, 255, 255, 0.35"],
+  [style*="rgba(255,255,255,0.3"], [style*="rgba(255, 255, 255, 0.3"],
+  [style*="rgba(255,255,255,0.25"], [style*="rgba(255, 255, 255, 0.25"]
+):not(:is(.rec-bet-details:has(.detail-stat-row) *, [id^="horse-detail-"] *, .horse-detail-panel *)) {
+  color: var(--msp-muted) !important;
+}
+
+/* =========================================================
+   BARN: relight hero, stall cards, CTAs, profile modal
+   The barn/profile inline <style> blocks use the old navy gradient
+   hero + dark-navy profile modal. Override here cleanly.
+   ========================================================= */
+.barn-hero,
+.barn-hero-redesign {
+  background: linear-gradient(135deg, var(--msp-surface) 0%, #FBF6E8 60%, var(--msp-brass-tint) 100%) !important;
+  border: 1px solid var(--msp-border) !important;
+  box-shadow: var(--msp-shadow-md) !important;
+  color: var(--msp-ink) !important;
+  border-radius: 14px !important;
+}
+.barn-hero .barn-hero-mark {
+  background: var(--msp-brass-tint) !important;
+  border: 1px solid rgba(200,161,58,0.5) !important;
+}
+.barn-hero .barn-hero-title,
+.barn-hero-redesign .barn-hero-title { color: var(--msp-ink) !important; }
+.barn-hero .barn-hero-sub,
+.barn-hero-redesign .barn-hero-sub { color: var(--msp-ink-2) !important; font-style: italic; }
+.barn-hero-redesign .barn-hero-kicker { color: var(--msp-brass-deep) !important; }
+
+/* Barn stat chips */
+.barn-stat-chip { background: var(--msp-surface) !important; border: 1px solid var(--msp-border) !important; }
+.barn-stat-chip-num { color: var(--msp-ink) !important; }
+.barn-stat-chip-lbl { color: var(--msp-ink-2) !important; }
+.barn-stat-chip.barn-stat-fav .barn-stat-chip-num { color: var(--msp-brass-deep) !important; }
+.barn-stat-chip.barn-stat-today .barn-stat-chip-num { color: var(--msp-turf-deep) !important; }
+
+/* Barn primary/secondary CTAs */
+.barn-cta-primary,
+.my-barn-empty-cta {
+  background: var(--msp-turf) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--msp-turf-deep) !important;
+  box-shadow: 0 2px 6px rgba(47,107,79,0.25) !important;
+  border-radius: 10px !important;
+}
+.barn-cta-primary:hover,
+.my-barn-empty-cta:hover { background: var(--msp-turf-deep) !important; }
+.barn-cta-primary .barn-cta-icon,
+.my-barn-empty-cta .barn-cta-icon { color: var(--msp-brass) !important; }
+.barn-cta-secondary {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1.5px solid var(--msp-border) !important;
+  border-radius: 10px !important;
+}
+.barn-cta-secondary:hover { background: var(--msp-brass-tint) !important; border-color: var(--msp-brass-deep) !important; }
+
+/* Barn sections + stall cards */
+.barn-section, .my-barn-section {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  color: var(--msp-ink) !important;
+  box-shadow: var(--msp-shadow-sm) !important;
+}
+.my-barn-section { background: linear-gradient(180deg, var(--msp-surface) 0%, #FBF6E8 100%) !important; }
+.barn-section h3, .my-barn-head h3 { color: var(--msp-ink) !important; }
+.barn-section h3 .barn-count { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; }
+.my-barn-head .my-barn-sub { color: var(--msp-ink-2) !important; }
+
+.stall-card,
+.barn-item.barn-stall {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  box-shadow: inset 4px 0 0 var(--msp-brass), var(--msp-shadow-sm) !important;
+  color: var(--msp-ink) !important;
+}
+.stall-card:hover, .stall-card:focus-within,
+.barn-item.barn-stall:hover { background: #FBF6E8 !important; border-color: rgba(200,161,58,0.5) !important; }
+.stall-card-name, .barn-item-horse-name { color: var(--msp-ink) !important; }
+.stall-card-meta { color: var(--msp-ink-2) !important; }
+.stall-card-reason { color: var(--msp-ink-2) !important; border-left-color: var(--msp-brass) !important; font-style: italic; }
+.stall-card-badge { background: rgba(30,42,54,0.06) !important; color: var(--msp-ink-2) !important; }
+.stall-card-badge.badge-in-barn { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; }
+.stall-card-badge.badge-fav { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; }
+.stall-card-badge.badge-curated { background: var(--msp-turf-tint) !important; color: var(--msp-turf-deep) !important; }
+.stall-card-badge.badge-today { background: var(--msp-turf-tint) !important; color: var(--msp-turf-deep) !important; }
+.stall-card-view {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  color: var(--msp-ink) !important;
+}
+.stall-card-view:hover { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; border-color: var(--msp-brass-deep) !important; }
+.stall-card-remove { color: var(--msp-red) !important; border-color: rgba(159,63,56,0.45) !important; }
+.stall-card-remove:hover { background: var(--msp-red-tint) !important; }
+.barn-stall-heart, .barn-lookup-heart {
+  background: var(--msp-surface) !important;
+  border-color: rgba(200,161,58,0.55) !important;
+  color: var(--msp-brass-deep) !important;
+}
+.barn-stall-heart[aria-pressed="true"], .barn-lookup-heart[aria-pressed="true"] {
+  background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important;
+  box-shadow: 0 0 6px rgba(200,161,58,0.3) !important;
+}
+.barn-item-name { color: var(--msp-ink) !important; }
+.barn-item-meta, .barn-item-personal { color: var(--msp-ink-2) !important; }
+.barn-item-remove { color: var(--msp-red) !important; border-color: rgba(159,63,56,0.45) !important; }
+.barn-item-remove:hover { background: var(--msp-red-tint) !important; }
+.barn-empty { color: var(--msp-ink-2) !important; }
+.barn-runs-today { background: var(--msp-turf-tint) !important; color: var(--msp-turf-deep) !important; }
+
+/* Lookup drawer */
+.barn-drawer {
+  background: var(--msp-bg) !important;
+  color: var(--msp-ink) !important;
+  box-shadow: 0 -8px 24px rgba(30,42,54,0.25) !important;
+}
+.barn-drawer-scrim { background: rgba(30,42,54,0.45) !important; }
+.barn-drawer-handle { background: rgba(30,42,54,0.2) !important; }
+.barn-drawer-head { border-bottom: 1px solid var(--msp-border) !important; }
+.barn-drawer-title { color: var(--msp-ink) !important; }
+.barn-drawer-sub { color: var(--msp-ink-2) !important; }
+.barn-drawer-close {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  color: var(--msp-ink) !important;
+}
+.barn-drawer-close:hover { background: var(--msp-brass-tint) !important; }
+.barn-lookup {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  color: var(--msp-ink) !important;
+}
+.barn-lookup h3 { color: var(--msp-ink) !important; }
+.barn-lookup-sub { color: var(--msp-ink-2) !important; }
+.barn-lookup-input {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1.5px solid var(--msp-border) !important;
+}
+.barn-lookup-input::placeholder { color: var(--msp-muted) !important; }
+.barn-lookup-input:focus {
+  border-color: var(--msp-turf) !important;
+  box-shadow: 0 0 0 3px rgba(47,107,79,0.18) !important;
+}
+.barn-lookup-result {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  box-shadow: var(--msp-shadow-sm) !important;
+}
+.barn-lookup-name { color: var(--msp-ink) !important; }
+.barn-lookup-meta { color: var(--msp-ink-2) !important; }
+.barn-lookup-badge { background: rgba(30,42,54,0.06) !important; color: var(--msp-ink-2) !important; }
+.barn-lookup-badge.barn-lookup-badge-curated { background: var(--msp-turf-tint) !important; color: var(--msp-turf-deep) !important; }
+.barn-lookup-badge.barn-lookup-badge-demo { background: rgba(36,59,90,0.1) !important; color: var(--msp-navy-ink) !important; }
+.barn-lookup-badge.barn-lookup-badge-inbarn { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; }
+.barn-lookup-badge.barn-lookup-badge-fav { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; }
+.barn-lookup-add {
+  background: var(--msp-turf) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--msp-turf-deep) !important;
+  letter-spacing: 0.04em !important;
+  box-shadow: 0 1px 2px rgba(47,107,79,0.2) !important;
+}
+.barn-lookup-add:hover { background: var(--msp-turf-deep) !important; filter: none !important; }
+.barn-lookup-add[disabled] {
+  background: rgba(30,42,54,0.06) !important;
+  color: var(--msp-muted) !important;
+  border-color: var(--msp-border) !important;
+}
+.barn-lookup-empty { color: var(--msp-ink-2) !important; }
+.barn-lookup-suggested-label { color: var(--msp-muted) !important; }
+
+/* Footer tip pill */
+.barn-footer-tip {
+  background: var(--msp-brass-tint) !important;
+  border: 1px solid rgba(200,161,58,0.4) !important;
+  color: var(--msp-ink-2) !important;
+}
+.barn-footer-tip strong { color: var(--msp-ink) !important; }
+.barn-load-sample {
+  background: var(--msp-brass-tint) !important;
+  color: var(--msp-brass-deep) !important;
+  border: 1px dashed rgba(200,161,58,0.6) !important;
+}
+.barn-load-sample:hover { background: #F0E1B4 !important; }
+.barn-load-sample small { color: var(--msp-ink-2) !important; }
+
+/* Barn add-row button (inline style in JS) — override via attribute */
+.barn-add-row button,
+#sar-stable-add-btn {
+  background: var(--msp-turf) !important;
+  color: #FFFFFF !important;
+}
+.barn-add-row input,
+#sar-stable-add-input {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1.5px solid var(--msp-border) !important;
+}
+.barn-add-row input::placeholder,
+#sar-stable-add-input::placeholder { color: var(--msp-muted) !important; }
+
+/* Barn connections collapsible */
+.barn-connections-head {
+  background: var(--msp-panel) !important;
+  border: 1px solid var(--msp-border) !important;
+  color: var(--msp-ink) !important;
+  font-family: var(--msp-sans) !important;
+}
+.barn-connections-head:hover { background: #E8DEC5 !important; }
+.barn-connections-caret { color: var(--msp-brass-deep) !important; }
+
+/* Virtual barn profile modal — flip from dark-navy to light paper */
+#virtual-barn-profile-modal .vb-sheet {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  box-shadow: 0 -8px 24px rgba(30,42,54,0.25) !important;
+}
+#virtual-barn-profile-modal h3 { color: var(--msp-ink) !important; }
+#virtual-barn-profile-modal .vb-src-badge {
+  background: var(--msp-brass-tint) !important;
+  color: var(--msp-brass-deep) !important;
+}
+#virtual-barn-profile-modal .vb-src-badge-curated {
+  background: var(--msp-turf-tint) !important;
+  color: var(--msp-turf-deep) !important;
+}
+#virtual-barn-profile-modal .vb-section {
+  background: var(--msp-bg) !important;
+  border: 1px solid var(--msp-border) !important;
+  color: var(--msp-ink);
+}
+#virtual-barn-profile-modal .vb-section-head,
+#virtual-barn-profile-modal .vb-section-head:hover {
+  background: var(--msp-panel) !important;
+  color: var(--msp-ink) !important;
+}
+#virtual-barn-profile-modal .vb-section-head h4 { color: var(--msp-ink) !important; }
+#virtual-barn-profile-modal .vb-section-caret { color: var(--msp-brass-deep) !important; }
+#virtual-barn-profile-modal .vb-section-body { border-top: 1px solid var(--msp-border) !important; }
+#virtual-barn-profile-modal label { color: var(--msp-ink-2) !important; }
+#virtual-barn-profile-modal textarea,
+#virtual-barn-profile-modal input[type=text] {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1.5px solid var(--msp-border) !important;
+}
+#virtual-barn-profile-modal textarea::placeholder,
+#virtual-barn-profile-modal input[type=text]::placeholder { color: var(--msp-muted) !important; }
+#virtual-barn-profile-modal .vb-chip {
+  background: rgba(30,42,54,0.06) !important;
+  color: var(--msp-ink) !important;
+}
+#virtual-barn-profile-modal .vb-chip-key { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; }
+#virtual-barn-profile-modal .vb-chip-ml { background: var(--msp-turf-tint) !important; color: var(--msp-turf-deep) !important; }
+#virtual-barn-profile-modal .vb-chip-num { background: rgba(30,42,54,0.06) !important; color: var(--msp-ink) !important; }
+#virtual-barn-profile-modal .vb-chip-tag { background: rgba(36,59,90,0.08) !important; color: var(--msp-navy-ink) !important; }
+#virtual-barn-profile-modal .vb-chip-scratch { background: var(--msp-red-tint) !important; color: #7E2D27 !important; }
+#virtual-barn-profile-modal .vb-chip-finish { background: var(--msp-brass) !important; color: #1E2A36 !important; }
+#virtual-barn-profile-modal .vb-hist-row,
+#virtual-barn-profile-modal .vb-stat-row,
+#virtual-barn-profile-modal .vb-src-row { border-top: 1px solid var(--msp-border) !important; }
+#virtual-barn-profile-modal .vb-hist-date {
+  background: var(--msp-brass-tint) !important;
+  color: var(--msp-brass-deep) !important;
+}
+#virtual-barn-profile-modal .vb-hist-conn { color: var(--msp-ink-2) !important; }
+#virtual-barn-profile-modal .vb-hist-conn b { color: var(--msp-brass-deep) !important; }
+#virtual-barn-profile-modal .vb-hist-note,
+#virtual-barn-profile-modal .vb-empty,
+#virtual-barn-profile-modal .vb-na,
+#virtual-barn-profile-modal .vb-hist-src,
+#virtual-barn-profile-modal .vb-stat-note,
+#virtual-barn-profile-modal .vb-src-note,
+#virtual-barn-profile-modal .vb-stat-src,
+#virtual-barn-profile-modal .vb-src-disclaimer { color: var(--msp-ink-2) !important; }
+#virtual-barn-profile-modal .vb-stat-head { color: var(--msp-brass-deep) !important; }
+#virtual-barn-profile-modal .vb-stat-grid .vb-stat-num { color: var(--msp-ink) !important; }
+#virtual-barn-profile-modal .vb-stat-grid .vb-stat-lbl { color: var(--msp-ink-2) !important; }
+#virtual-barn-profile-modal .vb-src-link { color: var(--msp-turf-deep) !important; }
+#virtual-barn-profile-modal .vb-src-caveats {
+  background: var(--msp-red-tint) !important;
+  border-left-color: var(--msp-red) !important;
+}
+#virtual-barn-profile-modal .vb-src-caveats b { color: #7E2D27 !important; }
+#virtual-barn-profile-modal .vb-overview-grid dt { color: var(--msp-brass-deep) !important; }
+#virtual-barn-profile-modal .vb-overview-grid dd { color: var(--msp-ink) !important; }
+#virtual-barn-profile-modal .vb-btn-primary {
+  background: var(--msp-turf) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--msp-turf-deep) !important;
+}
+#virtual-barn-profile-modal .vb-btn-ghost {
+  background: var(--msp-surface) !important;
+  color: var(--msp-ink) !important;
+  border: 1px solid var(--msp-border) !important;
+}
+#virtual-barn-profile-modal .vb-btn-danger {
+  background: var(--msp-surface) !important;
+  color: var(--msp-red) !important;
+  border: 1px solid rgba(159,63,56,0.55) !important;
+}
+#virtual-barn-profile-modal .vb-btn-danger:hover { background: var(--msp-red-tint) !important; }
+#virtual-barn-profile-modal .vb-ownership-ribbon {
+  background: linear-gradient(90deg, var(--msp-brass-tint), #F7ECCB) !important;
+  border: 1px solid rgba(200,161,58,0.5) !important;
+  color: var(--msp-ink) !important;
+}
+#virtual-barn-profile-modal .vb-ownership-dot {
+  background: var(--msp-brass-tint) !important;
+  border: 1px solid rgba(200,161,58,0.55) !important;
+}
+#virtual-barn-profile-modal .vb-ownership-text { color: var(--msp-ink) !important; }
+
+/* Hero screen — keep dark photo background but remove post-login navy haze.
+   Only the real hero screen (pre-enter) should be dark. */
+#hero-screen::before {
+  background:
+    linear-gradient(180deg,
+      rgba(30,42,54,0.15) 0%,
+      rgba(30,42,54,0.30) 40%,
+      rgba(30,42,54,0.50) 78%,
+      rgba(30,42,54,0.65) 100%) !important;
+}
+.hero-title-luxury .hero-title-main { color: var(--msp-brass) !important; }
+
+/* Sanity: do not allow any global rule to force white-on-white. */
+.card, .card *:not(.btn-primary):not(.btn-gold):not(.btn-danger):not(.btn-burgundy) {
+  /* no-op placeholder for future audits */
+}
+
+/* Micro-radius normalize from the luxury 2px hard corners */
+.card, .race-card-wrap, .bet-slip-item, .bankroll-banner,
+.todays-pnl-hero, .best-bet-callout, .pnl-panel, .sparkline-panel,
+.advice-panel, .rec-bets-card, .section-block, .top-picks-card,
+#track-drawer, #settings-modal .settings-sheet {
+  border-radius: 10px !important;
+}
+.badge, .pill, .chip-pill, .status-pill, .suggested-bet-chip,
+.track-pill, .best-bet-race { border-radius: 999px !important; }
+.btn { border-radius: 8px !important; }
+
+/* Ensure secondary text and helper/caption classes stay readable on cream */
+.text-muted, .text-xs, .text-sm { color: var(--msp-ink-2) !important; }
+
+/* Meta text of cards / bets — no light-on-light */
+.bet-disclaimer, .rec-bet-expand-hint, #ticket-subtitle,
+.rec-bets-card #ticket-subtitle { color: var(--msp-ink-2) !important; }
+
+/* Confidence bar */
+.conf-seg { background: rgba(30,42,54,0.08) !important; }
+.conf-seg.green { background: var(--msp-turf) !important; }
+.conf-seg.yellow { background: var(--msp-brass) !important; }
+.conf-seg.red { background: var(--msp-red) !important; }
+
+/* Settings modal h2/h3 — dark ink on paper */
+#settings-modal .settings-sheet,
+#settings-modal .settings-sheet h2,
+#settings-modal .settings-sheet h3,
+#settings-modal .settings-sheet h4,
+#settings-modal .settings-sheet label,
+#settings-modal .settings-sheet p,
+#settings-modal .settings-sheet span,
+#settings-modal .settings-sheet div {
+  color: var(--msp-ink) !important;
+}
+#settings-modal .settings-sheet h2 { color: var(--msp-turf-deep) !important; }
+#settings-modal .settings-sheet h4 { color: var(--msp-ink-2) !important; }
+
+/* Filter buttons (Results tab) — ensure readable on panel bg */
+.filter-btn,
+.bet-type-filters button,
+.track-filter-segment button,
+.results-filter button,
+.segmented button {
+  color: var(--msp-ink) !important;
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  font-family: var(--msp-sans) !important;
+}
+.filter-btn.active,
+.bet-type-filters button.active,
+.track-filter-segment button.active,
+.results-filter button.active,
+.segmented button.active {
+  background: var(--msp-turf) !important;
+  color: #FFFFFF !important;
+  border-color: var(--msp-turf-deep) !important;
+}
+
+/* Track status dot (live green) — let our turf green take over */
+.dot-active { background: var(--msp-turf) !important; box-shadow: 0 0 0 3px rgba(47,107,79,0.25) !important; }
+.dot-inactive { background: #CFCFCF !important; }
+.track-status-dot { width: 8px; height: 8px; }
+
+/* Non-lux winner overlay (dark green backdrop) — keep gold on dark green.
+   Still ensure dismiss button has dark-ink text on brass to pass AA. */
+.winner-dismiss {
+  background: var(--msp-brass) !important;
+  color: #1E2A36 !important;
+  border: 1px solid var(--msp-brass-deep) !important;
+}
+.winner-dismiss:hover { background: #B8922F !important; }
+
+/* Secondary small-caps labels on cream — ensure 4.5:1 */
+.pnl-hero-label,
+.lux-winner-kicker,
+.track-drawer-group-label,
+.chip-nav-inner .chip-section-header { color: var(--msp-ink-2) !important; }
+
+/* Prevent any element from inheriting --lux-cream as color on a cream surface */
+.surface-cream, [style*="background: var(--lux-cream)"] { color: var(--msp-ink) !important; }
+
+/* Data-mode card in settings (inline styles used navy + white) — relight */
+#sar-data-mode-card {
+  background: var(--msp-panel) !important;
+  border: 1px solid var(--msp-border) !important;
+  color: var(--msp-ink) !important;
+}
+#sar-data-mode-card *,
+#sar-data-mode-card h4,
+#sar-data-mode-card p,
+#sar-data-mode-card button,
+#sar-data-mode-card span { color: var(--msp-ink) !important; }
+#sar-data-mode-card p { color: var(--msp-ink-2) !important; }
+#sar-data-mode-card .sar-mode-pill { color: var(--msp-ink) !important; background: var(--msp-brass-tint) !important; border: 1px solid rgba(200,161,58,0.45) !important; }
+#sar-data-mode-card .sar-mode-pill.live { background: var(--msp-turf-tint) !important; color: var(--msp-turf-deep) !important; border: 1px solid rgba(47,107,79,0.35) !important; }
+#sar-data-mode-card button {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+}
+/* Sample-mode banner */
+.sar-data-banner {
+  background: var(--msp-brass-tint) !important;
+  border: 1px solid rgba(200,161,58,0.45) !important;
+  color: var(--msp-ink) !important;
+}
+.sar-data-banner strong { color: var(--msp-brass-deep) !important; }
+.sar-data-banner span { color: var(--msp-ink-2) !important; }
+
+/* sar-ta typeahead overlay — relight */
+.sar-ta-opt { background: var(--msp-surface) !important; color: var(--msp-ink) !important; border-top: 1px solid var(--msp-border-soft) !important; }
+.sar-ta-opt:hover, .sar-ta-opt.active { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; }
+.sar-ta-empty { color: var(--msp-muted) !important; }
+
+/* Upcoming-at-Saratoga card — flip from dark navy to paper */
+.sar-up-card {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  box-shadow: var(--msp-shadow-sm) !important;
+  color: var(--msp-ink) !important;
+  border-radius: 12px !important;
+}
+.sar-up-card * { color: var(--msp-ink) !important; }
+.sar-up-card .sar-up-head h3 { color: var(--msp-ink) !important; font-family: 'Playfair Display','Cormorant Garamond',Georgia,serif !important; }
+.sar-up-count { background: var(--msp-brass-tint) !important; color: var(--msp-brass-deep) !important; border: 1px solid rgba(200,161,58,0.45) !important; }
+.sar-up-caret { color: var(--msp-brass-deep) !important; }
+.sar-up-empty { color: var(--msp-ink-2) !important; }
+.sar-up-day-head { color: var(--msp-turf-deep) !important; border-bottom: 1px solid var(--msp-border) !important; font-family: 'Playfair Display','Cormorant Garamond',Georgia,serif !important; }
+.sar-up-row { border-bottom: 1px solid var(--msp-border-soft) !important; }
+.sar-up-r { color: var(--msp-turf-deep) !important; }
+.sar-up-time { color: var(--msp-ink-2) !important; }
+.sar-up-name { color: var(--msp-ink) !important; }
+.sar-up-why { color: var(--msp-muted) !important; }
+.sar-up-go {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-turf-deep) !important;
+  color: var(--msp-turf-deep) !important;
+}
+.sar-up-go:hover { background: var(--msp-turf-tint) !important; }
+
+/* Barn-row highlight inside race cards (In Barn) — use brass rail */
+tr.sar-barn-row > td { background: var(--msp-brass-tint) !important; }
+tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !important; }
+
+/* Off-day dashboard (inline-styled in JS with #1B2E4B / #243653) — flip to paper */
+#offday-dashboard {
+  background: var(--msp-surface) !important;
+  border: 1px solid var(--msp-border) !important;
+  box-shadow: var(--msp-shadow-md) !important;
+  color: var(--msp-ink) !important;
+}
+#offday-dashboard * { color: var(--msp-ink) !important; }
+#offday-dashboard [style*="background:#243653"],
+#offday-dashboard [style*="background: #243653"] {
+  background: var(--msp-panel) !important;
+  border: 1px solid var(--msp-border) !important;
+}
+#offday-dashboard [style*="color:#C9A84C"],
+#offday-dashboard [style*="color: #C9A84C"] { color: var(--msp-brass-deep) !important; }
+#offday-dashboard [style*="color:#F5F0E8"],
+#offday-dashboard [style*="color: #F5F0E8"] { color: var(--msp-ink) !important; }
+#offday-dashboard [style*="color:#EDE8DC"],
+#offday-dashboard [style*="color: #EDE8DC"] { color: var(--msp-ink-2) !important; }
+#offday-dashboard [style*="color:#D9867A"],
+#offday-dashboard [style*="color: #D9867A"] { color: var(--msp-red) !important; }
+#offday-dashboard ul li strong { color: var(--msp-ink) !important; }
+
+/* Stables section card (inline colored text on cream) — reinforce ink */
+[style*="color:#EDE6D0"] { color: var(--msp-ink) !important; }
+[style*="color: #EDE6D0"] { color: var(--msp-ink) !important; }
+[style*="color:#E8E1CC"] { color: var(--msp-ink-2) !important; }
+[style*="color: #E8E1CC"] { color: var(--msp-ink-2) !important; }
+
+/* END v2.23.0 MODERN SARATOGA PROGRAM */
 </style>
 </head>
 <body>
