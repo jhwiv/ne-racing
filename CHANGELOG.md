@@ -1,5 +1,30 @@
 # NE Racing — Changelog
 
+## v2.21.7 — Barn drawer fully hidden until opened (2026-04-23)
+
+Fix: automated QA at 390px found that the closed lookup drawer's text
+("Choose a horse", "Done", helper copy) and its search input were still
+discoverable in the main Barn page before the user tapped *Add horse*.
+Root cause: the closed drawer relied only on `transform:translateY(100%)`,
+so the DOM node, its visible text, and the input still occupied and
+exposed space to text-search and interaction tooling.
+
+Fix applied:
+
+- `.barn-drawer:not(.open)` and `.barn-drawer-scrim:not(.open)` now
+  resolve to `display:none !important`, removing the closed drawer from
+  the visual layout, from `innerText`, and from the tab/focus order.
+- Initial render emits the closed drawer with both `aria-hidden="true"`
+  and the HTML `hidden` attribute, so it is inert before any JS runs.
+- `barn_openDrawer` / `barn_closeDrawer` toggle `hidden` alongside
+  `aria-hidden` and the `.open` class on both the drawer and the scrim.
+- Opened behavior is preserved: scrim appears, drawer slides up via
+  `display:flex` + `transform:translateY(0)`, search input is focused,
+  Done / scrim-click / Esc all close it.
+- Added four tests in `tests/redesigned-barn.test.js` covering:
+  closed-drawer aria-hidden/hidden attributes, CSS `display:none` rules,
+  and `hidden`/`aria-hidden` toggling in open/close handlers.
+
 ## v2.21.6 — Redesigned Barn: My Barn is primary, lookup moves to a drawer (2026-04-23)
 
 User feedback addressed: **"The design of the page is terrible. It still

@@ -110,7 +110,43 @@ test('redesign: no "Suggested horses" label is emitted into the main render', ()
     'Suggested horses must not appear in main Barn render');
 });
 
-test('redesign: version bumped to v2.21.6', () => {
+test('redesign: version bumped to v2.21.7', () => {
   const versionJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'));
-  assert.match(versionJson.version, /v2\.21\.6|2\.21\.6/);
+  assert.match(versionJson.version, /v2\.21\.7|2\.21\.7/);
+});
+
+// v2.21.7 — closed drawer must be fully hidden (no visible text, no interactable input)
+test('v2.21.7: closed drawer renders with aria-hidden="true" and hidden attribute', () => {
+  const src = extractBarnRender();
+  // Closed default: drawerOpen = '' so drawerHiddenAttr includes aria-hidden and hidden.
+  assert.match(src, /drawerHiddenAttr\s*=\s*window\.__barnDrawerOpen\s*\?\s*''\s*:\s*'aria-hidden="true"\s*hidden'/,
+    'drawer must have aria-hidden="true" hidden when closed');
+  assert.match(src, /scrimHiddenAttr\s*=\s*window\.__barnDrawerOpen\s*\?\s*'aria-hidden="false"'\s*:\s*'aria-hidden="true"\s*hidden'/,
+    'scrim must have aria-hidden="true" hidden when closed');
+});
+
+test('v2.21.7: CSS hides closed drawer with display:none', () => {
+  // CSS must ensure .barn-drawer:not(.open) is visually hidden AND non-interactive.
+  assert.match(INDEX, /\.barn-drawer:not\(\.open\)\{[^}]*display:none/,
+    'CSS must hide closed .barn-drawer with display:none');
+  assert.match(INDEX, /\.barn-drawer-scrim:not\(\.open\)\{[^}]*display:none/,
+    'CSS must hide closed .barn-drawer-scrim with display:none');
+});
+
+test('v2.21.7: barn_closeDrawer sets hidden + aria-hidden on drawer and scrim', () => {
+  const closeStart = INDEX.indexOf('function barn_closeDrawer');
+  const closeEnd = INDEX.indexOf('window.__barnCloseDrawer', closeStart);
+  const closeSrc = INDEX.slice(closeStart, closeEnd);
+  assert.match(closeSrc, /drawer\.setAttribute\(\s*'aria-hidden'\s*,\s*'true'\s*\)/);
+  assert.match(closeSrc, /drawer\.setAttribute\(\s*'hidden'/);
+  assert.match(closeSrc, /scrim\.setAttribute\(\s*'hidden'/);
+});
+
+test('v2.21.7: barn_openDrawer removes hidden + aria-hidden from drawer and scrim', () => {
+  const openStart = INDEX.indexOf('function barn_openDrawer');
+  const openEnd = INDEX.indexOf('window.__barnOpenDrawer', openStart);
+  const openSrc = INDEX.slice(openStart, openEnd);
+  assert.match(openSrc, /drawer\.removeAttribute\(\s*'aria-hidden'\s*\)/);
+  assert.match(openSrc, /drawer\.removeAttribute\(\s*'hidden'\s*\)/);
+  assert.match(openSrc, /scrim\.removeAttribute\(\s*'hidden'\s*\)/);
 });

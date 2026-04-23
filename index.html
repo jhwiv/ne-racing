@@ -13299,10 +13299,14 @@ document.addEventListener('keydown', e => {
       '.my-barn-empty-cta:hover{background:#26406B}' +
       '.my-barn-empty-cta .barn-cta-icon{color:#C9A84C;font-weight:900}' +
       /* Add-horse drawer (sheet) */
+      /* v2.21.7 — closed drawer must be FULLY hidden (no visible text, no interactable input). */
       '.barn-drawer-scrim{position:fixed;inset:0;background:rgba(10,22,40,0.55);z-index:299;opacity:0;pointer-events:none;transition:opacity 0.2s ease}' +
-      '.barn-drawer-scrim.open{opacity:1;pointer-events:auto}' +
-      '.barn-drawer{position:fixed;left:0;right:0;bottom:0;z-index:300;background:#FBF7EB;border-top-left-radius:18px;border-top-right-radius:18px;box-shadow:0 -10px 30px rgba(10,22,40,0.4);transform:translateY(100%);transition:transform 0.25s ease;max-height:92vh;display:flex;flex-direction:column;color:#1B2E4B}' +
-      '.barn-drawer.open{transform:translateY(0)}' +
+      '.barn-drawer-scrim:not(.open){display:none}' +
+      '.barn-drawer-scrim.open{opacity:1;pointer-events:auto;display:block}' +
+      '.barn-drawer{position:fixed;left:0;right:0;bottom:0;z-index:300;background:#FBF7EB;border-top-left-radius:18px;border-top-right-radius:18px;box-shadow:0 -10px 30px rgba(10,22,40,0.4);transform:translateY(100%);transition:transform 0.25s ease;max-height:92vh;flex-direction:column;color:#1B2E4B}' +
+      '.barn-drawer:not(.open){display:none!important;visibility:hidden;pointer-events:none}' +
+      '.barn-drawer[aria-hidden="true"]:not(.open){display:none!important}' +
+      '.barn-drawer.open{display:flex;transform:translateY(0);visibility:visible;pointer-events:auto}' +
       '.barn-drawer-handle{width:42px;height:4px;border-radius:999px;background:rgba(27,46,75,0.22);margin:10px auto 4px;flex-shrink:0}' +
       '.barn-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 12px;border-bottom:1px solid rgba(27,46,75,0.08);flex-shrink:0}' +
       '.barn-drawer-title{font-family:\'Cormorant Garamond\',serif;font-size:1.25rem;color:#1B2E4B;margin:0;letter-spacing:0.02em;font-weight:700}' +
@@ -13391,9 +13395,11 @@ document.addEventListener('keydown', e => {
     // Add-horse drawer (hidden until CTA pressed). The ONLY place lookup/search
     // results ever render.
     var drawerOpen = window.__barnDrawerOpen ? ' open' : '';
+    var drawerHiddenAttr = window.__barnDrawerOpen ? '' : 'aria-hidden="true" hidden';
+    var scrimHiddenAttr = window.__barnDrawerOpen ? 'aria-hidden="false"' : 'aria-hidden="true" hidden';
     var drawerHtml =
-      '<div class="barn-drawer-scrim' + drawerOpen + '" id="barn-drawer-scrim" aria-hidden="true"></div>' +
-      '<div class="barn-drawer' + drawerOpen + '" id="barn-drawer" role="dialog" aria-modal="true" aria-labelledby="barn-drawer-title" ' + (drawerOpen ? '' : 'aria-hidden="true"') + '>' +
+      '<div class="barn-drawer-scrim' + drawerOpen + '" id="barn-drawer-scrim" ' + scrimHiddenAttr + '></div>' +
+      '<div class="barn-drawer' + drawerOpen + '" id="barn-drawer" role="dialog" aria-modal="true" aria-labelledby="barn-drawer-title" ' + drawerHiddenAttr + '>' +
         '<div class="barn-drawer-handle" aria-hidden="true"></div>' +
         '<div class="barn-drawer-head">' +
           '<h3 class="barn-drawer-title" id="barn-drawer-title">Choose a horse</h3>' +
@@ -13471,8 +13477,8 @@ document.addEventListener('keydown', e => {
     window.__barnDrawerOpen = true;
     var scrim = document.getElementById('barn-drawer-scrim');
     var drawer = document.getElementById('barn-drawer');
-    if (scrim) scrim.classList.add('open');
-    if (drawer) { drawer.classList.add('open'); drawer.removeAttribute('aria-hidden'); }
+    if (scrim) { scrim.classList.add('open'); scrim.removeAttribute('hidden'); scrim.setAttribute('aria-hidden','false'); }
+    if (drawer) { drawer.classList.add('open'); drawer.removeAttribute('aria-hidden'); drawer.removeAttribute('hidden'); }
     // First render of results (suggestions) happens here on demand.
     var input = document.getElementById('barn-lookup-input');
     if (input) {
@@ -13488,8 +13494,8 @@ document.addEventListener('keydown', e => {
     window.__barnDrawerOpen = false;
     var scrim = document.getElementById('barn-drawer-scrim');
     var drawer = document.getElementById('barn-drawer');
-    if (scrim) scrim.classList.remove('open');
-    if (drawer) { drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); }
+    if (scrim) { scrim.classList.remove('open'); scrim.setAttribute('hidden',''); scrim.setAttribute('aria-hidden','true'); }
+    if (drawer) { drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); drawer.setAttribute('hidden',''); }
   }
   window.__barnCloseDrawer = barn_closeDrawer;
 
