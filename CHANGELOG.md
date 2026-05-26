@@ -1,5 +1,67 @@
 # NE Racing — Changelog
 
+## v2.25.0 — Pre-live UX polish (2026-05-26)
+
+Three pre-paid-data UX polish items, identified during a layout review and
+shipped together so the app reads more clearly the moment paid data goes live.
+
+### 1. Hero shows on first visit only
+
+The full-bleed Saratoga photo + 'Your Private Handicapping Companion' splash
+previously appeared on every page load and required a scroll past on every
+return visit. Now:
+
+- First launch: hero renders normally; user scrolls past or taps the chevron
+  to enter the app, which sets `settings.welcomeDone = true`.
+- Subsequent launches: hero is hidden (`display:none`) and the user lands
+  directly on the Today screen.
+- `resetHero()` is now wired to actually reset the flag so a future Settings
+  toggle can re-show the welcome.
+
+### 2. Date strip & next-race-day point at the upcoming meet
+
+- New `getNextRaceDayStatic(code)` helper reads the configured
+  `TRACKS[code].seasons` table and returns the next opener date.
+- `buildDateStrip()` now defaults its anchor to the next race day when the
+  user hasn't navigated the strip yet AND today is off-meet — so a user
+  opening the app on May 26 sees the Jun 3 Belmont Stakes Festival opener
+  in the visible week, not a strip of dark days. Manual nav still wins.
+- Days that fall inside any meet window now render with a small gold dot
+  pip beneath the date, making race days visually scannable at a glance.
+  The dot turns green for today's race day and dark gold when selected.
+- `offday_probeNextRaceDay()` is now static-first — it returns the season
+  opener from the `TRACKS` table immediately instead of depending on a
+  worker probe that may not have static data files for future dates.
+  Network probe is preserved as a fallback (extended 7→14 days) for
+  detecting card-posted state mid-meet.
+- The off-day dashboard's 'Next race day' subtitle now shows the season
+  label and days-until count (e.g. 'Belmont Stakes Festival — 8 days away')
+  when only the static date is known.
+
+### 3. Header track pill becomes a dynamic status pill
+
+The top-right pill that showed 'SAR — Saratoga' on every screen (redundant
+with the page heading and the SAR-only lock) now reflects real-time state:
+
+- `SIM` (green-tinted) — user is in simulate mode, no real wagers.
+- `LIVE` (green, gentle pulsing animation) — in-meet, real mode.
+- `OPENS TODAY` / `OPENS TOMORROW` / `OPENS IN Nd` / `PRE-MEET` (gold) —
+  next meet is upcoming, with a countdown when within 30 days.
+- `OFF` — no upcoming meet (year-end edge case).
+
+Pill is now uppercase mono and has an aria-label / title that exposes the
+full human-readable status (e.g. 'Saratoga — Belmont Stakes Festival opens
+Wed Jun 3 (8 days)'). The pill auto-refreshes whenever betting mode toggles
+via an added `updateHeaderTrack()` call inside `syncBettingModeUI()`.
+
+### Files touched
+- `index.html`: hero IIFE rewrite, `buildDateStrip` + `getNextRaceDayStatic`,
+  date-strip CSS dot pip, `updateHeaderTrack` rewrite, status-pill CSS,
+  `offday_probeNextRaceDay` static-first, `offday_updateNextBlock` season
+  label rendering, `syncBettingModeUI` pill refresh hook, version bump.
+- `version.json`: 20260526-1900-prelive-polish-v2.25.0.
+- `CHANGELOG.md`: this entry.
+
 ## v2.24.2 — Gate entries probes by meet window (2026-05-26)
 
 Stop firing `/api/entries` requests for dates outside the Saratoga

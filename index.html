@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260526-1350-meet-gated-probes-v2.24.2';
+var NE_APP_VERSION = '20260526-1900-prelive-polish-v2.25.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.24.2-saratoga-only';
+var RAILBIRD_VERSION = 'v2.25.0-prelive-polish';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1576,11 +1576,46 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .track-pill {
   display: inline-flex; align-items: center; gap: 6px;
   background: var(--color-green-light); border: 1px solid rgba(27,67,50,0.2);
-  color: var(--color-racing-green); font-size: 0.8rem; font-weight: 600;
+  color: var(--color-racing-green); font-size: 0.72rem; font-weight: 700;
   padding: 0.3rem 0.75rem; border-radius: 20px; cursor: pointer;
-  transition: background 0.15s; max-width: 200px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  max-width: 200px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--font-mono, ui-monospace, 'JetBrains Mono', monospace);
 }
 .track-pill:hover { background: #c3ebd0; }
+/* v2.25.0: status-pill variants — LIVE / DARK / PRE-MEET / SIM / OFF */
+.track-pill.status-live {
+  background: rgba(45,106,79,0.15);
+  color: var(--color-positive, #2D6A4F);
+  border-color: rgba(45,106,79,0.45);
+  animation: livePulse 2.5s ease-in-out infinite;
+}
+.track-pill.status-dark {
+  background: rgba(141,153,174,0.18);
+  color: var(--color-muted, #6E7B89);
+  border-color: rgba(141,153,174,0.4);
+}
+.track-pill.status-premeet {
+  background: rgba(201,168,76,0.15);
+  color: #8B6914;
+  border-color: rgba(201,168,76,0.5);
+}
+.track-pill.status-sim {
+  background: rgba(27,67,50,0.1);
+  color: var(--color-racing-green, #1B4332);
+  border-color: rgba(27,67,50,0.35);
+}
+.track-pill.status-off {
+  background: rgba(141,153,174,0.12);
+  color: var(--color-muted, #6E7B89);
+  border-color: rgba(141,153,174,0.3);
+}
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(45,106,79,0.4); }
+  50%      { box-shadow: 0 0 0 4px rgba(45,106,79,0); }
+}
 
 /* =========================================================
    WELCOME SCREEN
@@ -1782,6 +1817,21 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .date-strip-day.ds-selected .ds-dow { color: #8B6914; }
 .date-strip-day.ds-selected .ds-date { color: var(--color-slate); }
 .date-strip-day.ds-selected .ds-month { color: #8B6914; }
+/* v2.25.0: meet-day dot indicator (gold pip below the date) */
+.date-strip-day { position: relative; }
+.date-strip-day .ds-dot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  opacity: 0.85;
+}
+.date-strip-day.ds-selected .ds-dot { background: #8B6914; opacity: 1; }
+.date-strip-day.ds-today .ds-dot { background: var(--color-racing-green); opacity: 1; }
 .date-strip-nav {
   display: flex;
   align-items: center;
@@ -8075,6 +8125,9 @@ function syncBettingModeUI() {
 
   // Update bet button labels in ticket card
   updateTicketBetButtons();
+
+  // v2.25.0: Refresh the header status pill so it reflects the new mode
+  try { if (typeof updateHeaderTrack === 'function') updateHeaderTrack(); } catch(_) {}
 }
 
 function updateModeTabBadges() {
@@ -8387,15 +8440,16 @@ window.addEventListener('beforeinstallprompt', function(e) {
   initA2HSBanner();
 });
 
-// Hero behavior (v2.16.3 — hero stays home):
-//  - Hero is ALWAYS rendered as the first section of the page.
-//  - Every launch lands with the hero in view (scrollTop = 0).
-//  - Enter chevron smoothly scrolls the viewport down to #app-frame.
-//  - User can scroll back up to return to the hero at any time.
-//  - No seen-flags, no version-keyed dismiss state, no display:none toggle.
+// Hero behavior (v2.25.0 — first-visit-only):
+//  - On first launch (welcomeDone !== true), hero is shown full-bleed and
+//    the viewport starts at the hero (scrollTop = 0). User scrolls past or
+//    taps the chevron to enter the app, which marks welcomeDone = true.
+//  - On every subsequent launch, the hero is collapsed (display:none) and
+//    the viewport lands directly on the Today screen.
+//  - resetHero() re-shows the hero (used by Settings > 'Show welcome again'
+//    if we wire one up later).
 (function() {
-  // Migration: purge legacy hero-seen flags from older versions so returning
-  // users don't carry forward any state that could affect scroll behavior.
+  // Migration: purge legacy hero-seen flags from older versions.
   try {
     Object.keys(localStorage).forEach(function(k) {
       if (k.indexOf('railbird_hero_seen_') === 0) localStorage.removeItem(k);
@@ -8406,26 +8460,76 @@ window.addEventListener('beforeinstallprompt', function(e) {
   var hero = document.getElementById('hero-screen');
   if (!hero) return;
 
-  // Force the viewport to start at the hero on every load (overrides browser
-  // scroll restoration which could land the user mid-app on reload).
+  // Read welcomeDone from store. If store isn't ready yet (very first run
+  // before initStore), treat as not-done so the hero shows once.
+  function isWelcomeDone() {
+    try {
+      var s = (typeof getStore === 'function') ? getStore() : null;
+      return !!(s && s.settings && s.settings.welcomeDone);
+    } catch(_) { return false; }
+  }
+
   if ('scrollRestoration' in history) {
     try { history.scrollRestoration = 'manual'; } catch(_) {}
   }
-  window.scrollTo(0, 0);
-  // Belt-and-suspenders: some browsers restore scroll after 'load' fires
-  window.addEventListener('load', function() { window.scrollTo(0, 0); }, { once: true });
+
+  var welcomed = isWelcomeDone();
+
+  if (welcomed) {
+    // Returning user — collapse hero, start on app.
+    hero.classList.add('hero-hidden');
+    hero.style.display = 'none';
+    // Land at top of app-frame, not at the (now removed) hero.
+    window.scrollTo(0, 0);
+  } else {
+    // First-time user — show hero, start at top.
+    window.scrollTo(0, 0);
+    window.addEventListener('load', function() { window.scrollTo(0, 0); }, { once: true });
+  }
+
+  function markWelcomed() {
+    try {
+      var s = (typeof getStore === 'function') ? getStore() : null;
+      if (s && s.settings && !s.settings.welcomeDone) {
+        s.settings.welcomeDone = true;
+        if (typeof saveStore === 'function') saveStore(s);
+      }
+    } catch(_) {}
+  }
 
   function enterApp() {
+    markWelcomed();
     var af = document.getElementById('app-frame');
     if (af) af.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  // Public helpers (retain names so any other code referencing them still works)
+
+  // Mark welcomed once the user has scrolled past the hero on their own
+  // (so it doesn't reappear on the next launch).
+  if (!welcomed) {
+    var markOnScroll = function() {
+      if (window.scrollY > 100) {
+        markWelcomed();
+        window.removeEventListener('scroll', markOnScroll);
+      }
+    };
+    window.addEventListener('scroll', markOnScroll, { passive: true });
+  }
+
+  // Public helpers
   window.dismissHero = enterApp;
   window.resetHero = function() {
+    try {
+      var s = (typeof getStore === 'function') ? getStore() : null;
+      if (s && s.settings) {
+        s.settings.welcomeDone = false;
+        if (typeof saveStore === 'function') saveStore(s);
+      }
+    } catch(_) {}
+    hero.classList.remove('hero-hidden');
+    hero.style.display = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Enter chevron = scroll down to app
   var enterBtn = document.getElementById('hero-enter-prompt');
   if (enterBtn) {
     enterBtn.addEventListener('click', function(e) {
@@ -8520,7 +8624,54 @@ function updateHeaderTrack() {
   const track = TRACKS[code];
   if (!track) return;
   const pill = el('track-pill-text');
-  if (pill) pill.textContent = code + ' — ' + track.name;
+  if (!pill) return;
+
+  // v2.25.0: Status pill replaces the static track label.
+  // Surfaces the most useful real-time signal in the header:
+  //   • SIM       — user is in simulate mode (no real wagers)
+  //   • LIVE      — in-meet, race day, real mode
+  //   • DARK      — in-meet but no card today (mid-meet dark day)
+  //   • PRE-MEET  — next meet is upcoming (shows days countdown)
+  //   • OFF       — no upcoming meet
+  // Click reveals a small popover with full track info.
+  const mode = (typeof getBettingMode === 'function') ? getBettingMode() : 'simulate';
+  const status = (typeof getSarStatus === 'function') ? getSarStatus() : { phase: 'ended', daysUntil: null };
+
+  // Strip any prior status modifier classes
+  pill.classList.remove('status-live', 'status-dark', 'status-premeet', 'status-sim', 'status-off');
+
+  let label, klass, srLabel;
+  if (mode === 'simulate') {
+    label = 'SIM';
+    klass = 'status-sim';
+    srLabel = 'Simulate mode — no real wagers';
+  } else if (status.phase === 'live') {
+    label = 'LIVE';
+    klass = 'status-live';
+    srLabel = track.name + ' — live meet';
+  } else if (status.phase === 'upcoming') {
+    const days = status.daysUntil;
+    if (days === 0) { label = 'OPENS TODAY'; }
+    else if (days === 1) { label = 'OPENS TOMORROW'; }
+    else if (days <= 30) { label = 'OPENS IN ' + days + 'D'; }
+    else { label = 'PRE-MEET'; }
+    klass = 'status-premeet';
+    srLabel = track.name + ' — ' + status.label;
+  } else {
+    label = 'OFF';
+    klass = 'status-off';
+    srLabel = track.name + ' — meet concluded';
+  }
+
+  pill.textContent = label;
+  pill.classList.add(klass);
+
+  // Update the host button so its aria-label and tooltip reflect status.
+  const btn = el('track-pill-btn');
+  if (btn) {
+    btn.setAttribute('aria-label', srLabel);
+    btn.setAttribute('title', srLabel);
+  }
 }
 
 /* =============================================================
@@ -12078,13 +12229,45 @@ function transformWorkerEntries(json) {
 /* =============================================================
    DATE STRIP — horizontal scrollable week picker
    ============================================================= */
+// v2.25.0: Compute the next race-day for the active track from the static
+// TRACKS[code].seasons table. Returns YYYY-MM-DD or null. Pure (no network).
+function getNextRaceDayStatic(code) {
+  try {
+    const tc = code || (typeof getActiveTrack === 'function' ? getActiveTrack() : 'SAR');
+    const t = (typeof TRACKS !== 'undefined') && TRACKS && TRACKS[tc];
+    if (!t || !Array.isArray(t.seasons) || !t.seasons.length) return null;
+    const today = getTodayStr();
+    // If today is inside an active meet, return today.
+    for (let i = 0; i < t.seasons.length; i++) {
+      const s = t.seasons[i];
+      if (today >= s.from && today <= s.to) return today;
+    }
+    // Otherwise return the next opener.
+    const future = t.seasons
+      .filter(s => s.from > today)
+      .sort((a, b) => (a.from < b.from ? -1 : 1));
+    return future.length ? future[0].from : null;
+  } catch (_) { return null; }
+}
+
 function buildDateStrip() {
   const strip = el('date-strip');
   const label = el('date-strip-label');
   if (!strip) return;
 
   const today = getTodayStr();
-  const anchor = dateStripAnchor || today;
+  // v2.25.0: When the user hasn't navigated the strip yet AND today is off-meet,
+  // anchor the strip on the next race day so the user can see/tap it without
+  // scrolling. Once they shift the strip manually, dateStripAnchor sticks and
+  // we respect it.
+  let defaultAnchor = today;
+  if (!dateStripAnchor) {
+    const nextRace = getNextRaceDayStatic();
+    if (nextRace && nextRace > today) {
+      defaultAnchor = nextRace;
+    }
+  }
+  const anchor = dateStripAnchor || defaultAnchor;
   const anchorDate = new Date(anchor + 'T12:00:00');
 
   // Build 7 days centered on anchor (3 before, anchor, 3 after)
@@ -12109,23 +12292,46 @@ function buildDateStrip() {
   const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+  // v2.25.0: Pre-compute meet windows for the active track so we can mark
+  // live-card days with a small gold dot in the strip.
+  let meetWindows = [];
+  try {
+    const tc = (typeof getActiveTrack === 'function') ? getActiveTrack() : 'SAR';
+    const t = (typeof TRACKS !== 'undefined') && TRACKS && TRACKS[tc];
+    if (t && Array.isArray(t.seasons)) meetWindows = t.seasons;
+  } catch (_) {}
+  function dateInMeet(ds) {
+    for (let i = 0; i < meetWindows.length; i++) {
+      const s = meetWindows[i];
+      if (ds >= s.from && ds <= s.to) return true;
+    }
+    return false;
+  }
+
   strip.innerHTML = days.map(d => {
     const ds = d.toISOString().split('T')[0];
     const isToday = ds === today;
     const isSelected = ds === selected;
+    const isMeetDay = dateInMeet(ds);
     let cls = 'date-strip-day';
     if (isToday && !isSelected) cls += ' ds-today';
     if (isSelected) cls += ' ds-selected';
-    return `<button class="${cls}" onclick="selectCalendarDate('${ds}')" aria-label="${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}${isToday ? ' (today)' : ''}">
+    if (isMeetDay) cls += ' ds-meet';
+    const dotHtml = isMeetDay ? '<span class="ds-dot" aria-hidden="true"></span>' : '';
+    const ariaSuffix = isToday ? ' (today)' : (isMeetDay ? ' (live card)' : '');
+    return `<button class="${cls}" onclick="selectCalendarDate('${ds}')" aria-label="${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}${ariaSuffix}">
       <span class="ds-dow">${isToday ? 'Today' : DOW[d.getDay()]}</span>
       <span class="ds-date">${d.getDate()}</span>
       <span class="ds-month">${MONTHS[d.getMonth()]}</span>
+      ${dotHtml}
     </button>`;
   }).join('');
 
-  // Scroll to center the selected day
+  // Scroll to center the selected day (or the anchor when nothing is selected).
   requestAnimationFrame(() => {
-    const selBtn = strip.querySelector('.ds-selected') || strip.querySelector('.ds-today');
+    const selBtn = strip.querySelector('.ds-selected') ||
+                   strip.querySelector('.ds-today') ||
+                   strip.querySelector('.ds-meet');
     if (selBtn) selBtn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' });
   });
 }
@@ -13225,7 +13431,29 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
         new Promise(function(resolve) { setTimeout(function() { resolve(null); }, ms); })
       ]);
     }
-    for (var i = 1; i <= 7; i++) {
+
+    // v2.25.0: Static-first — use the configured TRACKS.SAR season windows to
+    // surface the next opener immediately, without depending on a Worker probe
+    // that may not yet have static data files for the future date. This makes
+    // the off-day dashboard useful when the meet is weeks away (e.g. showing
+    // 'Belmont Stakes Festival opens Wed Jun 3' from a May 26 dark day).
+    try {
+      if (typeof getSarStatus === 'function' && code === 'SAR') {
+        var t = (typeof TRACKS !== 'undefined') && TRACKS && TRACKS.SAR;
+        if (t && Array.isArray(t.seasons) && t.seasons.length) {
+          var future = t.seasons
+            .filter(function(s) { return s.from > today; })
+            .sort(function(a, b) { return a.from < b.from ? -1 : 1; });
+          if (future.length) {
+            // Return the opener date; raceCount unknown until card posts.
+            return { date: future[0].from, raceCount: null, seasonLabel: future[0].label };
+          }
+        }
+      }
+    } catch(_) {}
+
+    // Fallback: network probe up to 14 days out (catches mid-meet dark days).
+    for (var i = 1; i <= 14; i++) {
       var d = offday_addDays(today, i);
       try {
         if (typeof tryFetchEntries !== 'function') break;
@@ -13251,7 +13479,18 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
     else if (days <= 6) when = 'This ' + offday_dayLabel(next.date, { weekday: 'long' });
     else when = offday_dayLabel(next.date, { weekday: 'long', month: 'short', day: 'numeric' });
     textEl.textContent = when + ' — ' + offday_dayLabel(next.date, { month: 'short', day: 'numeric' });
-    if (subEl) subEl.textContent = next.raceCount + ' races on the card.';
+    // v2.25.0: Show season label + days-until when we don't yet have a race count
+    // (because the probe used the static seasons table, not a posted card).
+    if (subEl) {
+      if (next.raceCount != null) {
+        subEl.textContent = next.raceCount + ' races on the card.';
+      } else if (next.seasonLabel) {
+        var daysTxt = days === 1 ? '1 day away' : (days + ' days away');
+        subEl.textContent = next.seasonLabel + ' — ' + daysTxt + '. Card posts ~18–24 hours before post time.';
+      } else {
+        subEl.textContent = 'Card posts ~18–24 hours before post time.';
+      }
+    }
   }
   // Wrapper: after base renderTodayTab runs, if today is empty state, swap in dashboard
   var base = typeof renderTodayTab === 'function' ? renderTodayTab : null;
