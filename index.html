@@ -2527,12 +2527,13 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   background: #FBF6EC; border-color: rgba(47,107,79,0.35); outline: none;
 }
 .more-item-icon {
-  flex: 0 0 32px; height: 32px;
+  flex: 0 0 32px; width: 32px; height: 32px;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 8px;
   background: rgba(47,107,79,0.10);
   color: var(--color-racing-green, #2F6B4F);
 }
+.more-item-icon svg { width: 18px; height: 18px; display: block; }
 .more-item-body { flex: 1 1 auto; min-width: 0; }
 .more-item-title {
   font-family: var(--font-display, serif);
@@ -2544,8 +2545,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   line-height: 1.3; margin-top: 0.1rem;
 }
 .more-item-caret {
-  flex: 0 0 auto; color: rgba(27,46,75,0.4);
-  display: inline-flex; align-items: center;
+  flex: 0 0 18px; width: 18px; height: 18px;
+  color: rgba(27,46,75,0.4);
+  display: block;
 }
 
 /* =========================================================
@@ -7012,7 +7014,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Race
           </button>
-          <button class="btn btn-outline btn-sm" id="refresh-advice-btn" onclick="runAdviceEngine()" title="Refresh advice" hidden>
+          <button class="btn btn-outline btn-sm" id="refresh-advice-btn" onclick="runAdviceEngine()" title="Refresh advice" style="display:none">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             Refresh Advice
           </button>
@@ -8851,6 +8853,8 @@ function initApp() {
 
   updateHeaderTrack();
   buildDateStrip();
+  // v2.26.0: tag body with current-tab class so per-tab CSS (FAB hide) applies on first paint
+  try { document.body.classList.add('tab-today'); } catch (e) {}
   renderTabContent('today');
   buildDrawerLists();
   buildSettingsModal();
@@ -9147,12 +9151,9 @@ function renderTodayTab() {
     todayHeading.textContent = track.name + ' \u2014 ' + dateStr;
   }
 
-  // v2.26.0: hide Refresh Advice when card is empty
+  // v2.26.0: hide Refresh Advice when card is empty (inline style overrides .btn cascade)
   var refreshBtn = el('refresh-advice-btn');
-  if (refreshBtn) {
-    if (races.length) { refreshBtn.hidden = false; refreshBtn.removeAttribute('hidden'); }
-    else { refreshBtn.hidden = true; refreshBtn.setAttribute('hidden', ''); }
-  }
+  if (refreshBtn) { refreshBtn.style.display = races.length ? '' : 'none'; }
 
   if (!races.length) {
     // Empty state — determine message based on date vs today
