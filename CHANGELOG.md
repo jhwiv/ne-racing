@@ -1,5 +1,93 @@
 # NE Racing — Changelog
 
+## v2.26.0 — UX tightening pass (2026-05-26)
+
+Second UX polish wave following the v2.25.0 audit. Six structural items plus
+four pieces of color/visual cleanup, all aimed at making the app read crisper
+and faster on first contact.
+
+### 1. Demote the prominent blue sign-in card
+
+The blue "Sign in to your sportsbook" card on the Bets tab was the loudest
+element on the screen and competed with the bankroll banner for attention.
+- Replaced the full-bleed `.adw-signin-chip` block with a single-line
+  `.adw-signin-link` button (underlined racing-green text) under the bankroll
+  banner. Still opens the same `#adw-sheet` of provider options.
+- The sheet itself is unchanged — only the entry-point is demoted.
+
+### 2. Single master race picker on Handicap
+
+The Handicap tab previously had five independent race selectors stacked
+across its sub-panels (Advice / Speed Figs / Pace / Class / Trainer-Jockey).
+Now:
+- One `#hcp-master-race-select` sits at the top of the tab.
+- Per-section pickers are hidden (`.hcp-hidden-picker`) but kept in the DOM
+  so existing render code reads `.value` unchanged.
+- `syncHandicapRace(value, silent)` propagates the master value to children
+  with a silent flag to avoid feedback loops.
+
+### 3. Consolidate bottom nav from six tabs to four
+
+The six-tab bottom bar (Today / Bets / Handicap / Barn / Results / Reference)
+was too dense on narrow screens. New shape:
+- Visible: **Today / Bets / Handicap / More**.
+- Barn, Results, Reference now live inside a `#more-sheet` bottom sheet that
+  mirrors the `#adw-sheet` pattern (handle, header, list of items with icon
+  + title + sub).
+- `switchTab()` lights up the More button when navigating to a sub-view so
+  the user always has a visible anchor.
+- `updateModeTabBadges()` is neutered — it now strips Simulated/Real badges
+  instead of adding them, since the new nav has no room for them.
+- Legacy `tab-btn-barn`, `tab-btn-results`, `tab-btn-reference` IDs are
+  preserved (hidden + `aria-hidden="true"`) for code that still references
+  them.
+
+### 4. FAB consistency
+
+The gold floating-action button overlapped Today / Bets / Handicap cards and
+added clutter where the primary tabs already have their own toolbars.
+- `switchTab()` now tags `<body>` with a `tab-<name>` class.
+- CSS hides `#fab-menu` when `body.tab-today`, `body.tab-bets`, or
+  `body.tab-handicap`. FAB still appears on sub-views that need quick
+  actions.
+
+### 5. Results page — three hero stats
+
+The Results tab previously rendered Today's P&L plus eight equally weighted
+bankroll tiles. The user has to scan to find the numbers that matter.
+- Today's P&L hero stays prominent.
+- New `.hero-stat-row` adds ROI + Win Rate as two large tiles right under it.
+- The remaining six stats (Starting, Current, Wagered, Returned, Net P&L,
+  Bets) are collapsed into a `<details class="bankroll-detail">` expander
+  labeled "Bankroll detail".
+
+### 6. Header left-anchor
+
+The "Saratoga 2026" wordmark was already in the header but hidden below
+768px. It is now visible on every viewport so the user always knows which
+track the app is locked to.
+
+### Bonus polish
+
+- **Refresh Advice** button on Today is hidden until at least one race exists
+  in the card.
+- **Slot-machine emoji** removed from the Exotic Bet Builder title (both the
+  wizard `#wizard-title` and the dynamic `renderStep0` path) — title is now
+  plain text.
+- **FAB color** unified from gold to racing-green in both the base and MSP
+  override stylesheets.
+- **Gold underline** on active mobile and desktop nav buttons removed — icon
+  color (racing-green) alone carries the active state.
+
+### Files touched
+
+- `index.html` — extensive (nav HTML, sheets, picker, switchTab, results
+  layout, CSS).
+- `version.json` → `20260526-1912-ux-tighten-v2.26.0`.
+- `NE_APP_VERSION` / `RAILBIRD_VERSION` constants bumped to match.
+
+---
+
 ## v2.25.0 — Pre-live UX polish (2026-05-26)
 
 Three pre-paid-data UX polish items, identified during a layout review and

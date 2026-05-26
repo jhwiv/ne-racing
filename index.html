@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260526-1900-prelive-polish-v2.25.0';
+var NE_APP_VERSION = '20260526-1912-ux-tighten-v2.26.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.25.0-prelive-polish';
+var RAILBIRD_VERSION = 'v2.26.0-ux-tighten';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -543,7 +543,7 @@ function neForceUpdate(newVersion) {
 
   // Step 0: Choose bet type
   function renderStep0(body, title, subtitle) {
-    title.innerHTML = '&#x1F3B0; Exotic Bet Builder';
+    title.textContent = 'Exotic Bet Builder';
     subtitle.textContent = 'Choose your exotic bet type';
 
     var races = getWizardRaces();
@@ -1475,10 +1475,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 }
 .tab-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
 .tab-btn.active { color: var(--color-racing-green); }
-.tab-btn.active::after {
-  content: ''; position: absolute; top: 0; left: 20%; right: 20%;
-  height: 2px; background: var(--color-gold); border-radius: 0 0 2px 2px;
-}
+/* v2.26.0: nav gold underline removed — icon color carries active state */
 .tab-badge {
   position: absolute; top: 6px; right: calc(50% - 18px);
   background: var(--color-negative); color: #fff;
@@ -1498,7 +1495,7 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 }
 .desktop-nav-btn:hover { color: var(--color-racing-green); background: rgba(27,67,50,0.06); }
 .desktop-nav-btn.active { color: var(--color-racing-green); background: transparent; }
-.desktop-nav-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0.75rem; right: 0.75rem; height: 2px; background: var(--color-gold); border-radius: 1px; }
+/* v2.26.0: desktop nav gold underline removed */
 .desktop-nav-btn svg { width: 16px; height: 16px; }
 
 /* =========================================================
@@ -1667,8 +1664,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    ========================================================= */
 .header-logo { display: flex; align-items: center; gap: 8px; }
 .header-logo svg { width: 32px; height: 32px; flex-shrink: 0; }
-.header-logo-text { font-family: var(--font-display); font-size: 0.9rem; font-weight: 600; color: var(--color-racing-green); display: none; }
-@media (min-width: 768px) { .header-logo-text { display: block; } }
+/* v2.26.0: header wordmark left-anchored, visible on all viewports */
+.header-logo-text { font-family: var(--font-display); font-size: 0.9rem; font-weight: 600; color: var(--color-racing-green); display: block; }
 .header-right { display: flex; align-items: center; gap: 0.5rem; }
 .sync-info { font-size: 0.7rem; color: var(--color-muted); font-family: var(--font-mono); display: none; }
 .live-odds-status { font-size: 0.6rem; font-family: var(--font-mono); font-weight: 700; letter-spacing: 0.5px; padding: 2px 6px; border-radius: var(--radius-sm); display: none; }
@@ -2112,6 +2109,58 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .bankroll-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
 @media (min-width: 480px) { .bankroll-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 640px) { .bankroll-grid { grid-template-columns: repeat(4, 1fr); } }
+
+/* v2.26.0: Hero stat row (ROI + Win Rate) flanking Today's P&L */
+.hero-stat-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;
+  margin: 0 0 0.85rem;
+}
+.hero-stat-tile {
+  background: var(--color-white, #FFFDF7);
+  border: 1px solid rgba(27,46,75,0.10);
+  border-radius: var(--radius-md, 10px);
+  padding: 0.7rem 0.85rem;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.hero-stat-label {
+  font-size: 0.72rem; letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-slate, #636B7A);
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  margin-bottom: 0.25rem;
+}
+.hero-stat-value {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 1.6rem; font-weight: 600;
+  color: var(--color-racing-green, #2F6B4F);
+  line-height: 1.1;
+}
+.hero-stat-value.stat-negative { color: var(--color-negative, #9F3F38); }
+.hero-stat-value.stat-positive { color: var(--color-positive, #2F6B4F); }
+
+.bankroll-detail {
+  margin: 0 0 1rem;
+  border: 1px solid rgba(27,46,75,0.10);
+  border-radius: var(--radius-md, 10px);
+  background: rgba(255,253,247,0.6);
+}
+.bankroll-detail > summary {
+  list-style: none; cursor: pointer;
+  padding: 0.55rem 0.85rem;
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-size: 0.78rem; letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-slate, #636B7A);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.bankroll-detail > summary::-webkit-details-marker { display: none; }
+.bankroll-detail > summary::after {
+  content: '+'; font-size: 1rem; color: var(--color-racing-green, #2F6B4F);
+  font-family: var(--font-mono, monospace);
+}
+.bankroll-detail[open] > summary::after { content: '–'; }
+.bankroll-detail > .bankroll-grid { padding: 0.5rem 0.75rem 0.85rem; margin-bottom: 0; }
 .bankroll-stat {
   background: var(--color-white); border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
   padding: 0.75rem; text-align: center;
@@ -2172,6 +2221,26 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    HANDICAP TAB
    ========================================================= */
 .hcp-tool { background: var(--color-white); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 1rem; margin-bottom: 1rem; }
+
+/* v2.26.0: master race picker that drives all handicap panels */
+.hcp-master-picker {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  background: rgba(27,67,50,0.06);
+  border: 1px solid rgba(47,107,79,0.22);
+  border-radius: var(--radius-md, 10px);
+  padding: 0.55rem 0.85rem;
+  margin: 0 0 0.85rem;
+}
+.hcp-master-picker > .form-label { color: var(--color-racing-green, #2F6B4F); font-family: var(--font-display, inherit); letter-spacing: 0.02em; }
+.hcp-master-picker > select { max-width: 220px; flex: 1 1 160px; min-width: 140px; }
+.hcp-master-picker .hcp-master-hint {
+  font-size: 0.72rem; color: var(--color-muted, #636B7A);
+  font-style: italic; margin-left: auto;
+}
+@media (max-width: 420px) {
+  .hcp-master-picker .hcp-master-hint { display: none; }
+}
+.hcp-hidden-picker { display: none !important; }
 .hcp-tool h3 { font-size: 0.9rem; margin-bottom: 0.75rem; }
 .sf-bar-wrap { margin-bottom: 0.5rem; }
 .sf-bar-label { font-size: 0.75rem; font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between; }
@@ -2325,6 +2394,24 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .adw-signin-chip .adw-chip-caret { opacity: 0.6; font-size: 0.95rem; flex: 0 0 auto; }
 
+/* v2.26.0: demoted one-line link variant for the Bets tab — replaces the blue card */
+.adw-signin-link {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  margin: 0.25rem 0 1rem; padding: 0.25rem 0;
+  background: transparent; border: 0;
+  color: var(--color-racing-green, #2F6B4F);
+  font-family: var(--font-body, inherit);
+  font-size: 0.85rem; font-weight: 600;
+  text-decoration: underline; text-decoration-color: rgba(47,107,79,0.35);
+  text-underline-offset: 3px;
+  cursor: pointer; line-height: 1.2;
+  transition: color 120ms ease, text-decoration-color 120ms ease;
+}
+.adw-signin-link svg { width: 14px; height: 14px; flex: 0 0 auto; }
+.adw-signin-link:hover, .adw-signin-link:focus-visible {
+  color: #184C38; text-decoration-color: #184C38; outline: none;
+}
+
 /* Row wrapper used on Today's Ticket so the chip sits directly under SIMULATE/REAL */
 .mode-toggle-row {
   display: flex; align-items: center; justify-content: center;
@@ -2377,6 +2464,88 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .adw-sheet-sub {
   margin: 0.15rem 0 0.9rem;
   font-size: 0.82rem; color: rgba(27,46,75,0.72); line-height: 1.4;
+}
+
+/* More-tab bottom sheet (mirrors #adw-sheet) */
+#more-sheet {
+  position: fixed; inset: 0; z-index: 520;
+  background: rgba(0,0,0,0.55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+@media (min-width: 500px) { #more-sheet { align-items: center; justify-content: center; } }
+#more-sheet.open { opacity: 1; pointer-events: auto; }
+.more-sheet-inner {
+  background: #F5F0E8;
+  border-radius: 18px 18px 0 0;
+  width: 100%; max-height: 80vh; overflow-y: auto;
+  padding: 0.75rem 1.1rem 1.4rem;
+  transform: translateY(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  color: #1B2E4B;
+}
+@media (min-width: 500px) { .more-sheet-inner { border-radius: 18px; width: min(440px, 95vw); transform: scale(0.95); } }
+#more-sheet.open .more-sheet-inner { transform: translateY(0); }
+@media (min-width: 500px) { #more-sheet.open .more-sheet-inner { transform: scale(1); } }
+.more-sheet-handle {
+  width: 40px; height: 4px; border-radius: 2px;
+  background: rgba(27,46,75,0.22);
+  margin: 0.25rem auto 0.75rem;
+}
+.more-sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.more-sheet-header h3 {
+  margin: 0; font-family: var(--font-display, serif);
+  font-size: 1.15rem; color: #1B2E4B;
+}
+.more-sheet-close {
+  background: transparent; border: none; padding: 0.35rem;
+  color: #1B2E4B; cursor: pointer; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; line-height: 1;
+}
+.more-sheet-close:hover, .more-sheet-close:focus-visible {
+  background: rgba(27,46,75,0.08); outline: none;
+}
+.more-sheet-list {
+  display: flex; flex-direction: column; gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+.more-item {
+  display: flex; align-items: center; gap: 0.85rem;
+  padding: 0.85rem 0.9rem;
+  background: #FFFDF7;
+  border: 1px solid rgba(27,46,75,0.10);
+  border-radius: 12px;
+  color: #1B2E4B;
+  text-align: left; cursor: pointer; width: 100%;
+  font: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.more-item:hover, .more-item:focus-visible {
+  background: #FBF6EC; border-color: rgba(47,107,79,0.35); outline: none;
+}
+.more-item-icon {
+  flex: 0 0 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: rgba(47,107,79,0.10);
+  color: var(--color-racing-green, #2F6B4F);
+}
+.more-item-body { flex: 1 1 auto; min-width: 0; }
+.more-item-title {
+  font-family: var(--font-display, serif);
+  font-size: 1rem; font-weight: 600; color: #1B2E4B;
+  line-height: 1.2;
+}
+.more-item-sub {
+  font-size: 0.78rem; color: rgba(27,46,75,0.65);
+  line-height: 1.3; margin-top: 0.1rem;
+}
+.more-item-caret {
+  flex: 0 0 auto; color: rgba(27,46,75,0.4);
+  display: inline-flex; align-items: center;
 }
 
 /* =========================================================
@@ -4387,10 +4556,10 @@ html, body { overscroll-behavior: none; }
 .fab-menu > * { pointer-events: auto; }
 .fab-main {
   width: 54px; height: 54px; border-radius: 50%;
-  background: var(--lux-gold);
-  color: var(--lux-navy);
+  background: var(--color-racing-green, #2F6B4F);
+  color: #FFFDF7;
   border: 1px solid rgba(10,22,40,0.25);
-  box-shadow: 0 10px 22px rgba(10,22,40,0.35), 0 0 0 4px rgba(201,168,76,0.18);
+  box-shadow: 0 10px 22px rgba(10,22,40,0.35), 0 0 0 4px rgba(47,107,79,0.18);
   display: inline-flex; align-items: center; justify-content: center;
   font-family: var(--lux-font-display);
   font-size: 1.6rem;
@@ -4398,7 +4567,12 @@ html, body { overscroll-behavior: none; }
   cursor: pointer;
   transition: transform 0.25s ease, background 0.2s ease;
 }
-.fab-main:hover { background: var(--lux-gold-soft); }
+.fab-main:hover { background: #245540; }
+
+/* v2.26.0: hide FAB on primary tabs (Today/Bets/Handicap) — keep only for sub-views */
+body.tab-today #fab-menu,
+body.tab-bets #fab-menu,
+body.tab-handicap #fab-menu { display: none !important; }
 .fab-main:active { transform: translateY(1px); }
 .fab-menu.open .fab-main { transform: rotate(45deg); }
 .fab-items {
@@ -5955,13 +6129,14 @@ input::placeholder, textarea::placeholder { color: var(--msp-muted) !important; 
 .date-strip-nav-label { color: var(--msp-muted) !important; }
 
 /* FAB — brass fill, ink icon, visible on ivory */
+/* v2.26.0: MSP override switched gold → racing-green to match unified palette */
 .fab-main {
-  background: var(--msp-brass) !important;
-  color: #1E2A36 !important;
-  border: 1px solid var(--msp-brass-deep) !important;
-  box-shadow: 0 8px 20px rgba(200,161,58,0.35), 0 2px 4px rgba(30,42,54,0.1) !important;
+  background: var(--color-racing-green, #2F6B4F) !important;
+  color: #FFFDF7 !important;
+  border: 1px solid #1F4A37 !important;
+  box-shadow: 0 8px 20px rgba(47,107,79,0.35), 0 2px 4px rgba(30,42,54,0.1) !important;
 }
-.fab-main:hover { background: #B8922F !important; }
+.fab-main:hover { background: #245540 !important; }
 .fab-item {
   background: var(--msp-surface) !important;
   color: var(--msp-ink) !important;
@@ -6713,14 +6888,14 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         Handicap
       </button>
-      <button class="desktop-nav-btn" onclick="switchTab('results')" id="dnav-results">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        Results
+      <!-- v2.26.0: "More" replaces Results + Reference on desktop too -->
+      <button class="desktop-nav-btn" onclick="openMoreSheet()" id="dnav-more" aria-haspopup="dialog" aria-controls="more-sheet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+        More
       </button>
-      <button class="desktop-nav-btn" onclick="switchTab('reference')" id="dnav-reference">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        Reference
-      </button>
+      <!-- Legacy hidden entries so any code that toggles their .active class still finds them -->
+      <button class="desktop-nav-btn legacy-hidden-tab" onclick="switchTab('results')" id="dnav-results" aria-hidden="true" tabindex="-1" style="display:none">Results</button>
+      <button class="desktop-nav-btn legacy-hidden-tab" onclick="switchTab('reference')" id="dnav-reference" aria-hidden="true" tabindex="-1" style="display:none">Reference</button>
     </nav>
 
     <div class="header-right">
@@ -6837,7 +7012,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Race
           </button>
-          <button class="btn btn-outline btn-sm" onclick="runAdviceEngine()" title="Refresh advice">
+          <button class="btn btn-outline btn-sm" id="refresh-advice-btn" onclick="runAdviceEngine()" title="Refresh advice" hidden>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             Refresh Advice
           </button>
@@ -6912,14 +7087,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <section id="tab-bets" class="tab-panel" role="tabpanel" aria-label="Bets">
       <h2 class="section-title">Bets</h2>
 
-      <!-- ADW quick sign-in chip -->
-      <button type="button" class="adw-signin-chip" onclick="openAdwSheet()" aria-haspopup="dialog" aria-controls="adw-sheet">
-        <span class="adw-chip-icon" aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
-        </span>
-        <span class="adw-chip-text">Sign in to your preferred betting app</span>
-        <span class="adw-chip-caret" aria-hidden="true">▾</span>
-      </button>
+      <!-- v2.26.0: ADW sign-in demoted to a one-line link under the bankroll;
+           card form retained for non-Bets surfaces (Today's ticket) -->
 
       <!-- Bankroll banner -->
       <div class="bankroll-banner" id="bet-bankroll-banner">
@@ -6944,6 +7113,12 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Total bets exceed 20% of your bankroll
       </div>
+
+      <!-- v2.26.0: one-line sign-in link replaces the prominent blue card -->
+      <button type="button" class="adw-signin-link" onclick="openAdwSheet()" aria-haspopup="dialog" aria-controls="adw-sheet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+        <span>Sign in to your betting app</span>
+      </button>
 
       <!-- Straight bets section -->
       <div class="section-title mt-2">Straight Bets</div>
@@ -7006,6 +7181,15 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <section id="tab-handicap" class="tab-panel" role="tabpanel" aria-label="Handicapping">
       <h2 class="section-title">Handicapping &amp; Advice</h2>
 
+      <!-- v2.26.0: Master race picker — one selector drives every section below -->
+      <div class="hcp-master-picker" id="hcp-master-picker">
+        <label class="form-label" for="hcp-master-race-select" style="margin:0;font-weight:600">Race</label>
+        <select id="hcp-master-race-select" class="form-control form-control-sm" onchange="syncHandicapRace(this.value)" aria-label="Active race for all handicap tools">
+          <option value="all">All Races</option>
+        </select>
+        <span class="hcp-master-hint">Applies to every panel below</span>
+      </div>
+
       <!-- Advice Engine Panel -->
       <div class="card mb-2" id="advice-engine-card">
         <div class="card-header" style="cursor:pointer" onclick="toggleAdvicePanel()">
@@ -7016,7 +7200,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <svg id="advice-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:18px;height:18px;transition:transform 0.2s"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div id="advice-engine-body" class="card-body">
-          <div id="advice-race-select-row" class="flex items-center gap-1 mb-2">
+          <!-- v2.26.0: hidden — driven by #hcp-master-race-select. Element kept for code that reads its value. -->
+          <div id="advice-race-select-row" class="flex items-center gap-1 mb-2 hcp-hidden-picker" hidden>
             <label class="form-label" style="margin:0;white-space:nowrap">Show race:</label>
             <select id="advice-race-select" class="form-control form-control-sm" style="max-width:180px" onchange="renderAdviceForRace()">
               <option value="all">All Races</option>
@@ -7032,7 +7217,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <div class="hcp-tool">
         <div class="flex justify-between items-center mb-1">
           <h3>Speed Figure Comparison</h3>
-          <select id="sf-race-select" class="form-control form-control-sm" style="max-width:160px" onchange="renderSpeedFigureChart()">
+          <!-- v2.26.0: per-section picker hidden — master picker drives it -->
+          <select id="sf-race-select" class="form-control form-control-sm hcp-hidden-picker" style="max-width:160px;display:none" onchange="renderSpeedFigureChart()" hidden>
             <option value="">Select Race</option>
           </select>
         </div>
@@ -7044,7 +7230,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <!-- Pace Analysis -->
       <div class="hcp-tool">
         <h3>Pace Analysis</h3>
-        <div id="pace-race-select-row" class="form-group">
+        <!-- v2.26.0: per-section picker hidden — master picker drives it -->
+        <div id="pace-race-select-row" class="form-group hcp-hidden-picker" hidden>
           <label class="form-label">Race</label>
           <select id="pace-race-select" class="form-control form-control-sm" style="max-width:200px" onchange="renderPaceInputs()">
             <option value="">Select Race</option>
@@ -7059,7 +7246,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <!-- Class Assessment -->
       <div class="hcp-tool">
         <h3>Class Assessment</h3>
-        <div class="form-group">
+        <!-- v2.26.0: per-section picker hidden — master picker drives it -->
+        <div class="form-group hcp-hidden-picker" hidden>
           <label class="form-label">Race</label>
           <select id="class-race-select" class="form-control form-control-sm" style="max-width:200px" onchange="renderClassInputs()">
             <option value="">Select Race</option>
@@ -7071,7 +7259,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <!-- Trainer/Jockey Notepad -->
       <div class="hcp-tool">
         <h3>Trainer / Jockey Notepad</h3>
-        <div class="form-group">
+        <!-- v2.26.0: per-section picker hidden — master picker drives it -->
+        <div class="form-group hcp-hidden-picker" hidden>
           <label class="form-label">Race</label>
           <select id="tj-race-select" class="form-control form-control-sm" style="max-width:200px" onchange="loadTJNotes()">
             <option value="">Select Race</option>
@@ -7152,17 +7341,30 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <div class="pnl-hero-sub" id="res-today-record"></div>
       </div>
 
-      <!-- Bankroll stats -->
-      <div class="bankroll-grid" id="bankroll-grid">
-        <div class="bankroll-stat"><div class="stat-label">Starting</div><div class="stat-value" id="res-starting">$0</div></div>
-        <div class="bankroll-stat"><div class="stat-label">Current</div><div class="stat-value" id="res-current">$0</div></div>
-        <div class="bankroll-stat"><div class="stat-label">Wagered</div><div class="stat-value" id="res-wagered">$0</div></div>
-        <div class="bankroll-stat"><div class="stat-label">Returned</div><div class="stat-value stat-positive" id="res-returned">$0</div></div>
-        <div class="bankroll-stat"><div class="stat-label">Net P&amp;L</div><div class="stat-value" id="res-pnl">$0</div></div>
-        <div class="bankroll-stat"><div class="stat-label">Win Rate</div><div class="stat-value" id="res-winrate">0%</div></div>
-        <div class="bankroll-stat"><div class="stat-label">ROI</div><div class="stat-value" id="res-roi">0%</div></div>
-        <div class="bankroll-stat"><div class="stat-label">Bets</div><div class="stat-value" id="res-count">0</div></div>
+      <!-- v2.26.0: Hero secondary stats (ROI + Win Rate) right under Today's P&L -->
+      <div class="hero-stat-row" id="hero-stat-row">
+        <div class="hero-stat-tile">
+          <div class="hero-stat-label">ROI</div>
+          <div class="hero-stat-value" id="res-roi">0%</div>
+        </div>
+        <div class="hero-stat-tile">
+          <div class="hero-stat-label">Win Rate</div>
+          <div class="hero-stat-value" id="res-winrate">0%</div>
+        </div>
       </div>
+
+      <!-- Bankroll detail (collapsed by default) -->
+      <details class="bankroll-detail" id="bankroll-detail">
+        <summary>Bankroll detail</summary>
+        <div class="bankroll-grid" id="bankroll-grid">
+          <div class="bankroll-stat"><div class="stat-label">Starting</div><div class="stat-value" id="res-starting">$0</div></div>
+          <div class="bankroll-stat"><div class="stat-label">Current</div><div class="stat-value" id="res-current">$0</div></div>
+          <div class="bankroll-stat"><div class="stat-label">Wagered</div><div class="stat-value" id="res-wagered">$0</div></div>
+          <div class="bankroll-stat"><div class="stat-label">Returned</div><div class="stat-value stat-positive" id="res-returned">$0</div></div>
+          <div class="bankroll-stat"><div class="stat-label">Net P&amp;L</div><div class="stat-value" id="res-pnl">$0</div></div>
+          <div class="bankroll-stat"><div class="stat-label">Bets</div><div class="stat-value" id="res-count">0</div></div>
+        </div>
+      </details>
 
       <!-- Sparkline -->
       <div class="sparkline-wrap">
@@ -7613,17 +7815,11 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 
 <!-- BOTTOM TAB BAR — placed outside app-frame to prevent iOS Safari
      position:fixed breakage when ancestors have overflow/transform -->
+<!-- v2.26.0: 4-tab primary nav (Today / Bets / Handicap / More). Barn, Results,
+     Reference are now in the More sheet to free thumb space. Old tab-btn-{barn,
+     results,reference} elements are still emitted (hidden) so any code that
+     references them keeps working unchanged. -->
 <nav id="bottom-tab-bar" role="navigation" aria-label="Tab navigation">
-  <button class="tab-btn" id="tab-btn-barn" onclick="switchTab('barn')" aria-label="Barn" aria-selected="false">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M3 12 L6 8 L12 4 L18 8 L21 12 V20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z"/>
-      <path d="M10 21 V14 H14 V21"/>
-      <path d="M10 14 L14 21 M14 14 L10 21"/>
-      <rect x="10.5" y="9" width="3" height="2.5" rx="0.3"/>
-    </svg>
-    <span>Barn</span>
-    <span class="tab-badge hidden" id="barn-today-badge">0</span>
-  </button>
   <button class="tab-btn active" id="tab-btn-today" onclick="switchTab('today')" aria-label="Today's Card" aria-selected="true">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 20 C4 14 7 10 9 9 L9 7 C9 5 11 4 13 4 C15 4 17 5 18 7 L20 9 C21 10 21 12 20 13 L18 14 C17 15 17 16 18 17 L20 20"/>
@@ -7646,21 +7842,92 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     </svg>
     <span>Handicap</span>
   </button>
-  <button class="tab-btn" id="tab-btn-results" onclick="switchTab('results')" aria-label="Results" aria-selected="false">
+  <!-- v2.26.0: "More" opens a sheet with Barn, Results, Reference -->
+  <button class="tab-btn" id="tab-btn-more" onclick="openMoreSheet()" aria-label="More" aria-haspopup="dialog" aria-controls="more-sheet" aria-expanded="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="12" y1="1" x2="12" y2="23"/>
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      <circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>
     </svg>
+    <span>More</span>
+  </button>
+
+  <!-- v2.26.0: hidden legacy tab buttons kept so any code that toggles their
+       classes (badges, active state) continues to find them. Not interactive. -->
+  <button class="tab-btn legacy-hidden-tab" id="tab-btn-barn" onclick="switchTab('barn')" aria-hidden="true" tabindex="-1" style="display:none">
+    <span>Barn</span>
+    <span class="tab-badge hidden" id="barn-today-badge">0</span>
+  </button>
+  <button class="tab-btn legacy-hidden-tab" id="tab-btn-results" onclick="switchTab('results')" aria-hidden="true" tabindex="-1" style="display:none">
     <span>Results</span>
   </button>
-  <button class="tab-btn" id="tab-btn-reference" onclick="switchTab('reference')" aria-label="Reference" aria-selected="false">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-    </svg>
+  <button class="tab-btn legacy-hidden-tab" id="tab-btn-reference" onclick="switchTab('reference')" aria-hidden="true" tabindex="-1" style="display:none">
     <span>Reference</span>
   </button>
 </nav>
+
+<!-- v2.26.0: "More" bottom sheet — lists secondary destinations -->
+<div id="more-sheet" role="dialog" aria-modal="true" aria-label="More" onclick="closeMoreSheetOnBg(event)">
+  <div class="more-sheet-inner" role="document">
+    <div class="more-sheet-handle" aria-hidden="true"></div>
+    <div class="more-sheet-header">
+      <h3>More</h3>
+      <button type="button" class="more-sheet-close" onclick="closeMoreSheet()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="more-sheet-list">
+      <button class="more-item" onclick="goMore('barn')">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12 L6 8 L12 4 L18 8 L21 12 V20 A1 1 0 0 1 20 21 H4 A1 1 0 0 1 3 20 Z"/>
+            <path d="M10 21 V14 H14 V21"/>
+            <path d="M10 14 L14 21 M14 14 L10 21"/>
+          </svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">Barn</span>
+          <span class="more-item-sub">Horses you're watching, jockeys, trainers</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="more-item" onclick="goMore('results')">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">Results &amp; Bankroll</span>
+          <span class="more-item-sub">P&amp;L, ROI, bet history</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="more-item" onclick="goMore('reference')">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">Track Reference</span>
+          <span class="more-item-sub">Track guide, wager types, glossary</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="more-item" onclick="closeMoreSheet(); openSettings();">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">Settings</span>
+          <span class="more-item-sub">Bankroll, betting mode, app info</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- SETTINGS MODAL -->
 <!-- ADW Sign-In Sheet (opened from Bets tab chip) -->
@@ -8678,6 +8945,13 @@ function updateHeaderTrack() {
    TAB SWITCHING
    ============================================================= */
 function switchTab(name) {
+  // v2.26.0: tag body with current-tab class so CSS can scope per-tab rules
+  // (e.g. hide FAB on Today/Bets/Handicap).
+  try {
+    var bodyCls = document.body.className.split(/\s+/).filter(function(c){ return c && c.indexOf('tab-') !== 0; });
+    bodyCls.push('tab-' + name);
+    document.body.className = bodyCls.join(' ');
+  } catch (e) {}
   // Hide all panels
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   // Deactivate all tab buttons (mobile + desktop)
@@ -8693,6 +8967,15 @@ function switchTab(name) {
   if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
   const dBtn = el('dnav-' + name);
   if (dBtn) dBtn.classList.add('active');
+
+  // v2.26.0: when the active tab lives behind the "More" sheet (barn / results /
+  // reference), light up the More button so the user has a visible anchor.
+  if (['barn', 'results', 'reference'].indexOf(name) !== -1) {
+    var moreBtn = el('tab-btn-more');
+    if (moreBtn) { moreBtn.classList.add('active'); moreBtn.setAttribute('aria-selected', 'true'); }
+    var dMoreBtn = el('dnav-more');
+    if (dMoreBtn) dMoreBtn.classList.add('active');
+  }
 
   // Render tab-specific content
   renderTabContent(name);
@@ -8722,6 +9005,56 @@ function renderTabContent(name) {
     case 'results': renderResultsTab(); break;
     case 'reference': renderReferenceTab(); break;
   }
+}
+
+/* =============================================================
+   v2.26.0: "More" bottom sheet (Barn / Results / Reference / Settings)
+   ============================================================= */
+function openMoreSheet() {
+  var sheet = el('more-sheet');
+  if (!sheet) return;
+  sheet.classList.add('open');
+  var btn = el('tab-btn-more');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+  // Lock body scroll behind sheet
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMoreSheet() {
+  var sheet = el('more-sheet');
+  if (!sheet) return;
+  sheet.classList.remove('open');
+  var btn = el('tab-btn-more');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+}
+
+function closeMoreSheetOnBg(ev) {
+  // Only close when the click is on the dimmer itself, not the inner sheet
+  if (ev && ev.target && ev.target.id === 'more-sheet') closeMoreSheet();
+}
+
+function goMore(tab) {
+  closeMoreSheet();
+  switchTab(tab);
+}
+
+// v2.26.0: SIM/REAL nav badges are now redundant with the header status pill.
+// Override the legacy populator so it removes existing badges instead of
+// creating new ones. (Header pill carries the mode signal.)
+function updateModeTabBadges() {
+  ['bets', 'results'].forEach(function(tab) {
+    var btn = el('tab-btn-' + tab);
+    if (btn) {
+      var existing = btn.querySelector('.tab-mode-badge');
+      if (existing) existing.remove();
+    }
+    var dBtn = el('dnav-' + tab);
+    if (dBtn) {
+      var existingD = dBtn.querySelector('.desktop-mode-badge');
+      if (existingD) existingD.remove();
+    }
+  });
 }
 
 /* =============================================================
@@ -8812,6 +9145,13 @@ function renderTodayTab() {
     const displayDate = loadedRaceDate ? new Date(loadedRaceDate + 'T12:00:00') : new Date();
     const dateStr = displayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     todayHeading.textContent = track.name + ' \u2014 ' + dateStr;
+  }
+
+  // v2.26.0: hide Refresh Advice when card is empty
+  var refreshBtn = el('refresh-advice-btn');
+  if (refreshBtn) {
+    if (races.length) { refreshBtn.hidden = false; refreshBtn.removeAttribute('hidden'); }
+    else { refreshBtn.hidden = true; refreshBtn.setAttribute('hidden', ''); }
   }
 
   if (!races.length) {
@@ -10257,6 +10597,81 @@ function renderAdviceForRace() {
 }
 
 /* =============================================================
+   v2.26.0: HANDICAP — SINGLE MASTER RACE PICKER
+   One selector at the top of the Handicap tab drives every panel.
+   We keep the per-section <select>s in the DOM (hidden) so existing
+   render functions that read their .value still work unchanged.
+   ============================================================= */
+function populateHandicapMaster() {
+  // Rebuilds the master select from the current race list. Called on
+  // initApp, after Add Race, after entries load, and on tab switch.
+  var master = el('hcp-master-race-select');
+  if (!master) return;
+  var data = (typeof getTrackData === 'function') ? getTrackData() : null;
+  var races = (data && Array.isArray(data.races)) ? data.races : [];
+  var prev = master.value;
+  var html = '<option value="all">All Races</option>';
+  races.forEach(function(r) {
+    var num = r.number || r.race || r.raceNumber;
+    var label = 'Race ' + num;
+    if (r.distance) label += ' \u2014 ' + r.distance;
+    html += '<option value="' + num + '">' + label + '</option>';
+  });
+  master.innerHTML = html;
+  // Restore previous selection when possible
+  if (prev && master.querySelector('option[value="' + prev + '"]')) {
+    master.value = prev;
+  } else {
+    master.value = 'all';
+  }
+  // Mirror initial value into all child pickers
+  syncHandicapRace(master.value, /*silent=*/true);
+}
+
+function syncHandicapRace(value, silent) {
+  // Drives all per-section pickers from the master selector.
+  // value === 'all' -> 'all' for advice (which supports it) and ''
+  // (Select Race placeholder) for the others which only handle a number.
+  var allMode = (value === 'all' || value == null);
+  var perRaceValue = allMode ? '' : String(value);
+
+  // 1) Advice Engine — supports "all"
+  var adv = el('advice-race-select');
+  if (adv) {
+    adv.value = allMode ? 'all' : perRaceValue;
+    if (!silent) try { renderAdviceForRace(); } catch (_) {}
+  }
+
+  // 2) Speed Figure
+  var sf = el('sf-race-select');
+  if (sf) {
+    sf.value = perRaceValue;
+    if (!silent && perRaceValue) try { renderSpeedFigureChart(); } catch (_) {}
+  }
+
+  // 3) Pace
+  var pace = el('pace-race-select');
+  if (pace) {
+    pace.value = perRaceValue;
+    if (!silent && perRaceValue) try { renderPaceInputs(); } catch (_) {}
+  }
+
+  // 4) Class
+  var cls = el('class-race-select');
+  if (cls) {
+    cls.value = perRaceValue;
+    if (!silent && perRaceValue) try { renderClassInputs(); } catch (_) {}
+  }
+
+  // 5) Trainer/Jockey notes
+  var tj = el('tj-race-select');
+  if (tj) {
+    tj.value = perRaceValue;
+    if (!silent && perRaceValue) try { loadTJNotes(); } catch (_) {}
+  }
+}
+
+/* =============================================================
    TAB 2: BETS
    ============================================================= */
 function renderBetsTab() {
@@ -10607,6 +11022,8 @@ function checkBudgetWarning(total) {
    ============================================================= */
 function renderHandicapTab() {
   updateHandicapSelects();
+  // v2.26.0: populate the master picker after the per-section pickers exist
+  try { populateHandicapMaster(); } catch (_) {}
   renderBiasLog();
   updateBiasDateDefault();
   // Re-run advice so the advice engine panel is populated
@@ -14035,7 +14452,7 @@ document.addEventListener('keydown', e => {
     <div class="wizard-handle"></div>
     <div class="wizard-header" style="position:relative">
       <button onclick="closeWizard()" aria-label="Close wizard" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);font-size:1.2rem;cursor:pointer;padding:4px 8px;z-index:1">&#x2715;</button>
-      <h2 id="wizard-title">&#x1F3B0; Exotic Bet Builder</h2>
+      <h2 id="wizard-title">Exotic Bet Builder</h2>
       <p id="wizard-subtitle">Build exotic bets from today's race card</p>
     </div>
     <div class="wizard-progress" id="wizard-progress"></div>
