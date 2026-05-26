@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260526-1912-ux-tighten-v2.26.0';
+var NE_APP_VERSION = '20260526-1930-bid-branding-v2.26.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.26.0-ux-tighten';
+var RAILBIRD_VERSION = 'v2.26.1-bid-branding';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2534,7 +2534,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   color: var(--color-racing-green, #2F6B4F);
 }
 .more-item-icon svg { width: 18px; height: 18px; display: block; }
-.more-item-body { flex: 1 1 auto; min-width: 0; }
+.more-item-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .more-item-title {
   font-family: var(--font-display, serif);
   font-size: 1rem; font-weight: 600; color: #1B2E4B;
@@ -2548,6 +2548,110 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   flex: 0 0 18px; width: 18px; height: 18px;
   color: rgba(27,46,75,0.4);
   display: block;
+}
+
+/* =========================================================
+   BARRIER ISLAND DIGITAL BRANDING
+   ========================================================= */
+
+/* Hero variant — white compass + white text over the luxury hero photo */
+.bid-hero {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 0;
+  background: transparent;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.45);
+}
+.bid-hero img {
+  height: 26px; width: auto; display: block;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.45));
+}
+.bid-hero-text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+  color: #ffffff;
+}
+.bid-hero-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 2px;
+}
+.bid-hero-name {
+  font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: #ffffff;
+}
+.bid-hero-name .bid-hero-llc {
+  font-size: 0.62em;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  margin-left: 0.25em;
+  color: rgba(255,255,255,0.85);
+  vertical-align: baseline;
+}
+
+/* Reference-tab footer variant — white compass + white text on a dark navy chip */
+.bid-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 32px auto 16px;
+  padding: 14px 22px;
+  max-width: 380px;
+  background: var(--lux-navy, #1B2E4B);
+  color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(10,22,40,0.25);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.bid-footer img {
+  height: 30px; width: auto; display: block;
+  flex: 0 0 auto;
+}
+.bid-footer-text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  color: #ffffff;
+}
+.bid-footer-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 2px;
+}
+.bid-footer-name {
+  font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  font-weight: 500;
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: #ffffff;
+}
+.bid-footer-name .bid-footer-llc {
+  font-size: 0.62em;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  margin-left: 0.25em;
+  color: rgba(255,255,255,0.78);
 }
 
 /* =========================================================
@@ -3049,7 +3153,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   content: '';
   position: absolute; bottom: 0; left: 0;
   width: 40px; height: 3px;
-  background: linear-gradient(90deg, var(--color-gold), transparent);
+  /* v2.26.1: gold → racing-green for full palette unity */
+  background: linear-gradient(90deg, var(--color-racing-green, #2F6B4F), transparent);
   border-radius: 2px;
 }
 
@@ -4015,9 +4120,11 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
   letter-spacing: 0.18em !important;
   text-transform: uppercase;
   color: var(--lux-gold) !important;
-  font-size: 0.92rem !important;
+  font-size: 0.78rem !important;
   font-weight: 600;
 }
+/* v2.26.1: bump back up on tablet+ where the header has room */
+@media (min-width: 600px) { .header-logo-text { font-size: 0.92rem !important; } }
 #top-header .icon-btn { color: var(--lux-cream); }
 #top-header .icon-btn:hover { color: var(--lux-gold); }
 #top-header .sync-info { color: var(--lux-ink-mute); font-family: var(--lux-font-mono); font-size: 0.68rem; letter-spacing: 0.05em; }
@@ -6845,6 +6952,13 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <div class="hero-rule"></div>
     <p class="hero-title-sub">Your Private Handicapping Companion</p>
     <p class="hero-tagline">Live entries, advice engine, bankroll &amp; bets — all in one program</p>
+    <div class="bid-hero" role="contentinfo" aria-label="Powered by Barrier Island Digital, LLC">
+      <img src="assets/bid-compass-white.png" alt="" width="480" height="470">
+      <span class="bid-hero-text">
+        <span class="bid-hero-eyebrow">Powered by</span>
+        <span class="bid-hero-name">Barrier Island Digital,<span class="bid-hero-llc">LLC</span></span>
+      </span>
+    </div>
   </div>
 
   <!-- Add to Home Screen banner (platform-detected, dismissible) -->
@@ -7764,6 +7878,15 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <p style="font-size:0.8rem;color:var(--color-muted);margin-top:0.5rem"><strong>Confidence:</strong> High = gap &gt;12 AND completeness ≥70% AND field ≥5. Medium = gap &gt;6 AND completeness ≥50%. Else Low. Auto-PASS when Low AND top score &lt;60.</p>
           <p style="font-size:0.8rem;color:var(--color-muted);margin-top:0.5rem">Letter grades: A+ (90–100), A (80–89), B+ (73–79), B (65–72), C (50–64), D (&lt;50).</p>
         </div>
+      </div>
+
+      <!-- Barrier Island Digital footer lockup -->
+      <div class="bid-footer" role="contentinfo" aria-label="Powered by Barrier Island Digital, LLC">
+        <img src="assets/bid-compass-white.png" alt="" width="480" height="470">
+        <span class="bid-footer-text">
+          <span class="bid-footer-eyebrow">Powered by</span>
+          <span class="bid-footer-name">Barrier Island Digital,<span class="bid-footer-llc">LLC</span></span>
+        </span>
       </div>
     </section>
 

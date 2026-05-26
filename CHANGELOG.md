@@ -1,5 +1,43 @@
 # NE Racing — Changelog
 
+## v2.26.1 — Polish + Barrier Island Digital branding (2026-05-26)
+
+Three small polish items follow-on from v2.26.0, plus first-time addition of
+Barrier Island Digital, LLC attribution to align with the rest of the
+studio's properties (Maritimes Grand Loop, Trip Optimizer).
+
+### Polish
+
+- **Mobile header wordmark** dropped from 0.92rem to 0.78rem so "SARATOGA
+  2026" no longer crowds the SIM pill on 393px viewports. Bumps back to
+  0.92rem at ≥600px where the header has room.
+- **More-sheet items** now stack title and subtitle vertically. `.more-item-
+  body` got `display:flex; flex-direction:column` so titles like "Results &
+  Bankroll" don't run inline with their subtitles.
+- **Section-title accent** recolored gold → racing-green for full palette
+  unity. The 40×3px gradient bar under every section heading was the only
+  remaining gold-on-cream UI element.
+
+### Barrier Island Digital branding
+
+- Added `assets/bid-compass-white.png` (480×470 transparent PNG, sourced
+  from maritimesgrandloop.com).
+- New `.bid-hero` lockup in the welcome hero block — white compass + white
+  serif name + white DM Mono "Powered by" eyebrow, drop-shadowed so it reads
+  cleanly over the luxury Saratoga photo.
+- New `.bid-footer` lockup at the bottom of the Reference tab — same
+  white-on-navy chip pattern used on Maritimes, gives the brand a permanent
+  home that's reachable from any session via More > Track Reference.
+
+### Files touched
+
+- `index.html` — 4 CSS blocks (header sizing, more-sheet flex, section accent
+  color, BID lockup styles) + 2 HTML insertions (hero, reference footer).
+- `assets/bid-compass-white.png` — new.
+- `version.json` → `20260526-1930-bid-branding-v2.26.1`.
+
+---
+
 ## v2.26.0 — UX tightening pass (2026-05-26)
 
 Second UX polish wave following the v2.25.0 audit. Six structural items plus
