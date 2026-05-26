@@ -1,5 +1,32 @@
 # NE Racing — Changelog
 
+## v2.24.1 — Hide hero track picker (2026-05-26)
+
+Remove the "SAR · LRL · BTP · opens …" pill row that appeared on the
+hero splash when no live cards were posted today. With the Saratoga-only
+lock from v2.24.0 the picker would only ever show a single SAR chip,
+which is already covered by the persistent header track pill.
+
+### Changes
+
+- **v2.18.0 hero track picker IIFE**: `trk_boot` now short-circuits and
+  removes any existing `#hero-track-picker` element when
+  `ENABLED_TRACKS.length <= 1`. Reverse by deleting that guard if
+  `ENABLED_TRACKS` is ever expanded.
+- **Defense in depth**: even with the picker hidden, the probe and the
+  upcoming-meets fallback now both iterate over `ENABLED_TRACKS` via a
+  new `trk_enabledCodes()` helper. If the early-return guard is ever
+  removed by mistake, the picker still cannot list suppressed tracks
+  (LRL, BTP, etc.).
+- **Version bump**: v2.24.0 → v2.24.1.
+
+### Not changed
+
+- Hero markup (title block, eyebrow, tagline, bg image).
+- Top header `Saratoga 2026` wordmark and the `SAR — Saratoga` pill in
+  the header (kept — these are the canonical track indicators now).
+- Everything else from v2.24.0.
+
 ## v2.24.0 — Saratoga-only lock (2026-05-26)
 
 Suppress all tracks besides Saratoga (SAR) in the UI. The Saratoga
