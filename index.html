@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260526-2025-bid-footer-band-v2.26.1';
+var NE_APP_VERSION = '20260526-2050-disclaimer-clear-v2.26.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.26.1-bid-footer-band';
+var RAILBIRD_VERSION = 'v2.26.1-disclaimer-clear';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -3096,7 +3096,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
    DISCLAIMER
    ========================================================= */
 #app-footer {
-  padding: 0.75rem 1rem; text-align: center;
+  /* v2.26.1 fix: footer sits OUTSIDE #main-content so the tab-bar padding
+     there doesn't protect it. Add bottom padding equal to tab-bar height
+     + safe-area inset so the disclaimer text stays readable above the
+     fixed bottom nav when the user scrolls to the bottom of any tab. */
+  padding: 0.75rem 1rem calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  text-align: center;
   font-size: 0.68rem; color: var(--color-muted);
   border-top: 1px solid rgba(0,0,0,0.07);
   background: var(--color-white);
@@ -4635,7 +4640,9 @@ html, body { overscroll-behavior: none; }
   font-style: italic;
   font-size: 0.82rem;
   border-top: 1px solid var(--lux-hairline);
-  padding: 1.25rem 1.15rem 1.5rem;
+  /* v2.26.1 fix: clear the fixed bottom-tab-bar so disclaimer is fully
+     readable on scroll. tab-bar-height (64px) + safe-area + breathing room. */
+  padding: 1.25rem 1.15rem calc(var(--tab-bar-height, 64px) + env(safe-area-inset-bottom, 0px) + 1.25rem) !important;
   letter-spacing: 0.01em;
 }
 #bottom-tab-bar {
