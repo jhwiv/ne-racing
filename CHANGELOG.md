@@ -1,5 +1,57 @@
 # NE Racing — Changelog
 
+## v2.24.0 — Saratoga-only lock (2026-05-26)
+
+Suppress all tracks besides Saratoga (SAR) in the UI. The Saratoga
+summer meet opens 2026-07-03 and the user has purchased live data only
+for Saratoga, so other tracks are hidden to avoid accidental selection
+and to prevent unnecessary worker requests for tracks without a live
+subscription.
+
+### Changes
+
+- **New `ENABLED_TRACKS` allow-list** (single source of truth) added
+  immediately below the `TRACKS` registry. Currently set to `['SAR']`.
+  Reverse the lock by adding codes back to this array — no other
+  edits required.
+- **Helpers**: `isTrackEnabled(code)` and `enabledTrackEntries()` for
+  use across the UI.
+- **Track drawer** (`buildDrawerLists`): now renders one button per
+  enabled track (currently only `SAR — Saratoga`). Grid column count
+  adapts to `ENABLED_TRACKS.length`. The Saratoga live-meet dot/badge
+  and the upcoming-meet hint still render via `getSarStatus()`.
+- **Settings modal**: track dropdown (`#settings-track`) only shows
+  enabled tracks. If the persisted `activeTrack` is no longer enabled,
+  the dropdown defaults to `SAR`.
+- **Track availability probe** (`probeTrackAvailability`): only probes
+  enabled tracks — avoids hitting `/api/entries` for tracks the user
+  has no live data for. `paintAvailability` likewise only renders
+  enabled tracks.
+- **`getActiveTrack`**: in-session guard coerces any disabled persisted
+  code to `SAR` immediately, before the `sarLockV1` migration in
+  `initStore` writes the new value back to localStorage.
+- **`initStore` migration `sarLockV1`**: one-time migration that
+  rewrites `settings.activeTrack` to `SAR` if the current selection is
+  not in `ENABLED_TRACKS`. Historical per-track buckets in
+  `store.tracks[*]` are preserved untouched so prior bets, notes,
+  bias logs, and advice for other tracks are not lost.
+- **New-user default**: fresh stores ship with `activeTrack: 'SAR'`
+  (was `'CT'`) and pre-set `sarLockV1: true` + `ctMigrationV25: true`.
+- **Worker default**: `wrangler.toml` `DEFAULT_TRACK` flipped from
+  `AQU` to `SAR` so `/api/*` endpoints called without `?track=` now
+  resolve to Saratoga.
+- **Version bump**: `v2.23.0-light-program` → `v2.24.0-saratoga-only`
+  (`NE_APP_VERSION`, `RAILBIRD_VERSION`, `version.json`).
+
+### Not changed
+
+- `TRACKS` registry — kept intact so the lock is fully reversible and
+  saved per-track data is not orphaned.
+- Worker route logic, scraping pipelines, advice engine, bankroll,
+  results, scratches, odds polling.
+- Theme / styling.
+- Service worker, data files in `data/`, fixtures, schemas, tests.
+
 ## v2.23.0 — Light Program re-skin (2026-04-23)
 
 Full visual re-skin only. No feature, data, advice, bankroll, Worker, or

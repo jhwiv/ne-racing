@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260423-1400-light-program-v2.23.0';
+var NE_APP_VERSION = '20260526-1245-saratoga-only-v2.24.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.23.0-light-program';
+var RAILBIRD_VERSION = 'v2.24.0-saratoga-only';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -6685,7 +6685,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     </div>
   </header>
 
-  <!-- TRACK TOGGLE (CT / SAR) -->
+  <!-- TRACK TOGGLE (SAR only — v2.24.0 Saratoga-only lock) -->
   <div id="track-drawer" role="dialog" aria-label="Track selector">
     <div class="sar-aqu-drawer">
       <div class="track-drawer-group-label" style="margin-bottom:0.5rem">Switch Track</div>
@@ -7765,6 +7765,25 @@ const TRACKS = {
 };
 
 /* =============================================================
+   ENABLED TRACKS (v2.24.0 — Saratoga-only lock)
+   -------------------------------------------------------------
+   Single source of truth controlling which tracks are exposed in
+   the UI (header drawer + settings dropdown) and probed by the
+   availability check. The full TRACKS registry above is kept
+   intact so historical per-track data (bets, races, notes) is
+   preserved and the lock can be reversed by editing this one list.
+
+   Saratoga 2026 opens 2026-07-03; the user has purchased live
+   data only for SAR, so all other tracks are hidden to avoid
+   accidental selection and unnecessary worker requests.
+   ============================================================= */
+const ENABLED_TRACKS = ['SAR'];
+function isTrackEnabled(code) { return ENABLED_TRACKS.indexOf(code) !== -1; }
+function enabledTrackEntries() {
+  return Object.values(TRACKS).filter(function(t){ return isTrackEnabled(t.code); });
+}
+
+/* =============================================================
    CONSTANTS & GLOBALS
    ============================================================= */
 const STORAGE_KEY = 'racing2026';
@@ -7824,11 +7843,27 @@ function initStore() {
       existing.tracks.CT = { bets: [], races: [], bias: [], notes: {}, adviceLog: [], scratchHistory: [] };
       mutated = true;
     }
+    // v2.24.0 migration: Saratoga-only lock. Force activeTrack to SAR if the
+    // current selection is not in ENABLED_TRACKS. Historical per-track buckets
+    // remain in store.tracks[*] so prior bets/notes are preserved if the lock
+    // is ever reversed.
+    if (!existing.settings.sarLockV1) {
+      if (!isTrackEnabled(existing.settings.activeTrack)) {
+        existing.settings.activeTrack = 'SAR';
+      }
+      existing.settings.sarLockV1 = true;
+      mutated = true;
+    }
+    // Ensure SAR track data bucket exists
+    if (existing.tracks && !existing.tracks.SAR) {
+      existing.tracks.SAR = { bets: [], races: [], bias: [], notes: {}, adviceLog: [], scratchHistory: [] };
+      mutated = true;
+    }
     if (mutated) saveStore(existing);
     return existing;
   }
   const store = {
-    settings: { activeTrack: 'CT', dataMode: 'live', startingBankroll: 1000, workerUrl: DEFAULT_WORKER_URL, welcomeDone: false },
+    settings: { activeTrack: 'SAR', dataMode: 'live', startingBankroll: 1000, workerUrl: DEFAULT_WORKER_URL, welcomeDone: false, sarLockV1: true, ctMigrationV25: true },
     tracks: {}
   };
   Object.keys(TRACKS).forEach(code => {
@@ -7840,7 +7875,12 @@ function initStore() {
 
 function getActiveTrack() {
   const store = getStore();
-  return store ? (store.settings.activeTrack || 'CT') : 'CT';
+  const code = store ? (store.settings.activeTrack || 'SAR') : 'SAR';
+  // Saratoga-only lock (v2.24.0): if persisted activeTrack is no longer enabled
+  // (e.g. user previously had CT selected) coerce to SAR in-memory. The
+  // sarLockV1 migration in initStore writes this back to localStorage on next
+  // load; this guard handles the in-session case before that runs.
+  return isTrackEnabled(code) ? code : 'SAR';
 }
 
 /* Returns Saratoga meet status relative to today:
@@ -8540,14 +8580,18 @@ function buildDrawerLists() {
   const activeCode = getActiveTrack();
   const sarAquDiv = el('drawer-sar-aqu');
   if (sarAquDiv) {
+    // v2.24.0 Saratoga-only lock: render one button per enabled track.
+    // ENABLED_TRACKS currently = ['SAR']; reverse the lock by editing that list.
     const sarStatus = getSarStatus();
     const sarBadge = sarStatus.phase === 'live'
       ? '<span class="sar-status-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle" title="Saratoga live now"></span>'
       : '';
-    sarAquDiv.innerHTML = `
-      <button class="sar-aqu-btn ${activeCode === 'CT' ? 'selected' : ''}" onclick="selectTrack('CT')">CT &mdash; Charles Town</button>
-      <button class="sar-aqu-btn ${activeCode === 'SAR' ? 'selected' : ''}" onclick="selectTrack('SAR')">SAR &mdash; Saratoga${sarBadge}</button>
-    `;
+    sarAquDiv.style.gridTemplateColumns = 'repeat(' + ENABLED_TRACKS.length + ', 1fr)';
+    sarAquDiv.innerHTML = enabledTrackEntries().map(function(t){
+      const badge = (t.code === 'SAR') ? sarBadge : '';
+      const selected = t.code === activeCode ? 'selected' : '';
+      return '<button class="sar-aqu-btn ' + selected + '" onclick="selectTrack(\'' + t.code + '\')">' + t.code + ' &mdash; ' + t.name + badge + '</button>';
+    }).join('');
     const hint = el('drawer-sar-hint');
     if (hint) {
       if (sarStatus.phase === 'live') {
@@ -11542,12 +11586,13 @@ function toggleRefSection(header) {
 function buildSettingsModal() {
   const sel = el('settings-track');
   if (!sel) return;
-  sel.innerHTML = Object.values(TRACKS).map(t =>
+  // v2.24.0 Saratoga-only lock: only enabled tracks appear in the dropdown.
+  sel.innerHTML = enabledTrackEntries().map(t =>
     `<option value="${t.code}">${t.code} \u2014 ${t.name}</option>`
   ).join('');
   const store = getStore();
   if (store) {
-    sel.value = store.settings.activeTrack || 'CT';
+    sel.value = isTrackEnabled(store.settings.activeTrack) ? store.settings.activeTrack : 'SAR';
     const br = el('settings-bankroll');
     if (br) br.value = store.settings.startingBankroll || 1000;
     const wu = el('settings-worker-url');
@@ -11568,7 +11613,9 @@ async function probeTrackAvailability() {
   const store = getStore();
   const workerUrl = store && store.settings.workerUrl;
   const today = getTodayStr();
-  const codes = Object.keys(TRACKS);
+  // v2.24.0 Saratoga-only lock: only probe enabled tracks to avoid hitting the
+  // worker for tracks the user has no live-data subscription for.
+  const codes = ENABLED_TRACKS.slice();
   // Cache by date so it resets at midnight naturally via a new session
   if (_trackAvailabilityCache && _trackAvailabilityCache.date === today) {
     return paintAvailability(_trackAvailabilityCache.status);
@@ -11598,7 +11645,8 @@ function paintAvailability(status) {
   if (!sel) return;
   const prev = sel.value;
   const liveCount = Object.values(status).filter(s => s === 'live').length;
-  sel.innerHTML = Object.values(TRACKS).map(t => {
+  // v2.24.0 Saratoga-only lock: paint availability only for enabled tracks.
+  sel.innerHTML = enabledTrackEntries().map(t => {
     const s = status[t.code] || 'none';
     const dot = (s === 'live') ? '\u25CF ' : '\u00B7 ';
     const suffix = (s === 'live') ? '' : ' \u2014 no card today';
