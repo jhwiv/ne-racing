@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260526-1930-bid-branding-v2.26.1';
+var NE_APP_VERSION = '20260526-2010-bid-footer-band-v2.26.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.26.1-bid-branding';
+var RAILBIRD_VERSION = 'v2.26.1-bid-footer-band';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2604,19 +2604,25 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 
 /* Reference-tab footer variant — white compass + white text on a dark navy chip */
+.bid-footer-band {
+  /* Full-bleed navy band that breaks out of tab-panel horizontal padding */
+  background: var(--lux-navy, #1B2E4B) !important;
+  margin: 40px -1rem -1.5rem !important;
+  padding: 28px 1rem 32px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .bid-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin: 32px auto 16px;
-  padding: 14px 22px;
-  max-width: 380px;
-  background: var(--lux-navy, #1B2E4B);
+  gap: 12px;
+  background: transparent !important;
   color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(10,22,40,0.25);
-  border: 1px solid rgba(255,255,255,0.08);
+  padding: 0;
+  border: 0;
+  box-shadow: none;
 }
 .bid-footer img {
   height: 30px; width: auto; display: block;
@@ -7883,12 +7889,14 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </div>
 
       <!-- Barrier Island Digital footer lockup -->
-      <div class="bid-footer" role="contentinfo" aria-label="Powered by Barrier Island Digital, LLC">
-        <img src="assets/bid-compass-white.png" alt="" width="480" height="470">
-        <span class="bid-footer-text">
-          <span class="bid-footer-eyebrow">Powered by</span>
-          <span class="bid-footer-name">Barrier Island Digital,<span class="bid-footer-llc">LLC</span></span>
-        </span>
+      <div class="bid-footer-band">
+        <div class="bid-footer" role="contentinfo" aria-label="Powered by Barrier Island Digital, LLC">
+          <img src="assets/bid-compass-white.png" alt="" width="480" height="470">
+          <span class="bid-footer-text">
+            <span class="bid-footer-eyebrow">Powered by</span>
+            <span class="bid-footer-name">Barrier Island Digital,<span class="bid-footer-llc">LLC</span></span>
+          </span>
+        </div>
       </div>
     </section>
 

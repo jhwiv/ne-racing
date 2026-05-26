@@ -23,18 +23,22 @@ studio's properties (Maritimes Grand Loop, Trip Optimizer).
 - Added `assets/bid-compass-white.png` (480×470 transparent PNG, sourced
   from maritimesgrandloop.com).
 - New `.bid-hero` lockup in the welcome hero block — white compass + white
-  serif name + white DM Mono "Powered by" eyebrow, drop-shadowed so it reads
-  cleanly over the luxury Saratoga photo.
-- New `.bid-footer` lockup at the bottom of the Reference tab — same
-  white-on-navy chip pattern used on Maritimes, gives the brand a permanent
-  home that's reachable from any session via More > Track Reference.
+  serif name + white DM Mono "Powered by" eyebrow, drop-shadowed and
+  transparent so it reads cleanly over the luxury Saratoga hero photo
+  (no chip, white-on-existing-background per spec).
+- New `.bid-footer-band` (full-bleed navy band that breaks out of tab-panel
+  padding via negative margins + `!important` to win the MSP overlay
+  cascade) wraps a transparent `.bid-footer` lockup at the end of the
+  Reference tab. White compass + white text reads cleanly against navy
+  regardless of the cream page background underneath. Reachable from any
+  session via More > Track Reference.
 
 ### Files touched
 
 - `index.html` — 4 CSS blocks (header sizing, more-sheet flex, section accent
   color, BID lockup styles) + 2 HTML insertions (hero, reference footer).
 - `assets/bid-compass-white.png` — new.
-- `version.json` → `20260526-1930-bid-branding-v2.26.1`.
+- `version.json` → `20260526-2010-bid-footer-band-v2.26.1`.
 
 ---
 
