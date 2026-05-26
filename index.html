@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260526-1340-hero-picker-off-v2.24.1';
+var NE_APP_VERSION = '20260526-1350-meet-gated-probes-v2.24.2';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.24.1-saratoga-only';
+var RAILBIRD_VERSION = 'v2.24.2-saratoga-only';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -11627,6 +11627,9 @@ async function probeTrackAvailability() {
   if (hint) hint.textContent = 'Checking today\u2019s cards\u2026';
   const status = {};
   await Promise.all(codes.map(async (code) => {
+    // v2.24.2: skip the network probe if today is outside this track's meet.
+    // Marks the track as 'none' without firing a request that would 404.
+    if (!isDateInEnabledMeet(today)) { status[code] = 'none'; return; }
     try {
       const url = workerUrl + '/api/entries?track=' + code + '&date=' + today + '&_probe=' + Date.now();
       const res = await fetch(url, { cache: 'no-store' });
@@ -12235,8 +12238,33 @@ async function selectCalendarDate(dateStr) {
   renderTodayTab();
 }
 
+/* v2.24.2: Return true if the given date falls inside any season of an
+   enabled track. Used to short-circuit network probes for dates outside
+   the Saratoga meet (where the static GitHub Pages file does not exist
+   and the worker would return 404). */
+function isDateInEnabledMeet(dateStr) {
+  try {
+    if (typeof ENABLED_TRACKS === 'undefined' || !Array.isArray(ENABLED_TRACKS)) return true;
+    for (var i = 0; i < ENABLED_TRACKS.length; i++) {
+      var t = TRACKS[ENABLED_TRACKS[i]];
+      if (!t || !Array.isArray(t.seasons)) continue;
+      for (var j = 0; j < t.seasons.length; j++) {
+        var s = t.seasons[j];
+        if (dateStr >= s.from && dateStr <= s.to) return true;
+      }
+    }
+    return false;
+  } catch (e) {
+    // Fail open — don't block fetches if the helper itself blows up.
+    return true;
+  }
+}
+
 /** Try fetching entries for a specific date, returns {races, date, isToday} or null */
 async function tryFetchEntries(code, date) {
+  // v2.24.2: skip network entirely when the date is outside every enabled
+  // track's season. Avoids 12+ 404s in the console during the SAR off-season.
+  if (isTrackEnabled(code) && !isDateInEnabledMeet(date)) return null;
   const url = getEntriesUrl(code, date);
   try {
     const res = await fetch(url, { cache: 'no-store' });

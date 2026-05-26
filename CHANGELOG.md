@@ -1,5 +1,45 @@
 # NE Racing — Changelog
 
+## v2.24.2 — Gate entries probes by meet window (2026-05-26)
+
+Stop firing `/api/entries` requests for dates outside the Saratoga
+season. The smoke test for v2.24.1 surfaced 12 × 404s in the console
+on page load — `fetchLiveEntries` (today + 3-day lookahead) +
+`offday_probeNextRaceDay` (7-day lookahead) + the settings-modal
+probe were all hammering the worker for SAR dates between today
+(2026-05-26) and the Belmont Stakes Festival opener (2026-06-03).
+
+### Changes
+
+- **New helper `isDateInEnabledMeet(dateStr)`**: returns true if the
+  date falls inside any `seasons[]` window of an enabled track. Falls
+  open (returns true) on internal errors so it never accidentally
+  blocks a valid fetch.
+- **`tryFetchEntries`**: short-circuits to `null` when the requested
+  date is outside every enabled track's season. This single guard
+  covers `fetchLiveEntries`, the manual `selectCalendarDate` flow,
+  and `offday_probeNextRaceDay` since they all funnel through this
+  function. No callers needed changes.
+- **`probeTrackAvailability`** (settings modal): also gated by
+  `isDateInEnabledMeet(today)` so opening the Settings modal during
+  the off-season no longer fires a probe request that 404s.
+- **Version bump**: v2.24.1 → v2.24.2.
+
+### Behavior during the SAR off-season (today)
+
+- App opens, finds no SAR card for today, lookahead immediately
+  returns null (no network), falls through to the off-day dashboard.
+- Off-day dashboard's 7-day lookahead also returns null instantly.
+- Network tab: 0 requests to `/api/entries`.
+- Once today ≥ 2026-06-03 (Belmont Stakes Festival opens) or
+  today ≥ 2026-07-03 (Summer Meet opens), normal fetching resumes.
+
+### Not changed
+
+- Worker code path — still returns 404 on missing static files; we
+  just no longer ask.
+- Cache, polling cadence, advice engine, bankroll — untouched.
+
 ## v2.24.1 — Hide hero track picker (2026-05-26)
 
 Remove the "SAR · LRL · BTP · opens …" pill row that appeared on the
