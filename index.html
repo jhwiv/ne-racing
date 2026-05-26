@@ -5758,9 +5758,11 @@ h1, h2, h3, .hero-title-main, .hero-title-sub,
   color: var(--msp-turf-deep) !important;
   letter-spacing: 0.14em !important;
   text-transform: uppercase;
-  font-size: 0.92rem !important;
+  /* v2.26.1: smaller on mobile so wordmark doesn't crowd the SIM pill */
+  font-size: 0.78rem !important;
   font-weight: 700 !important;
 }
+@media (min-width: 600px) { .header-logo-text { font-size: 0.92rem !important; } }
 #top-header .track-pill {
   background: var(--msp-turf-tint) !important;
   border: 1px solid rgba(47,107,79,0.28) !important;
