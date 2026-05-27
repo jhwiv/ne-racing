@@ -1,5 +1,57 @@
 # NE Racing — Changelog
 
+## v2.29.0 — Pre-meet countdown polish (2026-05-27)
+
+With the onboarding tour pointing every new user to Today, the off-day
+dashboard becomes the first thing they actually see. v2.29.0 reshapes
+that dashboard to give the next 7 days of pre-meet visitors something
+worth looking at: a large countdown to opening day, a curated list of
+the headline stakes coming up, and two clear CTAs so they can productively
+use Handicap or the Barn while they wait for live cards.
+
+### Added
+
+- **Opening-day countdown card** (`#offday-countdown`, lines ~14299–14329) —
+  large numeric counter ("7 days to go"), meet label ("Belmont Stakes
+  Festival"), and opening-day date in plain English ("Opens Wednesday,
+  June 3"). Renders only when a meet opens within 14 days; otherwise
+  invisible. Computed live from `TRACKS.SAR.seasons`, no hard-coded dates.
+- **Headline stakes preview card** (`#offday-stakes`, lines ~14334–14372) —
+  curated list of marquee stakes for the upcoming meet, with race name,
+  grade, purse, day, distance, surface, and an editorial note. Belmont
+  Stakes Festival ships with Met Mile (G1), Brooklyn (G2), Jaipur (G1),
+  and Belmont Stakes (G1). Summer Meet ships with Whitney, Fourstardave,
+  and Travers. Data is hand-curated in `OFFDAY_STAKES` (no API needed).
+- **Dual-CTA footer** (lines ~14377–14387) — replaces the generic "Tip"
+  line with two real buttons:
+  - **Open Handicap** (outline) → `switchTab('handicap')`
+  - **Build your Barn** (filled gold) → `switchTab('barn')`
+
+### Fixed
+
+- **Redundant cream banner**: the warning banner "No race card available
+  — check back on a race day" was rendering above the off-day dashboard,
+  duplicating the dashboard's own "Dark day at Saratoga" header. The
+  banner-hide call inside the dashboard wrapper was being overridden by
+  a later `showLiveUnavailable()` call. `showLiveUnavailable()` now
+  checks for `#offday-dashboard` first and stays hidden when the rich
+  dashboard is on screen.
+
+### Bumped
+
+- `NE_APP_VERSION` → `20260527-1930-pre-meet-countdown-v2.29.0`
+- `RAILBIRD_VERSION` → `v2.29.0-pre-meet-countdown`
+- `version.json` to match.
+
+### Tests
+
+- 79/79 passing.
+- Playwright smoke (393×852): countdown reads "7 days to go · Belmont
+  Stakes Festival · Opens Wednesday, June 3", all 4 headline stakes
+  render with correct day/distance/surface/purse, Open Handicap button
+  switches to `tab-handicap`, Build your Barn switches to `tab-barn`,
+  cream banner is hidden. Zero page errors.
+
 ## v2.28.0 — First-meet onboarding tour (2026-05-27)
 
 New users land on the app cold and have to guess what the tabs do. v2.28.0

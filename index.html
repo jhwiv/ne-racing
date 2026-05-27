@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260527-1900-onboarding-tour-v2.28.0';
+var NE_APP_VERSION = '20260527-1930-pre-meet-countdown-v2.29.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.28.0-onboarding-tour';
+var RAILBIRD_VERSION = 'v2.29.0-pre-meet-countdown';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -13071,7 +13071,18 @@ async function fetchLiveOdds() {
 
 function showLiveUnavailable() {
   const banner = el('live-unavailable-banner');
-  if (banner) banner.classList.remove('hidden');
+  if (!banner) return;
+  // v2.29.0: if the rich off-day dashboard is already on screen, suppress the
+  // redundant cream banner. The dashboard's own "Dark day at Saratoga" header
+  // covers the same message in a more useful form.
+  try {
+    var c = document.getElementById('races-container');
+    if (c && (c.querySelector('#offday-dashboard') || c.querySelector('.offday-dashboard'))) {
+      banner.classList.add('hidden');
+      return;
+    }
+  } catch(_) {}
+  banner.classList.remove('hidden');
 }
 
 function hideLiveUnavailable() {
@@ -14268,6 +14279,113 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
       topWin: topWin
     };
   }
+  // v2.29.0: hand-curated headline stakes for upcoming Saratoga meets.
+  // Used by the pre-meet countdown card; surfaces real content before the
+  // paid data API kicks in. Race numbers/post times update once cards post.
+  var OFFDAY_STAKES = {
+    'Belmont Stakes Festival': [
+      { date: '2026-06-05', name: 'Met Mile (G1)', distance: '1 mile', surface: 'Dirt', purse: '$1.0M', note: "Older horses, 'Win and You're In' Breeders' Cup Dirt Mile." },
+      { date: '2026-06-06', name: 'Brooklyn (G2)', distance: '1 1/2 miles', surface: 'Dirt', purse: '$400K', note: 'Older horses, marathon distance.' },
+      { date: '2026-06-06', name: 'Jaipur (G1)', distance: '6 furlongs', surface: 'Inner Turf', purse: '$500K', note: "'Win and You're In' Turf Sprint." },
+      { date: '2026-06-06', name: 'Belmont Stakes (G1)', distance: '1 1/4 miles', surface: 'Dirt', purse: '$2.0M', note: 'Final leg of the Triple Crown — shortened to 10F at the Spa this year.' }
+    ],
+    'Summer Meet': [
+      { date: '2026-07-25', name: 'Whitney (G1)', distance: '1 1/8 miles', surface: 'Dirt', purse: '$1.0M' },
+      { date: '2026-08-08', name: 'Fourstardave (G1)', distance: '1 mile', surface: 'Inner Turf', purse: '$1.0M' },
+      { date: '2026-08-29', name: 'Travers Stakes (G1)', distance: '1 1/4 miles', surface: 'Dirt', purse: '$1.25M', note: "Mid-Summer Derby — Saratoga's signature." }
+    ]
+  };
+
+  // v2.29.0: build the countdown card. Returns '' if not in a pre-meet window.
+  function offday_buildCountdown(code) {
+    try {
+      var track = TRACKS[code]; if (!track || !track.seasons) return '';
+      var today = getTodayStr();
+      var todayDate = new Date(today + 'T12:00:00');
+      var next = null;
+      track.seasons.forEach(function(s) {
+        var from = new Date(s.from + 'T12:00:00');
+        if (from >= todayDate) {
+          var days = Math.round((from - todayDate) / 86400000);
+          if (!next || days < next.days) next = { season: s, days: days };
+        }
+      });
+      if (!next || next.days < 1 || next.days > 14) return '';
+      var dayLabel = offday_dayLabel(next.season.from, { weekday: 'long', month: 'long', day: 'numeric' });
+      var bigNum = String(next.days);
+      var unit = next.days === 1 ? 'day' : 'days';
+      // Use plain `background:#243653` (not a gradient) so the MSP-cascade
+      // rule at line ~6931 can rewrite the panel to cream paper in light mode.
+      // Gradient bypasses the rewrite and leaves dark-on-dark text.
+      return (
+        '<div id="offday-countdown" style="margin-top:18px;padding:22px 18px;background:#243653;border:1px solid rgba(201,168,76,0.45);border-radius:14px;text-align:center">' +
+          '<div style="font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;color:#C9A84C;font-weight:700;margin-bottom:10px">Opening day</div>' +
+          '<div style="display:flex;align-items:baseline;justify-content:center;gap:12px;margin-bottom:6px">' +
+            '<div style="font-family:Cormorant Garamond,serif;font-size:4.2rem;font-weight:700;line-height:1;color:#F5F0E8;letter-spacing:-0.02em">' + bigNum + '</div>' +
+            '<div style="font-family:Crimson Pro,serif;font-size:1.1rem;color:#EDE8DC;opacity:0.85">' + unit + ' to go</div>' +
+          '</div>' +
+          '<div style="font-family:Cormorant Garamond,serif;font-size:1.15rem;font-weight:600;color:#F5F0E8;margin-bottom:2px">' + next.season.label + '</div>' +
+          '<div style="font-family:Crimson Pro,serif;font-size:0.9rem;color:#EDE8DC;opacity:0.75">Opens ' + dayLabel + '</div>' +
+        '</div>'
+      );
+    } catch(_) { return ''; }
+  }
+
+  // v2.29.0: build the "This Week at the Spa" stakes preview card.
+  // Renders only when we're in the 14-day window before the next meet AND
+  // we have curated stakes for that meet label in OFFDAY_STAKES.
+  function offday_buildStakesPreview(code) {
+    try {
+      var track = TRACKS[code]; if (!track || !track.seasons) return '';
+      var today = getTodayStr();
+      var todayDate = new Date(today + 'T12:00:00');
+      var next = null;
+      track.seasons.forEach(function(s) {
+        var from = new Date(s.from + 'T12:00:00');
+        if (from >= todayDate) {
+          var days = Math.round((from - todayDate) / 86400000);
+          if (!next || days < next.days) next = { season: s, days: days };
+        }
+      });
+      if (!next || next.days < 1 || next.days > 14) return '';
+      var stakes = OFFDAY_STAKES[next.season.label];
+      if (!stakes || !stakes.length) return '';
+      var rows = stakes.map(function(r) {
+        var when = offday_dayLabel(r.date, { weekday: 'short', month: 'short', day: 'numeric' });
+        return (
+          '<div style="padding:10px 0;border-bottom:1px solid rgba(237,232,220,0.12)">' +
+            '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:2px">' +
+              '<div style="font-family:Cormorant Garamond,serif;font-size:1.02rem;font-weight:600;color:#F5F0E8">' + r.name + '</div>' +
+              '<div style="font-family:JetBrains Mono,ui-monospace,monospace;font-size:0.72rem;color:#C9A84C;font-weight:600;white-space:nowrap">' + r.purse + '</div>' +
+            '</div>' +
+            '<div style="font-family:Crimson Pro,serif;font-size:0.82rem;color:#EDE8DC;opacity:0.78">' + when + ' · ' + r.distance + ' · ' + r.surface + '</div>' +
+            (r.note ? '<div style="font-family:Crimson Pro,serif;font-size:0.8rem;color:#EDE8DC;opacity:0.62;font-style:italic;margin-top:3px">' + r.note + '</div>' : '') +
+          '</div>'
+        );
+      }).join('');
+      // Strip the trailing border on the last row visually by wrapping
+      return (
+        '<div id="offday-stakes" style="margin-top:14px;padding:16px 18px;background:#243653;border-radius:12px">' +
+          '<div style="font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:#C9A84C;font-weight:700;margin-bottom:8px">Headline stakes</div>' +
+          '<div style="font-family:Crimson Pro,serif;font-size:0.82rem;color:#EDE8DC;opacity:0.75;margin-bottom:6px">' + next.season.label + ' · marquee races to watch</div>' +
+          '<div style="margin:0;padding:0">' + rows + '</div>' +
+        '</div>'
+      );
+    } catch(_) { return ''; }
+  }
+
+  // v2.29.0: dual CTA pair replacing the generic Tip line.
+  // Both jump to existing tabs/screens via the same nav primitives used by
+  // the bottom tab bar so behavior stays consistent with tap targets.
+  function offday_buildCTAs() {
+    return (
+      '<div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        '<button type="button" onclick="try{if(typeof switchTab===\'function\'){switchTab(\'handicap\');}}catch(_){}" style="padding:11px 14px;background:transparent;border:1px solid rgba(201,168,76,0.55);border-radius:10px;color:#F5F0E8;font-family:Crimson Pro,serif;font-size:0.92rem;font-weight:600;cursor:pointer;letter-spacing:0.01em">Open Handicap</button>' +
+        '<button type="button" onclick="try{if(typeof switchTab===\'function\'){switchTab(\'barn\');}}catch(_){}" style="padding:11px 14px;background:#C9A84C;border:1px solid #C9A84C;border-radius:10px;color:#1B2E4B;font-family:Crimson Pro,serif;font-size:0.92rem;font-weight:700;cursor:pointer;letter-spacing:0.01em">Build your Barn</button>' +
+      '</div>'
+    );
+  }
+
   function offday_buildHTML(code) {
     var track = TRACKS[code] || { name: code };
     var today = getTodayStr();
@@ -14276,6 +14394,10 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
     // Next race day: async-detected, starts as "Checking schedule…"
     // and gets patched in after the Worker probe finishes.
     var todayLabel = offday_dayLabel(today, { weekday: 'long', month: 'long', day: 'numeric' });
+    // v2.29.0 additions — countdown + stakes preview (empty strings outside pre-meet window)
+    var countdownBlock = offday_buildCountdown(code);
+    var stakesBlock = offday_buildStakesPreview(code);
+    var ctaBlock = offday_buildCTAs();
 
     // --- Header: today + come-back message ----------------------------
     var header =
@@ -14341,15 +14463,13 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
         '</div>';
     }
 
-    // --- Footer tip ----------------------------------------------------
-    var tip =
-      '<div style="margin-top:16px;text-align:center;font-family:Crimson Pro,serif;font-size:0.85rem;color:#EDE8DC;opacity:0.65;font-style:italic;padding:4px 8px">' +
-      'Tip: use the date strip above to review past cards, or jump to Handicapping to study the next meet.' +
-      '</div>';
+    // v2.29.0: Footer tip swapped for two concrete CTAs (built above).
+    // Older code referenced `tip` here; keeping the variable for grep continuity.
+    var tip = ctaBlock;
 
     return (
       '<div id="offday-dashboard" class="empty-state" style="background:#1B2E4B;border-radius:14px;margin:12px 0;padding:22px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">' +
-      header + nextBlock + ydayBlock + pnlBlock + tip +
+      header + countdownBlock + nextBlock + stakesBlock + ydayBlock + pnlBlock + tip +
       '</div>'
     );
   }
