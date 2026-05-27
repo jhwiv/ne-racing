@@ -1,5 +1,94 @@
 # NE Racing — Changelog
 
+## v2.27.0 — Live-data wiring (pre-paid) (2026-05-26)
+
+Everything is wired end-to-end against the existing free static path so
+flipping to a paid API is a one-day cutover. No live data is being paid for
+yet — this release just removes every "oh I also need to build X" item from
+the cutover day.
+
+### Worker (requires manual `wrangler deploy`)
+
+- **New `/api/status` endpoint** — diagnostic JSON returning `mode`
+  (`free` | `paid`), `activeSources` per data type, upstream probe results
+  with per-probe latency (`github-pages-static`, `equibase-scratches`, and
+  `theracingapi` when configured), worker-side `workerLatencyMs`, `cacheTtl`,
+  `defaultTrack`, `hasApiKey`. Safe-wrapped so a single dead upstream never
+  brings the endpoint down.
+- Existing `/api/entries`, `/api/scratches`, `/api/odds`, `/api/results`
+  endpoints already accept both DATA_SOURCE values; no schema change needed
+  to flip modes.
+
+### Synthetic rehearsal fixtures
+
+- `scripts/generate-rehearsal-fixtures.js` — deterministic generator
+  (mulberry32 seeded RNG, real jockey/trainer names mixed with fictional
+  horses) so anyone can regenerate the rehearsal cards.
+- `data/entries-BEL-2026-06-03.json` — Belmont Stakes Festival opener at
+  Saratoga (9 races, 82 entries, Grade 1 Met Mile + Brooklyn G2 + Jaipur G2).
+- `data/entries-SAR-2026-07-03.json` — Saratoga summer-meet opener (10 races,
+  100 entries, full meet-day variety).
+- Both files carry a top-level `"dataMode": "rehearsal"` flag so any future
+  watermark / banner code can distinguish rehearsal data from real cards.
+
+### Settings > Data Source diagnostic panel
+
+- New panel rendered on settings open and refreshable on demand. Fetches
+  `${workerUrl}/api/status` and shows:
+  - **Mode badge** — PAID (green) / FREE (gold) / unknown (amber).
+  - **Active sources table** — entries / scratches / odds / results, each
+    labeled with the upstream it's currently pulling from.
+  - **Upstream probes** — green/red dot, HTTP code, per-probe latency, error
+    message on failure.
+  - **Cache TTL**, default track, API-key presence, fetched-N-seconds-ago.
+- Cached for 60s in-session; Refresh button bypasses the cache.
+- Surfaces a clear amber message if the worker is older and lacks the
+  endpoint (`Worker does not expose /api/status. Run wrangler deploy ...`).
+
+### Cutover runbook (free → paid)
+
+When ready to start paying The Racing API:
+
+1. **Provision the API key**: subscribe at theracingapi.com, copy the Bearer
+   token.
+2. **Inject it as a worker secret** (never commit to wrangler.toml):
+   ```
+   cd /path/to/ne-racing
+   wrangler secret put API_KEY
+   # paste token at prompt
+   ```
+3. **Switch the worker to paid mode** in `wrangler.toml`:
+   ```
+   [vars]
+   DATA_SOURCE = "theracingapi"   # was "free"
+   ```
+4. **Deploy**: `wrangler deploy`.
+5. **Verify via /api/status** (browser or curl):
+   ```
+   curl -s https://cloudflare-worker.jhwiv-online.workers.dev/api/status | jq
+   ```
+   Expect `mode: "paid"`, `hasApiKey: true`, `theracingapi` probe with
+   `ok: true` and HTTP 200.
+6. **Verify in app**: open Settings on https://railbirdai.com — the Data
+   Source panel should show the PAID badge in green, all four activeSources
+   should read `theracingapi`, and the theracingapi probe row should be
+   green with sub-1s latency.
+7. **Smoke test entries endpoint**:
+   ```
+   curl -s 'https://cloudflare-worker.jhwiv-online.workers.dev/api/entries?track=SAR&date=2026-07-03' | jq '.races | length'
+   ```
+   Expect a non-zero number (real card from TRA).
+8. **Rollback** (if anything misbehaves): set `DATA_SOURCE = "free"` and
+   `wrangler deploy` again. The static path is untouched and will resume
+   serving immediately. API key remains as a secret and is ignored in free
+   mode.
+
+### Versions
+
+- `NE_APP_VERSION` → `20260526-2100-live-data-wiring-v2.27.0`
+- `RAILBIRD_VERSION` → `v2.27.0-live-data-wiring`
+- `version.json` bumped accordingly.
+
 ## v2.26.1 — Polish + Barrier Island Digital branding (2026-05-26)
 
 Three small polish items follow-on from v2.26.0, plus first-time addition of

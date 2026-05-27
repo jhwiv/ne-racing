@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260526-2050-disclaimer-clear-v2.26.1';
+var NE_APP_VERSION = '20260526-2100-live-data-wiring-v2.27.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.26.1-disclaimer-clear';
+var RAILBIRD_VERSION = 'v2.27.0-live-data-wiring';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -8145,6 +8145,14 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <p class="text-xs text-muted" style="margin-top:0.35rem">Enter your Cloudflare Worker URL to enable live odds, scratches, and results. See the README for setup instructions.</p>
       <button class="btn btn-primary btn-sm mt-1" onclick="saveWorkerUrl()">Save URL</button>
     </div>
+    <div class="settings-group" id="data-source-group">
+      <div class="flex justify-between items-center" style="margin-bottom:0.4rem">
+        <h4 style="margin:0">Data Source</h4>
+        <button class="btn btn-outline btn-sm" type="button" onclick="renderDataSourceDiagnostic(true)" aria-label="Refresh data source diagnostic">Refresh</button>
+      </div>
+      <div id="data-source-diag" style="font-size:0.78rem;line-height:1.55;color:var(--color-muted);font-family:var(--font-mono)">Probing worker\u2026</div>
+      <p class="text-xs text-muted" style="margin-top:0.4rem">Live diagnostic of which upstream services the worker is using. Toggle between the free (GitHub Pages + Equibase) and paid (The Racing API) modes by deploying the worker with a different DATA_SOURCE env var.</p>
+    </div>
     <div class="settings-group">
       <h4>Data</h4>
       <div class="settings-action-row">
@@ -12378,6 +12386,79 @@ function paintAvailability(status) {
   }
 }
 
+/* v2.27.0: Data Source diagnostic panel. Fetches /api/status from the worker
+   and renders mode (free|paid), probe results with latency, cache TTL, and a
+   last-fetch timestamp. Cached in-session to avoid hammering the endpoint;
+   call with force=true (the Refresh button) to bypass the cache. */
+var _dataSourceDiagCache = null;
+async function renderDataSourceDiagnostic(force) {
+  var box = el('data-source-diag');
+  if (!box) return;
+  var store = getStore();
+  var workerUrl = store && store.settings && store.settings.workerUrl;
+  if (!workerUrl) {
+    box.innerHTML = '<span style="color:#f59e0b">Worker URL not set.</span> Enter your Cloudflare Worker URL above to enable diagnostics.';
+    return;
+  }
+  if (!force && _dataSourceDiagCache && (Date.now() - _dataSourceDiagCache.fetchedAt) < 60000) {
+    paintDataSourceDiagnostic(_dataSourceDiagCache.data, _dataSourceDiagCache.fetchedAt, _dataSourceDiagCache.latencyMs);
+    return;
+  }
+  box.innerHTML = 'Probing worker\u2026';
+  var t0 = Date.now();
+  try {
+    var res = await fetch(workerUrl + '/api/status?_t=' + Date.now(), { cache: 'no-store' });
+    var latencyMs = Date.now() - t0;
+    if (!res.ok) {
+      // Older worker deploys won't have /api/status — surface that clearly.
+      if (res.status === 404) {
+        box.innerHTML = '<span style="color:#f59e0b">Worker does not expose /api/status.</span> Run <code>wrangler deploy</code> to ship the v2.27.0 worker, then refresh.';
+        return;
+      }
+      box.innerHTML = '<span style="color:#ef4444">HTTP ' + res.status + '</span> from <code>' + workerUrl + '/api/status</code>';
+      return;
+    }
+    var data = await res.json();
+    _dataSourceDiagCache = { data: data, fetchedAt: Date.now(), latencyMs: latencyMs };
+    paintDataSourceDiagnostic(data, _dataSourceDiagCache.fetchedAt, latencyMs);
+  } catch (err) {
+    box.innerHTML = '<span style="color:#ef4444">Probe failed:</span> ' + (err && err.message ? err.message : String(err));
+  }
+}
+
+function paintDataSourceDiagnostic(data, fetchedAt, roundTripMs) {
+  var box = el('data-source-diag');
+  if (!box) return;
+  function esc(s) { s = (s == null) ? '' : String(s); return s.replace(/[&<>"']/g, function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  var mode = data.mode || 'unknown';
+  var modeColor = (mode === 'paid') ? '#22c55e' : ((mode === 'free') ? 'var(--lux-gold)' : '#f59e0b');
+  var modeLabel = (mode === 'paid') ? 'PAID (The Racing API)' : ((mode === 'free') ? 'FREE (GitHub Pages + Equibase)' : esc(mode.toUpperCase()));
+  var srcRows = Object.keys(data.activeSources || {}).map(function(k){
+    return '<tr><td style="padding-right:0.6rem;opacity:0.7">' + esc(k) + '</td><td>' + esc(data.activeSources[k]) + '</td></tr>';
+  }).join('');
+  var probeRows = (data.probes || []).map(function(p){
+    var dot = p.ok ? '<span style="color:#22c55e">\u25CF</span>' : '<span style="color:#ef4444">\u25CF</span>';
+    var statusBit = p.status ? (' &middot; HTTP ' + p.status) : '';
+    var errBit = p.error ? (' &middot; <span style="color:#ef4444">' + esc(p.error) + '</span>') : '';
+    return '<tr><td style="padding-right:0.6rem">' + dot + ' <code>' + esc(p.label) + '</code></td>' +
+           '<td style="text-align:right;white-space:nowrap">' + p.latencyMs + 'ms' + statusBit + errBit + '</td></tr>';
+  }).join('');
+  var fetchedAgo = Math.round((Date.now() - fetchedAt) / 1000);
+  var html = ''
+    + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.45rem">'
+      + '<span>Mode: <strong style="color:' + modeColor + '">' + modeLabel + '</strong></span>'
+      + '<span style="opacity:0.65;font-size:0.72rem">probe ' + roundTripMs + 'ms &middot; worker ' + (data.workerLatencyMs || 0) + 'ms</span>'
+    + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;margin-bottom:0.5rem">' + srcRows + '</table>'
+    + '<div style="font-size:0.7rem;opacity:0.7;margin-bottom:0.25rem">Upstream probes:</div>'
+    + '<table style="width:100%;border-collapse:collapse">' + probeRows + '</table>'
+    + '<div style="margin-top:0.5rem;font-size:0.7rem;opacity:0.65;display:flex;justify-content:space-between">'
+      + '<span>Cache TTL: ' + (data.cacheTtl || '?') + 's &middot; Default: ' + esc(data.defaultTrack || '?') + ' &middot; API key: ' + (data.hasApiKey ? 'yes' : 'no') + '</span>'
+      + '<span>fetched ' + fetchedAgo + 's ago</span>'
+    + '</div>';
+  box.innerHTML = html;
+}
+
 function openSettings() {
   buildSettingsModal();
   var vEl = el('settings-app-version');
@@ -12388,6 +12469,7 @@ function openSettings() {
   if (bpEl) bpEl.value = getBettingPlatform();
   syncBettingModeUI();
   try { renderAdwSigninList(); } catch (e) {}
+  try { renderDataSourceDiagnostic(false); } catch (e) {}
   el('settings-modal').classList.add('open');
   document.body.classList.add('no-scroll');
 }

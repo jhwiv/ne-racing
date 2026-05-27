@@ -1615,6 +1615,108 @@ async function handleExpertPicks(request, env, origin) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// GET /api/status — diagnostic endpoint for the Settings panel
+// ═════════════════════════════════════════════════════════════════════════════
+/**
+ * Returns rich diagnostic info about the worker's current data source,
+ * upstream probe results (with latency), and configuration. Used by the
+ * UI's Settings > Data Source panel to give the user a clear picture of
+ * what's actually serving the data.
+ *
+ * Probes (each safe-wrapped):
+ *   • staticBase     — HEAD against GitHub Pages data dir base
+ *   • theracingapi  — GET /v1/racecards/standard?date=today (paid only)
+ *   • equibase      — HEAD against the scratches XML feed
+ */
+async function handleStatus(request, env, origin) {
+  const startedAt = Date.now();
+  const dataSource = (env.DATA_SOURCE || "free").toLowerCase();
+  const hasApiKey  = !!env.API_KEY;
+  const today      = new Date().toISOString().slice(0, 10);
+
+  async function probe(label, url, init) {
+    const t0 = Date.now();
+    try {
+      const res = await fetch(url, init || { method: "HEAD" });
+      return {
+        label,
+        url,
+        ok: res.ok,
+        status: res.status,
+        latencyMs: Date.now() - t0,
+      };
+    } catch (err) {
+      return {
+        label,
+        url,
+        ok: false,
+        status: 0,
+        error: err && err.message ? err.message : String(err),
+        latencyMs: Date.now() - t0,
+      };
+    }
+  }
+
+  // Probe the static entries base by HEADing one known-good file pattern
+  // (we don't know which file exists today, so just probe the directory
+  // listing which returns 200 even if empty).
+  const probes = [];
+  probes.push(await probe("github-pages-static", `${STATIC_ENTRIES_BASE}/index.html`));
+  probes.push(await probe("equibase-scratches", EQUIBASE_SCRATCHES_URL));
+
+  if (dataSource === "theracingapi" && hasApiKey) {
+    const t0 = Date.now();
+    try {
+      const res = await fetch(`${THERACINGAPI_BASE}/racecards/standard?date=${today}&region=USA`, {
+        headers: { Authorization: `Bearer ${env.API_KEY}`, Accept: "application/json" },
+      });
+      probes.push({
+        label: "theracingapi",
+        url:   `${THERACINGAPI_BASE}/racecards/standard?date=${today}&region=USA`,
+        ok:    res.ok,
+        status: res.status,
+        latencyMs: Date.now() - t0,
+      });
+    } catch (err) {
+      probes.push({
+        label: "theracingapi",
+        url:   `${THERACINGAPI_BASE}/racecards/standard?date=${today}&region=USA`,
+        ok:    false,
+        status: 0,
+        error: err && err.message ? err.message : String(err),
+        latencyMs: Date.now() - t0,
+      });
+    }
+  }
+
+  const body = {
+    service:      "ne-racing-proxy",
+    timestamp:    new Date().toISOString(),
+    dataSource,
+    mode:         usePaidSource(env) ? "paid" : "free",
+    hasApiKey,
+    defaultTrack: env.DEFAULT_TRACK || "AQU",
+    allowedOrigin: env.ALLOWED_ORIGIN || "*",
+    activeSources: {
+      entries:  dataSource === "theracingapi" ? "theracingapi"  : "github-pages-static",
+      scratches: dataSource === "theracingapi" ? "theracingapi" : "equibase-live",
+      odds:     dataSource === "theracingapi" ? "theracingapi"  : "nyra-equibase-free",
+      results:  dataSource === "theracingapi" ? "theracingapi"  : "equibase-mobile",
+    },
+    upstream: {
+      staticEntriesBase: STATIC_ENTRIES_BASE,
+      theracingapiBase:  THERACINGAPI_BASE,
+      equibaseFeed:      EQUIBASE_SCRATCHES_URL,
+    },
+    cacheTtl:      CACHE_TTL,
+    supportedTracks: Object.keys(TRACK_TO_VENUE),
+    probes,
+    workerLatencyMs: Date.now() - startedAt,
+  };
+  return jsonOk(body, origin, 0);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Main fetch handler (Worker entry point)
 // ═════════════════════════════════════════════════════════════════════════════
 export default {
@@ -1693,6 +1795,10 @@ export default {
       case "/api/expert-picks":
         return handleExpertPicks(request, env, origin);
 
+      // ── Diagnostic status (richer than /health) ───────────────────────
+      case "/api/status":
+        return handleStatus(request, env, origin);
+
       // ── Health check / root ───────────────────────────────────────────
       case "/":
       case "/health":
@@ -1716,6 +1822,7 @@ export default {
               "/api/odds?track=AQU&date=YYYY-MM-DD&race=5",
               "/api/results?track=AQU&date=YYYY-MM-DD",
               "/api/expert-picks?track=AQU&date=YYYY-MM-DD",
+              "/api/status",
             ],
           },
           origin,
