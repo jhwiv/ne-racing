@@ -1661,7 +1661,10 @@ async function handleStatus(request, env, origin) {
   // (we don't know which file exists today, so just probe the directory
   // listing which returns 200 even if empty).
   const probes = [];
-  probes.push(await probe("github-pages-static", `${STATIC_ENTRIES_BASE}/index.html`));
+  // Probe a real fixture file (AQU 2026-04-16 is the canonical reference card
+  // that has shipped since v2.18 and exists on every deploy). Bare directory
+  // URLs return 404 on GitHub Pages, so probing /index.html was misleading.
+  probes.push(await probe("github-pages-static", `${STATIC_ENTRIES_BASE}/entries-AQU-2026-04-16.json`));
   probes.push(await probe("equibase-scratches", EQUIBASE_SCRATCHES_URL));
 
   if (dataSource === "theracingapi" && hasApiKey) {
