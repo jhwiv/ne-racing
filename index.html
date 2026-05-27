@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260526-2120-remove-sample-toggle-v2.27.1';
+var NE_APP_VERSION = '20260527-1900-onboarding-tour-v2.28.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.27.1-remove-sample-toggle';
+var RAILBIRD_VERSION = 'v2.28.0-onboarding-tour';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -2291,6 +2291,105 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .mtp-badge.mtp-far { background: rgba(13,51,32,0.6); }
 @keyframes mtp-urgent { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } }
 @keyframes mtp-warm { 0%,100% { opacity: 1; } 50% { opacity: 0.75; } }
+
+/* =========================================================
+   ONBOARDING TOUR MODAL (v2.28.0)
+   Edit-safe note: uses literal hex on the navy background to
+   defeat the MSP cascade that redefines --lux-navy inside tab
+   panels. The tour is rendered above tab content via z-index.
+   ========================================================= */
+.tour-modal {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(15,23,32,0.78); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+  padding: 1.5rem;
+}
+.tour-modal.open { opacity: 1; pointer-events: auto; }
+.tour-modal[aria-hidden="true"] { visibility: hidden; }
+.tour-modal.open[aria-hidden="false"] { visibility: visible; }
+.tour-sheet {
+  position: relative;
+  background: #1B2E4B; /* literal navy, defeats MSP cascade */
+  color: #F8F4EA;
+  border-radius: var(--radius-xl);
+  width: min(440px, 100%);
+  max-height: 88vh;
+  padding: 1.75rem 1.5rem 1.5rem;
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 64px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(192,160,98,0.12);
+  transform: translateY(20px) scale(0.96);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.tour-modal.open .tour-sheet { transform: translateY(0) scale(1); }
+.tour-skip {
+  position: absolute; top: 0.85rem; right: 0.9rem;
+  background: transparent; border: none; cursor: pointer;
+  color: rgba(248,244,234,0.55);
+  font-size: 0.78rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 0.35rem 0.55rem; border-radius: var(--radius-sm);
+  transition: color 0.15s;
+}
+.tour-skip:hover, .tour-skip:focus { color: rgba(248,244,234,0.9); outline: none; }
+.tour-progress {
+  display: flex; gap: 0.35rem; justify-content: center;
+  margin-bottom: 1.25rem;
+}
+.tour-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(248,244,234,0.22);
+  transition: background 0.2s, transform 0.2s;
+}
+.tour-dot.active { background: #C0A062; transform: scale(1.2); }
+.tour-dot.done { background: rgba(192,160,98,0.55); }
+.tour-body { flex: 1; }
+.tour-eyebrow {
+  font-size: 0.72rem; font-weight: 600;
+  color: #C0A062;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  margin: 0 0 0.4rem;
+}
+.tour-title {
+  font-family: var(--font-display);
+  font-size: 1.45rem; line-height: 1.2; font-weight: 600;
+  color: #F8F4EA;
+  margin: 0 0 0.85rem;
+}
+.tour-content {
+  font-size: 0.95rem; line-height: 1.6;
+  color: rgba(248,244,234,0.88);
+}
+.tour-content p { margin: 0 0 0.85rem; }
+.tour-content p:last-child { margin-bottom: 0; }
+.tour-content strong { color: #F8F4EA; font-weight: 600; }
+.tour-content .tour-hint {
+  margin-top: 1rem; padding: 0.75rem 0.85rem;
+  background: rgba(192,160,98,0.1);
+  border-left: 3px solid #C0A062;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.85rem; color: rgba(248,244,234,0.92);
+}
+.tour-footer {
+  display: flex; gap: 0.6rem; align-items: center;
+  margin-top: 1.5rem;
+}
+.tour-back {
+  /* Outline button on dark bg — override the green default. */
+  background: transparent !important;
+  border-color: rgba(248,244,234,0.3) !important;
+  color: rgba(248,244,234,0.8) !important;
+}
+.tour-back:hover { border-color: rgba(248,244,234,0.55) !important; color: #F8F4EA !important; }
+.tour-back.hidden { visibility: hidden; }
+.tour-next {
+  flex: 1;
+  background: #C0A062 !important;
+  border-color: #C0A062 !important;
+  color: #1B2E4B !important;
+  font-weight: 600;
+}
+.tour-next:hover { background: #d4b478 !important; border-color: #d4b478 !important; }
 
 /* =========================================================
    SETTINGS MODAL
@@ -8126,6 +8225,36 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <button class="btn btn-outline btn-sm" style="margin-top:0.35rem" onclick="window.location.href='clear.html'">
         &#128259; Clear Cache Page
       </button>
+      <button class="btn btn-outline btn-sm" style="margin-top:0.35rem" onclick="if(typeof startTour==='function'){closeSettings&&closeSettings();startTour();}">
+        Replay Welcome Tour
+      </button>
+      <p class="text-xs text-muted" style="margin-top:0.35rem">Walks through Track a Horse, the Barn, and how Railbird works.</p>
+    </div>
+  </div>
+</div>
+
+<!-- =================================================================
+     ONBOARDING TOUR (v2.28.0)
+     3-step modal sequence shown after hero dismissal on first visit.
+     Replayable via Settings > App Info > 'Replay tour'.
+     Meet-aware copy reads TRACKS.SAR.seasons and the current date.
+     ================================================================= -->
+<div id="tour-modal" class="tour-modal" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-hidden="true">
+  <div class="tour-sheet" role="document">
+    <button class="tour-skip" type="button" onclick="endTour()" aria-label="Skip tour">Skip</button>
+    <div class="tour-progress" aria-hidden="true">
+      <span class="tour-dot active" data-step="1"></span>
+      <span class="tour-dot" data-step="2"></span>
+      <span class="tour-dot" data-step="3"></span>
+    </div>
+    <div class="tour-body">
+      <p class="tour-eyebrow" id="tour-eyebrow">Welcome</p>
+      <h2 class="tour-title" id="tour-title">Welcome to Railbird AI</h2>
+      <div class="tour-content" id="tour-content"></div>
+    </div>
+    <div class="tour-footer">
+      <button class="btn btn-outline btn-sm tour-back" type="button" onclick="tourPrev()" id="tour-back-btn">Back</button>
+      <button class="btn btn-primary tour-next" type="button" onclick="tourNext()" id="tour-next-btn">Continue</button>
     </div>
   </div>
 </div>
@@ -8864,6 +8993,13 @@ window.addEventListener('beforeinstallprompt', function(e) {
     markWelcomed();
     var af = document.getElementById('app-frame');
     if (af) af.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // v2.28.0: kick off the onboarding tour the first time the user enters
+    // the app. Defers ~600ms so the scroll-into-view animation settles first.
+    try {
+      setTimeout(function(){
+        if (typeof maybeStartTour === 'function') maybeStartTour();
+      }, 600);
+    } catch(_) {}
   }
 
   // Mark welcomed once the user has scrolled past the hero on their own
@@ -8873,6 +9009,13 @@ window.addEventListener('beforeinstallprompt', function(e) {
       if (window.scrollY > 100) {
         markWelcomed();
         window.removeEventListener('scroll', markOnScroll);
+        // v2.28.0: scroll-past also fires the tour, with a slightly longer
+        // delay so the user lands on the Today tab before the modal opens.
+        try {
+          setTimeout(function(){
+            if (typeof maybeStartTour === 'function') maybeStartTour();
+          }, 900);
+        } catch(_) {}
       }
     };
     window.addEventListener('scroll', markOnScroll, { passive: true });
@@ -8902,7 +9045,209 @@ window.addEventListener('beforeinstallprompt', function(e) {
   }
 })();
 
+/* =============================================================
+   ONBOARDING TOUR ENGINE (v2.28.0)
+   3-step modal sequence that runs after the hero is dismissed on
+   first visit. Replayable via Settings > 'Replay tour'.
 
+   State:
+     localStorage racing2026.settings.tourDone (bool)
+     localStorage racing2026.settings.welcomeDone (bool, set by hero IIFE)
+
+   Public API:
+     window.maybeStartTour()  — fires if not done; no-op otherwise.
+     window.startTour()       — always fires (for the Replay button).
+     window.endTour()         — closes and marks done.
+     window.tourNext() / tourPrev() — navigation.
+
+   Meet-aware copy: reads TRACKS.SAR.seasons to compute days-until-next-meet
+   and selects either Belmont-Festival framing, Summer-Meet framing,
+   in-meet framing, or generic Saratoga framing.
+   ============================================================= */
+(function(){
+  var TOUR_STATE = { step: 1, total: 3 };
+
+  function getStoreSafe() {
+    try { return (typeof getStore === 'function') ? getStore() : null; } catch(_) { return null; }
+  }
+  function saveStoreSafe(s) {
+    try { if (typeof saveStore === 'function') saveStore(s); } catch(_) {}
+  }
+
+  function isTourDone() {
+    var s = getStoreSafe();
+    return !!(s && s.settings && s.settings.tourDone);
+  }
+  function markTourDone() {
+    var s = getStoreSafe();
+    if (s && s.settings) { s.settings.tourDone = true; saveStoreSafe(s); }
+  }
+  function clearTourDone() {
+    var s = getStoreSafe();
+    if (s && s.settings) { s.settings.tourDone = false; saveStoreSafe(s); }
+  }
+
+  // Compute current meet context for copy selection.
+  // Returns one of: 'pre-festival' | 'in-festival' | 'pre-summer' | 'in-summer' | 'off-season'.
+  function getMeetContext() {
+    try {
+      var sar = (typeof TRACKS === 'object' && TRACKS && TRACKS.SAR) ? TRACKS.SAR : null;
+      if (!sar || !Array.isArray(sar.seasons) || sar.seasons.length === 0) return { phase: 'off-season' };
+      var today = new Date(); today.setHours(0,0,0,0);
+      var festival = null, summer = null;
+      sar.seasons.forEach(function(s){
+        if (/festival/i.test(s.label)) festival = s;
+        else if (/summer/i.test(s.label)) summer = s;
+      });
+      function parseDate(str) { var p = str.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+      function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+      if (festival) {
+        var fFrom = parseDate(festival.from), fTo = parseDate(festival.to);
+        if (today >= fFrom && today <= fTo) return { phase: 'in-festival', meetLabel: festival.label, fromDate: festival.from, toDate: festival.to };
+        if (today < fFrom) return { phase: 'pre-festival', meetLabel: festival.label, daysUntil: daysBetween(today, fFrom), fromDate: festival.from };
+      }
+      if (summer) {
+        var sFrom = parseDate(summer.from), sTo = parseDate(summer.to);
+        if (today >= sFrom && today <= sTo) return { phase: 'in-summer', meetLabel: summer.label, fromDate: summer.from, toDate: summer.to };
+        if (today < sFrom) return { phase: 'pre-summer', meetLabel: summer.label, daysUntil: daysBetween(today, sFrom), fromDate: summer.from };
+      }
+      return { phase: 'off-season' };
+    } catch(_) { return { phase: 'off-season' }; }
+  }
+
+  // Build per-step copy from the meet context. Returns { eyebrow, title, html }.
+  function getStepCopy(step, ctx) {
+    // ---- Step 1: Welcome (meet-aware framing) ----
+    if (step === 1) {
+      var meetLine = '';
+      if (ctx.phase === 'pre-festival') {
+        meetLine = 'The <strong>Belmont Stakes Festival at Saratoga</strong> opens in <strong>' + ctx.daysUntil + ' day' + (ctx.daysUntil === 1 ? '' : 's') + '</strong> — Met Mile, Brooklyn, Jaipur, all run at the Spa this year.';
+      } else if (ctx.phase === 'in-festival') {
+        meetLine = 'The <strong>Belmont Stakes Festival at Saratoga</strong> is running right now (' + ctx.fromDate + ' through ' + ctx.toDate + ').';
+      } else if (ctx.phase === 'pre-summer') {
+        meetLine = 'The <strong>Saratoga summer meet</strong> opens in <strong>' + ctx.daysUntil + ' day' + (ctx.daysUntil === 1 ? '' : 's') + '</strong> — 40 days of the best racing in America.';
+      } else if (ctx.phase === 'in-summer') {
+        meetLine = 'The <strong>Saratoga summer meet</strong> is running right now (' + ctx.fromDate + ' through ' + ctx.toDate + ').';
+      } else {
+        meetLine = 'Saratoga is dark right now — the next meet kicks off in 2026.';
+      }
+      return {
+        eyebrow: 'Welcome',
+        title: 'Welcome to Railbird AI',
+        html:
+          '<p>Your private handicapping companion for Saratoga.</p>' +
+          '<p>' + meetLine + '</p>' +
+          '<p>Live entries, scratches, odds, your bets, your bankroll — all in one place. No accounts, no ads, nothing leaves your phone.</p>'
+      };
+    }
+    // ---- Step 2: The Today tab ----
+    if (step === 2) {
+      return {
+        eyebrow: 'Step 2 of 3',
+        title: "Today's Card",
+        html:
+          '<p>The <strong>Today</strong> tab is your daily race card. On any race day you\'ll see:</p>' +
+          '<p>• Each race with distance, surface, and post time<br>' +
+          '• Every horse with jockey, trainer, and morning line<br>' +
+          '• Live scratches and odds as they update</p>' +
+          '<p>Tap any horse to see their past performances. Tap the star next to their name to follow them in the Barn.</p>' +
+          '<div class="tour-hint">No card today? That\'s normal between race days. Cards usually post the morning of the race.</div>'
+      };
+    }
+    // ---- Step 3: The Barn ----
+    return {
+      eyebrow: 'Step 3 of 3',
+      title: 'The Barn is your watchlist',
+      html:
+        '<p>The <strong>Barn</strong> tracks horses you want to follow across race days. When one of your horses runs, they\'re highlighted on the card.</p>' +
+        '<p>You can also add private notes — trip notes, bias observations, anything that helps you handicap them next time.</p>' +
+        '<p>Find the Barn under <strong>More → Barn</strong>. You\'re all set — good luck at the Spa.</p>'
+    };
+  }
+
+  function renderStep() {
+    var ctx = getMeetContext();
+    var copy = getStepCopy(TOUR_STATE.step, ctx);
+    var modal = document.getElementById('tour-modal');
+    if (!modal) return;
+    var eyebrow = document.getElementById('tour-eyebrow');
+    var title   = document.getElementById('tour-title');
+    var content = document.getElementById('tour-content');
+    if (eyebrow) eyebrow.textContent = copy.eyebrow;
+    if (title)   title.textContent   = copy.title;
+    if (content) content.innerHTML   = copy.html;
+    // Progress dots
+    modal.querySelectorAll('.tour-dot').forEach(function(dot){
+      var s = parseInt(dot.getAttribute('data-step'), 10);
+      dot.classList.remove('active', 'done');
+      if (s < TOUR_STATE.step) dot.classList.add('done');
+      else if (s === TOUR_STATE.step) dot.classList.add('active');
+    });
+    // Back button hidden on step 1
+    var backBtn = document.getElementById('tour-back-btn');
+    if (backBtn) backBtn.classList.toggle('hidden', TOUR_STATE.step === 1);
+    // Next button label
+    var nextBtn = document.getElementById('tour-next-btn');
+    if (nextBtn) nextBtn.textContent = (TOUR_STATE.step === TOUR_STATE.total) ? 'Get Started' : 'Continue';
+  }
+
+  function openTour() {
+    var modal = document.getElementById('tour-modal');
+    if (!modal) return;
+    TOUR_STATE.step = 1;
+    renderStep();
+    modal.setAttribute('aria-hidden', 'false');
+    modal.classList.add('open');
+    // Focus management — send focus to the Next button for keyboard users.
+    try {
+      var nb = document.getElementById('tour-next-btn');
+      if (nb) setTimeout(function(){ nb.focus(); }, 250);
+    } catch(_) {}
+  }
+
+  function closeTour() {
+    var modal = document.getElementById('tour-modal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  // Public API
+  window.maybeStartTour = function() {
+    if (isTourDone()) return;
+    openTour();
+  };
+  window.startTour = function() {
+    clearTourDone();
+    openTour();
+  };
+  window.endTour = function() {
+    markTourDone();
+    closeTour();
+  };
+  window.tourNext = function() {
+    if (TOUR_STATE.step >= TOUR_STATE.total) {
+      window.endTour();
+      return;
+    }
+    TOUR_STATE.step++;
+    renderStep();
+  };
+  window.tourPrev = function() {
+    if (TOUR_STATE.step <= 1) return;
+    TOUR_STATE.step--;
+    renderStep();
+  };
+
+  // ESC to close (and mark done — it counts as a deliberate dismissal).
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    var modal = document.getElementById('tour-modal');
+    if (modal && modal.classList.contains('open')) {
+      window.endTour();
+    }
+  });
+})();
 
 /* =============================================================
    DEDUPLICATION — merge duplicate bets on load

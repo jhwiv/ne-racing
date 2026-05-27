@@ -1,5 +1,74 @@
 # NE Racing — Changelog
 
+## v2.28.0 — First-meet onboarding tour (2026-05-27)
+
+New users land on the app cold and have to guess what the tabs do. v2.28.0
+adds a brief, dismissible 3-step welcome tour that introduces the product
+with meet-aware copy keyed to the Saratoga calendar — so a first-time user
+today sees "Belmont Stakes Festival opens in 7 days" instead of generic
+fluff. The tour fires once after the hero is dismissed, never reappears
+unless replayed from Settings, and writes a single `tourDone` flag.
+
+### Added
+
+- **Tour modal** (`#tour-modal`, `index.html` lines ~8238–8266) — full-screen
+  scrim with a centered sheet, 3-dot progress indicator, Skip control, Back
+  + Continue/Get Started footer buttons. Navy `#1B2E4B` sheet, gold
+  `#C0A062` accents, cream `#F8F4EA` body text. All literal hex values
+  (defeats the MSP cascade that redefines `--lux-navy` to cream inside
+  tab-panel scope).
+- **Tour CSS** (lines ~2295–2392) — z-index 600, opacity+transform open
+  transition, `.tour-hint` callout box (gold left border) for inline notes
+  like "no card today? that's normal between race days."
+- **Tour engine IIFE** (lines ~9047–9250, ~200 lines) — reads
+  `TRACKS.SAR.seasons` and today's date to compute the meet phase
+  (`pre-festival` / `in-festival` / `pre-summer` / `in-summer` /
+  `off-season`) and renders meet-aware copy on step 1. Public API:
+  `window.maybeStartTour()` (no-op if done), `window.startTour()` (always
+  fires), `window.endTour()`, `window.tourNext()`, `window.tourPrev()`.
+  ESC also closes and marks done.
+- **Hero hooks** (lines ~8992–9022) — `enterApp()` fires
+  `maybeStartTour()` 600ms after the chevron tap; the scroll-past path
+  fires it 900ms after the user scrolls below 100px. Either way the user
+  lands on Today before the modal opens.
+- **Settings > App Info > Replay Welcome Tour** button (line ~8228) —
+  closes the Settings sheet and calls `startTour()` so users can replay
+  the tour any time.
+- **`store.settings.tourDone`** boolean (added to the default store, line
+  ~8408) — separate from `welcomeDone` so the tour can be replayed
+  without re-showing the hero.
+
+### Meet-aware copy phases
+
+Computed from `TRACKS.SAR.seasons[*].opens` / `closes` and `new Date()`:
+
+- `pre-festival` (before 2026-06-03): "Belmont Stakes Festival at
+  Saratoga opens in N days — Met Mile, Brooklyn, Jaipur, all run at the
+  Spa this year."
+- `in-festival` (2026-06-03 to 06-07): "running right now at the Spa."
+- `pre-summer` (06-08 to 07-02): "Saratoga summer meet opens in N days."
+- `in-summer` (07-03 to 09-07): "Saratoga is running now — 40 days of
+  the best racing in America."
+- `off-season`: "Saratoga is dark right now. We'll be back when the meet
+  opens."
+
+Today is 2026-05-27 → phase `pre-festival`, daysUntil 7. Test ran live.
+
+### Bumped
+
+- `NE_APP_VERSION` → `20260527-1900-onboarding-tour-v2.28.0`
+- `RAILBIRD_VERSION` → `v2.28.0-onboarding-tour`
+- `version.json` to match.
+
+### Tests
+
+- 79/79 passing.
+- Playwright smoke (393×852, deviceScaleFactor 2): first-run tour opens
+  after hero dismissal, all 3 steps render with correct copy, Next /
+  Back / Skip all work, finishing sets `tourDone:true`,
+  `maybeStartTour()` is a no-op afterward, Settings > Replay Welcome
+  Tour reopens the modal at step 1. Zero page errors.
+
 ## v2.27.1 — Remove obsolete Sample · SAR 2025 toggle (2026-05-26)
 
 Vestigial UI from v2.19.0 had a Data Mode toggle in Settings letting you flip
