@@ -1,5 +1,43 @@
 # NE Racing — Changelog
 
+## v2.27.1 — Remove obsolete Sample · SAR 2025 toggle (2026-05-26)
+
+Vestigial UI from v2.19.0 had a Data Mode toggle in Settings letting you flip
+between "Sample · SAR 2025" (a hand-curated 2025 placeholder set) and "Live".
+The sample path was a parallel pipeline that intercepted `getCachedRacesForDate`
+for SAR dates in the 2025 meet window. Now that v2.27.0 shipped real rehearsal
+data through the actual worker pipeline (`data/entries-{TRACK}-{DATE}.json` with
+`dataMode:'rehearsal'`), the toggle is dead weight and confusing.
+
+### Removed
+
+- **SAR 2025 Pipeline IIFE** (`index.html` lines 16358–17042, 685 lines)
+  including:
+  - `loadFixture()` / `FIXTURE_URL = 'data/fixtures/saratoga_2025_sample.json'`
+  - `isSampleMode()`, `setMode()`, fixture interceptor for
+    `getCachedRacesForDate`.
+  - Settings Data Mode toggle card (`#sar-data-mode-card`, Sample / Live
+    pill, click handlers).
+  - "Upcoming at Saratoga" preview card (`.sar-up-card`) that only worked
+    in Sample mode and showed a "switch to Sample" notice otherwise.
+  - Barn add-input typeahead (`.sar-ta-*`) sourced from the sample dataset.
+- **MSP-overlay CSS** for `#sar-data-mode-card`, `.sar-data-banner`,
+  `.sar-ta-*`, `.sar-up-*` (58 lines).
+- Simplified the `dataMode` validator on boot — only `'live'` is a valid
+  value now; anything else is silently corrected.
+
+### Kept (still useful)
+
+- `data/fixtures/saratoga_2025_sample.json` — the Virtual Barn IIFE still
+  reads it to seed demo horses with realistic histories on first load.
+- Virtual Barn auto-demo seeding (`source: 'demo-saratoga-2025'`) — unrelated
+  to the toggle; gives new users a populated Barn out of the box.
+- `tr.sar-barn-row` CSS — race-card highlight for horses in the Barn.
+
+### Net diff
+
+`index.html` —743 lines (17899 → 17156). 79/79 tests still pass.
+
 ## v2.27.0 — Live-data wiring (pre-paid) (2026-05-26)
 
 Everything is wired end-to-end against the existing free static path so
