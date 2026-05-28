@@ -1,5 +1,26 @@
 # NE Racing — Changelog
 
+## v2.32.3 — Hero layout fix for Chrome iOS (2026-05-28)
+
+User reported the landing/hero screen rendering out of alignment in
+Chrome on iPhone — the title block was clipped behind the URL bar and
+the A2HS "Add to Home Screen" install banner appeared to overlay the
+headline copy.
+
+Root cause: `#hero-screen` used `height: 100dvh` (dynamic viewport).
+On Chrome iOS, `100dvh` is measured on initial paint *before* the URL
+bar appears, so the hero is sized as if the URL bar isn't there. The
+title is vertically centered against that taller-than-actual area, so
+it ends up clipped under the URL bar when the bar paints in.
+
+Fix:
+- `#hero-screen` now uses `height: 100svh` (small viewport height —
+  the smallest stable viewport, with the URL bar always assumed
+  visible). Falls back to `100dvh` for browsers without `svh` support.
+- Added `padding-top: calc(env(safe-area-inset-top, 0px) + 1rem)` so
+  the title clears the Dynamic Island / notch on first paint.
+- No JS change — pure CSS, no behavior risk.
+
 ## v2.32.2 — Horse profile honesty (2026-05-28)
 
 Follow-up to a user QC pass on the curated Inspeightofcharlie profile.
