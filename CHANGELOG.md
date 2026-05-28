@@ -1,5 +1,33 @@
 # NE Racing — Changelog
 
+## v2.32.6 — About sheet in More tab (2026-05-28)
+
+Renamed the standalone "What's a railbird?" entry in the More sheet to a
+broader **About** card, and grouped two collapsible Q&A rows inside it:
+
+1. **What's a railbird?** — same definition copy as v2.32.4, now inline
+   inside the About sheet instead of opening the separate modal.
+2. **Who is this app for?** — short, irreverent in-voice answer using the
+   exact wording the user supplied.
+
+Mechanics:
+
+- New `#about-sheet` modal (same cream-card pattern as the railbird-def
+  modal and feedback modal).
+- Two `.about-item` buttons that expand/collapse `.about-answer` blocks
+  in place — no extra navigation, no extra modals stacked on top.
+- Escape, backdrop tap, and X all close the sheet. Re-opening starts
+  with both rows collapsed (clean state).
+- The hero RAILBIRD AI title tap still opens the standalone railbird-def
+  modal (unchanged) — the More-tab path is the only thing that moved.
+
+Files touched:
+
+- `index.html`: replaced the More-sheet "What's a railbird?" button with
+  an "About" button that calls `openAboutSheet()`. Added the
+  `#about-sheet` markup, styles, and script just below the existing
+  railbird-def modal.
+
 ## v2.32.5 — Restore desktop nav (2026-05-28)
 
 User reported that the desktop view has no top-level nav buttons —

@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260528-1535-desktop-nav-v2.32.5';
+var NE_APP_VERSION = '20260528-1934-about-sheet-v2.32.6';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.32.5-desktop-nav';
+var RAILBIRD_VERSION = 'v2.32.6-about-sheet';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -8568,18 +8568,18 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         </span>
         <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-      <!-- v2.32.4 — What's a railbird? -->
-      <button class="more-item" onclick="closeMoreSheet(); openRailbirdDef();">
+      <!-- v2.32.6 — About (contains 'What's a railbird?' and 'Who is this app for?') -->
+      <button class="more-item" onclick="closeMoreSheet(); openAboutSheet();">
         <span class="more-item-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
           </svg>
         </span>
         <span class="more-item-body">
-          <span class="more-item-title">What&rsquo;s a railbird?</span>
-          <span class="more-item-sub">A quick definition of the name</span>
+          <span class="more-item-title">About</span>
+          <span class="more-item-sub">What this app is, and who it's for</span>
         </span>
         <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
@@ -8645,6 +8645,158 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
   window.openRailbirdDef = openRailbirdDef;
   window.closeRailbirdDef = closeRailbirdDef;
   window.closeRailbirdDefOnBg = closeRailbirdDefOnBg;
+})();
+</script>
+
+<!-- v2.32.6 — ABOUT SHEET ============================================== -->
+<style>
+  #about-sheet {
+    position: fixed; inset: 0; z-index: 9100;
+    background: rgba(30, 42, 54, 0.55);
+    display: none; align-items: flex-end; justify-content: center;
+    padding: 0;
+  }
+  @media (min-width: 520px) {
+    #about-sheet { align-items: center; padding: 24px; }
+  }
+  #about-sheet.open { display: flex; }
+  .about-card {
+    background: var(--color-cream, #F8F4EA);
+    color: var(--color-ink, #1E2A36);
+    width: 100%; max-width: 480px;
+    border-radius: 16px 16px 0 0;
+    padding: 22px 20px 24px;
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.18);
+    box-sizing: border-box;
+    position: relative;
+  }
+  @media (min-width: 520px) {
+    .about-card { border-radius: 16px; }
+  }
+  .about-close {
+    position: absolute; top: 12px; right: 12px;
+    background: transparent; border: none; cursor: pointer;
+    width: 36px; height: 36px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--color-ink, #1E2A36);
+  }
+  .about-close:hover { background: rgba(0,0,0,0.06); }
+  .about-eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-muted, #6B7785); margin: 0 0 4px 0; }
+  .about-title { font-family: var(--font-display, 'Playfair Display', Georgia, serif); font-size: 26px; line-height: 1.15; margin: 0 0 16px 0; color: var(--color-ink, #1E2A36); }
+  .about-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .about-item {
+    width: 100%; text-align: left;
+    background: #FFFFFF;
+    border: 1px solid rgba(30,42,54,0.10);
+    border-radius: 12px;
+    padding: 14px 14px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+    color: var(--color-ink, #1E2A36);
+    font: inherit;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .about-item:hover { background: #FBF7EE; border-color: rgba(30,42,54,0.18); }
+  .about-item.open-row { background: #FBF7EE; }
+  .about-item-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .about-item-q { font-weight: 600; font-size: 15px; }
+  .about-item-hint { font-size: 12px; color: var(--color-ink-muted, #6B7785); }
+  .about-item-caret {
+    width: 18px; height: 18px;
+    color: var(--color-ink-muted, #6B7785);
+    transition: transform 0.18s ease;
+  }
+  .about-item.open-row .about-item-caret { transform: rotate(90deg); }
+  .about-answer {
+    display: none;
+    padding: 10px 4px 4px 4px;
+    font-size: 14.5px; line-height: 1.5;
+    color: var(--color-ink, #1E2A36);
+  }
+  .about-answer.open { display: block; }
+  .about-answer strong { color: var(--color-ink, #1E2A36); }
+</style>
+<div id="about-sheet" role="dialog" aria-modal="true" aria-labelledby="about-title" onclick="closeAboutSheetOnBg(event)">
+  <div class="about-card" role="document">
+    <button type="button" class="about-close" onclick="closeAboutSheet()" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+    <p class="about-eyebrow">About</p>
+    <h2 id="about-title" class="about-title">Railbird AI</h2>
+    <div class="about-list">
+      <button type="button" class="about-item" data-row="railbird" onclick="toggleAboutRow('railbird')" aria-expanded="false" aria-controls="about-answer-railbird">
+        <span class="about-item-body">
+          <span class="about-item-q">What&rsquo;s a railbird?</span>
+          <span class="about-item-hint">A quick definition</span>
+        </span>
+        <svg class="about-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div id="about-answer-railbird" class="about-answer">
+        <p style="margin:0 0 6px 0;"><strong>railbird</strong> <em style="font-style:italic;color:#6B7785;">(n.) /ˈreɪl-bərd/</em></p>
+        <p style="margin:0;">The fan at the rail. The one who studies the form, watches the workouts, and roots for the <strong>horse</strong>, not the bet.</p>
+      </div>
+      <button type="button" class="about-item" data-row="audience" onclick="toggleAboutRow('audience')" aria-expanded="false" aria-controls="about-answer-audience">
+        <span class="about-item-body">
+          <span class="about-item-q">Who is this app for?</span>
+          <span class="about-item-hint">A short, honest answer</span>
+        </span>
+        <svg class="about-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div id="about-answer-audience" class="about-answer">
+        <p style="margin:0;">It&rsquo;s not for retards, douchebags or assholes. It&rsquo;s for fine gentlemen, just like you.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict';
+  function openAboutSheet() {
+    var m = document.getElementById('about-sheet');
+    if (!m) return;
+    m.classList.add('open');
+    try {
+      var closeBtn = m.querySelector('.about-close');
+      if (closeBtn) closeBtn.focus();
+    } catch(_) {}
+  }
+  function closeAboutSheet() {
+    var m = document.getElementById('about-sheet');
+    if (!m) return;
+    m.classList.remove('open');
+    // Collapse any open rows so it's clean on next open
+    try {
+      m.querySelectorAll('.about-item.open-row').forEach(function(el){ el.classList.remove('open-row'); el.setAttribute('aria-expanded','false'); });
+      m.querySelectorAll('.about-answer.open').forEach(function(el){ el.classList.remove('open'); });
+    } catch(_) {}
+  }
+  function closeAboutSheetOnBg(e) {
+    if (e && e.target && e.target.id === 'about-sheet') closeAboutSheet();
+  }
+  function toggleAboutRow(key) {
+    var btn = document.querySelector('.about-item[data-row="' + key + '"]');
+    var ans = document.getElementById('about-answer-' + key);
+    if (!btn || !ans) return;
+    var willOpen = !ans.classList.contains('open');
+    ans.classList.toggle('open', willOpen);
+    btn.classList.toggle('open-row', willOpen);
+    btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var m = document.getElementById('about-sheet');
+      if (m && m.classList.contains('open')) {
+        e.stopPropagation();
+        closeAboutSheet();
+      }
+    }
+  });
+  window.openAboutSheet = openAboutSheet;
+  window.closeAboutSheet = closeAboutSheet;
+  window.closeAboutSheetOnBg = closeAboutSheetOnBg;
+  window.toggleAboutRow = toggleAboutRow;
 })();
 </script>
 
