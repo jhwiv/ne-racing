@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260527-2055-polish-foundations-v2.30.1';
+var NE_APP_VERSION = '20260528-0500-suppress-adw-v2.30.2';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.30.1-qa-fixes';
+var RAILBIRD_VERSION = 'v2.30.2-suppress-adw';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -7368,7 +7368,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <div class="ticket-header"><span class="ticket-icon">&#127915;</span><h3 style="margin:0">Today's Ticket</h3></div>
         <!-- v2.13: Betting Mode Toggle — centered, labeled, unmistakably a switch -->
         <!-- v2.16.7: ADW sign-in chip placed alongside SIMULATE/REAL -->
-        <div class="mode-toggle-wrap" role="group" aria-label="Betting mode">
+        <!-- v2.30.2: betting-app surfaces suppressed; SIM-only -->
+        <div class="mode-toggle-wrap" role="group" aria-label="Betting mode" style="display:none">
           <div class="mode-toggle-label">Mode</div>
           <div class="mode-toggle-row">
             <div class="betting-mode-toggle" id="ticket-mode-toggle">
@@ -7510,7 +7511,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </div>
 
       <!-- v2.26.0: one-line sign-in link replaces the prominent blue card -->
-      <button type="button" class="adw-signin-link" onclick="openAdwSheet()" aria-haspopup="dialog" aria-controls="adw-sheet">
+      <!-- v2.30.2: betting-app sign-in link suppressed -->
+      <button type="button" class="adw-signin-link" onclick="openAdwSheet()" aria-haspopup="dialog" aria-controls="adw-sheet" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
         <span>Sign in to your betting app</span>
       </button>
@@ -8338,7 +8340,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 
 <!-- SETTINGS MODAL -->
 <!-- ADW Sign-In Sheet (opened from Bets tab chip) -->
-<div id="adw-sheet" role="dialog" aria-modal="true" aria-label="Sign in to your preferred betting app" onclick="closeAdwSheetOnBg(event)">
+<!-- v2.30.2: adw-sheet suppressed; openAdwSheet() neutralized in JS below -->
+<div id="adw-sheet" role="dialog" aria-modal="true" aria-label="Sign in to your preferred betting app" onclick="closeAdwSheetOnBg(event)" style="display:none">
   <div class="adw-sheet-inner" role="document">
     <div class="adw-sheet-handle" aria-hidden="true"></div>
     <div class="adw-sheet-header">
@@ -8365,7 +8368,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <select id="settings-track" class="form-control" onchange="settingsChangeTrack(this.value)"></select>
       <div id="settings-track-availability" style="margin-top:0.45rem;font-size:0.72rem;color:var(--color-muted);line-height:1.4">Checking today's cards\u2026</div>
     </div>
-    <div class="settings-group">
+    <!-- v2.30.2: Betting Mode + Preferred Betting Platform + Sign-in groups suppressed -->
+    <div class="settings-group" style="display:none">
       <h4>Betting Mode</h4>
       <div class="settings-mode-toggle" id="settings-mode-toggle">
         <button class="mode-pill-light active-sim" id="settings-bm-sim" onclick="setBettingMode('simulate')">
@@ -8379,7 +8383,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </div>
       <p class="text-xs text-muted" style="margin-top:0.35rem">Simulate mode tracks picks internally. Real mode opens external betting platforms.</p>
     </div>
-    <div class="settings-group">
+    <div class="settings-group" style="display:none">
       <h4>Preferred Betting Platform</h4>
       <select id="settings-betting-platform" class="form-control" onchange="saveBettingPlatform(this.value)">
         <option value="nyrabets">NYRA Bets</option>
@@ -8390,7 +8394,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </select>
       <p class="text-xs text-muted" style="margin-top:0.35rem">Bet buttons will open this platform in a new tab.</p>
     </div>
-    <div class="settings-group">
+    <div class="settings-group" style="display:none">
       <h4>Sign in to Your Preferred Betting App</h4>
       <p class="text-xs text-muted" style="margin-top:-0.1rem;margin-bottom:0.55rem">Opens the official sign-in page in a new tab. Railbird never sees your ADW username or password.</p>
       <div id="adw-signin-list" class="adw-signin-list"></div>
@@ -8851,19 +8855,14 @@ function showUndoToast(msg, onUndo, duration) {
 var BETTING_MODE_KEY = 'ne-racing-betting-mode';
 
 function getBettingMode() {
-  return localStorage.getItem(BETTING_MODE_KEY) || 'simulate';
+  // v2.30.2: betting-app surfaces fully suppressed. Force simulate mode always.
+  return 'simulate';
 }
 
 function setBettingMode(mode) {
-  if (mode === 'real' && getBettingMode() !== 'real' && !realModeConfirmed) {
-    if (!confirm('Real Money Mode will open external betting platforms when you tap Bet buttons. You must have an active account to place wagers. Continue?')) {
-      return;
-    }
-    realModeConfirmed = true;
-  }
-  localStorage.setItem(BETTING_MODE_KEY, mode);
-  syncBettingModeUI();
-  showToast(mode === 'simulate' ? 'Switched to Simulate Mode' : 'Switched to Real Money Mode', 'success', 3000);
+  // v2.30.2: real mode is disabled at the product level. Force simulate.
+  localStorage.setItem(BETTING_MODE_KEY, 'simulate');
+  try { syncBettingModeUI(); } catch (e) {}
 }
 
 function syncBettingModeUI() {
@@ -11428,7 +11427,8 @@ function updateTopPicksCard(allScores) {
   html += `<button class="copy-ticket-btn" onclick="copyTicket()">&#128203; Copy Ticket</button>`;
   var bMode = getBettingMode();
   if (bMode === 'real') {
-    html += `<div class="bet-disclaimer">Opens external betting platform. You must have an active account to place wagers.</div>`;
+    // v2.30.2: real-mode disclaimer removed alongside ADW suppression
+    html += `<div class="bet-disclaimer">Bets are added to your simulated bet slip for tracking purposes only.</div>`;
   } else {
     html += `<div class="bet-disclaimer">Bets are added to your simulated bet slip for tracking purposes only.</div>`;
   }
@@ -13672,11 +13672,8 @@ function syncAdwChipLabel() {
   for (var i = 0; i < spans.length; i++) spans[i].textContent = info.name;
 }
 function openAdwSheet() {
-  var m = document.getElementById('adw-sheet');
-  if (!m) return;
-  try { renderAdwSigninList('adw-sheet-list'); } catch (e) {}
-  m.classList.add('open');
-  document.body.classList.add('no-scroll');
+  // v2.30.2: betting-app surfaces suppressed; sheet stays hidden.
+  return;
 }
 function closeAdwSheet() {
   var m = document.getElementById('adw-sheet');
