@@ -13907,7 +13907,8 @@ async function submitFeedback() {
   var name  = (nameEl  && nameEl.value)  ? nameEl.value.trim().slice(0,120) : '';
   var email = (emailEl && emailEl.value) ? emailEl.value.trim().slice(0,200) : '';
   // Build base URL from store settings (same as data calls)
-  var base = (store && store.settings && store.settings.workerUrl) ? store.settings.workerUrl : DEFAULT_WORKER_URL;
+  var s = (typeof getStore === 'function') ? getStore() : null;
+  var base = (s && s.settings && s.settings.workerUrl) ? s.settings.workerUrl : DEFAULT_WORKER_URL;
   base = base.replace(/\/$/, '');
   var page = '';
   try { page = (document.querySelector('.tab-btn.active') || {}).innerText || ''; } catch(e){}
