@@ -137,7 +137,7 @@ function corsHeaders(origin, maxAge = 0) {
   const h = new Headers({
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
   });
@@ -2234,6 +2234,160 @@ async function handleStatus(request, env, origin) {
 // ═════════════════════════════════════════════════════════════════════════════
 // Main fetch handler (Worker entry point)
 // ═════════════════════════════════════════════════════════════════════════════
+// ─── Feedback (beta) ────────────────────────────────────────────────────────
+//
+// POST /api/feedback
+//   Body: { message: string, name?: string, email?: string,
+//           page?: string, version?: string, userAgent?: string }
+//   Stores entry in FEEDBACK_LOG KV (binding) and, if FEEDBACK_SENDGRID_KEY
+//   + FEEDBACK_EMAIL_TO + FEEDBACK_EMAIL_FROM are set, sends an email copy.
+//   Always returns 200 + { ok:true, id } when KV write succeeds; email
+//   failures are logged but do NOT fail the request.
+//
+// GET  /api/feedback/list?limit=50
+//   Requires header  Authorization: Bearer <FEEDBACK_ADMIN_TOKEN>
+//   Returns up to `limit` (max 200) most recent feedback entries, newest first.
+//
+async function handleFeedbackSubmit(request, env, origin) {
+  if (!env.FEEDBACK_LOG) {
+    return jsonError("Feedback storage not configured.", 500, origin);
+  }
+
+  // Parse body
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return jsonError("Invalid JSON body.", 400, origin);
+  }
+  if (!body || typeof body !== "object") {
+    return jsonError("Body must be a JSON object.", 400, origin);
+  }
+
+  const message = (body.message || "").toString().trim();
+  if (!message) {
+    return jsonError("Field 'message' is required.", 400, origin);
+  }
+  if (message.length > 5000) {
+    return jsonError("Message too long (5000 char max).", 400, origin);
+  }
+
+  const name      = (body.name      || "").toString().trim().slice(0, 120);
+  const email     = (body.email     || "").toString().trim().slice(0, 200);
+  const page      = (body.page      || "").toString().trim().slice(0, 80);
+  const version   = (body.version   || "").toString().trim().slice(0, 60);
+  const userAgent = (body.userAgent || request.headers.get("User-Agent") || "").toString().slice(0, 400);
+
+  const now = new Date();
+  const ts  = now.toISOString();
+  // Key: feedback:<reverse-time>:<random> for newest-first listing
+  const reverseTs = (10000000000000 - now.getTime()).toString().padStart(13, "0");
+  const rand = Math.random().toString(36).slice(2, 8);
+  const id   = `${reverseTs}-${rand}`;
+  const key  = `feedback:${id}`;
+
+  const record = {
+    id,
+    ts,
+    message,
+    name,
+    email,
+    page,
+    version,
+    userAgent,
+    ip: request.headers.get("CF-Connecting-IP") || "",
+    country: (request.cf && request.cf.country) || "",
+  };
+
+  try {
+    await env.FEEDBACK_LOG.put(key, JSON.stringify(record), {
+      // 1 year TTL — beta entries don't need to live forever
+      expirationTtl: 60 * 60 * 24 * 365,
+      metadata: { ts, version, page },
+    });
+  } catch (err) {
+    return jsonError(`Failed to store feedback: ${err.message}`, 500, origin);
+  }
+
+  // Email copy (best effort — never blocks the response success)
+  let emailStatus = "skipped";
+  if (env.FEEDBACK_SENDGRID_KEY && env.FEEDBACK_EMAIL_TO) {
+    try {
+      const fromAddr = env.FEEDBACK_EMAIL_FROM || "noreply@railbirdai.com";
+      const subject = `Railbird Beta Feedback — ${name || email || "anonymous"}`;
+      const lines = [
+        `New beta feedback received.`,
+        ``,
+        `From:     ${name || "(no name)"} ${email ? "<" + email + ">" : ""}`,
+        `When:     ${ts}`,
+        `Version:  ${version || "(unknown)"}`,
+        `Page:     ${page || "(unknown)"}`,
+        `Country:  ${record.country || "(unknown)"}`,
+        `User Agent: ${userAgent}`,
+        ``,
+        `Message:`,
+        `--------`,
+        message,
+        ``,
+        `--`,
+        `Entry ID: ${id}`,
+        `Catalog : GET /api/feedback/list (admin token required)`,
+      ];
+      const emailRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.FEEDBACK_SENDGRID_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: env.FEEDBACK_EMAIL_TO }] }],
+          from: { email: fromAddr, name: "Railbird AI Beta" },
+          reply_to: email ? { email } : undefined,
+          subject,
+          content: [{ type: "text/plain", value: lines.join("\n") }],
+        }),
+      });
+      emailStatus = emailRes.ok ? "sent" : `failed:${emailRes.status}`;
+    } catch (err) {
+      emailStatus = `error:${(err && err.message) || "unknown"}`;
+    }
+  }
+
+  return jsonOk({ ok: true, id, emailStatus }, origin, 0);
+}
+
+async function handleFeedbackList(request, env, origin) {
+  if (!env.FEEDBACK_LOG) {
+    return jsonError("Feedback storage not configured.", 500, origin);
+  }
+  const auth = request.headers.get("Authorization") || "";
+  const expected = `Bearer ${env.FEEDBACK_ADMIN_TOKEN || ""}`;
+  if (!env.FEEDBACK_ADMIN_TOKEN || auth !== expected) {
+    return jsonError("Unauthorized.", 401, origin);
+  }
+  const { searchParams } = new URL(request.url);
+  let limit = parseInt(searchParams.get("limit") || "50", 10);
+  if (isNaN(limit) || limit < 1) limit = 50;
+  if (limit > 200) limit = 200;
+
+  // Keys are stored as feedback:<reverseTs>-<rand> so a forward list() over
+  // the "feedback:" prefix returns newest first.
+  const listed = await env.FEEDBACK_LOG.list({ prefix: "feedback:", limit });
+  const entries = [];
+  for (const k of listed.keys) {
+    try {
+      const raw = await env.FEEDBACK_LOG.get(k.name);
+      if (raw) entries.push(JSON.parse(raw));
+    } catch (_) { /* skip malformed */ }
+  }
+  return jsonOk({
+    ok: true,
+    count: entries.length,
+    truncated: listed.list_complete === false,
+    entries,
+  }, origin, 0);
+}
+
 export default {
   /**
    * Cloudflare Worker entry point.
@@ -2275,9 +2429,12 @@ export default {
       });
     }
 
-    // ── Only GET is supported for data endpoints ──────────────────────────
-    if (request.method !== "GET") {
-      return jsonError("Method not allowed. Use GET.", 405, origin);
+    // ── Only GET supported for data endpoints; POST only for /api/feedback ─
+    if (request.method !== "GET" && request.method !== "POST") {
+      return jsonError("Method not allowed.", 405, origin);
+    }
+    if (request.method === "POST" && url.pathname !== "/api/feedback") {
+      return jsonError("POST only allowed on /api/feedback.", 405, origin);
     }
 
     // ── Guard: require API_KEY only when DATA_SOURCE=theracingapi ─────────
@@ -2315,6 +2472,16 @@ export default {
       case "/api/status":
         return handleStatus(request, env, origin);
 
+      // ── Beta feedback ──────────────────────────────────────────────────
+      case "/api/feedback":
+        if (request.method !== "POST") {
+          return jsonError("POST required for /api/feedback.", 405, origin);
+        }
+        return handleFeedbackSubmit(request, env, origin);
+
+      case "/api/feedback/list":
+        return handleFeedbackList(request, env, origin);
+
       // ── Health check / root ───────────────────────────────────────────
       case "/":
       case "/health":
@@ -2339,6 +2506,8 @@ export default {
               "/api/results?track=AQU&date=YYYY-MM-DD",
               "/api/expert-picks?track=AQU&date=YYYY-MM-DD",
               "/api/status",
+              "POST /api/feedback",
+              "/api/feedback/list  (admin token)",
             ],
           },
           origin,

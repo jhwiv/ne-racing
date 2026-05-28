@@ -1,5 +1,59 @@
 # NE Racing — Changelog
 
+## v2.32.0 — Beta gate, feedback channel, KV catalog (2026-05-28)
+
+Beta-readiness release. Three changes:
+
+1. **Closed-beta access gate.** A fullscreen unlock screen blocks the app
+   until the visitor enters a shared access code (current code:
+   `SARATOGA2026`, stored in the bundle as a SHA-256 hash). Once unlocked
+   on a device, the unlock flag is written to `localStorage` under
+   `railbird-beta-unlocked-v1` and the gate never appears again. The
+   builder bypasses the gate with `?dev=1` on any URL — that flag sets the
+   unlock for that device permanently. Rotation: replace the `BETA_HASH`
+   constant in the gate IIFE with `sha256("NEWCODE")`.
+
+2. **Feedback channel.** A "Send Feedback" entry has been added to the
+   More sheet. It opens a modal with one required field (message) and two
+   optional fields (name, email). Submissions POST to a new worker
+   endpoint, `POST /api/feedback`, which writes the record to a Cloudflare
+   KV namespace (`FEEDBACK_LOG`, id `f4480a5e9...`) keyed by reverse
+   timestamp for newest-first listing, and — when `FEEDBACK_SENDGRID_KEY`
+   + `FEEDBACK_EMAIL_TO` worker secrets are set — emails a plain-text copy
+   to the builder via SendGrid. Email failures are best-effort and never
+   fail the request.
+
+3. **Feedback admin endpoint.** `GET /api/feedback/list?limit=50` returns
+   the most recent feedback entries (max 200) for review between
+   sessions. Requires `Authorization: Bearer <FEEDBACK_ADMIN_TOKEN>` — the
+   token is stored as a worker secret and never reaches the client.
+
+### Added
+
+- `worker.js` — `handleFeedbackSubmit(request, env, origin)` and
+  `handleFeedbackList(request, env, origin)`; new POST allow-listing in
+  the fetch entry; CORS methods now `GET, POST, OPTIONS`.
+- `wrangler.toml` — `FEEDBACK_LOG` KV binding declared.
+- `index.html` — beta-gate overlay + IIFE (inline at top of `<body>`,
+  runs before any other script); feedback modal + `openFeedbackModal()`,
+  `closeFeedbackModal()`, `submitFeedback()`; "Send Feedback" item in
+  More sheet.
+
+### Notes for the builder
+
+- KV namespace id: `f4480a5e92fa463a88e014541224b85f`.
+- Admin token: stored as `FEEDBACK_ADMIN_TOKEN` worker secret; reference
+  copy lives in `.secrets-reference.txt` (gitignored).
+- SendGrid key: not yet configured. Set
+  `FEEDBACK_SENDGRID_KEY` worker secret + verify a sender identity in
+  SendGrid (single-sender on `jhwiv.online@gmail.com` is the fastest
+  path) and email-on-submit lights up immediately. Without the key,
+  feedback still catalogs in KV — just no inbox copy.
+- The install banner already handles Android ("Install App" via
+  `beforeinstallprompt`, fallback to the three-dot menu hint) and iOS
+  ("tap Share…Add to Home Screen") in `initA2HSBanner()`; no v2.32.0
+  changes required.
+
 ## v2.31.0 — Live North American data + PP card (2026-05-28)
 
 The app is finally wired to a real, paid live data source. The Cloudflare

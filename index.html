@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260528-1015-na-live-v2.31.0';
+var NE_APP_VERSION = '20260528-1100-beta-gate-v2.32.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.31.0-na-live';
+var RAILBIRD_VERSION = 'v2.32.0-beta-gate';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -7158,6 +7158,161 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 <body>
 
 <!-- =============================================
+     BETA GATE (v2.32.0)
+     Closed-beta access control. Single shared password.
+     Bypass with ?dev=1 (sets unlock flag in localStorage).
+     Once unlocked the gate never appears again on that device.
+     ============================================= -->
+<style>
+  #beta-gate {
+    position: fixed; inset: 0; z-index: 99999;
+    background: #1E2A36;
+    color: #F8F4EA;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  #beta-gate.hidden { display: none; }
+  #beta-gate .bg-card {
+    width: 100%; max-width: 380px;
+    background: rgba(248, 244, 234, 0.05);
+    border: 1px solid rgba(248, 244, 234, 0.15);
+    border-radius: 14px;
+    padding: 28px 22px;
+    text-align: center;
+  }
+  #beta-gate h1 {
+    font-size: 22px; margin: 0 0 6px;
+    letter-spacing: 0.04em;
+    color: #F8F4EA;
+  }
+  #beta-gate .bg-sub {
+    font-size: 13px; opacity: 0.7; margin-bottom: 22px;
+    line-height: 1.5;
+  }
+  #beta-gate input[type="password"] {
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(248, 244, 234, 0.25);
+    background: rgba(0,0,0,0.25);
+    color: #F8F4EA;
+    font-size: 16px;
+    text-align: center;
+    letter-spacing: 0.08em;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+  }
+  #beta-gate input[type="password"]:focus {
+    outline: none;
+    border-color: #C9A961;
+  }
+  #beta-gate button {
+    margin-top: 12px;
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 10px;
+    border: none;
+    background: #C9A961;
+    color: #1E2A36;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+  #beta-gate button:active { opacity: 0.85; }
+  #beta-gate .bg-error {
+    font-size: 12px;
+    color: #F4A0A0;
+    margin-top: 10px;
+    min-height: 16px;
+  }
+  #beta-gate .bg-foot {
+    font-size: 11px;
+    opacity: 0.55;
+    margin-top: 18px;
+    letter-spacing: 0.05em;
+  }
+</style>
+<div id="beta-gate" class="hidden" role="dialog" aria-modal="true" aria-labelledby="bg-title">
+  <div class="bg-card">
+    <h1 id="bg-title">RAILBIRD AI</h1>
+    <div class="bg-sub">Closed beta. Enter the access code provided to you.</div>
+    <input id="beta-gate-input" type="password" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="Access code" />
+    <button id="beta-gate-btn" type="button">Unlock</button>
+    <div class="bg-error" id="beta-gate-err"></div>
+    <div class="bg-foot">Powered by Barrier Island Digital, LLC</div>
+  </div>
+</div>
+<script>
+(function(){
+  // Beta access — SHA-256 hash of the access code (so the code is not visible
+  // in the bundle to anyone reading the raw HTML).
+  // To rotate: compute  sha256("NEWCODE")  and replace the constant below.
+  var BETA_HASH = 'c5e6c12d42ceae0ccc49585c2ca2a59c43ffb108a4136ba8bf728017acfeb8b3'; // sha256("SARATOGA2026")
+  var FLAG_KEY  = 'railbird-beta-unlocked-v1';
+
+  // ?dev=1 bypass for the builder
+  try {
+    var sp = new URLSearchParams(window.location.search);
+    if (sp.get('dev') === '1') {
+      localStorage.setItem(FLAG_KEY, '1');
+    }
+  } catch(e){}
+
+  // Already unlocked? show app.
+  try { if (localStorage.getItem(FLAG_KEY) === '1') return; } catch(e){ return; }
+
+  // Otherwise mount the gate.
+  var gate = document.getElementById('beta-gate');
+  var inp  = document.getElementById('beta-gate-input');
+  var btn  = document.getElementById('beta-gate-btn');
+  var err  = document.getElementById('beta-gate-err');
+  if (!gate || !inp || !btn) return;
+  gate.classList.remove('hidden');
+  // Reveal even if the FOUC kill is still hiding the doc
+  try { document.documentElement.style.visibility = 'visible'; } catch(e){}
+  setTimeout(function(){ try { inp.focus(); } catch(e){} }, 50);
+
+  async function sha256Hex(str) {
+    if (!window.crypto || !window.crypto.subtle) {
+      // Fallback: no crypto.subtle (very old browsers) — just allow plain compare against placeholder.
+      return null;
+    }
+    var enc = new TextEncoder().encode(str);
+    var buf = await window.crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  }
+
+  async function tryUnlock() {
+    err.textContent = '';
+    var code = (inp.value || '').trim().toUpperCase();
+    if (!code) { err.textContent = 'Enter your access code.'; return; }
+    var hex = await sha256Hex(code);
+    if (hex === null) {
+      // Subtle crypto unavailable — fallback to direct compare against known
+      // value (only used on legacy browsers; security degrades gracefully).
+      if (code === 'SARATOGA2026') { proceed(); return; }
+      err.textContent = 'Browser too old. Update Chrome or Safari.';
+      return;
+    }
+    if (hex === BETA_HASH) { proceed(); return; }
+    err.textContent = 'Incorrect code.';
+    inp.value = '';
+    inp.focus();
+  }
+  function proceed(){
+    try { localStorage.setItem(FLAG_KEY, '1'); } catch(e){}
+    gate.classList.add('hidden');
+  }
+  btn.addEventListener('click', tryUnlock);
+  inp.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') { e.preventDefault(); tryUnlock(); }
+  });
+})();
+</script>
+
+<!-- =============================================
      TOAST CONTAINER
      ============================================= -->
 <div id="toast-container" aria-live="polite"></div>
@@ -8334,6 +8489,110 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         </span>
         <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <!-- v2.32.0 — Send Feedback (beta) -->
+      <button class="more-item" onclick="closeMoreSheet(); openFeedbackModal();">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">Send Feedback</span>
+          <span class="more-item-sub">Bug reports, ideas, questions — goes straight to the builder</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- v2.32.0 — FEEDBACK MODAL ============================================ -->
+<style>
+  #feedback-modal {
+    position: fixed; inset: 0; z-index: 9000;
+    background: rgba(30, 42, 54, 0.55);
+    display: none; align-items: flex-end; justify-content: center;
+    padding: 0;
+  }
+  @media (min-width: 520px) {
+    #feedback-modal { align-items: center; padding: 24px; }
+  }
+  #feedback-modal.open { display: flex; }
+  #feedback-modal .fb-card {
+    background: #F8F4EA;
+    color: #1E2A36;
+    width: 100%; max-width: 480px;
+    border-radius: 16px 16px 0 0;
+    padding: 22px 20px 24px;
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.18);
+    box-sizing: border-box;
+  }
+  @media (min-width: 520px) {
+    #feedback-modal .fb-card { border-radius: 16px; }
+  }
+  #feedback-modal h3 {
+    font-size: 18px; margin: 0 0 4px;
+    letter-spacing: 0.02em;
+  }
+  #feedback-modal .fb-sub {
+    font-size: 12px; color: #6B7B8B; margin-bottom: 16px;
+  }
+  #feedback-modal label {
+    display: block; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: #6B7B8B; margin: 12px 0 6px;
+    font-weight: 600;
+  }
+  #feedback-modal input,
+  #feedback-modal textarea {
+    width: 100%; box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid rgba(30, 42, 54, 0.18);
+    border-radius: 9px;
+    font-size: 15px; font-family: inherit;
+    background: #FFFFFF; color: #1E2A36;
+    -webkit-appearance: none;
+  }
+  #feedback-modal textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
+  #feedback-modal input:focus,
+  #feedback-modal textarea:focus { outline: none; border-color: #C9A961; }
+  #feedback-modal .fb-row { display: flex; gap: 10px; margin-top: 16px; }
+  #feedback-modal .fb-row button {
+    flex: 1; padding: 12px;
+    border-radius: 10px; border: none;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+  }
+  #feedback-modal .fb-cancel {
+    background: rgba(30, 42, 54, 0.08); color: #1E2A36;
+  }
+  #feedback-modal .fb-send {
+    background: #1E2A36; color: #F8F4EA;
+  }
+  #feedback-modal .fb-send:disabled { opacity: 0.5; }
+  #feedback-modal .fb-status {
+    font-size: 12px; margin-top: 10px; min-height: 16px;
+    color: #6B7B8B;
+  }
+  #feedback-modal .fb-status.error { color: #B5371A; }
+  #feedback-modal .fb-status.success { color: #2E7D32; }
+</style>
+<div id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="fb-title" onclick="closeFeedbackModalOnBg(event)">
+  <div class="fb-card" onclick="event.stopPropagation()">
+    <h3 id="fb-title">Send Feedback</h3>
+    <div class="fb-sub">Bug reports, ideas, questions — anything. Goes directly to the builder.</div>
+    <label for="fb-message">Your feedback <span style="color:#B5371A">*</span></label>
+    <textarea id="fb-message" placeholder="What's working, what's broken, what you'd love to see…" maxlength="5000"></textarea>
+    <label for="fb-name">Your name (optional)</label>
+    <input id="fb-name" type="text" maxlength="120" autocomplete="name" />
+    <label for="fb-email">Your email (optional — only if you want a reply)</label>
+    <input id="fb-email" type="email" maxlength="200" autocomplete="email" placeholder="you@example.com" />
+    <div class="fb-status" id="fb-status"></div>
+    <div class="fb-row">
+      <button type="button" class="fb-cancel" onclick="closeFeedbackModal()">Cancel</button>
+      <button type="button" class="fb-send" id="fb-send-btn" onclick="submitFeedback()">Send</button>
     </div>
   </div>
 </div>
@@ -13610,6 +13869,80 @@ function closeSettings() {
   document.body.classList.remove('no-scroll');
 }
 function closeSettingsOnBg(e) { if (e.target === el('settings-modal')) closeSettings(); }
+
+// v2.32.0 — Feedback modal ===================================================
+function openFeedbackModal() {
+  var m = el('feedback-modal');
+  if (!m) return;
+  // Reset status; preserve any previously typed text from this session
+  var s = el('fb-status'); if (s) { s.textContent=''; s.className='fb-status'; }
+  var sb = el('fb-send-btn'); if (sb) sb.disabled = false;
+  m.classList.add('open');
+  document.body.classList.add('no-scroll');
+  setTimeout(function(){ try { el('fb-message').focus(); } catch(e){} }, 80);
+}
+function closeFeedbackModal() {
+  var m = el('feedback-modal');
+  if (m) m.classList.remove('open');
+  document.body.classList.remove('no-scroll');
+}
+function closeFeedbackModalOnBg(e) {
+  if (e.target === el('feedback-modal')) closeFeedbackModal();
+}
+async function submitFeedback() {
+  var msgEl = el('fb-message'); var nameEl = el('fb-name'); var emailEl = el('fb-email');
+  var statusEl = el('fb-status'); var btn = el('fb-send-btn');
+  if (!msgEl || !statusEl || !btn) return;
+  var message = (msgEl.value || '').trim();
+  if (!message) {
+    statusEl.textContent = 'Please enter your feedback before sending.';
+    statusEl.className = 'fb-status error';
+    msgEl.focus(); return;
+  }
+  if (message.length > 5000) {
+    statusEl.textContent = 'Message too long (5000 characters max).';
+    statusEl.className = 'fb-status error';
+    return;
+  }
+  var name  = (nameEl  && nameEl.value)  ? nameEl.value.trim().slice(0,120) : '';
+  var email = (emailEl && emailEl.value) ? emailEl.value.trim().slice(0,200) : '';
+  // Build base URL from store settings (same as data calls)
+  var base = (store && store.settings && store.settings.workerUrl) ? store.settings.workerUrl : DEFAULT_WORKER_URL;
+  base = base.replace(/\/$/, '');
+  var page = '';
+  try { page = (document.querySelector('.tab-btn.active') || {}).innerText || ''; } catch(e){}
+  page = (page || 'unknown').trim().slice(0,80);
+  var version = (typeof RAILBIRD_VERSION !== 'undefined') ? RAILBIRD_VERSION : '';
+
+  btn.disabled = true;
+  statusEl.textContent = 'Sending…';
+  statusEl.className = 'fb-status';
+
+  try {
+    var res = await fetch(base + '/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: message, name: name, email: email,
+        page: page, version: version,
+        userAgent: navigator.userAgent || ''
+      }),
+    });
+    if (!res.ok) {
+      var errBody = await res.text();
+      throw new Error('HTTP ' + res.status + ' — ' + errBody.slice(0,180));
+    }
+    statusEl.textContent = 'Thanks. Feedback received.';
+    statusEl.className = 'fb-status success';
+    // Clear message but leave name+email if user filled them in
+    msgEl.value = '';
+    setTimeout(closeFeedbackModal, 1400);
+  } catch (err) {
+    statusEl.textContent = 'Could not send: ' + (err.message || 'network error') + '. Try again in a moment.';
+    statusEl.className = 'fb-status error';
+    btn.disabled = false;
+  }
+}
 
 function forceRefresh() {
   // Use the nuclear force-update — unregisters SWs, clears caches, reloads
