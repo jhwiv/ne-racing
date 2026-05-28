@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260528-1100-beta-gate-v2.32.0';
+var NE_APP_VERSION = '20260528-0735-headline-stakes-fix-v2.32.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.32.0-beta-gate';
+var RAILBIRD_VERSION = 'v2.32.1-headline-stakes-fix';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -9653,7 +9653,7 @@ window.addEventListener('beforeinstallprompt', function(e) {
     if (step === 1) {
       var meetLine = '';
       if (ctx.phase === 'pre-festival') {
-        meetLine = 'The <strong>Belmont Stakes Festival at Saratoga</strong> opens in <strong>' + ctx.daysUntil + ' day' + (ctx.daysUntil === 1 ? '' : 's') + '</strong> — Met Mile, Brooklyn, Jaipur, all run at the Spa this year.';
+        meetLine = 'The <strong>Belmont Stakes Festival at Saratoga</strong> opens in <strong>' + ctx.daysUntil + ' day' + (ctx.daysUntil === 1 ? '' : 's') + '</strong> — Belmont, Met Mile, Manhattan, Just A Game, all run at the Spa this year.';
       } else if (ctx.phase === 'in-festival') {
         meetLine = 'The <strong>Belmont Stakes Festival at Saratoga</strong> is running right now (' + ctx.fromDate + ' through ' + ctx.toDate + ').';
       } else if (ctx.phase === 'pre-summer') {
@@ -15468,10 +15468,14 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
   // paid data API kicks in. Race numbers/post times update once cards post.
   var OFFDAY_STAKES = {
     'Belmont Stakes Festival': [
-      { date: '2026-06-05', name: 'Met Mile (G1)', distance: '1 mile', surface: 'Dirt', purse: '$1.0M', note: "Older horses, 'Win and You're In' Breeders' Cup Dirt Mile." },
-      { date: '2026-06-06', name: 'Brooklyn (G2)', distance: '1 1/2 miles', surface: 'Dirt', purse: '$400K', note: 'Older horses, marathon distance.' },
-      { date: '2026-06-06', name: 'Jaipur (G1)', distance: '6 furlongs', surface: 'Inner Turf', purse: '$500K', note: "'Win and You're In' Turf Sprint." },
-      { date: '2026-06-06', name: 'Belmont Stakes (G1)', distance: '1 1/4 miles', surface: 'Dirt', purse: '$2.0M', note: 'Final leg of the Triple Crown — shortened to 10F at the Spa this year.' }
+      { date: '2026-06-05', name: 'New York (G1)', distance: '1 3/16 miles', surface: 'Turf', purse: '$750K', note: 'F&M 4&UP. Festival opens with a turf marathon.' },
+      { date: '2026-06-05', name: 'Ogden Phipps (G1)', distance: '1 1/8 miles', surface: 'Dirt', purse: '$500K', note: 'F&M 4&UP. Top older filly/mare dirt route.' },
+      { date: '2026-06-05', name: 'DraftKings Acorn (G1)', distance: '1 1/8 miles', surface: 'Dirt', purse: '$500K', note: '3YO fillies. Stretched out to nine furlongs.' },
+      { date: '2026-06-06', name: 'Belmont Stakes (G1)', distance: '1 1/4 miles', surface: 'Dirt', purse: '$2.0M', note: 'Final leg of the Triple Crown — run at 10F at the Spa again this year.' },
+      { date: '2026-06-06', name: 'Manhattan (G1)', distance: '1 3/16 miles', surface: 'Turf', purse: '$1.0M', note: "Older horses. 'Win and You're In' Breeders' Cup Turf." },
+      { date: '2026-06-06', name: 'Metropolitan H. (G1)', distance: '1 mile', surface: 'Dirt', purse: '$1.0M', note: "Older horses. 'Win and You're In' BC Dirt Mile." },
+      { date: '2026-06-06', name: 'Just A Game (G1)', distance: '1 mile', surface: 'Turf', purse: '$500K', note: "F&M 4&UP. 'Win and You're In' BC Filly & Mare Turf." },
+      { date: '2026-06-06', name: 'Jaipur (G1)', distance: '5 1/2 furlongs', surface: 'Turf', purse: '$500K', note: "'Win and You're In' Turf Sprint." }
     ],
     'Summer Meet': [
       { date: '2026-07-25', name: 'Whitney (G1)', distance: '1 1/8 miles', surface: 'Dirt', purse: '$1.0M' },
@@ -15551,7 +15555,8 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
       return (
         '<div id="offday-stakes" style="margin-top:14px;padding:16px 18px;background:#243653;border-radius:12px">' +
           '<div style="font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:#C9A84C;font-weight:700;margin-bottom:8px">Headline stakes</div>' +
-          '<div style="font-family:Crimson Pro,serif;font-size:0.82rem;color:#EDE8DC;opacity:0.75;margin-bottom:6px">' + next.season.label + ' · marquee races to watch</div>' +
+          '<div style="font-family:Crimson Pro,serif;font-size:0.82rem;color:#EDE8DC;opacity:0.75;margin-bottom:4px">' + next.season.label + ' · marquee races to watch</div>' +
+          '<div style="font-family:Crimson Pro,serif;font-size:0.72rem;color:#EDE8DC;opacity:0.55;font-style:italic;margin-bottom:6px">Schedule from NYRA · live entries and odds appear after the post draw Mon Jun 1.</div>' +
           '<div style="margin:0;padding:0">' + rows + '</div>' +
         '</div>'
       );

@@ -1,5 +1,45 @@
 # NE Racing — Changelog
 
+## v2.32.1 — Headline stakes fix (2026-05-28)
+
+Factual-accuracy patch on the pre-meet Headline Stakes panel. A user QC pass
+asked whether the surfaced races were real Belmont/Saratoga information; they
+weren't fully. The hand-curated `OFFDAY_STAKES['Belmont Stakes Festival']`
+list contained:
+
+- **Met Mile (G1)** dated Fri Jun 5 — actually runs Sat Jun 6 per NYRA.
+- **Brooklyn (G2)** on Sat Jun 6 — not on the 2026 Belmont Stakes Racing
+  Festival schedule at all.
+- **Jaipur (G1)** listed as 6F Inner Turf — actually 5½F Turf.
+
+Fix:
+
+- Replaced the four-row Belmont Festival panel with eight real G1s pulled
+  directly from the
+  [NYRA Belmont Stakes Racing Festival schedule](https://www.nyra.com/belmont-stakes/racing/bsrf-stakes-schedule/):
+  Fri New York / Ogden Phipps / DraftKings Acorn, and Sat Belmont Stakes /
+  Manhattan / Metropolitan H. / Just A Game / Jaipur (5½F Turf).
+- Added a small italic line under the panel header: *"Schedule from NYRA ·
+  live entries and odds appear after the post draw Mon Jun 1."* This sets
+  honest expectations for beta testers who hit the app before the entries
+  are drawn.
+- Fixed the welcome step `meetLine` ("Met Mile, Brooklyn, Jaipur…") to drop
+  the fabricated Brooklyn reference and surface Belmont / Met Mile / Manhattan
+  / Just A Game instead.
+
+No logic changes. Static copy only. Unit tests unaffected.
+
+- `NE_APP_VERSION` → `20260528-0735-headline-stakes-fix-v2.32.1`
+- `RAILBIRD_VERSION` → `v2.32.1-headline-stakes-fix`
+
+Background note for QC: The Racing API has a rolling ~6-day lookahead
+window. As of 2026-05-28, the API has cards through 2026-06-03 only;
+nothing for any track Jun 4 onward, because entries haven't been drawn
+anywhere yet (Belmont post draw is Mon Jun 1 at 5pm EDT). Saratoga IS
+covered — the 2025 Belmont weekend and 2025 summer meet are both in the
+API today. So the app will get live data during Belmont Festival, the
+data just isn't in the vendor system yet.
+
 ## v2.32.0 — Beta gate, feedback channel, KV catalog (2026-05-28)
 
 Beta-readiness release. Three changes:
