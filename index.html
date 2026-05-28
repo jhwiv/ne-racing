@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260527-2040-polish-foundations-v2.30.0';
+var NE_APP_VERSION = '20260527-2055-polish-foundations-v2.30.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.30.0-polish-foundations';
+var RAILBIRD_VERSION = 'v2.30.1-qa-fixes';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -9880,22 +9880,53 @@ function globalSearchScan(q) {
   const out = { horses: [], trainers: [], jockeys: [], races: [], total: 0 };
   const seenHorse = new Set(), seenTrainer = new Set(), seenJockey = new Set();
 
-  // Barn horses
-  const barn = Array.isArray(data.barn) ? data.barn : (data.stable || []);
-  if (Array.isArray(barn)) {
-    barn.forEach(function(h){
-      if (!h) return;
-      const name = (h.name || h.horseName || '').toString();
-      if (name && name.toLowerCase().indexOf(needle) > -1 && !seenHorse.has(name.toLowerCase())) {
-        seenHorse.add(name.toLowerCase());
-        out.horses.push({
-          kind: 'horse', source: 'barn', title: name,
-          meta: [h.trainer ? 'T: ' + h.trainer : '', h.jockey ? 'J: ' + h.jockey : '', 'In Barn'].filter(Boolean).join(' \u00b7 '),
-          payload: { id: h.id || name }
-        });
-      }
+  // Barn (v2.21+ shape: store.barn = { horses:[], trainers:[], jockeys:[] }).
+  // barnGet() is scoped inside the barn IIFE so we read store.barn directly.
+  // Legacy fallback to data.barn / data.stable if no top-level barn exists.
+  let barnBag = null;
+  try {
+    const store = (typeof getStore === 'function') ? getStore() : null;
+    if (store && store.barn) barnBag = store.barn;
+  } catch (e) {}
+  if (!barnBag) {
+    const legacy = Array.isArray(data.barn) ? data.barn : (data.stable || []);
+    barnBag = { horses: legacy, trainers: [], jockeys: [] };
+  }
+
+  function addBarnHorse(h) {
+    if (!h) return;
+    const name = (typeof h === 'string') ? h : (h.name || h.horseName || '').toString();
+    if (!name) return;
+    const lower = name.toLowerCase();
+    if (lower.indexOf(needle) === -1 || seenHorse.has(lower)) return;
+    seenHorse.add(lower);
+    const trainer = (h && h.trainer) || '';
+    const jockey  = (h && h.jockey) || '';
+    out.horses.push({
+      kind: 'horse', source: 'barn', title: name,
+      meta: [trainer ? 'T: ' + trainer : '', jockey ? 'J: ' + jockey : '', 'In Barn'].filter(Boolean).join(' \u00b7 '),
+      payload: { id: (h && h.id) || name }
     });
   }
+  (barnBag.horses || []).forEach(addBarnHorse);
+
+  // Barn trainers / jockeys (names only)
+  (barnBag.trainers || []).forEach(function(t){
+    const name = (typeof t === 'string') ? t : (t.name || '').toString();
+    if (!name) return;
+    const lower = name.toLowerCase();
+    if (lower.indexOf(needle) === -1 || seenTrainer.has(lower)) return;
+    seenTrainer.add(lower);
+    out.trainers.push({ kind: 'trainer', title: name, meta: 'In Barn \u00b7 Trainer', payload: { name: name } });
+  });
+  (barnBag.jockeys || []).forEach(function(j){
+    const name = (typeof j === 'string') ? j : (j.name || '').toString();
+    if (!name) return;
+    const lower = name.toLowerCase();
+    if (lower.indexOf(needle) === -1 || seenJockey.has(lower)) return;
+    seenJockey.add(lower);
+    out.jockeys.push({ kind: 'jockey', title: name, meta: 'In Barn \u00b7 Jockey', payload: { name: name } });
+  });
 
   // Loaded races (current card)
   const races = Array.isArray(data.races) ? data.races : [];
@@ -12581,8 +12612,9 @@ function saveBiasEntry() {
   showToast('Bias logged for ' + date, 'success', 3000);
 }
 
-// Aggregate bias entries by rail x surface x style and render as a compact heatmap.
-// Each cell shows the count of entries matching that intersection. Empty cells are muted.
+// Aggregate bias entries by rail x style x track-condition and render as a compact heatmap.
+// The form captures Surface CONDITION (Fast/Good/Sloppy/Yielding/Soft), not surface type,
+// so we split blocks by condition. Each cell shows the count of entries; empty cells are muted.
 function renderBiasHeatmap() {
   const container = el('bias-heatmap');
   if (!container) return;
@@ -12590,26 +12622,18 @@ function renderBiasHeatmap() {
   const entries = (data && Array.isArray(data.bias)) ? data.bias : [];
   if (!entries.length) { container.innerHTML = ''; return; }
 
-  // Bucket definitions
-  const rails = ['Inside', 'Middle', 'Outside'];
-  const surfaces = ['Dirt', 'Turf', 'Synthetic'];
-  const styles  = ['Speed', 'Closers', 'No Bias'];
+  // Bucket definitions match the form selects in #tab-handicap
+  const rails = ['Inside', 'Neutral', 'Outside'];
+  const styles = ['Speed', 'Closers', 'No Bias'];
+  // Condition buckets — order matters for display
+  const conditionOrder = ['Fast', 'Good', 'Yielding', 'Soft', 'Sloppy', 'Dirt', 'Turf', 'Synthetic', 'Other'];
 
-  // Normalize incoming values to nearest bucket (legacy entries may say 'Outside (8+)' etc.)
   function normRail(r) {
     if (!r) return null;
     const s = String(r).toLowerCase();
     if (s.indexOf('inside') >= 0 || s.indexOf('1-3') >= 0 || s.indexOf('rail') >= 0) return 'Inside';
     if (s.indexOf('outside') >= 0 || s.indexOf('8') >= 0 || s.indexOf('wide') >= 0) return 'Outside';
-    if (s.indexOf('mid') >= 0 || s.indexOf('4-7') >= 0) return 'Middle';
-    return null;
-  }
-  function normSurface(x) {
-    if (!x) return null;
-    const s = String(x).toLowerCase();
-    if (s.indexOf('dirt') >= 0) return 'Dirt';
-    if (s.indexOf('turf') >= 0 || s.indexOf('grass') >= 0) return 'Turf';
-    if (s.indexOf('syn') >= 0 || s.indexOf('tapeta') >= 0 || s.indexOf('poly') >= 0) return 'Synthetic';
+    if (s.indexOf('neutral') >= 0 || s.indexOf('mid') >= 0 || s.indexOf('4-7') >= 0) return 'Neutral';
     return null;
   }
   function normStyle(x) {
@@ -12619,46 +12643,69 @@ function renderBiasHeatmap() {
     if (s.indexOf('clos') >= 0 || s.indexOf('deep') >= 0) return 'Closers';
     return 'No Bias';
   }
+  // Normalize condition: accept either track condition (Fast/Good/...) OR legacy surface type (Dirt/Turf/...).
+  function normCondition(x) {
+    if (!x) return 'Other';
+    const s = String(x).toLowerCase().trim();
+    if (s.indexOf('fast') >= 0) return 'Fast';
+    if (s.indexOf('good') >= 0) return 'Good';
+    if (s.indexOf('yield') >= 0) return 'Yielding';
+    if (s.indexOf('soft') >= 0) return 'Soft';
+    if (s.indexOf('slop') >= 0 || s.indexOf('muddy') >= 0 || s.indexOf('mud') >= 0) return 'Sloppy';
+    if (s.indexOf('dirt') >= 0) return 'Dirt';
+    if (s.indexOf('turf') >= 0 || s.indexOf('grass') >= 0) return 'Turf';
+    if (s.indexOf('syn') >= 0 || s.indexOf('tapeta') >= 0 || s.indexOf('poly') >= 0) return 'Synthetic';
+    // Pass-through (capitalized) so unexpected new values still surface
+    return x.charAt(0).toUpperCase() + x.slice(1);
+  }
 
-  // Build counts keyed surface|rail|style
+  // Build counts keyed condition|rail|style
   const counts = {};
+  const seenConditions = new Set();
   let maxCount = 0;
   entries.forEach(e => {
     const r = normRail(e.rail);
-    const sf = normSurface(e.surface);
     const st = normStyle(e.style);
-    if (!r || !sf || !st) return;
-    const k = sf + '|' + r + '|' + st;
+    const cond = normCondition(e.surface);
+    if (!r || !st) return;
+    seenConditions.add(cond);
+    const k = cond + '|' + r + '|' + st;
     counts[k] = (counts[k] || 0) + 1;
     if (counts[k] > maxCount) maxCount = counts[k];
   });
 
   if (maxCount === 0) { container.innerHTML = ''; return; }
 
-  // Render one block per surface (only if it has at least one entry)
-  const blocks = surfaces.filter(sf => {
-    return rails.some(r => styles.some(st => counts[sf+'|'+r+'|'+st]));
-  }).map(sf => {
+  // Sort observed conditions in the canonical order; anything unknown goes last
+  const conditions = Array.from(seenConditions).sort((a, b) => {
+    const ia = conditionOrder.indexOf(a); const ib = conditionOrder.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+
+  const blocks = conditions.map(cond => {
     const headerCells = ['<th class="bh-th-corner"></th>'].concat(
       styles.map(st => '<th class="bh-th">'+st+'</th>')
     ).join('');
     const rows = rails.map(r => {
       const cells = styles.map(st => {
-        const c = counts[sf+'|'+r+'|'+st] || 0;
+        const c = counts[cond+'|'+r+'|'+st] || 0;
         const intensity = c === 0 ? 0 : Math.min(1, c / maxCount);
         const lvl = c === 0 ? 0 : (intensity < 0.34 ? 1 : (intensity < 0.67 ? 2 : 3));
-        return '<td class="bh-cell bh-lvl-'+lvl+'" title="'+sf+' / '+r+' / '+st+': '+c+' entr'+(c===1?'y':'ies')+'">'+(c||'')+'</td>';
+        return '<td class="bh-cell bh-lvl-'+lvl+'" title="'+cond+' / '+r+' / '+st+': '+c+' entr'+(c===1?'y':'ies')+'">'+(c||'')+'</td>';
       }).join('');
       return '<tr><th class="bh-th-row">'+r+'</th>'+cells+'</tr>';
     }).join('');
     return '<div class="bias-heatmap-block">'
-      + '<div class="bias-heatmap-title">'+sf+'</div>'
+      + '<div class="bias-heatmap-title">'+cond+'</div>'
       + '<table class="bias-heatmap-table"><thead><tr>'+headerCells+'</tr></thead><tbody>'+rows+'</tbody></table>'
       + '</div>';
   }).join('');
 
   container.innerHTML = '<div class="bias-heatmap-wrap">'
-    + '<div class="bias-heatmap-head">Bias heatmap <span class="text-muted text-xs">rail x style, by surface</span></div>'
+    + '<div class="bias-heatmap-head">Bias heatmap <span class="text-muted text-xs">rail x style, by track condition</span></div>'
     + blocks
     + '</div>';
 }
