@@ -1,9 +1,9 @@
 {
   "meta": {
-    "version": "v2.21.2",
-    "generated_at": "2026-04-22",
+    "version": "v2.32.2",
+    "generated_at": "2026-05-28",
     "data_status": "curated-public-profile",
-    "notes": "Curated from user-provided Equibase screenshot facts plus public horse-profile pages (Sky Sports, At The Races, IrishRacing). NOT an official or licensed data feed. No bulk scraping, no automated harvesting. Source URLs recorded per horse and per history row where available."
+    "notes": "Curated from user-provided Equibase screenshot facts plus public horse-profile pages (Sky Sports, At The Races, IrishRacing, NYRA results). NOT an official or licensed data feed. No bulk scraping, no automated harvesting. Source URLs recorded per horse and per history row where available. Snapshot only — may go out of date between releases."
   },
   "horses": [
     {
@@ -19,11 +19,12 @@
       "dam": "Untaken",
       "damsire": "Noonmark",
       "trainer": "Barclay Tagg",
-      "jockey": "Nik Juarez",
+      "jockey": "Manuel Franco",
       "owner": "Two Lions Farm",
       "breeder": "Sinatra Thoroughbred Racing & Breeding, LLC",
       "equibaseRefno": "11094587",
       "speedFigureLatest": 71,
+      "dataAsOf": "2026-05-10",
       "tags": ["curated", "tagg", "ny-bred"],
       "watchReason": "Curated profile from Equibase + public form sources. Tagg runner, NY-bred Speightster gelding.",
       "favorite": false,
@@ -53,26 +54,27 @@
       "stats": {
         "season2026": {
           "label": "2026",
-          "starts": 2,
+          "starts": 3,
           "firsts": 1,
-          "seconds": 0,
+          "seconds": 1,
           "thirds": 1,
-          "earnings": 47600,
-          "earningsDisplay": "$47,600",
-          "source": "Equibase screenshot"
+          "earnings": 71600,
+          "earningsDisplay": "$71,600",
+          "source": "Equibase + NYRA results May 10",
+          "note": "Includes Aqueduct May 10 2026 allowance, 2nd of 14 (Manuel Franco up)."
         },
         "career": {
           "label": "Career",
-          "starts": 7,
+          "starts": 8,
           "firsts": 1,
-          "seconds": 2,
+          "seconds": 3,
           "thirds": 2,
-          "earnings": 84430,
-          "earningsDisplay": "$84,430",
-          "source": "Equibase screenshot"
+          "earnings": 108430,
+          "earningsDisplay": "$108,430",
+          "source": "Equibase screenshot + NYRA results"
         },
         "surface": [
-          { "label": "Turf", "starts": 4, "wins": 1, "places": 2, "source": "At The Races" },
+          { "label": "Turf", "starts": 5, "wins": 1, "places": 3, "source": "At The Races + NYRA" },
           { "label": "All Weather", "starts": 3, "wins": 0, "places": 2, "source": "At The Races" }
         ],
         "alternate": [
@@ -88,6 +90,23 @@
         ]
       },
       "history": [
+        {
+          "date": "2026-05-10",
+          "track": "Aqueduct (Belmont At The Big A)",
+          "distance": "1 1/16M",
+          "surface": "Turf",
+          "conditions": "$82,000 NW1X Allowance (NY-bred)",
+          "finish": "2",
+          "finishOf": "14",
+          "weight": "126",
+          "jockey": "Manuel Franco",
+          "trainer": "Barclay Tagg",
+          "owner": "Two Lions Farm",
+          "winner": "Just for Luck",
+          "source": "NYRA official results",
+          "sourceUrl": "https://www.nyra.com/aqueduct/racing/results/?day=2026-05-10",
+          "note": "Place finish at 7/2 ML. Stretched out to 1 1/16M turf for the first time. New rider Manuel Franco."
+        },
         {
           "date": "2026-02-14",
           "track": "Gulfstream",
@@ -171,8 +190,10 @@
         }
       ],
       "caveats": [
-        "IrishRacing lists lifetime earnings of $96,420, which disagrees with the Equibase career total of $84,430. Equibase is treated as canonical; the IrishRacing figure is retained as a source-specific alternate.",
-        "Some At The Races rows had ambiguous columns in the public summary and are labeled as public form lines, not official Railbird-calculated data."
+        "Curated snapshot from public data sources — not a live feed. Refreshed manually; the most recent verified race is May 10, 2026 at Aqueduct.",
+        "IrishRacing alternate lifetime earnings ($96,420) conflicts with the Equibase career total. Equibase is treated as canonical; the alternate is retained as a source-specific figure.",
+        "Career earnings on this profile include the $14,000 place share estimated for the May 10 Aqueduct allowance — official Equibase chart may round differently.",
+        "Trainer Barclay Tagg has changed riders on this horse multiple times (Espinoza → Davis → Juarez → Franco). The \"Last known jockey\" reflects the most recent verified ride, not necessarily the next rider booked."
       ]
     }
   ]

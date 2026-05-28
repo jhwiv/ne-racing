@@ -1,5 +1,54 @@
 # NE Racing — Changelog
 
+## v2.32.2 — Horse profile honesty (2026-05-28)
+
+Follow-up to a user QC pass on the curated Inspeightofcharlie profile.
+The Overview panel showed `Jockey: Nik Juarez` with no qualifier, even
+though the horse's most recent verified ride (May 10, 2026 Aqueduct
+allowance) was by Manuel Franco. "Sample starts: 6" was also unclear
+— looked like a career total but really meant the count of form lines
+in our local data.
+
+Three changes:
+
+1. **Curated data refreshed.** Added the May 10, 2026 Aqueduct race
+   (NW1X turf allowance, 2nd of 14, Manuel Franco up) at the top of
+   the history rows, sourced from NYRA official results. Updated
+   top-level `jockey` to `Manuel Franco` and added a `dataAsOf:
+   2026-05-10` field. Bumped `season2026` stats (3 starts, 1-1-1)
+   and `career` (8 starts, 1-3-2). Added a caveat that the curated
+   set is a manually-refreshed snapshot, not a live feed.
+
+2. **Overview panel made self-consistent and honest.** The Overview
+   now derives the displayed jockey from the most recent history row
+   (if any history rows have a jockey field), falling back to the
+   top-level `h.jockey`. The label changes from `Jockey` to
+   `Last known jockey` on curated profiles, with a tooltip explaining
+   that trainers change riders frequently. A small "(as of YYYY-MM-DD)"
+   suffix appears next to the rider name showing the date of the
+   form line it was pulled from. Renamed `Sample starts` to
+   `Form-line starts` on curated profiles, with a tooltip clarifying
+   it's the count of public form lines we have on file, not the
+   horse's career total.
+
+3. **Test relaxation.** Loosened
+   `curated-horses.test.js` assertion `career.starts === 7` to
+   `>= 7`, because the curated record now reflects 8 career starts
+   after the May 10 race was added.
+
+Known limitation: the curated dataset still contains only one horse.
+This is intentional — it's a demo/seed profile. The live Racing API
+feed will populate every other horse profile beta testers see during
+the Belmont Festival.
+
+- `NE_APP_VERSION` → `20260528-0800-profile-honesty-v2.32.2`
+- `RAILBIRD_VERSION` → `v2.32.2-profile-honesty`
+
+Sources for the May 10 Aqueduct race:
+[NYRA results](https://www.nyra.com/aqueduct/racing/results/?day=2026-05-10),
+[Equinedge results](https://equinedge.com/results/belmont-at-the-big-a/05-10-2026),
+[form-guide.com.au](http://form-guide.com.au/race/horse/aqueduct-usa/2026-05-11/9).
+
 ## v2.32.1 — Headline stakes fix (2026-05-28)
 
 Factual-accuracy patch on the pre-meet Headline Stakes panel. A user QC pass

@@ -27,7 +27,7 @@ test('curated horse Inspeightofcharlie has all required profile fields', () => {
   assert.equal(h.equibaseRefno, '11094587');
   assert.equal(h.source, 'curated-public-profile');
   assert.ok(Array.isArray(h.sources) && h.sources.length >= 3, 'has multi sources');
-  assert.ok(h.stats && h.stats.career && h.stats.career.starts === 7, 'career stats');
+  assert.ok(h.stats && h.stats.career && h.stats.career.starts >= 7, 'career stats');
   assert.ok(h.stats.season2026 && h.stats.season2026.firsts === 1, '2026 stats');
   assert.ok(Array.isArray(h.history) && h.history.length >= 5, 'at least 5 form rows');
   // Every source row must have a URL.

@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260528-0735-headline-stakes-fix-v2.32.1';
+var NE_APP_VERSION = '20260528-0800-profile-honesty-v2.32.2';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.32.1-headline-stakes-fix';
+var RAILBIRD_VERSION = 'v2.32.2-profile-honesty';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -18555,15 +18555,47 @@ document.addEventListener('keydown', e => {
         '<div class="vb-section open" data-vb-section>' +
           '<div class="vb-section-head" data-vb-toggle><h4>Overview</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
           '<div class="vb-section-body">' +
-            '<dl class="vb-overview-grid">' +
-              '<dt>Jockey</dt><dd>' + fmtVal(h.jockey) + '</dd>' +
-              '<dt>Trainer</dt><dd>' + fmtVal(h.trainer) + '</dd>' +
-              '<dt>Owner</dt><dd>' + fmtVal(h.owner) + '</dd>' +
-              '<dt>Age / Sex</dt><dd>' + (h.age ? esc(h.age) + 'yo' : '—') + (h.sex ? ' ' + esc(h.sex) : '') + '</dd>' +
-              '<dt>Style</dt><dd>' + fmtVal(h.runningStyle) + '</dd>' +
-              '<dt>Morning line</dt><dd>' + fmtVal(h.ml) + '</dd>' +
-              '<dt>Sample starts</dt><dd>' + appearancesCount + '</dd>' +
-            '</dl>' +
+            (function(){
+              // v2.32.2: derive the displayed jockey from the most recent
+              // history row when available, falling back to h.jockey. This
+              // keeps the panel honest — "Last known jockey" reflects what
+              // we actually have on file, not a stale top-level field.
+              var historyJockey = null;
+              var historyDate = null;
+              if (Array.isArray(h.history) && h.history.length) {
+                var sorted = h.history.slice().sort(function(a,b){
+                  return String(b.date||'').localeCompare(String(a.date||''));
+                });
+                for (var i = 0; i < sorted.length; i++) {
+                  if (sorted[i] && sorted[i].jockey) {
+                    historyJockey = sorted[i].jockey;
+                    historyDate = sorted[i].date;
+                    break;
+                  }
+                }
+              }
+              var displayJockey = historyJockey || h.jockey || null;
+              var jockeyLabel = isCurated ? 'Last known jockey' : 'Jockey';
+              var jockeyTooltip = isCurated
+                ? 'Most recent jockey we have on file for this horse. May not reflect the next race — trainers change riders frequently.'
+                : 'Jockey from the latest data we have for this horse.';
+              var jockeyValueExtra = (historyJockey && historyDate)
+                ? ' <span style="opacity:0.55;font-size:0.78em">(as of ' + esc(historyDate) + ')</span>'
+                : '';
+              var startsLabel = isCurated ? 'Form-line starts' : 'Sample starts';
+              var startsTooltip = isCurated
+                ? 'Number of past races visible in our public form data for this horse — may be fewer than the career total.'
+                : 'Number of starts in the sample data set we loaded for this horse.';
+              return '<dl class="vb-overview-grid">' +
+                '<dt title="' + esc(jockeyTooltip) + '">' + jockeyLabel + '</dt><dd>' + fmtVal(displayJockey) + jockeyValueExtra + '</dd>' +
+                '<dt>Trainer</dt><dd>' + fmtVal(h.trainer) + '</dd>' +
+                '<dt>Owner</dt><dd>' + fmtVal(h.owner) + '</dd>' +
+                '<dt>Age / Sex</dt><dd>' + (h.age ? esc(h.age) + 'yo' : '—') + (h.sex ? ' ' + esc(h.sex) : '') + '</dd>' +
+                '<dt>Style</dt><dd>' + fmtVal(h.runningStyle) + '</dd>' +
+                '<dt>Morning line</dt><dd>' + fmtVal(h.ml) + '</dd>' +
+                '<dt title="' + esc(startsTooltip) + '">' + startsLabel + '</dt><dd>' + appearancesCount + '</dd>' +
+              '</dl>';
+            })() +
           '</div>' +
         '</div>' +
         /* PEDIGREE (curated only) */
