@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260527-2020-sim-drawer-polish-v2.29.1';
+var NE_APP_VERSION = '20260527-2040-polish-foundations-v2.30.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.29.1-sim-drawer-polish';
+var RAILBIRD_VERSION = 'v2.30.0-polish-foundations';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1705,6 +1705,180 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   transition: opacity 0.2s ease;
 }
 #track-drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+
+/* =========================================================
+   GLOBAL SEARCH OVERLAY (v2.30.0)
+   Full-screen sheet on mobile, centered card on tablet+.
+   ========================================================= */
+#global-search-overlay {
+  position: fixed; inset: 0; z-index: 250;
+  background: rgba(15, 23, 42, 0.5);
+  display: none;
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+#global-search-overlay.open { display: block; }
+#global-search-overlay .gs-sheet {
+  position: absolute; top: 0; left: 0; right: 0;
+  background: var(--color-white, #F8F4EA);
+  padding-top: env(safe-area-inset-top, 0px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  max-height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+#global-search-overlay .gs-header {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.65rem 0.75rem; border-bottom: 1px solid #e5e0d5;
+}
+#global-search-overlay .gs-icon { color: var(--color-muted, #8d99ae); flex-shrink: 0; }
+#global-search-overlay #global-search-input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font-size: 1rem; font-family: inherit; color: var(--color-slate, #1E2A36);
+  padding: 0.4rem 0; min-width: 0;
+}
+#global-search-overlay #global-search-input::placeholder { color: var(--color-muted, #8d99ae); }
+#global-search-overlay .gs-close {
+  background: none; border: none; color: var(--color-racing-green, #1B4332);
+  font-size: 0.92rem; font-weight: 600; padding: 0.4rem 0.4rem; cursor: pointer;
+  font-family: inherit; flex-shrink: 0;
+}
+#global-search-overlay .gs-results {
+  flex: 1; overflow-y: auto; padding: 0.5rem 0.75rem 2rem;
+  max-height: calc(100vh - 60px - env(safe-area-inset-top, 0px));
+  -webkit-overflow-scrolling: touch;
+}
+.gs-section-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--color-muted, #8d99ae); margin: 0.85rem 0 0.4rem; padding: 0 0.25rem;
+}
+.gs-result-row {
+  display: flex; align-items: center; gap: 0.65rem;
+  padding: 0.7rem 0.6rem; border-radius: 8px;
+  cursor: pointer; transition: background 0.12s;
+}
+.gs-result-row:hover, .gs-result-row:focus { background: rgba(27,67,50,0.06); outline: none; }
+.gs-result-row:active { background: rgba(27,67,50,0.12); }
+.gs-result-kind {
+  font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 2px 6px; border-radius: 4px; background: rgba(141,153,174,0.18);
+  color: var(--color-muted, #8d99ae); flex-shrink: 0; min-width: 56px; text-align: center;
+}
+.gs-result-kind.kind-horse  { background: rgba(27,67,50,0.14);  color: var(--color-racing-green, #1B4332); }
+.gs-result-kind.kind-trainer { background: rgba(201,168,76,0.18); color: #8a6d1f; }
+.gs-result-kind.kind-jockey  { background: rgba(13,71,161,0.14);  color: #0d47a1; }
+.gs-result-kind.kind-race    { background: rgba(217,134,122,0.18);color: #9b4a3a; }
+.gs-result-body { flex: 1; min-width: 0; }
+.gs-result-title { font-size: 0.95rem; font-weight: 600; color: var(--color-slate, #1E2A36); }
+.gs-result-meta { font-size: 0.78rem; color: var(--color-muted, #8d99ae); margin-top: 2px; }
+.gs-empty { padding: 2rem 0.5rem; text-align: center; color: var(--color-muted, #8d99ae); font-size: 0.9rem; }
+.gs-empty strong { color: var(--color-slate, #1E2A36); font-weight: 600; display: block; margin-bottom: 0.35rem; }
+.gs-hint {
+  font-size: 0.78rem; color: var(--color-muted, #8d99ae);
+  padding: 1.2rem 0.5rem 0.5rem; text-align: center; line-height: 1.5;
+}
+@media (min-width: 768px) {
+  #global-search-overlay .gs-sheet {
+    max-width: 560px; margin: 8vh auto; border-radius: 14px;
+    position: relative; top: auto; left: auto; right: auto;
+    max-height: 84vh;
+  }
+  #global-search-overlay .gs-results {
+    max-height: calc(84vh - 60px);
+  }
+}
+
+/* =========================================================
+   WHY THIS PICK (v2.30.0) — expandable reasoning block
+   ========================================================= */
+.why-this-pick {
+  margin: 0.5rem 0 0.25rem;
+  background: rgba(27,67,50,0.04);
+  border: 1px solid rgba(27,67,50,0.12);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.why-this-pick > summary {
+  cursor: pointer;
+  padding: 0.5rem 0.7rem;
+  font-weight: 600; font-size: 0.82rem;
+  color: var(--color-racing-green, #1B4332);
+  letter-spacing: 0.01em;
+  list-style: none; outline: none;
+  display: flex; align-items: center; gap: 0.4rem;
+  user-select: none; -webkit-user-select: none;
+}
+.why-this-pick > summary::-webkit-details-marker { display: none; }
+.why-this-pick .wtp-summary-icon {
+  display: inline-block; font-size: 0.6rem; line-height: 1;
+  transition: transform 0.18s ease;
+  color: var(--color-racing-green, #1B4332);
+  opacity: 0.7;
+}
+.why-this-pick[open] .wtp-summary-icon { transform: rotate(180deg); }
+.why-this-pick .wtp-list {
+  list-style: none; padding: 0 0.7rem 0.6rem; margin: 0;
+}
+.why-this-pick .wtp-item {
+  display: flex; align-items: flex-start; gap: 0.55rem;
+  padding: 0.42rem 0;
+  border-top: 1px solid rgba(27,67,50,0.08);
+  font-size: 0.83rem; line-height: 1.4;
+  color: var(--color-slate, #1E2A36);
+}
+.why-this-pick .wtp-item:first-child { border-top: none; }
+.why-this-pick .wtp-label {
+  flex-shrink: 0; width: 92px;
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--color-muted, #8d99ae);
+  padding-top: 1px;
+}
+.why-this-pick .wtp-text { flex: 1; min-width: 0; }
+.why-this-pick .wtp-score {
+  flex-shrink: 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.72rem; font-weight: 700;
+  color: var(--color-racing-green, #1B4332);
+  background: rgba(27,67,50,0.10);
+  padding: 1px 6px; border-radius: 4px;
+  align-self: center;
+}
+
+/* =========================================================
+   ANGLE BADGES (v2.30.0) — compact pill row under horse name
+   ========================================================= */
+.angle-badges {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  margin: 4px 0 6px;
+}
+.angle-pill {
+  font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px;
+  background: rgba(141,153,174,0.16);
+  color: var(--color-muted, #8d99ae);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.angle-pill.tone-gold {
+  background: rgba(201,168,76,0.16); color: #8a6d1f;
+  border-color: rgba(201,168,76,0.28);
+}
+.angle-pill.tone-green {
+  background: rgba(27,67,50,0.14); color: var(--color-racing-green, #1B4332);
+  border-color: rgba(27,67,50,0.22);
+}
+.angle-pill.tone-warm {
+  background: rgba(217,134,122,0.16); color: #9b4a3a;
+  border-color: rgba(217,134,122,0.26);
+}
+.angle-pill.tone-cool {
+  background: rgba(13,71,161,0.12); color: #0d47a1;
+  border-color: rgba(13,71,161,0.22);
+}
+.angle-pill.tone-neutral {
+  background: rgba(141,153,174,0.16); color: var(--color-muted, #8d99ae);
+  border-color: rgba(141,153,174,0.22);
+}
+
 .track-drawer-group { margin-bottom: 1rem; }
 .track-drawer-group-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-muted); margin-bottom: 0.5rem; }
 .track-drawer-item {
@@ -2270,6 +2444,20 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .class-down { color: var(--color-positive); }
 .class-same { color: var(--color-muted); }
 .bias-log-item { padding: 0.5rem; background: rgba(27,67,50,0.04); border-radius: var(--radius-sm); margin-bottom: 0.4rem; font-size: 0.8rem; }
+/* v2.30.0: bias heatmap (rail x style, per surface) */
+.bias-heatmap-wrap { display: flex; flex-direction: column; gap: 0.55rem; padding: 0.55rem 0.6rem; background: rgba(27,67,50,0.05); border: 1px solid rgba(27,67,50,0.12); border-radius: var(--radius-sm); margin-bottom: 0.5rem; }
+.bias-heatmap-head { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-secondary, #555); }
+.bias-heatmap-head .text-muted { font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 0.4rem; }
+.bias-heatmap-block { display: flex; flex-direction: column; gap: 0.25rem; }
+.bias-heatmap-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1B4332; }
+.bias-heatmap-table { width: 100%; border-collapse: separate; border-spacing: 2px; font-size: 0.72rem; table-layout: fixed; }
+.bias-heatmap-table .bh-th, .bias-heatmap-table .bh-th-corner, .bias-heatmap-table .bh-th-row { font-weight: 600; color: #555; padding: 2px 4px; text-align: center; background: transparent; font-size: 0.68rem; }
+.bias-heatmap-table .bh-th-row { text-align: right; padding-right: 6px; }
+.bias-heatmap-table .bh-cell { text-align: center; padding: 6px 4px; border-radius: 4px; font-variant-numeric: tabular-nums; font-weight: 600; color: #1B4332; min-width: 28px; }
+.bias-heatmap-table .bh-lvl-0 { background: rgba(27,67,50,0.04); color: rgba(27,67,50,0.25); }
+.bias-heatmap-table .bh-lvl-1 { background: rgba(180,140,60,0.18); }
+.bias-heatmap-table .bh-lvl-2 { background: rgba(180,140,60,0.42); }
+.bias-heatmap-table .bh-lvl-3 { background: rgba(180,140,60,0.72); color: #1B4332; }
 
 /* Score breakdown in Advice Engine */
 .score-breakdown { margin-top: 4px; padding: 6px 8px; background: rgba(27,67,50,0.04); border-radius: var(--radius-sm); }
@@ -7092,6 +7280,9 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <div class="header-right">
       <span class="live-odds-status" id="live-odds-status" title="Live tote odds feed status">LIVE ODDS: OFF</span>
       <span class="sync-info" id="sync-time">Last synced: --:-- --</span>
+      <button class="icon-btn" id="global-search-btn" onclick="openGlobalSearch()" title="Search horses, trainers, jockeys, races" aria-label="Search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
       <button class="icon-btn" id="track-pill-btn" onclick="toggleTrackDrawer()" title="Switch track" aria-label="Switch track" aria-expanded="false">
         <span class="track-pill" id="track-pill-text">SAR — Saratoga</span>
       </button>
@@ -7100,6 +7291,18 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </button>
     </div>
   </header>
+
+  <!-- v2.30.0: GLOBAL SEARCH OVERLAY — unified finder for horses/trainers/jockeys/races -->
+  <div id="global-search-overlay" role="dialog" aria-label="Search" aria-hidden="true">
+    <div class="gs-sheet">
+      <div class="gs-header">
+        <svg class="gs-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="global-search-input" type="search" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search horses, trainers, jockeys, races…" />
+        <button class="gs-close" onclick="closeGlobalSearch()" aria-label="Close search">Cancel</button>
+      </div>
+      <div id="global-search-results" class="gs-results"></div>
+    </div>
+  </div>
 
   <!-- TRACK TOGGLE (SAR only — v2.24.0 Saratoga-only lock) -->
   <div id="track-drawer-backdrop" onclick="toggleTrackDrawer()" aria-hidden="true"></div>
@@ -7505,6 +7708,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <input type="text" id="bias-notes" class="form-control form-control-sm" placeholder="e.g. Rail 8 placed, deep closers struggling">
         </div>
         <button class="btn btn-primary btn-sm" onclick="saveBiasEntry()">Log Bias</button>
+        <div id="bias-heatmap" class="mt-2"></div>
         <div id="bias-log" class="mt-2"></div>
       </div>
     </section>
@@ -8476,7 +8680,17 @@ function getTrackData(code) {
     store.tracks[tc] = { bets: [], races: [], bias: [], notes: {}, adviceLog: [], scratchHistory: [] };
     saveStore(store);
   }
-  return store.tracks[tc];
+  // v2.30.0: defensive shape-guard. Legacy stores or hand-seeded data may have
+  // these fields as the wrong type (e.g. bias as {}). Coerce silently so
+  // downstream renderers (renderBiasLog -> data.bias.slice) don't throw.
+  const t = store.tracks[tc];
+  if (!Array.isArray(t.bets)) t.bets = [];
+  if (!Array.isArray(t.races)) t.races = [];
+  if (!Array.isArray(t.bias)) t.bias = [];
+  if (!Array.isArray(t.adviceLog)) t.adviceLog = [];
+  if (!Array.isArray(t.scratchHistory)) t.scratchHistory = [];
+  if (!t.notes || typeof t.notes !== 'object' || Array.isArray(t.notes)) t.notes = {};
+  return t;
 }
 
 function saveTrackData(data, code) {
@@ -8585,6 +8799,50 @@ function showToast(msg, type = 'default', duration = 8000) {
   div.innerHTML = '<span style="flex:1">' + msg + '</span><button onclick="this.parentElement.remove()" style="color:rgba(255,255,255,0.5);font-size:1.1rem;line-height:1;padding:0 0.2rem">&times;</button>';
   container.appendChild(div);
   if (duration > 0) setTimeout(() => { div.style.animation = 'toastOut 0.3s ease forwards'; setTimeout(() => div.remove(), 300); }, duration);
+}
+
+/* v2.30.0: showUndoToast — toast with an inline Undo button that fires the
+   provided callback. Used for reversible actions like barn-horse removal
+   to replace blocking confirm() dialogs.
+     msg       — message text (will be HTML-escaped)
+     onUndo    — callback fired when user taps Undo (also dismisses toast)
+     duration  — ms before auto-dismiss (default 6000)
+*/
+window.__undoToastSeq = 0;
+function showUndoToast(msg, onUndo, duration) {
+  duration = (duration == null) ? 6000 : duration;
+  msg = String(msg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const container = el('toast-container');
+  if (!container) return;
+  var existing = container.querySelectorAll('.toast');
+  if (existing.length >= 3) existing[0].remove();
+  const id = '__undo_cb_' + (++window.__undoToastSeq);
+  window[id] = function(btn) {
+    try { if (typeof onUndo === 'function') onUndo(); } catch(e) { console.warn('undo callback failed', e); }
+    try {
+      const t = btn.closest('.toast');
+      if (t) { t.style.animation = 'toastOut 0.3s ease forwards'; setTimeout(() => t.remove(), 300); }
+    } catch(_) {}
+    try { delete window[id]; } catch(_) {}
+  };
+  const div = document.createElement('div');
+  div.className = 'toast';
+  div.innerHTML =
+    '<span style="flex:1">' + msg + '</span>'
+    + '<button type="button" onclick="window[\'' + id + '\'](this)" '
+      + 'style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);'
+      + 'border-radius:6px;padding:0.18rem 0.6rem;font-size:0.78rem;font-weight:600;'
+      + 'letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;margin-left:0.4rem">Undo</button>'
+    + '<button onclick="this.parentElement.remove()" '
+      + 'style="color:rgba(255,255,255,0.5);font-size:1.1rem;line-height:1;padding:0 0.2rem;'
+      + 'background:none;border:none;cursor:pointer">&times;</button>';
+  container.appendChild(div);
+  if (duration > 0) {
+    setTimeout(() => {
+      div.style.animation = 'toastOut 0.3s ease forwards';
+      setTimeout(() => { div.remove(); try { delete window[id]; } catch(_) {} }, 300);
+    }, duration);
+  }
 }
 
 /* =============================================================
@@ -9577,6 +9835,191 @@ function toggleTrackDrawer() {
   buildDrawerLists();
 }
 
+/* =============================================================
+   GLOBAL SEARCH (v2.30.0)
+   Searches across barn horses, loaded races, and runners.
+   Returns categorized results that deep-link into the right tab.
+   ============================================================= */
+function openGlobalSearch() {
+  const ov = el('global-search-overlay');
+  if (!ov) return;
+  ov.classList.add('open');
+  ov.setAttribute('aria-hidden', 'false');
+  const input = el('global-search-input');
+  if (input) {
+    input.value = '';
+    setTimeout(function(){ try { input.focus(); } catch(_) {} }, 60);
+  }
+  renderGlobalSearchResults('');
+  // Bind input handler once
+  if (input && !input.__gsBound) {
+    input.addEventListener('input', function(e){ renderGlobalSearchResults(e.target.value || ''); });
+    input.addEventListener('keydown', function(e){
+      if (e.key === 'Escape') { closeGlobalSearch(); }
+      else if (e.key === 'Enter') {
+        const first = document.querySelector('#global-search-results .gs-result-row');
+        if (first) first.click();
+      }
+    });
+    input.__gsBound = true;
+  }
+}
+
+function closeGlobalSearch() {
+  const ov = el('global-search-overlay');
+  if (!ov) return;
+  ov.classList.remove('open');
+  ov.setAttribute('aria-hidden', 'true');
+}
+
+function globalSearchScan(q) {
+  // Normalize
+  const needle = (q || '').trim().toLowerCase();
+  if (!needle) return { horses: [], trainers: [], jockeys: [], races: [], total: 0 };
+  const data = getTrackData() || {};
+  const out = { horses: [], trainers: [], jockeys: [], races: [], total: 0 };
+  const seenHorse = new Set(), seenTrainer = new Set(), seenJockey = new Set();
+
+  // Barn horses
+  const barn = Array.isArray(data.barn) ? data.barn : (data.stable || []);
+  if (Array.isArray(barn)) {
+    barn.forEach(function(h){
+      if (!h) return;
+      const name = (h.name || h.horseName || '').toString();
+      if (name && name.toLowerCase().indexOf(needle) > -1 && !seenHorse.has(name.toLowerCase())) {
+        seenHorse.add(name.toLowerCase());
+        out.horses.push({
+          kind: 'horse', source: 'barn', title: name,
+          meta: [h.trainer ? 'T: ' + h.trainer : '', h.jockey ? 'J: ' + h.jockey : '', 'In Barn'].filter(Boolean).join(' \u00b7 '),
+          payload: { id: h.id || name }
+        });
+      }
+    });
+  }
+
+  // Loaded races (current card)
+  const races = Array.isArray(data.races) ? data.races : [];
+  races.forEach(function(r, idx){
+    if (!r) return;
+    const raceNo = r.raceNumber || r.race || (idx + 1);
+    const raceLabel = 'Race ' + raceNo + (r.name ? ' \u2014 ' + r.name : '');
+    const raceMeta = [r.surface, r.distance, r.purse ? '$' + r.purse : ''].filter(Boolean).join(' \u00b7 ');
+    if (raceLabel.toLowerCase().indexOf(needle) > -1) {
+      out.races.push({ kind: 'race', title: raceLabel, meta: raceMeta || '\u2014', payload: { raceIndex: idx, raceNumber: raceNo } });
+    }
+    const runners = Array.isArray(r.horses) ? r.horses : (Array.isArray(r.entries) ? r.entries : []);
+    runners.forEach(function(rn){
+      if (!rn) return;
+      const hName = (rn.name || rn.horse || '').toString();
+      const tName = (rn.trainer || '').toString();
+      const jName = (rn.jockey || '').toString();
+      if (hName && hName.toLowerCase().indexOf(needle) > -1 && !seenHorse.has(hName.toLowerCase())) {
+        seenHorse.add(hName.toLowerCase());
+        out.horses.push({
+          kind: 'horse', source: 'race', title: hName,
+          meta: ['Race ' + raceNo, tName ? 'T: ' + tName : '', jName ? 'J: ' + jName : ''].filter(Boolean).join(' \u00b7 '),
+          payload: { raceIndex: idx, raceNumber: raceNo, horse: hName }
+        });
+      }
+      if (tName && tName.toLowerCase().indexOf(needle) > -1 && !seenTrainer.has(tName.toLowerCase())) {
+        seenTrainer.add(tName.toLowerCase());
+        out.trainers.push({ kind: 'trainer', title: tName, meta: 'Trainer \u00b7 Race ' + raceNo, payload: { name: tName } });
+      }
+      if (jName && jName.toLowerCase().indexOf(needle) > -1 && !seenJockey.has(jName.toLowerCase())) {
+        seenJockey.add(jName.toLowerCase());
+        out.jockeys.push({ kind: 'jockey', title: jName, meta: 'Jockey \u00b7 Race ' + raceNo, payload: { name: jName } });
+      }
+    });
+  });
+
+  out.total = out.horses.length + out.trainers.length + out.jockeys.length + out.races.length;
+  return out;
+}
+
+function renderGlobalSearchResults(q) {
+  const container = el('global-search-results');
+  if (!container) return;
+  const query = (q || '').trim();
+  if (!query) {
+    container.innerHTML =
+      '<div class="gs-hint">'
+        + 'Start typing to search across <strong style="color:var(--color-slate)">your Barn</strong>, '
+        + 'today\u2019s card, runners, trainers, and jockeys.<br/>'
+        + '<span style="opacity:0.75">More sources light up when live data is on.</span>'
+      + '</div>';
+    return;
+  }
+  const results = globalSearchScan(query);
+  if (!results.total) {
+    container.innerHTML =
+      '<div class="gs-empty">'
+        + '<strong>No matches yet</strong>'
+        + 'Nothing in your Barn or today\u2019s card matches \u201c' + escHtml(query) + '\u201d.'
+      + '</div>';
+    return;
+  }
+  let html = '';
+  function section(label, rows) {
+    if (!rows.length) return;
+    html += '<div class="gs-section-label">' + label + '</div>';
+    rows.forEach(function(r){
+      const payloadAttr = encodeURIComponent(JSON.stringify(r.payload || {}));
+      html += '<div class="gs-result-row" tabindex="0" '
+        + 'onclick="handleGlobalSearchResult(\'' + r.kind + '\', \'' + payloadAttr + '\')">'
+        + '<span class="gs-result-kind kind-' + r.kind + '">' + r.kind + '</span>'
+        + '<div class="gs-result-body">'
+          + '<div class="gs-result-title">' + escHtml(r.title) + '</div>'
+          + (r.meta ? '<div class="gs-result-meta">' + escHtml(r.meta) + '</div>' : '')
+        + '</div>'
+      + '</div>';
+    });
+  }
+  section('Horses', results.horses);
+  section('Races', results.races);
+  section('Trainers', results.trainers);
+  section('Jockeys', results.jockeys);
+  container.innerHTML = html;
+}
+
+function handleGlobalSearchResult(kind, payloadEncoded) {
+  let payload = {};
+  try { payload = JSON.parse(decodeURIComponent(payloadEncoded || '%7B%7D')); } catch(_) {}
+  closeGlobalSearch();
+  if (kind === 'horse' && payload && (payload.id || payload.horse)) {
+    // Try to open horse profile if available; otherwise switch to barn.
+    if (typeof openHorseProfile === 'function' && payload.id) {
+      try { openHorseProfile(payload.id); return; } catch(_) {}
+    }
+    switchTab('barn');
+    return;
+  }
+  if (kind === 'race') {
+    switchTab('today');
+    // Scroll the race into view if it rendered
+    setTimeout(function(){
+      try {
+        const cards = document.querySelectorAll('#races-container .race-card-wrap, #races-container .race-card');
+        const idx = (payload.raceIndex != null) ? payload.raceIndex : 0;
+        if (cards[idx]) cards[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch(_) {}
+    }, 250);
+    return;
+  }
+  if (kind === 'trainer' || kind === 'jockey') {
+    // Future: open connections drawer in Barn. For now jump to Handicap notes.
+    switchTab('handicap');
+    return;
+  }
+}
+
+// Allow ESC anywhere when overlay is open
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const ov = document.getElementById('global-search-overlay');
+    if (ov && ov.classList.contains('open')) closeGlobalSearch();
+  }
+});
+
 function selectTrack(code) {
   setSetting('activeTrack', code);
   toggleTrackDrawer();
@@ -9598,6 +10041,17 @@ function renderTodayTab() {
   const container = el('races-container');
   const noMsg = el('no-races-msg');
   const todayHeading = el('today-heading');
+
+  // v2.30.0: reset toolbar visibility every render. The offday wrapper hides
+  // the toolbar + heading; we restore them here so they reappear on race days.
+  try {
+    if (todayHeading) todayHeading.style.display = '';
+    var addBtn0 = el('add-race-btn');
+    if (addBtn0) {
+      var tb0 = addBtn0.closest('.flex.items-center.justify-between') || addBtn0.parentElement;
+      if (tb0) tb0.style.display = '';
+    }
+  } catch(_) {}
 
   // Update heading with track name and correct date
   const code = getActiveTrack();
@@ -11427,12 +11881,44 @@ function renderTodaysLockedBets() {
   container.innerHTML = html;
 }
 
+// v2.30.0: handler for inline bankroll form in the Bets-tab empty-state banner.
+// Saves, refreshes the banner, and toasts confirmation.
+function saveInlineBankroll(ev) {
+  try { if (ev && ev.preventDefault) ev.preventDefault(); } catch(_) {}
+  var input = el('inline-bankroll-input');
+  var val = input ? parseFloat(input.value) : NaN;
+  if (!isFinite(val) || val <= 0) {
+    if (typeof showToast === 'function') showToast('Enter a bankroll amount above 0', 'warning', 2500);
+    if (input) { input.focus(); input.select && input.select(); }
+    return false;
+  }
+  setSetting('startingBankroll', val);
+  if (typeof showToast === 'function') showToast('Starting bankroll set to $' + val.toLocaleString(), 'success', 2800);
+  updateBankrollBanner();
+  // Re-render bets tab to surface budget rows now that bankroll is set
+  try { if (typeof renderBetsTab === 'function') renderBetsTab(); } catch(_) {}
+  return false;
+}
+
 function updateBankrollBanner() {
   const store = getStore();
-  // Show prompt instead of $0 values when bankroll not configured
+  // v2.30.0: inline bankroll setup instead of a dead link to Settings.
+  // Tap-friendly form lives directly in the empty-state banner.
   var banner = el('bet-bankroll-banner');
   if (banner && (!store || !store.settings || !store.settings.startingBankroll || store.settings.startingBankroll <= 0)) {
-    banner.innerHTML = '<div style="width:100%;text-align:center;padding:0.75rem;font-size:0.85rem;color:var(--color-muted)">Set your <a href="#" onclick="openSettings();return false" style="color:var(--color-gold);text-decoration:underline;font-weight:600">starting bankroll</a> to enable budget tracking</div>';
+    banner.innerHTML =
+      '<div style="width:100%;padding:0.85rem 0.75rem;">'
+        + '<div style="text-align:center;font-size:0.78rem;color:var(--color-muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.55rem;font-weight:600">Set Starting Bankroll</div>'
+        + '<form onsubmit="return saveInlineBankroll(event)" style="display:flex;gap:0.5rem;align-items:stretch;justify-content:center">'
+          + '<div style="position:relative;flex:1;max-width:180px">'
+            + '<span style="position:absolute;left:0.7rem;top:50%;transform:translateY(-50%);color:var(--color-muted);font-weight:600">$</span>'
+            + '<input id="inline-bankroll-input" type="number" inputmode="numeric" min="1" step="1" placeholder="1000" '
+              + 'style="width:100%;padding:0.55rem 0.6rem 0.55rem 1.5rem;font-size:0.95rem;font-family:var(--font-mono);border:1px solid #d8d2c4;border-radius:8px;background:#fff;color:var(--color-slate)" />'
+          + '</div>'
+          + '<button type="submit" class="btn btn-primary" style="padding:0.55rem 1rem;font-size:0.85rem">Save</button>'
+        + '</form>'
+        + '<div style="text-align:center;font-size:0.7rem;color:var(--color-muted);margin-top:0.55rem;opacity:0.85">Enables budget tracking, ROI, and daily P&amp;L</div>'
+      + '</div>';
     return;
   }
   if (!store) return;
@@ -11482,6 +11968,7 @@ function renderHandicapTab() {
   updateHandicapSelects();
   // v2.26.0: populate the master picker after the per-section pickers exist
   try { populateHandicapMaster(); } catch (_) {}
+  renderBiasHeatmap();
   renderBiasLog();
   updateBiasDateDefault();
   // Re-run advice so the advice engine panel is populated
@@ -11565,7 +12052,9 @@ function renderAdviceEnginePanel() {
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
           <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">ML: '+ml+'</span>' : ''}${liveOddsHtml}${overlayPct} ${valueFlag}${convictionBadge}${hcBetPill}</div>
+          ${buildAngleBadges(s.horse, race)}
           <div class="advice-rationale">${rationale}</div>
+          ${i === 0 ? buildWhyThisPick(s, race) : ''}
           ${showBreakdown ? buildScoreBreakdownHtml(s) : ''}
         </div>
         <div class="advice-score">${s.score.toFixed(0)}</div>
@@ -11595,6 +12084,196 @@ function renderAdviceEnginePanel() {
   });
 
   output.innerHTML = html || '<div class="empty-state"><p>No analysis available. Load race data to generate advice.</p></div>';
+}
+
+/* v2.30.0: "Why this pick" — expandable plain-English reasoning.
+   Takes the scored advice object and surfaces the 3 strongest factors as
+   bullet-style reasons. Designed to render even when live data isn't on yet:
+   degrades gracefully if components are missing.
+
+   Once live data is on, the advice engine can also attach a `reasons` array
+   directly to the scored object (s.reasons) — we honor that if present,
+   otherwise synthesize from the score components.
+*/
+function buildWhyThisPick(s, race) {
+  if (!s) return '';
+  // 1) Honor an engine-provided reasons array if present (forward compatibility)
+  let reasons = Array.isArray(s.reasons) ? s.reasons.slice(0, 5) : null;
+
+  // 2) Otherwise synthesize from score components
+  if (!reasons) {
+    reasons = [];
+    const components = [
+      { key: 'speed', label: 'Speed figures',     score: s.speedScore,     phrase: function(v){
+        if (v >= 80) return 'Top-tier speed numbers in this field';
+        if (v >= 65) return 'Above-average speed for this class';
+        if (v >= 50) return 'Competitive speed profile';
+        return 'Speed figures are a question mark';
+      }},
+      { key: 'class', label: 'Class fit',         score: s.classScore,     phrase: function(v){
+        if (v >= 80) return 'Class edge \u2014 has faced and beaten this level';
+        if (v >= 65) return 'Reasonable class match for the spot';
+        if (v >= 50) return 'In with a chance on class';
+        return 'Stepping up in class';
+      }},
+      { key: 'pace', label: 'Pace setup',         score: s.paceScore,      phrase: function(v){
+        if (v >= 80) return 'Pace scenario sets up perfectly';
+        if (v >= 65) return 'Pace should favor this runner';
+        if (v >= 50) return 'Pace looks neutral';
+        return 'Pace scenario may work against';
+      }},
+      { key: 'tj', label: 'Trainer / jockey',     score: s.tjScore,        phrase: function(v){
+        if (v >= 80) return 'Strong connections \u2014 hot trainer/jockey combo';
+        if (v >= 65) return 'Solid connections at this meet';
+        if (v >= 50) return 'Connections are competent';
+        return 'Connections are a downgrade';
+      }},
+      { key: 'bias', label: 'Track bias',         score: s.biasScore,      phrase: function(v){
+        if (v >= 80) return 'Running style matches today\u2019s track bias';
+        if (v >= 65) return 'Style fits the bias reasonably well';
+        if (v >= 50) return 'No clear bias edge';
+        return 'Running against the day\u2019s bias';
+      }},
+      { key: 'fresh', label: 'Freshness',         score: s.freshnessScore, phrase: function(v){
+        if (v >= 80) return 'Optimal layoff \u2014 fit and ready';
+        if (v >= 65) return 'Good spacing between starts';
+        if (v >= 50) return 'Normal turnaround';
+        return 'Layoff or freshness is a concern';
+      }},
+    ];
+    // Sort by score descending, take top 3
+    components
+      .filter(c => isFinite(c.score))
+      .sort((a,b) => b.score - a.score)
+      .slice(0, 3)
+      .forEach(c => {
+        reasons.push({ label: c.label, text: c.phrase(c.score), score: Math.round(c.score) });
+      });
+
+    // Special-case context bullets that aren't in the component bars
+    if (s.expertMatchCount >= 2) {
+      reasons.unshift({ label: 'Public picks', text: 'Matched by ' + s.expertMatchCount + ' expert/consensus selections', score: null });
+    }
+    if (s.overlay > 0.15) {
+      reasons.push({ label: 'Value', text: 'Significant morning-line overlay (uncalibrated to tote)', score: null });
+    } else if (s.overlay > 0.08) {
+      reasons.push({ label: 'Value', text: 'Slight morning-line overlay', score: null });
+    }
+    reasons = reasons.slice(0, 4);
+  }
+
+  if (!reasons.length) return '';
+  const uid = 'wtp_' + (race && race.num != null ? race.num : 'x') + '_' + (s.horse && s.horse.pp != null ? s.horse.pp : Math.floor(Math.random()*1e6));
+  const items = reasons.map(function(r){
+    const scoreBadge = (r.score != null)
+      ? '<span class="wtp-score" aria-label="' + r.score + ' out of 100">' + r.score + '</span>'
+      : '';
+    return '<li class="wtp-item">'
+      + '<span class="wtp-label">' + escHtml(r.label) + '</span>'
+      + '<span class="wtp-text">' + escHtml(r.text) + '</span>'
+      + scoreBadge
+    + '</li>';
+  }).join('');
+
+  return '<details class="why-this-pick" id="' + uid + '">'
+    + '<summary><span class="wtp-summary-icon" aria-hidden="true">\u25BC</span> Why this pick</summary>'
+    + '<ul class="wtp-list">' + items + '</ul>'
+  + '</details>';
+}
+
+/* =============================================================
+   ANGLE BADGES (v2.30.0)
+   Declarative trainer/jockey/equipment/form angles. Each angle is
+   a predicate over (horse, race, context). Returns a list of matched
+   angles that the renderer turns into compact pill badges.
+
+   Pre-live, most predicates return false because the underlying fields
+   (firstTimeBlinkers, daysSinceLast, claimedLast, etc.) aren't populated.
+   Once theracingapi feed is on, the same matchers light up automatically.
+   ============================================================= */
+var ANGLE_LIBRARY = [
+  // ———— EQUIPMENT / MEDICATION ————
+  { key: 'ftl', label: '1st Lasix',     tone: 'gold',
+    match: function(h){ return h && h.firstTimeLasix === true; } },
+  { key: 'ftb', label: 'Blinkers On',   tone: 'gold',
+    match: function(h){ return h && (h.firstTimeBlinkers === true || h.blinkersOn === true); } },
+  { key: 'blo', label: 'Blinkers Off',  tone: 'neutral',
+    match: function(h){ return h && h.blinkersOff === true; } },
+  // ———— FORM / FRESHNESS ————
+  { key: 'fts', label: 'First Start',   tone: 'cool',
+    match: function(h){ return h && (h.firstStart === true || h.starts === 0); } },
+  { key: 'lay', label: 'Off Layoff',    tone: 'cool',
+    match: function(h){
+      const d = h && (h.daysSinceLast || h.layoffDays);
+      return isFinite(d) && d >= 90;
+    } },
+  { key: 'fresh', label: 'Fresh',       tone: 'cool',
+    match: function(h){
+      const d = h && (h.daysSinceLast || h.layoffDays);
+      return isFinite(d) && d >= 30 && d < 90;
+    } },
+  // ———— CLASS MOVES ————
+  { key: 'classup', label: 'Class Up',  tone: 'warm',
+    match: function(h, r){
+      if (!h || !r) return false;
+      return h.classMove === 'up' || (isFinite(h.lastPurse) && isFinite(r.purse) && r.purse >= h.lastPurse * 1.5);
+    } },
+  { key: 'classdown', label: 'Class Drop', tone: 'green',
+    match: function(h, r){
+      if (!h || !r) return false;
+      return h.classMove === 'down' || (isFinite(h.lastPurse) && isFinite(r.purse) && r.purse <= h.lastPurse * 0.7);
+    } },
+  // ———— OWNERSHIP ————
+  { key: 'claim',   label: 'Off the Claim', tone: 'gold',
+    match: function(h){ return h && h.claimedLast === true; } },
+  // ———— SURFACE / DISTANCE SWITCHES ————
+  { key: 'turfdirt', label: 'Turf \u2192 Dirt', tone: 'warm',
+    match: function(h, r){ return h && r && h.lastSurface === 'turf' && (r.surface === 'dirt' || r.surface === 'main'); } },
+  { key: 'dirtturf', label: 'Dirt \u2192 Turf', tone: 'warm',
+    match: function(h, r){ return h && r && (h.lastSurface === 'dirt' || h.lastSurface === 'main') && r.surface === 'turf'; } },
+  { key: 'sprintrt', label: 'Sprint \u2192 Route', tone: 'warm',
+    match: function(h, r){ return h && r && isFinite(h.lastDistance) && isFinite(r.distanceFurlongs) && h.lastDistance < 7.5 && r.distanceFurlongs >= 8; } },
+  { key: 'routesprt', label: 'Route \u2192 Sprint', tone: 'warm',
+    match: function(h, r){ return h && r && isFinite(h.lastDistance) && isFinite(r.distanceFurlongs) && h.lastDistance >= 8 && r.distanceFurlongs < 7.5; } },
+  // ———— TRAINER / JOCKEY HOT-COLD ————
+  { key: 'hottrnr', label: 'Hot Trainer', tone: 'green',
+    match: function(h){
+      const w = h && h.trainerWinPct;
+      return isFinite(w) && w >= 0.20;
+    } },
+  { key: 'hotjock', label: 'Hot Jockey',  tone: 'green',
+    match: function(h){
+      const w = h && h.jockeyWinPct;
+      return isFinite(w) && w >= 0.20;
+    } },
+  { key: 'tjwin',  label: 'T/J Combo',    tone: 'gold',
+    match: function(h){
+      const w = h && (h.tjComboWinPct || h.trainerJockeyWinPct);
+      return isFinite(w) && w >= 0.25;
+    } },
+];
+
+/* Return an array of matched angle objects for a horse in a race. */
+function getHorseAngles(horse, race) {
+  if (!horse) return [];
+  var matches = [];
+  for (var i = 0; i < ANGLE_LIBRARY.length; i++) {
+    var a = ANGLE_LIBRARY[i];
+    try { if (a.match(horse, race)) matches.push(a); } catch (_) {}
+  }
+  return matches;
+}
+
+/* Render a compact pill row of angle badges. Returns '' if no matches
+   so the layout collapses cleanly when no angles apply (i.e. pre-live). */
+function buildAngleBadges(horse, race, opts) {
+  opts = opts || {};
+  var max = opts.max || 4;
+  var angles = getHorseAngles(horse, race).slice(0, max);
+  if (!angles.length) return '';
+  return '<div class="angle-badges">' + angles.map(function(a){
+    return '<span class="angle-pill tone-' + (a.tone || 'neutral') + '" title="' + escHtml(a.label) + '">' + escHtml(a.label) + '</span>';
+  }).join('') + '</div>';
 }
 
 function buildScoreBreakdownHtml(s) {
@@ -11897,8 +12576,91 @@ function saveBiasEntry() {
   else data.bias.unshift(entry);
 
   saveTrackData(data);
+  renderBiasHeatmap();
   renderBiasLog();
   showToast('Bias logged for ' + date, 'success', 3000);
+}
+
+// Aggregate bias entries by rail x surface x style and render as a compact heatmap.
+// Each cell shows the count of entries matching that intersection. Empty cells are muted.
+function renderBiasHeatmap() {
+  const container = el('bias-heatmap');
+  if (!container) return;
+  const data = getTrackData();
+  const entries = (data && Array.isArray(data.bias)) ? data.bias : [];
+  if (!entries.length) { container.innerHTML = ''; return; }
+
+  // Bucket definitions
+  const rails = ['Inside', 'Middle', 'Outside'];
+  const surfaces = ['Dirt', 'Turf', 'Synthetic'];
+  const styles  = ['Speed', 'Closers', 'No Bias'];
+
+  // Normalize incoming values to nearest bucket (legacy entries may say 'Outside (8+)' etc.)
+  function normRail(r) {
+    if (!r) return null;
+    const s = String(r).toLowerCase();
+    if (s.indexOf('inside') >= 0 || s.indexOf('1-3') >= 0 || s.indexOf('rail') >= 0) return 'Inside';
+    if (s.indexOf('outside') >= 0 || s.indexOf('8') >= 0 || s.indexOf('wide') >= 0) return 'Outside';
+    if (s.indexOf('mid') >= 0 || s.indexOf('4-7') >= 0) return 'Middle';
+    return null;
+  }
+  function normSurface(x) {
+    if (!x) return null;
+    const s = String(x).toLowerCase();
+    if (s.indexOf('dirt') >= 0) return 'Dirt';
+    if (s.indexOf('turf') >= 0 || s.indexOf('grass') >= 0) return 'Turf';
+    if (s.indexOf('syn') >= 0 || s.indexOf('tapeta') >= 0 || s.indexOf('poly') >= 0) return 'Synthetic';
+    return null;
+  }
+  function normStyle(x) {
+    if (!x) return null;
+    const s = String(x).toLowerCase();
+    if (s.indexOf('speed') >= 0 || s.indexOf('front') >= 0) return 'Speed';
+    if (s.indexOf('clos') >= 0 || s.indexOf('deep') >= 0) return 'Closers';
+    return 'No Bias';
+  }
+
+  // Build counts keyed surface|rail|style
+  const counts = {};
+  let maxCount = 0;
+  entries.forEach(e => {
+    const r = normRail(e.rail);
+    const sf = normSurface(e.surface);
+    const st = normStyle(e.style);
+    if (!r || !sf || !st) return;
+    const k = sf + '|' + r + '|' + st;
+    counts[k] = (counts[k] || 0) + 1;
+    if (counts[k] > maxCount) maxCount = counts[k];
+  });
+
+  if (maxCount === 0) { container.innerHTML = ''; return; }
+
+  // Render one block per surface (only if it has at least one entry)
+  const blocks = surfaces.filter(sf => {
+    return rails.some(r => styles.some(st => counts[sf+'|'+r+'|'+st]));
+  }).map(sf => {
+    const headerCells = ['<th class="bh-th-corner"></th>'].concat(
+      styles.map(st => '<th class="bh-th">'+st+'</th>')
+    ).join('');
+    const rows = rails.map(r => {
+      const cells = styles.map(st => {
+        const c = counts[sf+'|'+r+'|'+st] || 0;
+        const intensity = c === 0 ? 0 : Math.min(1, c / maxCount);
+        const lvl = c === 0 ? 0 : (intensity < 0.34 ? 1 : (intensity < 0.67 ? 2 : 3));
+        return '<td class="bh-cell bh-lvl-'+lvl+'" title="'+sf+' / '+r+' / '+st+': '+c+' entr'+(c===1?'y':'ies')+'">'+(c||'')+'</td>';
+      }).join('');
+      return '<tr><th class="bh-th-row">'+r+'</th>'+cells+'</tr>';
+    }).join('');
+    return '<div class="bias-heatmap-block">'
+      + '<div class="bias-heatmap-title">'+sf+'</div>'
+      + '<table class="bias-heatmap-table"><thead><tr>'+headerCells+'</tr></thead><tbody>'+rows+'</tbody></table>'
+      + '</div>';
+  }).join('');
+
+  container.innerHTML = '<div class="bias-heatmap-wrap">'
+    + '<div class="bias-heatmap-head">Bias heatmap <span class="text-muted text-xs">rail x style, by surface</span></div>'
+    + blocks
+    + '</div>';
 }
 
 function renderBiasLog() {
@@ -14581,6 +15343,18 @@ var _origAddStraightBet = typeof addStraightBet === 'function' ? addStraightBet 
       try { if (typeof hideLoadingIndicator === 'function') hideLoadingIndicator(); } catch(_) {}
       // Hide the redundant cream "No race card available" banner — dashboard header already says it
       try { var b = document.getElementById('live-unavailable-banner'); if (b) b.classList.add('hidden'); } catch(_) {}
+      // v2.30.0: hide the competing toolbar row ("Saratoga — Thu, May 28 / + Add Race")
+      // on dark/pre-meet days. Off-day dashboard owns the page; manual race entry
+      // is meaningless when there's no card. Restored automatically once a card loads.
+      try {
+        var addBtn = document.getElementById('add-race-btn');
+        if (addBtn) {
+          var toolbar = addBtn.closest('.flex.items-center.justify-between') || addBtn.parentElement;
+          if (toolbar) toolbar.style.display = 'none';
+        }
+        var heading = document.getElementById('today-heading');
+        if (heading) heading.style.display = 'none';
+      } catch(_) {}
       // Async probe for next race day
       offday_probeNextRaceDay(code).then(offday_updateNextBlock).catch(function() {
         offday_updateNextBlock(null);
@@ -16451,7 +17225,10 @@ document.addEventListener('keydown', e => {
     var barn = barnGet();
     var ix = barnFindIdx(barn.horses, name);
     if (ix < 0) return;
-    if (!confirm('Remove ' + name + ' from your Virtual Barn?')) return;
+    // v2.30.0: drop blocking confirm() in favor of an Undo toast.
+    // Snapshot the removed horse and its index so Undo can restore it.
+    var snapshot = barn.horses[ix];
+    var snapshotIx = ix;
     barn.horses.splice(ix, 1);
     barnSave(barn);
     try { barn_decorateHorseRows(); } catch(e){}
@@ -16459,7 +17236,26 @@ document.addEventListener('keydown', e => {
     try { barn_updateBadge(); } catch(e){}
     try { applyBarnHighlights(); } catch(e){}
     try { barn_renderBarnTab(); } catch(e){}
-    try { if (typeof showToast === 'function') showToast('Removed ' + name + ' from your barn', 'info'); } catch(e){}
+    try {
+      if (typeof showUndoToast === 'function') {
+        showUndoToast('Removed ' + name + ' from your barn', function(){
+          var cur = barnGet();
+          if (!cur.horses) cur.horses = [];
+          // Re-insert at original index when possible
+          var insertAt = Math.min(snapshotIx, cur.horses.length);
+          cur.horses.splice(insertAt, 0, snapshot);
+          barnSave(cur);
+          try { barn_decorateHorseRows(); } catch(e){}
+          try { barn_updateTodayStrip(); } catch(e){}
+          try { barn_updateBadge(); } catch(e){}
+          try { applyBarnHighlights(); } catch(e){}
+          try { barn_renderBarnTab(); } catch(e){}
+          try { if (typeof showToast === 'function') showToast(name + ' restored to your barn', 'success', 2500); } catch(e){}
+        });
+      } else if (typeof showToast === 'function') {
+        showToast('Removed ' + name + ' from your barn', 'info');
+      }
+    } catch(e){}
   };
 
   window.barnAddFromInput = function(kind) {
@@ -17417,15 +18213,33 @@ document.addEventListener('keydown', e => {
       var act = ev.target.getAttribute && ev.target.getAttribute('data-act');
       if (act === 'close') close();
       if (act === 'remove') {
-        if (confirm('Remove ' + h.name + ' from your Virtual Barn?')) {
-          var s2 = getBarnStoreSafe();
-          var ix = findHorseIdx(s2.barn.horses, h.name);
-          if (ix >= 0) s2.barn.horses.splice(ix, 1);
+        // v2.30.0: drop confirm(); use Undo toast.
+        var s2 = getBarnStoreSafe();
+        var ix = findHorseIdx(s2.barn.horses, h.name);
+        if (ix >= 0) {
+          var removedHorse = s2.barn.horses[ix];
+          var removedIx = ix;
+          s2.barn.horses.splice(ix, 1);
           saveBarnStoreSafe(s2);
           close();
           try { barn_renderBarnTab(); } catch(e){}
           try { applyBarnHighlights(); } catch(e){}
-          try { if (typeof showToast === 'function') showToast('Removed ' + h.name, 'info'); } catch(e){}
+          try {
+            if (typeof showUndoToast === 'function') {
+              showUndoToast('Removed ' + h.name, function(){
+                var s3 = getBarnStoreSafe();
+                if (!s3.barn.horses) s3.barn.horses = [];
+                var insertAt = Math.min(removedIx, s3.barn.horses.length);
+                s3.barn.horses.splice(insertAt, 0, removedHorse);
+                saveBarnStoreSafe(s3);
+                try { barn_renderBarnTab(); } catch(e){}
+                try { applyBarnHighlights(); } catch(e){}
+                try { if (typeof showToast === 'function') showToast(h.name + ' restored', 'success', 2500); } catch(e){}
+              });
+            } else if (typeof showToast === 'function') {
+              showToast('Removed ' + h.name, 'info');
+            }
+          } catch(e){}
         }
       }
       if (act === 'save') {
