@@ -1,5 +1,29 @@
 # NE Racing — Changelog
 
+## v2.32.5 — Restore desktop nav (2026-05-28)
+
+User reported that the desktop view has no top-level nav buttons —
+the Today / Bets / Handicap / More tabs that appear on mobile were
+missing entirely.
+
+Root cause: line 4539 had a stale override `#desktop-nav { display:
+none !important; }` left over from a brief experiment where we
+replaced the desktop nav with a chip bar. The chip bar was later
+removed, but the override stayed. Meanwhile the bottom-tab-bar is
+already hidden ≥768px (correct), so desktop users were left with no
+navigation at all.
+
+Fix: removed the stale `display: none !important` override.
+The base rule at line ~1495 with `@media (min-width: 768px) { #desktop-nav { display: flex } }`
+immediately takes effect, restoring the Today / Bets / Handicap /
+More buttons in the top header on desktop.
+
+The desktop nav buttons (`#dnav-today`, `#dnav-bets`, `#dnav-handicap`,
+`#dnav-more`) were already present in the HTML and wired to
+`switchTab()` / `openMoreSheet()` — they were just being hidden.
+
+No HTML or JS change. Pure CSS regression fix.
+
 ## v2.32.4 — "What's a railbird?" definition (2026-05-28)
 
 Small personality touch: a punchy dictionary-style definition of

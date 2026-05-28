@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260528-1545-railbird-def-v2.32.4';
+var NE_APP_VERSION = '20260528-1535-desktop-nav-v2.32.5';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.32.4-railbird-def';
+var RAILBIRD_VERSION = 'v2.32.5-desktop-nav';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -4535,8 +4535,15 @@ p, .card-body, .card-section, .advice-rationale, .text-muted {
 #top-header .live-odds-status.off { color: var(--lux-ink-mute); border-color: var(--lux-hairline-2); background: rgba(245,240,232,0.05); }
 #top-header .live-odds-status.on  { color: var(--lux-gold); border-color: var(--lux-hairline); }
 
-/* Hide the old desktop nav — replaced by chip bar */
-#desktop-nav { display: none !important; }
+/* v2.32.5: restore desktop nav (Today / Bets / Handicap / More).
+   Previously hidden when we briefly replaced it with a chip bar; the chip
+   bar was later removed but this override was left behind, leaving desktop
+   users with no top-level navigation at all. The mobile bottom-tab-bar is
+   already hidden ≥ 768px (see media query above), so we need the desktop
+   nav visible. The base rule at line ~1495 sets it to display:flex via the
+   `@media (min-width: 768px)` block, so this stale override can simply be
+   removed. Keep the comment as a breadcrumb for the next person who looks. */
+/* (removed: was `#desktop-nav { display: none !important; }`) */
 
 /* =========================================================
    CHIP NAV — sticky horizontal nav chips, zurich-weekend style
