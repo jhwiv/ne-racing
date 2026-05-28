@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260528-0515-tour-copy-v2.30.3';
+var NE_APP_VERSION = '20260528-1015-na-live-v2.31.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.30.3-tour-copy';
+var RAILBIRD_VERSION = 'v2.31.0-na-live';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -10696,6 +10696,23 @@ function openHorseModal(raceId, horseId) {
     freshnessHtml = `<div><div class="text-xs text-muted">Last Race</div><div class="font-semibold">${horse.lastRaceDate} <span class="text-xs text-muted">(${daysSince}d ago)</span></div></div>`;
   }
 
+  // v2.31.0: PP (Past Performances) card — description from The Racing API NA payload.
+  // Surfaces handicapper notes + sire/dam + recent finish-position pill when available.
+  let ppHtml = '';
+  if (horse.description && horse.description.trim().length) {
+    ppHtml += '<div class="pp-card" data-pp-card="1" style="margin-top:0.75rem;margin-bottom:0.75rem;padding:0.75rem 0.85rem;border-radius:10px;background:rgba(27,67,50,0.06);border:1px solid rgba(27,67,50,0.12)">'
+      + '<div class="text-xs text-muted font-semibold" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;color:var(--color-racing-green,#1B4332)">Past Performances</div>'
+      + '<div style="font-size:0.82rem;line-height:1.5;color:var(--color-slate,#1E2A36)">' + escHtml(horse.description) + '</div>';
+    if (horse.sire || horse.dam) {
+      ppHtml += '<div class="text-xs text-muted" style="margin-top:6px">'
+        + (horse.sire ? 'Sire: <strong>' + escHtml(horse.sire) + '</strong>' : '')
+        + (horse.sire && horse.dam ? ' &middot; ' : '')
+        + (horse.dam ? 'Dam: <strong>' + escHtml(horse.dam) + '</strong>' : '')
+        + '</div>';
+    }
+    ppHtml += '</div>';
+  }
+
   // Workouts section
   let workoutHtml = '';
   if (horse.workouts && horse.workouts.length) {
@@ -10730,6 +10747,7 @@ function openHorseModal(raceId, horseId) {
         <div style="text-align:center;margin-left:0.5rem"><div class="mono" style="font-size:1.1rem;font-weight:700;color:var(--color-gold)">${avgFig}</div><div class="text-xs text-muted">Avg</div></div>
       </div>
     </div>
+    ${ppHtml}
     ${workoutHtml}
     ${horse.notes ? `<div style="background:rgba(27,67,50,0.05);border-radius:6px;padding:0.6rem;font-size:0.82rem"><strong>Notes:</strong> ${escHtml(horse.notes)}</div>` : ''}
     <div style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:0.4rem">
@@ -11646,7 +11664,7 @@ function renderStraightBets() {
         const scratchWarn = horse.scratched ? `<div class="banner banner-warning" style="font-size:0.72rem;padding:0.3rem 0.6rem;margin-top:4px">Horse scratched — remove this bet</div>` : '';
         html += `<div class="bet-slip-item straight" id="bsi-${betId}">
           <span class="bet-slip-label">${type === 'W' ? 'WIN' : type === 'P' ? 'PLACE' : 'SHOW'}</span>
-          <span class="bet-slip-horse">R${race.num} · #${horse.pp||''} ${escHtml(horse.name)} <span class="text-xs text-muted">${horse.ml||''}</span></span>
+          <span class="bet-slip-horse">R${race.num} · #${horse.pp||''} <span class="horse-name" style="cursor:pointer" onclick="openHorseModal('${race.id}','${horse.id}')">${escHtml(horse.name)}</span> <span class="text-xs text-muted">${horse.ml||''}</span></span>
           <span class="text-xs text-muted">$</span>
           <input class="bet-amount-input" type="number" value="${amt}" min="0.5" step="0.5" inputmode="decimal"
             onchange="saveStraightBetAmount('${betId}', this.value); updateBankrollBanner(); renderStraightBets()">
@@ -13546,7 +13564,7 @@ function paintDataSourceDiagnostic(data, fetchedAt, roundTripMs) {
   function esc(s) { s = (s == null) ? '' : String(s); return s.replace(/[&<>"']/g, function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
   var mode = data.mode || 'unknown';
   var modeColor = (mode === 'paid') ? '#22c55e' : ((mode === 'free') ? 'var(--lux-gold)' : '#f59e0b');
-  var modeLabel = (mode === 'paid') ? 'PAID (The Racing API)' : ((mode === 'free') ? 'FREE (GitHub Pages + Equibase)' : esc(mode.toUpperCase()));
+  var modeLabel = (mode === 'paid') ? 'LIVE (The Racing API \u2014 North America)' : ((mode === 'free') ? 'FREE (GitHub Pages + Equibase)' : esc(mode.toUpperCase()));
   var srcRows = Object.keys(data.activeSources || {}).map(function(k){
     return '<tr><td style="padding-right:0.6rem;opacity:0.7">' + esc(k) + '</td><td>' + esc(data.activeSources[k]) + '</td></tr>';
   }).join('');
@@ -13946,6 +13964,10 @@ function transformStaticEntries(json) {
       lastRaceDate: e.lastRaceDate || null,
       equipmentChanges: e.equipmentChanges || '',
       workouts: Array.isArray(e.workouts) ? e.workouts : [],
+      // v2.31.0: PP description + breeding from The Racing API NA payload
+      description: e.description || '',
+      sire: e.sire || '',
+      dam: e.dam || '',
       notes: '',
       wps: []
     })),
@@ -13985,6 +14007,10 @@ function transformWorkerEntries(json) {
       lastRaceDate: e.lastRaceDate || null,
       equipmentChanges: e.equipmentChanges || '',
       workouts: Array.isArray(e.workouts) ? e.workouts : [],
+      // v2.31.0: PP description + breeding from The Racing API NA payload
+      description: e.description || '',
+      sire: e.sire || '',
+      dam: e.dam || '',
       notes: '',
       wps: []
     })),

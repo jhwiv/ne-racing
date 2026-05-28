@@ -1,5 +1,68 @@
 # NE Racing — Changelog
 
+## v2.31.0 — Live North American data + PP card (2026-05-28)
+
+The app is finally wired to a real, paid live data source. The Cloudflare
+Worker now authenticates against The Racing API's North American (NA)
+endpoints with HTTP Basic credentials and returns entries, scratches,
+odds, and results normalised into the existing Railbird schema. No
+client-side endpoint changes were required — `/api/entries`,
+`/api/scratches`, `/api/odds`, `/api/results`, and `/api/status` all
+keep their shapes. Settings > Data Source now reports `LIVE (The Racing
+API — North America)` when both `API_USER` and `API_KEY` are set on the
+Worker, with a live probe count and worker latency.
+
+Stage 2 introduces a Past Performances (PP) card that opens whenever a
+horse name is tapped from Today or Bets. The card surfaces the
+handicapper description that ships in the NA entries payload
+(`runner.description`) together with the horse's most recent finish
+position and WPS payouts pulled from the live results endpoint.
+
+### Added
+
+- **Worker NA integration** (`worker.js`) — HTTP Basic auth via
+  `basicAuthHeader(user, pass)` using `btoa(...)`; `findMeetId(track,
+  date, ...)` caches the per-date `meet_id` for 300s; five new
+  normalisers (`normaliseNaEntries`, `normaliseNaScratches`,
+  `normaliseNaOdds`, `normaliseNaResults`, plus helpers for time-zone
+  short-code mapping, post-time formatting, jockey/trainer names, race
+  number, scratched detection, finish inference, and payoff lookup).
+  `usePaidSource` now requires BOTH `API_USER` and `API_KEY`.
+- **Track-to-venue map** expanded from 12 to 36 tracks. Adds Churchill
+  Downs (CD), Keeneland (KEE), Indiana Grand (IND), Gulfstream (GP),
+  Santa Anita (SA), Del Mar (DMR), Woodbine (WO), and many more.
+- **PP card** (`#pp-card`) — opens on horse name tap in Today and Bets
+  tabs. Shows program number, ML odds, description text, recent
+  finish-position pill, and WPS payouts. Closes on backdrop tap or
+  Escape.
+
+### Fixed
+
+- **BEL** entry was wrongly mapped to Aqueduct; now correctly maps to
+  Belmont Park.
+- **BTP** entry was wrongly mapped to Belmont Park; now correctly maps
+  to Belterra Park.
+- **`post_time_long` coercion** — upstream returns this field as a
+  string. Worker now `parseInt(..., 10)` before passing to
+  `Intl.DateTimeFormat`, eliminating `"N/A"` post-time renders.
+- **Time-zone short codes** (`"E"`, `"C"`, `"M"`, `"P"`, `"AKST"`,
+  `"HST"`) — `naTimeZoneToIana()` now maps these to IANA zones before
+  `Intl.DateTimeFormat`.
+- **Race-level payouts** — previously the race's top-level `payouts.win
+  / place / show` could be populated from the 2nd-place horse's
+  payoffs. Now always uses the winner's WPS. Per-horse payoffs remain
+  on each `finishOrder[i]` entry.
+- **`handleResults` 404** — results endpoint returns 404 until a race
+  has officially finished. Worker now catches `err.upstreamStatus ===
+  404` and returns a graceful empty-results payload instead of
+  bubbling the error.
+
+### Bumped
+
+- `NE_APP_VERSION` → `20260528-1015-na-live-v2.31.0`
+- `RAILBIRD_VERSION` → `v2.31.0-na-live`
+- `version.json` → `20260528-1015-na-live-v2.31.0`
+
 ## v2.29.0 — Pre-meet countdown polish (2026-05-27)
 
 With the onboarding tour pointing every new user to Today, the off-day

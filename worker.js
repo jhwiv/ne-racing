@@ -16,10 +16,12 @@
  *   fetchFreeOdds, fetchFreeResults) are retained as ARCHITECTURE ONLY
  *   for a future licensed adapter. They are NOT called by the free path.
  *
- *   DATA_SOURCE = "theracingapi"  (requires API_KEY secret)
+ *   DATA_SOURCE = "theracingapi"  (requires API_USER + API_KEY secrets)
  *   ────────────────────────────────────────────────────────────────────
- *   • All four endpoints served via The Racing API (https://api.theracingapi.com/v1)
- *   • Full odds, results, and racecard data available
+ *   • All four endpoints served via The Racing API NA add-on
+ *     (https://api.theracingapi.com/v1/north-america/...)
+ *   • Auth: HTTP Basic (username + password)
+ *   • Full entries, scratches, morning-line odds and results data available
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * wrangler.toml example
@@ -34,8 +36,9 @@
  * DEFAULT_TRACK  = "AQU"
  * ALLOWED_ORIGIN = "*"
  *
- * # Secrets — set via CLI, never committed to source control:
- * #   wrangler secret put API_KEY   (only required for DATA_SOURCE=theracingapi)
+ * # Secrets — set via CLI or CF REST API, never committed to source control:
+ * #   wrangler secret put API_USER  (Racing API username, only for DATA_SOURCE=theracingapi)
+ * #   wrangler secret put API_KEY   (Racing API password, only for DATA_SOURCE=theracingapi)
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Endpoints exposed by this Worker
@@ -55,8 +58,9 @@
 // Used for both filtering The Racing API responses and labelling free-source
 // responses.
 const TRACK_TO_VENUE = {
+  // Northeast / Mid-Atlantic
   AQU: "Aqueduct",
-  BEL: "Aqueduct",    // Belmont at Big A runs at Aqueduct (Big A)
+  BEL: "Belmont Park",
   SAR: "Saratoga",
   MTH: "Monmouth Park",
   PRX: "Parx Racing",
@@ -66,7 +70,36 @@ const TRACK_TO_VENUE = {
   LRL: "Laurel Park",
   CT:  "Charles Town",
   PEN: "Penn National",
-  BTP: "Belmont Park",
+  BTP: "Belterra Park",
+  TDN: "Thistledown",
+  // Midwest / Central
+  CD:  "Churchill Downs",
+  ELP: "Ellis Park",
+  KEE: "Keeneland",
+  TP:  "Turfway Park",
+  HAW: "Hawthorne",
+  AP:  "Arlington Park",
+  FG:  "Fair Grounds",
+  IND: "Horseshoe Indianapolis",
+  // South / Southwest
+  GP:  "Gulfstream Park",
+  TAM: "Tampa Bay Downs",
+  OP:  "Oaklawn Park",
+  LS:  "Lone Star Park",
+  HOU: "Sam Houston Race Park",
+  RP:  "Remington Park",
+  EVD: "Evangeline Downs",
+  DED: "Delta Downs",
+  LAD: "Louisiana Downs",
+  // West
+  SA:  "Santa Anita Park",
+  DMR: "Del Mar",
+  GG:  "Golden Gate Fields",
+  LRC: "Los Alamitos",
+  EMD: "Emerald Downs",
+  // Other
+  WO:  "Woodbine",
+  SWA: "Horseshoe Turf Pick 3",
 };
 
 // ─── Cache TTL constants (seconds) ──────────────────────────────────────────
@@ -155,30 +188,78 @@ async function writeCache(cacheKey, response) {
   await cache.put(cacheKey, response.clone());
 }
 
-// ─── Upstream fetch helper (The Racing API) ──────────────────────────────────
+// ─── Upstream fetch helper (The Racing API NA — HTTP Basic auth) ─────────────
 /**
- * Fetches `path` from The Racing API with the provided Bearer token.
- * Returns parsed JSON on success; throws on HTTP error.
- *
- * @param {string} path    — e.g. "/racecards/standard?date=2026-04-14"
- * @param {string} apiKey  — Bearer token
+ * Builds the `Authorization: Basic ...` header from a username + password.
+ * Cloudflare Workers runtime exposes `btoa` globally.
  */
-async function fetchUpstream(path, apiKey) {
+function basicAuthHeader(user, pass) {
+  return "Basic " + btoa(`${user}:${pass}`);
+}
+
+/**
+ * Fetches `path` from The Racing API using HTTP Basic auth.
+ * Returns parsed JSON on success; throws on HTTP error (with body for context).
+ *
+ * @param {string} path    — e.g. "/north-america/meets?start_date=...&end_date=..."
+ * @param {string} user    — Racing API username (env.API_USER)
+ * @param {string} pass    — Racing API password (env.API_KEY)
+ */
+async function fetchUpstream(path, user, pass) {
   const url = `${THERACINGAPI_BASE}${path}`;
   const res = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: basicAuthHeader(user, pass),
       Accept: "application/json",
     },
   });
 
   if (!res.ok) {
-    throw new Error(
-      `Upstream responded ${res.status} ${res.statusText} for ${url}`
+    let body = "";
+    try { body = (await res.text()).slice(0, 240); } catch (_) {}
+    const e = new Error(
+      `Upstream ${res.status} ${res.statusText} for ${url}${body ? " :: " + body : ""}`
     );
+    e.upstreamStatus = res.status;
+    throw e;
   }
 
   return res.json();
+}
+
+// ─── NA helpers: meet_id lookup, schema mapping ──────────────────────────────
+/**
+ * Look up the NA meet_id for a given Equibase track code on a given date.
+ * Returns { meet_id, track_name } or null when no meet is scheduled.
+ *
+ * Caches a single date-window meets list in CF cache for a short TTL so
+ * repeated handler calls within a request burst share one upstream hit.
+ */
+async function findMeetId(trackCode, date, user, pass) {
+  // Cache key per date so the meets index can be reused across endpoints.
+  const meetsCacheKey = new Request(`https://ne-racing-cache/na-meets/${date}`);
+  let meetsList = null;
+
+  const cached = await readCache(meetsCacheKey);
+  if (cached) {
+    try { meetsList = (await cached.json()).meets || []; } catch (_) { meetsList = null; }
+  }
+
+  if (!meetsList) {
+    const data = await fetchUpstream(
+      `/north-america/meets?start_date=${date}&end_date=${date}&limit=50`,
+      user, pass
+    );
+    meetsList = data.meets || [];
+    const resp = new Response(JSON.stringify({ meets: meetsList }), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+    });
+    await writeCache(meetsCacheKey, resp);
+  }
+
+  const meet = meetsList.find((m) => (m.track_id || "").toUpperCase() === trackCode.toUpperCase());
+  return meet || null;
 }
 
 // ─── Utility: format fractional odds ─────────────────────────────────────────
@@ -1292,6 +1373,379 @@ function normaliseResults(results, track, venue, date) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Normalisers — The Racing API NA shape → Railbird response shapes
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// NA entries response shape (verified from /v1/north-america/meets/{id}/entries):
+//   { meet_id, track_id, track_name, date, races: [{ race_key:{race_number},
+//       post_time, post_time_long (epoch ms), distance_value, distance_unit,
+//       distance_description, surface_description, race_type,
+//       race_type_description, race_class, race_name, grade, purse,
+//       runners: [{ horse_name, jockey:{first_name,last_name,alias},
+//                   trainer:{first_name,last_name,alias},
+//                   program_number, post_pos, morning_line_odds (e.g. "5-2"),
+//                   live_odds, scratch_indicator ("Y"/"N"),
+//                   weight, equipment, medication, description, claiming,
+//                   sire_name, dam_name, dam_sire_name }] }] }
+//
+// NA results response shape (verified from /v1/north-america/meets/{id}/results):
+//   { meet_id, track_id, track_name, date, races: [{ race_key:{race_number},
+//       off_time (epoch ms), fraction:{winning_time:{time_in_hundredths}},
+//       total_purse, surface_description, track_condition_description,
+//       scratches: ["Horse Name", ...],
+//       payoffs: [{wager_name, payoff_amount, total_pool, winning_numbers}],
+//       runners: [{ horse_name, program_number, program_number_stripped,
+//                   win_payoff, place_payoff, show_payoff,
+//                   jockey_first_name, jockey_last_name,
+//                   trainer_first_name, trainer_last_name,
+//                   weight_carried, sire_name, owner_first_name, owner_last_name,
+//                   breeder_name }] }] }
+
+/**
+ * Map the short NA time_zone field ("E", "C", "M", "P", "AKST", "HST")
+ * to a canonical IANA zone Intl can resolve.
+ */
+function naTimeZoneToIana(tz) {
+  if (!tz) return "America/New_York";
+  const map = {
+    "E": "America/New_York",
+    "ET": "America/New_York",
+    "EST": "America/New_York",
+    "EDT": "America/New_York",
+    "C": "America/Chicago",
+    "CT": "America/Chicago",
+    "CST": "America/Chicago",
+    "CDT": "America/Chicago",
+    "M": "America/Denver",
+    "MT": "America/Denver",
+    "MST": "America/Denver",
+    "MDT": "America/Denver",
+    "P": "America/Los_Angeles",
+    "PT": "America/Los_Angeles",
+    "PST": "America/Los_Angeles",
+    "PDT": "America/Los_Angeles",
+    "AK": "America/Anchorage",
+    "AKST": "America/Anchorage",
+    "AKDT": "America/Anchorage",
+    "H": "Pacific/Honolulu",
+    "HST": "Pacific/Honolulu",
+  };
+  return map[String(tz).toUpperCase()] || (String(tz).includes("/") ? tz : "America/New_York");
+}
+
+/**
+ * Render an NA HH:MM string from a post_time_long epoch (ms) in the meet's
+ * local time zone, falling back to post_time when long form is absent.
+ * post_time_long arrives from upstream as a string; coerce to int.
+ */
+function formatNaPostTime(postTimeLong, postTimeStr, timeZone) {
+  if (postTimeLong != null && postTimeLong !== "") {
+    const epoch = typeof postTimeLong === "number" ? postTimeLong : parseInt(postTimeLong, 10);
+    if (isFinite(epoch) && epoch > 0) {
+      try {
+        const d = new Date(epoch);
+        const fmt = new Intl.DateTimeFormat("en-US", {
+          hour: "numeric", minute: "2-digit", hour12: true,
+          timeZone: naTimeZoneToIana(timeZone),
+        });
+        return fmt.format(d);
+      } catch (_) {}
+    }
+  }
+  return postTimeStr || "N/A";
+}
+
+function formatNaDistance(value, unit, description) {
+  if (description) return description;
+  if (value && unit) return `${value} ${unit}`;
+  return "N/A";
+}
+
+function formatNaPurse(purse) {
+  if (purse == null) return "N/A";
+  const n = typeof purse === "number" ? purse : parseInt(String(purse).replace(/[$,]/g, ""), 10);
+  if (!isFinite(n)) return String(purse);
+  return "$" + n.toLocaleString("en-US");
+}
+
+function naJockeyName(j) {
+  if (!j) return "N/A";
+  if (j.alias) return j.alias;
+  const fi = j.first_name_initial || (j.first_name ? j.first_name[0] : "");
+  const ln = j.last_name || "";
+  return `${fi ? fi + ". " : ""}${ln}`.trim() || "N/A";
+}
+
+function naTrainerName(t) {
+  if (!t) return "N/A";
+  if (t.alias) return t.alias;
+  const fi = t.first_name_initial || (t.first_name ? t.first_name[0] : "");
+  const ln = t.last_name || "";
+  return `${fi ? fi + ". " : ""}${ln}`.trim() || "N/A";
+}
+
+/** Race number lives in race_key.race_number for NA. Falls back to array index+1. */
+function naRaceNumber(rc, fallbackIdx) {
+  const rk = rc && rc.race_key;
+  const n = rk && rk.race_number != null ? parseInt(rk.race_number, 10) : NaN;
+  return isFinite(n) && n > 0 ? n : (fallbackIdx + 1);
+}
+
+/** Treat scratch_indicator "Y" (any case) as scratched. */
+function isNaScratched(runner) {
+  const s = runner && runner.scratch_indicator;
+  return typeof s === "string" && s.toUpperCase() === "Y";
+}
+
+/**
+ * NA entries → /api/entries Railbird shape.
+ */
+function normaliseNaEntries(naData, track, venue, date) {
+  const races = (naData && naData.races) || [];
+  const racesOut = races.map((rc, idx) => {
+    const raceNumber = naRaceNumber(rc, idx);
+    const tz = rc.time_zone || "America/New_York";
+    const runners = (rc.runners || []).map((r) => ({
+      pp: parseInt(r.post_pos != null ? r.post_pos : (r.program_number_stripped || r.program_number || 0), 10),
+      programNumber: r.program_number || (r.program_number_stripped != null ? String(r.program_number_stripped) : null),
+      horseName: r.horse_name || "Unknown",
+      ml: r.morning_line_odds || "N/A",
+      liveOdds: r.live_odds || null,
+      jockey: naJockeyName(r.jockey),
+      trainer: naTrainerName(r.trainer),
+      weight: r.weight || null,
+      equipment: r.equipment || null,
+      medication: r.medication || null,
+      description: r.description || null,
+      sire: r.sire_name || null,
+      dam: r.dam_name || null,
+      damSire: r.dam_sire_name || null,
+      claimingPrice: r.claiming || null,
+      status: isNaScratched(r) ? "SCRATCHED" : "RUNNER",
+    }));
+
+    return {
+      raceNumber,
+      raceId:    rc.race_key && rc.race_key.race_number ? `${naData.meet_id}-R${rc.race_key.race_number}` : null,
+      postTime:  formatNaPostTime(rc.post_time_long, rc.post_time, tz),
+      postTimeLong: rc.post_time_long != null ? (typeof rc.post_time_long === "number" ? rc.post_time_long : parseInt(rc.post_time_long, 10)) : null,
+      raceType:  rc.race_type_description || rc.race_name || rc.race_type || "N/A",
+      raceTypeCode: rc.race_type || null,
+      raceClass: rc.race_class || null,
+      raceName:  rc.race_name || null,
+      grade:     rc.grade || null,
+      distance:  formatNaDistance(rc.distance_value, rc.distance_unit, rc.distance_description),
+      surface:   rc.surface_description || "N/A",
+      courseType: rc.course_type || null,
+      purse:     formatNaPurse(rc.purse),
+      ageRestriction: rc.age_restriction_description || null,
+      sexRestriction: rc.sex_restriction_description || null,
+      minClaimPrice: rc.min_claim_price || null,
+      maxClaimPrice: rc.max_claim_price || null,
+      handicapperName: rc.handicapper_name || null,
+      entries:   runners,
+    };
+  });
+
+  return {
+    track,
+    date,
+    venue: (naData && naData.track_name) || venue,
+    meetId: (naData && naData.meet_id) || null,
+    lastUpdated: new Date().toISOString(),
+    source: "theracingapi-na",
+    races: racesOut,
+  };
+}
+
+/**
+ * NA entries → /api/scratches Railbird shape.
+ * NA exposes scratches in entries via runner.scratch_indicator === "Y".
+ */
+function normaliseNaScratches(naData, track, venue, date) {
+  const races = (naData && naData.races) || [];
+  const scratches = [];
+  races.forEach((rc, idx) => {
+    const raceNumber = naRaceNumber(rc, idx);
+    (rc.runners || []).forEach((r) => {
+      if (isNaScratched(r)) {
+        scratches.push({
+          raceNumber,
+          pp: parseInt(r.post_pos != null ? r.post_pos : (r.program_number_stripped || 0), 10),
+          programNumber: r.program_number || null,
+          horseName: r.horse_name || "Unknown",
+          reason: "Scratched",
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  });
+  return {
+    track,
+    date,
+    venue: (naData && naData.track_name) || venue,
+    meetId: (naData && naData.meet_id) || null,
+    lastUpdated: new Date().toISOString(),
+    source: "theracingapi-na",
+    scratches,
+  };
+}
+
+/**
+ * NA entries for ONE race → /api/odds Railbird shape.
+ * Returns morning_line_odds (and live_odds when present).
+ */
+function normaliseNaOdds(naData, track, venue, date, raceNumber) {
+  const races = (naData && naData.races) || [];
+  const rc = races.find((r, idx) => naRaceNumber(r, idx) === raceNumber) || null;
+  if (!rc) {
+    return {
+      track, date,
+      venue: (naData && naData.track_name) || venue,
+      raceNumber,
+      lastUpdated: new Date().toISOString(),
+      source: "theracingapi-na",
+      odds: [],
+      error: `Race ${raceNumber} not found at ${venue} on ${date}`,
+    };
+  }
+  const odds = (rc.runners || []).map((r) => ({
+    pp: parseInt(r.post_pos != null ? r.post_pos : (r.program_number_stripped || 0), 10),
+    programNumber: r.program_number || null,
+    horseName: r.horse_name || "Unknown",
+    morningLine: r.morning_line_odds || null,
+    liveOdds: r.live_odds || null,
+    // Surface morningLine into the legacy `liveOdds` slot when no live yet so
+    // older clients still display something meaningful.
+    bestOdds: r.live_odds || r.morning_line_odds || "N/A",
+    scratched: isNaScratched(r),
+  }));
+  return {
+    track, date,
+    venue: (naData && naData.track_name) || venue,
+    meetId: (naData && naData.meet_id) || null,
+    raceNumber,
+    raceName: rc.race_name || null,
+    postTime: formatNaPostTime(rc.post_time_long, rc.post_time, rc.time_zone),
+    lastUpdated: new Date().toISOString(),
+    source: "theracingapi-na",
+    odds,
+  };
+}
+
+/**
+ * NA results → /api/results Railbird shape.
+ * NA `runners` contains the in-money finishers (win/place/show). Position is
+ * inferred from non-zero payoffs (winner: win_payoff>0; place: place_payoff>0
+ * but win_payoff==0; show: show_payoff>0 but place_payoff==0).
+ * NA `also_ran` is a comma-separated string of also-rans (no payoff data).
+ */
+function inferFinishPosition(r, idxAmongInMoney) {
+  const w = parseFloat(r.win_payoff) || 0;
+  const p = parseFloat(r.place_payoff) || 0;
+  const s = parseFloat(r.show_payoff) || 0;
+  if (w > 0) return 1;
+  if (p > 0) return 2;
+  if (s > 0) return 3;
+  return idxAmongInMoney + 1;
+}
+
+function naJockeyFromFlat(r) {
+  const fi = r.jockey_first_name_initial || (r.jockey_first_name ? r.jockey_first_name[0] : "");
+  const ln = r.jockey_last_name || "";
+  return `${fi ? fi + ". " : ""}${ln}`.trim() || "N/A";
+}
+function naTrainerFromFlat(r) {
+  const fi = r.trainer_first_name ? r.trainer_first_name[0] : "";
+  const ln = r.trainer_last_name || "";
+  return `${fi ? fi + ". " : ""}${ln}`.trim() || "N/A";
+}
+
+function findPayoff(payoffs, wagerName) {
+  if (!payoffs || !payoffs.length) return null;
+  const match = payoffs.find(
+    (p) => p.wager_name && p.wager_name.toLowerCase() === wagerName.toLowerCase()
+  );
+  return match ? parsePayoutAmount(match.payoff_amount) : null;
+}
+
+function normaliseNaResults(naData, track, venue, date) {
+  const races = (naData && naData.races) || [];
+  const racesOut = races.map((rc, idx) => {
+    const raceNumber = naRaceNumber(rc, idx);
+    const runners = rc.runners || [];
+    const finishOrder = runners.map((r, i) => ({
+      position: inferFinishPosition(r, i),
+      pp: parseInt(r.program_number_stripped != null ? r.program_number_stripped : (r.program_number || 0), 10),
+      programNumber: r.program_number || null,
+      horseName: r.horse_name || "Unknown",
+      jockey: naJockeyFromFlat(r),
+      trainer: naTrainerFromFlat(r),
+      ownerName: [r.owner_first_name, r.owner_last_name].filter(Boolean).join(" ").trim() || null,
+      breederName: r.breeder_name || null,
+      sire: r.sire_name || null,
+      weightCarried: r.weight_carried || null,
+      winPayoff: parsePayoutAmount(r.win_payoff),
+      placePayoff: parsePayoutAmount(r.place_payoff),
+      showPayoff: parsePayoutAmount(r.show_payoff),
+    })).sort((a, b) => a.position - b.position);
+
+    const alsoRanRaw = rc.also_ran;
+    const alsoRan = typeof alsoRanRaw === "string"
+      ? alsoRanRaw.split(",").map((s) => s.trim()).filter(Boolean)
+      : Array.isArray(alsoRanRaw) ? alsoRanRaw : [];
+
+    const winningTime = rc.fraction && rc.fraction.winning_time && rc.fraction.winning_time.time_in_hundredths
+      ? rc.fraction.winning_time.time_in_hundredths
+      : null;
+
+    return {
+      raceNumber,
+      raceId: rc.race_key && rc.race_key.race_number ? `${naData.meet_id}-R${rc.race_key.race_number}` : null,
+      raceName: rc.race_name || null,
+      official: finishOrder.length > 0,
+      offTime: rc.off_time || null,
+      surface: rc.surface_description || null,
+      trackCondition: rc.track_condition_description || null,
+      totalPurse: rc.total_purse ? formatNaPurse(rc.total_purse) : null,
+      finishOrder,
+      scratches: rc.scratches || [],
+      alsoRan,
+      // Top-level payouts are the winner's WPS payoffs. Per-horse WPS payoffs
+      // (which differ for 2nd/3rd place runners) live in finishOrder[i].
+      payouts: {
+        win: finishOrder[0] ? finishOrder[0].winPayoff : null,
+        place: finishOrder[0] ? finishOrder[0].placePayoff : null,
+        show: finishOrder[0] ? finishOrder[0].showPayoff : null,
+        exacta: findPayoff(rc.payoffs, "Exacta"),
+        trifecta: findPayoff(rc.payoffs, "Trifecta"),
+        superfecta: findPayoff(rc.payoffs, "Superfecta"),
+        dailyDouble: findPayoff(rc.payoffs, "Daily Double"),
+        pick3: findPayoff(rc.payoffs, "Pick 3"),
+        pick4: findPayoff(rc.payoffs, "Pick 4"),
+        pick5: findPayoff(rc.payoffs, "Pick 5"),
+      },
+      allPayoffs: (rc.payoffs || []).map((p) => ({
+        wager: p.wager_name,
+        amount: parsePayoutAmount(p.payoff_amount),
+        pool: p.total_pool || null,
+        winningNumbers: p.winning_numbers || null,
+      })),
+      winningTime,
+    };
+  });
+  return {
+    track,
+    date,
+    venue: (naData && naData.track_name) || venue,
+    meetId: (naData && naData.meet_id) || null,
+    lastUpdated: new Date().toISOString(),
+    source: "theracingapi-na",
+    races: racesOut,
+  };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Custom error class for 404 / "file not found" situations
 // ═════════════════════════════════════════════════════════════════════════════
 class NotFoundError extends Error {
@@ -1314,7 +1768,7 @@ class NotFoundError extends Error {
 function usePaidSource(env) {
   return (
     (env.DATA_SOURCE || "").toLowerCase() === "theracingapi" &&
-    !!env.API_KEY
+    !!env.API_USER && !!env.API_KEY
   );
 }
 
@@ -1350,11 +1804,15 @@ async function handleEntries(request, env, origin) {
 
     if (usePaidSource(env)) {
       // ── The Racing API path ───────────────────────────────────────────────
+      const meet = await findMeetId(track, date, env.API_USER, env.API_KEY);
+      if (!meet) {
+        throw new NotFoundError(`No NA meet for ${track} on ${date}`);
+      }
       const data = await fetchUpstream(
-        `/racecards/standard?date=${date}&region=USA`,
-        env.API_KEY
+        `/north-america/meets/${encodeURIComponent(meet.meet_id)}/entries`,
+        env.API_USER, env.API_KEY
       );
-      body = normaliseEntries(data.racecards || [], track, venue, date);
+      body = normaliseNaEntries(data, track, venue, date);
     } else {
       // ── Free / GitHub Pages path ──────────────────────────────────────────
       body = await fetchFreeEntries(track, date, venue);
@@ -1405,11 +1863,22 @@ async function handleScratches(request, env, origin) {
 
     if (usePaidSource(env)) {
       // ── The Racing API path ───────────────────────────────────────────────
-      const data = await fetchUpstream(
-        `/racecards/standard?date=${date}&region=USA`,
-        env.API_KEY
-      );
-      body = normaliseScratches(data.racecards || [], track, venue, date);
+      const meet = await findMeetId(track, date, env.API_USER, env.API_KEY);
+      if (!meet) {
+        body = {
+          track, date, venue,
+          lastUpdated: new Date().toISOString(),
+          source: "theracingapi-na",
+          message: `No NA meet for ${track} on ${date}`,
+          scratches: [],
+        };
+      } else {
+        const data = await fetchUpstream(
+          `/north-america/meets/${encodeURIComponent(meet.meet_id)}/entries`,
+          env.API_USER, env.API_KEY
+        );
+        body = normaliseNaScratches(data, track, venue, date);
+      }
     } else {
       // ── Free mode: no unauthorized scraping. Return empty list. ───────────
       // The Equibase XML feed fetch (fetchFreeScratches) is preserved below
@@ -1475,11 +1944,21 @@ async function handleOdds(request, env, origin) {
   if (cached) return cached;
 
   try {
+    const meet = await findMeetId(track, date, env.API_USER, env.API_KEY);
+    if (!meet) {
+      return jsonOk({
+        track, date, venue, raceNumber,
+        lastUpdated: new Date().toISOString(),
+        source: "theracingapi-na",
+        message: `No NA meet for ${track} on ${date}`,
+        odds: [],
+      }, origin, 0);
+    }
     const data = await fetchUpstream(
-      `/racecards/standard?date=${date}&region=USA`,
-      env.API_KEY
+      `/north-america/meets/${encodeURIComponent(meet.meet_id)}/entries`,
+      env.API_USER, env.API_KEY
     );
-    const body = normaliseOdds(data.racecards || [], track, venue, date, raceNumber);
+    const body = normaliseNaOdds(data, track, venue, date, raceNumber);
     const response = jsonOk(body, origin, CACHE_TTL.odds);
     await writeCache(cacheKey, response);
     return response;
@@ -1525,13 +2004,38 @@ async function handleResults(request, env, origin) {
   if (cached) return cached;
 
   try {
-    // The results endpoint accepts start_date / end_date.
-    // Query a single day by setting both to the same date.
-    const data = await fetchUpstream(
-      `/results?start_date=${date}&end_date=${date}&region=USA`,
-      env.API_KEY
-    );
-    const body = normaliseResults(data.results || [], track, venue, date);
+    const meet = await findMeetId(track, date, env.API_USER, env.API_KEY);
+    if (!meet) {
+      return jsonOk({
+        track, date, venue,
+        lastUpdated: new Date().toISOString(),
+        source: "theracingapi-na",
+        message: `No NA meet for ${track} on ${date}`,
+        races: [],
+      }, origin, 0);
+    }
+    let data;
+    try {
+      data = await fetchUpstream(
+        `/north-america/meets/${encodeURIComponent(meet.meet_id)}/results`,
+        env.API_USER, env.API_KEY
+      );
+    } catch (err) {
+      // Results return 404 until races finish — surface graceful empty
+      // response so the UI doesn't error during a live card.
+      if (err && err.upstreamStatus === 404) {
+        return jsonOk({
+          track, date, venue,
+          meetId: meet.meet_id,
+          lastUpdated: new Date().toISOString(),
+          source: "theracingapi-na",
+          message: "Results not available yet — races have not finished.",
+          races: [],
+        }, origin, CACHE_TTL.results);
+      }
+      throw err;
+    }
+    const body = normaliseNaResults(data, track, venue, date);
     const response = jsonOk(body, origin, CACHE_TTL.results);
     await writeCache(cacheKey, response);
     return response;
@@ -1632,6 +2136,7 @@ async function handleStatus(request, env, origin) {
   const startedAt = Date.now();
   const dataSource = (env.DATA_SOURCE || "free").toLowerCase();
   const hasApiKey  = !!env.API_KEY;
+  const hasApiUser = !!env.API_USER;
   const today      = new Date().toISOString().slice(0, 10);
 
   async function probe(label, url, init) {
@@ -1667,23 +2172,29 @@ async function handleStatus(request, env, origin) {
   probes.push(await probe("github-pages-static", `${STATIC_ENTRIES_BASE}/entries-AQU-2026-04-16.json`));
   probes.push(await probe("equibase-scratches", EQUIBASE_SCRATCHES_URL));
 
-  if (dataSource === "theracingapi" && hasApiKey) {
+  if (dataSource === "theracingapi" && hasApiKey && hasApiUser) {
     const t0 = Date.now();
+    const probeUrl = `${THERACINGAPI_BASE}/north-america/meets?start_date=${today}&end_date=${today}&limit=50`;
     try {
-      const res = await fetch(`${THERACINGAPI_BASE}/racecards/standard?date=${today}&region=USA`, {
-        headers: { Authorization: `Bearer ${env.API_KEY}`, Accept: "application/json" },
+      const res = await fetch(probeUrl, {
+        headers: { Authorization: basicAuthHeader(env.API_USER, env.API_KEY), Accept: "application/json" },
       });
+      let meetsCount = null;
+      if (res.ok) {
+        try { meetsCount = ((await res.clone().json()).meets || []).length; } catch (_) {}
+      }
       probes.push({
-        label: "theracingapi",
-        url:   `${THERACINGAPI_BASE}/racecards/standard?date=${today}&region=USA`,
+        label: "theracingapi-na",
+        url:   probeUrl,
         ok:    res.ok,
         status: res.status,
+        meetsToday: meetsCount,
         latencyMs: Date.now() - t0,
       });
     } catch (err) {
       probes.push({
-        label: "theracingapi",
-        url:   `${THERACINGAPI_BASE}/racecards/standard?date=${today}&region=USA`,
+        label: "theracingapi-na",
+        url:   probeUrl,
         ok:    false,
         status: 0,
         error: err && err.message ? err.message : String(err),
@@ -1698,13 +2209,14 @@ async function handleStatus(request, env, origin) {
     dataSource,
     mode:         usePaidSource(env) ? "paid" : "free",
     hasApiKey,
+    hasApiUser,
     defaultTrack: env.DEFAULT_TRACK || "AQU",
     allowedOrigin: env.ALLOWED_ORIGIN || "*",
     activeSources: {
-      entries:  dataSource === "theracingapi" ? "theracingapi"  : "github-pages-static",
-      scratches: dataSource === "theracingapi" ? "theracingapi" : "equibase-live",
-      odds:     dataSource === "theracingapi" ? "theracingapi"  : "nyra-equibase-free",
-      results:  dataSource === "theracingapi" ? "theracingapi"  : "equibase-mobile",
+      entries:  dataSource === "theracingapi" ? "theracingapi-na"  : "github-pages-static",
+      scratches: dataSource === "theracingapi" ? "theracingapi-na" : "equibase-live",
+      odds:     dataSource === "theracingapi" ? "theracingapi-na"  : "nyra-equibase-free",
+      results:  dataSource === "theracingapi" ? "theracingapi-na"  : "equibase-mobile",
     },
     upstream: {
       staticEntriesBase: STATIC_ENTRIES_BASE,
@@ -1728,13 +2240,14 @@ export default {
    *
    * Environment variables (set via wrangler.toml [vars] or `wrangler secret put`):
    *   DATA_SOURCE    — "free" (default) | "theracingapi"
-   *   API_KEY        — The Racing API Bearer token (secret; only needed for theracingapi)
+   *   API_USER       — The Racing API username (secret; only for theracingapi)
+   *   API_KEY        — The Racing API password (secret; only for theracingapi)
    *   DEFAULT_TRACK  — Fallback track code when ?track= is omitted (default: "AQU")
    *   ALLOWED_ORIGIN — Value for Access-Control-Allow-Origin (default: "*")
    *
    * Switching sources:
    *   Free (GitHub Pages + Equibase):  DATA_SOURCE=free  (or unset)
-   *   The Racing API (paid):           DATA_SOURCE=theracingapi  +  API_KEY=<token>
+   *   The Racing API (paid):           DATA_SOURCE=theracingapi  +  API_USER=<u>  +  API_KEY=<p>
    */
   async fetch(request, env, ctx) {
     // CORS: prefer an explicit allowlist (comma-separated) when set.
@@ -1769,11 +2282,11 @@ export default {
 
     // ── Guard: require API_KEY only when DATA_SOURCE=theracingapi ─────────
     const dataSource = (env.DATA_SOURCE || "free").toLowerCase();
-    if (dataSource === "theracingapi" && !env.API_KEY) {
+    if (dataSource === "theracingapi" && (!env.API_KEY || !env.API_USER)) {
       return jsonError(
         "Worker misconfiguration: DATA_SOURCE is set to 'theracingapi' " +
-        "but API_KEY environment variable is not set. " +
-        "Either set API_KEY (wrangler secret put API_KEY) or set DATA_SOURCE=free.",
+        "but API_USER and/or API_KEY environment variables are not set. " +
+        "Set both secrets (wrangler secret put API_USER / API_KEY) or set DATA_SOURCE=free.",
         500,
         origin
       );
@@ -1811,10 +2324,10 @@ export default {
             status:       "ok",
             dataSource,
             activeSources: {
-              entries:  dataSource === "theracingapi" ? "theracingapi"   : "github-pages-static",
-              scratches: dataSource === "theracingapi" ? "theracingapi"  : "equibase-live",
-              odds:     dataSource === "theracingapi" ? "theracingapi"   : "nyra-equibase-free",
-              results:  dataSource === "theracingapi" ? "theracingapi"   : "equibase-mobile",
+              entries:  dataSource === "theracingapi" ? "theracingapi-na"   : "github-pages-static",
+              scratches: dataSource === "theracingapi" ? "theracingapi-na"  : "equibase-live",
+              odds:     dataSource === "theracingapi" ? "theracingapi-na"   : "nyra-equibase-free",
+              results:  dataSource === "theracingapi" ? "theracingapi-na"   : "equibase-mobile",
             },
             defaultTrack: env.DEFAULT_TRACK || "AQU",
             staticEntriesPattern: `${STATIC_ENTRIES_BASE}/entries-{TRACK}-{DATE}.json`,
