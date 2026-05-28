@@ -6,6 +6,9 @@ compatibility_date = "2024-09-23"
 DATA_SOURCE = "theracingapi"
 DEFAULT_TRACK = "SAR"
 ALLOWED_ORIGIN = "https://railbirdai.com"
+# v2.32.3 — SendGrid feedback email delivery (FEEDBACK_EMAIL_TO, FEEDBACK_EMAIL_FROM,
+# FEEDBACK_SENDGRID_KEY, FEEDBACK_ADMIN_TOKEN are stored as encrypted Worker secrets,
+# not plain vars — see `wrangler secret list` / Cloudflare dashboard)
 
 # v2.32.0 — FEEDBACK_LOG KV namespace for beta feedback catalog
 [[kv_namespaces]]
