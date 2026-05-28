@@ -1,5 +1,30 @@
 # NE Racing — Changelog
 
+## v2.32.4 — "What's a railbird?" definition (2026-05-28)
+
+Small personality touch: a punchy dictionary-style definition of
+"railbird" is now accessible from two places:
+
+1. **Tap the gold "RAILBIRD AI" title** on the hero/landing screen.
+   The title now has a tap affordance (cursor pointer, focus ring,
+   subtle opacity dim on press). Tapping pops a bottom-sheet card.
+2. **More tab → "What's a railbird?"** entry, sitting just below
+   Settings, above Send Feedback. Same modal, same content.
+
+Copy (deliberately punchy, not preachy):
+
+> **railbird** (n.) /ˈreɪl-bərd/
+> The fan at the rail. The one who studies the form, watches the
+> workouts, and roots for the **horse**, not the bet.
+
+Implementation notes:
+- `event.stopPropagation()` on the title tap so it doesn't trigger
+  the hero's scroll-to-enter behavior.
+- Modal closes via the X button, backdrop tap, or Escape key.
+- Reuses the same bottom-sheet pattern as the feedback modal for
+  visual consistency.
+- No new dependencies, no JS framework changes, ~75 lines total.
+
 ## v2.32.3 — Hero layout fix for Chrome iOS (2026-05-28)
 
 User reported the landing/hero screen rendering out of alignment in

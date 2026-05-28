@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260528-1515-hero-svh-fix-v2.32.3';
+var NE_APP_VERSION = '20260528-1545-railbird-def-v2.32.4';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.32.3-hero-svh-fix';
+var RAILBIRD_VERSION = 'v2.32.4-railbird-def';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -1318,6 +1318,69 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
   font-weight: 700; color: var(--color-white); line-height: 1.1;
   margin: 0 0 0.15rem;
   text-shadow: 0 2px 12px rgba(0,0,0,0.45);
+  /* v2.32.4: tap-to-define affordance */
+  cursor: pointer;
+  -webkit-tap-highlight-color: rgba(201,168,76,0.18);
+  transition: opacity 0.15s ease;
+}
+.hero-title-main:hover { opacity: 0.85; }
+.hero-title-main:active { opacity: 0.7; }
+.hero-title-main:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 4px; border-radius: 4px; }
+
+/* v2.32.4 — Railbird definition modal (shared by hero tap + More sheet entry) */
+#railbird-def-modal {
+  position: fixed; inset: 0; z-index: 9100;
+  background: rgba(30, 42, 54, 0.55);
+  display: none; align-items: flex-end; justify-content: center;
+  padding: 0;
+}
+@media (min-width: 520px) {
+  #railbird-def-modal { align-items: center; padding: 24px; }
+}
+#railbird-def-modal.open { display: flex; }
+.rbdef-card {
+  background: var(--color-cream, #F8F4EA);
+  width: 100%; max-width: 460px;
+  border-radius: 18px 18px 0 0;
+  padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.25);
+  font-family: var(--font-body);
+  color: var(--color-ink, #1E2A36);
+  position: relative;
+}
+@media (min-width: 520px) {
+  .rbdef-card { border-radius: 18px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+}
+.rbdef-close {
+  position: absolute; top: 0.75rem; right: 0.75rem;
+  background: none; border: none; cursor: pointer; padding: 0.5rem;
+  color: var(--color-ink, #1E2A36); opacity: 0.5;
+  border-radius: 8px;
+}
+.rbdef-close:hover { opacity: 1; background: rgba(0,0,0,0.04); }
+.rbdef-eyebrow {
+  font-family: var(--font-body); font-size: 0.72rem;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--color-gold, #C9A84C);
+  margin: 0 0 0.4rem; font-weight: 600;
+}
+.rbdef-headword {
+  font-family: var(--font-display); font-size: 1.85rem;
+  font-weight: 700; color: var(--color-green, #1B4332);
+  margin: 0 0 0.15rem; line-height: 1.1;
+}
+.rbdef-pron {
+  font-family: var(--font-body); font-style: italic;
+  color: var(--color-ink, #1E2A36); opacity: 0.55;
+  font-size: 0.95rem; margin: 0 0 1rem;
+}
+.rbdef-body {
+  font-family: var(--font-body); font-size: 1.0rem; line-height: 1.55;
+  color: var(--color-ink, #1E2A36);
+  margin: 0 0 0.5rem;
+}
+.rbdef-body strong {
+  font-weight: 700; color: var(--color-green, #1B4332);
 }
 .hero-title-sub {
   font-family: var(--font-display); font-size: clamp(1.4rem, 4vw, 2.4rem);
@@ -7374,7 +7437,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
   </div>
 
   <div class="hero-title-block hero-title-luxury">
-    <h1 class="hero-title-main">RAILBIRD AI</h1>
+    <h1 class="hero-title-main" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="railbird-def-modal" onclick="event.stopPropagation(); openRailbirdDef();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openRailbirdDef();}" title="What's a railbird?">RAILBIRD AI</h1>
     <p class="hero-eyebrow hero-eyebrow-below">Est. 2026</p>
     <div class="hero-rule"></div>
     <p class="hero-title-sub">Your Private Handicapping Companion</p>
@@ -8498,6 +8561,21 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         </span>
         <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <!-- v2.32.4 — What's a railbird? -->
+      <button class="more-item" onclick="closeMoreSheet(); openRailbirdDef();">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">What&rsquo;s a railbird?</span>
+          <span class="more-item-sub">A quick definition of the name</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
       <!-- v2.32.0 — Send Feedback (beta) -->
       <button class="more-item" onclick="closeMoreSheet(); openFeedbackModal();">
         <span class="more-item-icon" aria-hidden="true">
@@ -8514,6 +8592,54 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     </div>
   </div>
 </div>
+
+<!-- v2.32.4 — RAILBIRD DEFINITION MODAL =================================== -->
+<div id="railbird-def-modal" role="dialog" aria-modal="true" aria-labelledby="rbdef-headword" onclick="closeRailbirdDefOnBg(event)">
+  <div class="rbdef-card" role="document">
+    <button type="button" class="rbdef-close" onclick="closeRailbirdDef()" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+    <p class="rbdef-eyebrow">Definition</p>
+    <h2 id="rbdef-headword" class="rbdef-headword">railbird</h2>
+    <p class="rbdef-pron">(n.) /ˈreɪl-bərd/</p>
+    <p class="rbdef-body">The fan at the rail. The one who studies the form, watches the workouts, and roots for the <strong>horse</strong>, not the bet.</p>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict';
+  function openRailbirdDef() {
+    var m = document.getElementById('railbird-def-modal');
+    if (!m) return;
+    m.classList.add('open');
+    // Trap focus on the close button for keyboard users
+    try {
+      var closeBtn = m.querySelector('.rbdef-close');
+      if (closeBtn) closeBtn.focus();
+    } catch(_) {}
+  }
+  function closeRailbirdDef() {
+    var m = document.getElementById('railbird-def-modal');
+    if (m) m.classList.remove('open');
+  }
+  function closeRailbirdDefOnBg(e) {
+    if (e && e.target && e.target.id === 'railbird-def-modal') closeRailbirdDef();
+  }
+  // Escape to close
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var m = document.getElementById('railbird-def-modal');
+      if (m && m.classList.contains('open')) {
+        e.stopPropagation();
+        closeRailbirdDef();
+      }
+    }
+  });
+  window.openRailbirdDef = openRailbirdDef;
+  window.closeRailbirdDef = closeRailbirdDef;
+  window.closeRailbirdDefOnBg = closeRailbirdDefOnBg;
+})();
+</script>
 
 <!-- v2.32.0 — FEEDBACK MODAL ============================================ -->
 <style>
