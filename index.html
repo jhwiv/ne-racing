@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260529-methodology-v2-v2.33.0';
+var NE_APP_VERSION = '20260529-pr2-checkpoint-2-v2.34.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.33.0-methodology-v2';
+var RAILBIRD_VERSION = 'v2.34.0-pr2-checkpoint-2';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -11870,9 +11870,41 @@ function runAdviceEngine() {
 
   let allScores = []; // flat list for "best bet of day"
 
+  // A/B engine selection: v1 (legacy) runs the inline math; v2 delegates to
+  // window.RailbirdScoring.scoreRace which uses the methodology-fixed engine.
+  // The output shape is identical (horse, score, sub-scores, modelProb,
+  // impliedProb, overlay, completeness, expertMatchCount) so downstream
+  // rendering does not need to know which engine produced the result.
+  const __useV2Engine = !!(window.RailbirdEngine && window.RailbirdEngine.isV2()
+                          && window.RailbirdScoring && window.RailbirdScoring.scoreRace);
+
   races.forEach(race => {
     const horses = (race.horses || []).filter(h => !h.scratched);
     if (!horses.length) return;
+
+    // ── v2 delegation path ────────────────────────────────────────────────
+    if (__useV2Engine) {
+      let scored;
+      try {
+        scored = window.RailbirdScoring.scoreRace(race, {
+          version: 'v2',
+          bias: biasToday,
+          today: today,
+        });
+      } catch (e) {
+        // Defensive: if v2 throws, fall back to v1 path for this race so the
+        // UI never goes blank. We log and continue with the legacy code below.
+        console.warn('[engine] v2 scoreRace threw; falling back to v1 for race', race.id, e);
+        scored = null;
+      }
+      if (scored && scored.length) {
+        race._advice = scored;
+        _adviceByRaceId[race.id] = scored;
+        scored.forEach((s, idx) => { allScores.push({ ...s, race, rank: idx + 1 }); });
+        return; // skip the legacy inline math for this race
+      }
+      // fall through to v1 path if v2 produced no rows
+    }
 
     const raceClassVal = CLASS_SCALE[race.type] || CLASS_SCALE[mapRaceTypeToCode(race.type)] || 40;
 

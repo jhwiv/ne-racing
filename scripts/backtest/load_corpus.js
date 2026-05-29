@@ -154,4 +154,114 @@ function loadCorpus(opts) {
   };
 }
 
-module.exports = { loadCorpus, hasResults };
+// ── Worker-backed corpus loader (optional, async) ────────────────────────────
+//
+// As races settle in production, the Worker archives them into the
+// RACE_HISTORY KV namespace via /api/history endpoints (see worker.js). This
+// gives us a durable, queryable history we can pull into the backtest harness
+// alongside the on-disk corpus.
+//
+// Usage:
+//   const { loadCorpusFromWorker } = require('./load_corpus.js');
+//   const remote = await loadCorpusFromWorker({
+//     workerUrl: 'https://cloudflare-worker.jhwiv-online.workers.dev',
+//     track:     'BEL',        // optional; omit for all tracks
+//     from:      '2026-05-01', // optional; omit for full history
+//     to:        '2026-07-31', // optional
+//   });
+//   // remote.races is the same annotated shape as loadCorpus().races
+//
+// Then merge with loadCorpus() by passing both to scripts/backtest/run.js.
+// We intentionally KEEP this separate from loadCorpus() (which is sync and
+// has no fetch dependency) so existing harness code keeps working unchanged.
+async function loadCorpusFromWorker(opts) {
+  opts = opts || {};
+  const base = String(opts.workerUrl || '').replace(/\/+$/, '');
+  if (!base) throw new Error('loadCorpusFromWorker: workerUrl is required');
+
+  // Node 18+ has global fetch; allow callers to inject a polyfill for older runtimes.
+  const fetchImpl = opts.fetch || (typeof fetch !== 'undefined' ? fetch : null);
+  if (!fetchImpl) {
+    throw new Error('loadCorpusFromWorker: global fetch not available; pass opts.fetch');
+  }
+
+  // Step 1: list available (track,date) pairs the worker has archived.
+  const listUrl = new URL(base + '/api/history/list');
+  if (opts.track) listUrl.searchParams.set('track', opts.track);
+  if (opts.from)  listUrl.searchParams.set('from', opts.from);
+  if (opts.to)    listUrl.searchParams.set('to', opts.to);
+
+  let listing;
+  try {
+    const res = await fetchImpl(listUrl.toString());
+    if (!res.ok) throw new Error('list ' + res.status);
+    listing = await res.json();
+  } catch (e) {
+    return { races: [], stats: { total_loaded: 0, with_results: 0, without_results: 0, error: String(e) } };
+  }
+
+  // Expected listing shape (from worker.js handleHistoryList):
+  //   { entries: [{ track: 'BEL', date: '2026-05-29' }, ...] }
+  const entries = (listing && Array.isArray(listing.entries)) ? listing.entries : [];
+
+  // Step 2: fetch each (track,date) record and accumulate races.
+  const out = [];
+  for (const e of entries) {
+    if (!e || !e.track || !e.date) continue;
+    const url = base + '/api/history/' + encodeURIComponent(e.track) + '/' + encodeURIComponent(e.date);
+    try {
+      const res = await fetchImpl(url);
+      if (!res.ok) continue;
+      const doc = await res.json();
+      const races = Array.isArray(doc.races) ? doc.races : (Array.isArray(doc) ? doc : []);
+      out.push(...annotate(races, 'worker://' + e.track + '/' + e.date));
+    } catch (_) { /* skip individual failures, keep going */ }
+  }
+
+  const withResults = out.filter(r => r._hasResult).length;
+  return {
+    races: out,
+    stats: {
+      total_loaded: out.length,
+      with_results: withResults,
+      without_results: out.length - withResults,
+      from_worker: out.length,
+      worker_url: base,
+    },
+  };
+}
+
+/**
+ * Merge a Worker-loaded corpus with the on-disk corpus, applying the same
+ * "results-wins" de-dup policy as loadCorpus() across all sources.
+ */
+function mergeCorpora(...corpora) {
+  const byId = new Map();
+  let dropDupes = 0;
+  for (const c of corpora) {
+    for (const r of (c.races || [])) {
+      const key = r.id || `${r.track}-${r.date}-R${r.num}`;
+      const existing = byId.get(key);
+      if (existing) {
+        if (r._hasResult && !existing._hasResult) byId.set(key, r);
+        dropDupes++;
+        continue;
+      }
+      byId.set(key, r);
+    }
+  }
+  const races = Array.from(byId.values());
+  const withResults = races.filter(r => r._hasResult).length;
+  return {
+    races,
+    stats: {
+      total_loaded: races.length,
+      with_results: withResults,
+      without_results: races.length - withResults,
+      duplicates_dropped: dropDupes,
+      sources: corpora.map(c => c.stats || {}),
+    },
+  };
+}
+
+module.exports = { loadCorpus, loadCorpusFromWorker, mergeCorpora, hasResults };

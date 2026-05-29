@@ -1,5 +1,86 @@
 # NE Racing — Changelog
 
+## v2.34.0 — PR #2 Checkpoint 2: Bet Evaluator + Engine Wiring (2026-05-29)
+
+Second checkpoint of PR #2. Builds on v2.33.0 (methodology v2 + backtest
+harness) and v2.34.0-checkpoint-1 (KV recorder, A/B engine toggle, inlined
+scoring) by adding a full user-bet evaluator, wiring v2 scoring into the live
+`runAdviceEngine()` behind the A/B toggle, and adding a Worker-backed corpus
+loader for the backtest harness.
+
+### Added
+
+- `scripts/lib/bet_evaluator.js` — pure user-bet evaluator (~700 lines).
+  Single entry point `evaluateBet({pool, race, legs, selection, structure,
+  amount})` covering ten wager types:
+  - **Win / Place / Show** (Harville-approximated place/show probabilities,
+    overlay vs morning-line, engine rank, structural warnings).
+  - **Exacta / Trifecta / Superfecta** in four structures: straight, box,
+    key, wheel. Per-permutation Harville pricing with takeout deduction.
+  - **Pick 3 / 4 / 5 / 6** with multi-leg coverage and ticket-cost warnings.
+    Multi-race ER uses the fair-pricing identity
+    `ER = baseAmount × (1 − takeout) × validCombos`, validated against the
+    full-coverage identity `ER = (1 − takeout) × cost`.
+  - Per-track takeout table with NYRA fallback. Sources cited inline:
+    NYRA (Aqueduct/Belmont/Saratoga), Charles Town, Churchill Downs, Lone
+    Star Park. All takeout rates verified against the host association's
+    published FAQ on 2026-05-29.
+  - Returns `{cost, probability, expectedReturn, expectedValue, overlay,
+    engineRank, warnings, confidence, takeout, takeoutSource}`.
+- `tests/bet-evaluator.test.js` — 53 unit tests covering odds parsing,
+  takeout lookup, Harville probabilities, permutation generators, every
+  evaluator path, fair-pricing identities, and dispatcher routing.
+- `scripts/backtest/load_corpus.js` — added `loadCorpusFromWorker()` and
+  `mergeCorpora()`. The Worker-backed loader pulls archived race history
+  from `/api/history/list` + `/api/history/{TRACK}/{DATE}` so the backtest
+  harness can consume the production race archive without re-fetching from
+  vendor APIs. Merge applies the same "results-wins" de-dup policy across
+  on-disk and Worker sources.
+- `tests/load-corpus-worker.test.js` — 9 tests covering the worker loader
+  (empty listings, fetch failures, missing fields, per-day error skipping)
+  and the merge helper (uniqueness, results-wins, empty input).
+
+### Changed
+
+- `index.html` — `runAdviceEngine()` now delegates to
+  `window.RailbirdScoring.scoreRace(race, {version:'v2', bias, today})` when
+  `RailbirdEngine.isV2()` is true. v1 (legacy) remains the default; v2 is
+  opt-in via Settings, `?engine=v2`, or sticky device assignment.
+  Output shape is identical between paths so all downstream rendering
+  (advice rows, confidence bars, suggested bets, top picks card, bet slip
+  hooks) works unchanged. A defensive `try/catch` around the v2 call falls
+  back to the inline v1 path on any error so the UI never goes blank.
+- `scripts/ingest/theracingapi_adapter.js` — `trainingEligible` flipped
+  from `false` to `true`. Written ML-training approval from
+  support@theracingapi.com is on file as of 2026-05-29. License notes and
+  header comment updated to reflect approval.
+
+### Sources verified 2026-05-29
+
+- [NYRA betting FAQ](https://www.nyra.com/aqueduct/racing/betting-faq/) —
+  NYRA takeout rates (Win/Place/Show 16%, Exacta/DD 18.5%, Tri/Super/Pick3/
+  Pick4 24%, Pick5/Pick6 15%).
+- [NY Gaming Commission horse racing reports](https://gaming.ny.gov/horse-racing-reports)
+- [Iron Bets — Bet Charles Town](https://ironbetsracing.com/bet-charles-town/)
+- [Churchill Downs visiting information](https://www.churchilldowns.com/come-to-the-track/visiting-information/event-information/)
+- [Lone Star Park wagering menu](https://www.lonestarpark.com/wageringmenu/)
+
+### Test count
+
+130 → 192 (+62: 53 bet-evaluator, 9 worker-loader). All pass.
+
+### Deferred to Checkpoint 3
+
+- "Evaluate My Bet" UI in `index.html` (race+pool+horse+structure picker,
+  results card with EV/overlay/engine-rank/warnings, hook from bet slip).
+- `scripts/training/fit_logit.py` — Python conditional-logit fitter that
+  reads from the Worker's archived race history and exports
+  `data/weights/v2.json`.
+- v2 engine wiring to load fitted weights when `n_races ≥ 200`, with
+  fallback to hand-picked defaults below that threshold.
+
+---
+
 ## v2.33.0 — Methodology v2 + Backtest Harness (2026-05-29)
 
 First half of a two-PR effort to put the advice engine on an empirical
