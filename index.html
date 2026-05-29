@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260529-pr2-checkpoint-3a-v2.34.1';
+var NE_APP_VERSION = '20260529-pr2-checkpoint-3b-v2.35.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.34.1-pr2-checkpoint-3a';
+var RAILBIRD_VERSION = 'v2.35.0-pr2-checkpoint-3b';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -84,6 +84,62 @@ var RAILBIRD_VERSION = 'v2.34.1-pr2-checkpoint-3a';
     setEngine: setEngine,
     deviceId: deviceId,
     isV2: function() { return currentEngine() === 'v2'; },
+  };
+})(window);
+
+/* ===========================================================
+ * RailbirdFittedWeights (PR #2)
+ * Lazily fetch data/weights/v2.json once per session and cache
+ * the validated payload. The v2 scoring path consults this; if
+ * the file is missing, malformed, marked status=insufficient,
+ * or has fewer than MIN_RACES, the engine falls back to the
+ * hand-picked DEFAULT_V2_WEIGHTS.
+ * ===========================================================
+ */
+(function(global) {
+  var MIN_RACES = 200;
+  var WEIGHTS_URL = 'data/weights/v2.json';
+  var _cached = null;        // last successfully-loaded payload (raw)
+  var _attempted = false;    // we only try once per session
+  var _pending = null;       // in-flight fetch promise
+
+  function _meetsThreshold(payload) {
+    if (!payload || payload.status !== 'fitted') return false;
+    var n = Number(payload.n_races) || 0;
+    return n >= MIN_RACES;
+  }
+
+  function load() {
+    if (_cached) return Promise.resolve(_cached);
+    if (_pending) return _pending;
+    if (_attempted) return Promise.resolve(null);
+    _attempted = true;
+    _pending = fetch(WEIGHTS_URL, { cache: 'no-cache' })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(payload) {
+        _pending = null;
+        if (!payload || !_meetsThreshold(payload)) return null;
+        _cached = payload;
+        return payload;
+      })
+      .catch(function() { _pending = null; return null; });
+    return _pending;
+  }
+
+  function getSync() {
+    // Non-blocking accessor for the synchronous scoring path. Returns the
+    // cached payload if a prior load() call succeeded; otherwise null.
+    return _meetsThreshold(_cached) ? _cached : null;
+  }
+
+  // Kick off the load eagerly so it's ready by the time runAdviceEngine runs.
+  if (typeof fetch === 'function') load();
+
+  global.RailbirdFittedWeights = {
+    MIN_RACES: MIN_RACES,
+    URL: WEIGHTS_URL,
+    load: load,
+    getSync: getSync,
   };
 })(window);
 
@@ -336,6 +392,52 @@ function fieldStrengthMultiplier(scoredArr) {
 }
 
 // ── Composite scoring ────────────────────────────────────────────────────────
+// Hand-picked v2 defaults (the 6-vector originally hard-coded in compositeForHorse).
+// Sum to 1.0 by construction so the composite stays on the same 0..100 scale.
+const DEFAULT_V2_WEIGHTS = Object.freeze({
+  speed: 0.35, class: 0.20, pace: 0.15, tj: 0.15, bias: 0.10, fresh: 0.05,
+});
+
+/**
+ * Validate and accept a fitted-weights payload (the data/weights/v2.json shape
+ * written by scripts/training/fit_logit.py).
+ *
+ * Returns `{ weights, n_races, status }` when the payload is usable, else null.
+ * Callers may further gate on n_races (the engine wires this with a 200-race
+ * threshold, matching --min-races in the fitter).
+ */
+function loadFittedWeights(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  if (payload.status && payload.status !== 'fitted') return null;
+  const arr = Array.isArray(payload.weights_normalized) ? payload.weights_normalized : null;
+  const feats = Array.isArray(payload.features) ? payload.features : null;
+  if (!arr || !feats || arr.length !== 6 || feats.length !== 6) return null;
+  // Build a {speed,class,pace,tj,bias,fresh} object from the fitted features.
+  const required = ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'];
+  const w = {};
+  for (let i = 0; i < required.length; i++) {
+    const featIdx = feats.indexOf(required[i]);
+    if (featIdx < 0) return null;
+    const v = Number(arr[featIdx]);
+    if (!isFinite(v)) return null;
+    w[required[i]] = v;
+  }
+  // Normalize sign + magnitude: take absolute values then renormalize so weights sum to 1.
+  // (Conditional logit can produce negative coefficients when a sub-score is
+  // mis-signed in the training data — we treat them as pure magnitudes here, on
+  // the assumption that the v2 sub-scores are oriented "higher = better".)
+  let absSum = 0;
+  for (const k of required) { w[k] = Math.abs(w[k]); absSum += w[k]; }
+  if (absSum === 0) return null;
+  for (const k of required) w[k] /= absSum;
+  return {
+    weights: w,
+    n_races: Number(payload.n_races) || 0,
+    status: payload.status || 'fitted',
+    trained_at: payload.trained_at || null,
+  };
+}
+
 function compositeForHorse(horse, race, paceCtx, bias, opts) {
   const version = opts.version;
   const raceClassVal = classValueFor(race.type);
@@ -353,8 +455,12 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
   const freshScore = freshnessSubScore(horse, opts.today);
   const completeness = dataCompleteness(horse);
 
-  let composite = speedScore * 0.35 + classScore * 0.20 + paceScore * 0.15
-                + tjScore * 0.15 + biasScore * 0.10 + freshScore * 0.05;
+  // Use fitted v2 weights when supplied (and only for v2 engine); else fall
+  // back to the hand-picked defaults. Both shapes are {speed,class,pace,tj,bias,fresh}
+  // and both sum to 1 by construction.
+  const w = (version === 'v2' && opts.fittedWeights) ? opts.fittedWeights : DEFAULT_V2_WEIGHTS;
+  let composite = speedScore * w.speed + classScore * w.class + paceScore * w.pace
+                + tjScore   * w.tj    + biasScore  * w.bias  + freshScore * w.fresh;
 
   // Equipment change (both versions keep this; small directional effect).
   if (horse.equipmentChanges) composite = Math.min(100, composite + 5);
@@ -441,9 +547,24 @@ function scoreRace(race, opts) {
   const horses = (race.horses || []).filter(h => !h.scratched);
   if (!horses.length) return [];
 
+  // Resolve fitted weights (v2-only). Caller may pass either a parsed
+  // weights-file payload (we normalize it) or an already-normalized weights map.
+  let fittedWeights = null;
+  if (version === 'v2' && opts.fittedWeights) {
+    if (opts.fittedWeights.weights_normalized) {
+      // raw weights-file payload
+      const loaded = loadFittedWeights(opts.fittedWeights);
+      if (loaded) fittedWeights = loaded.weights;
+    } else if (typeof opts.fittedWeights.speed === 'number') {
+      fittedWeights = opts.fittedWeights;
+    }
+  }
+
   const paceCtx = buildPaceContext(horses);
   let scored = horses.map(h => compositeForHorse(h, race, paceCtx, opts.bias, {
-    version, today: opts.today, includeExpertInComposite: opts.includeExpertInComposite,
+    version, today: opts.today,
+    includeExpertInComposite: opts.includeExpertInComposite,
+    fittedWeights,
   }));
 
   if (version === 'v2') {
@@ -496,6 +617,8 @@ function confidenceFor(scored) {
     scoreCard: scoreCard,
     scoreToGrade: scoreToGrade,
     confidenceFor: confidenceFor,
+    loadFittedWeights: loadFittedWeights,
+    DEFAULT_V2_WEIGHTS: DEFAULT_V2_WEIGHTS,
     classValueFor: classValueFor,
     parseOddsToNum: parseOddsToNum,
     expertPickMatchesHorse: expertPickMatchesHorse,
@@ -518,6 +641,7 @@ function confidenceFor(scored) {
   };
 })(typeof window !== "undefined" ? window : globalThis);
 /* RAILBIRD_SCORING_INLINE_END */
+
 
 /* RAILBIRD_BET_EVALUATOR_INLINE_BEGIN */
 /* RailbirdBetEvaluator — inlined from scripts/lib/bet_evaluator.js
@@ -13303,11 +13427,15 @@ function runAdviceEngine() {
     // ── v2 delegation path ────────────────────────────────────────────────
     if (__useV2Engine) {
       let scored;
+      // Pull cached fitted weights if available; v2 silently falls back to
+      // the hand-picked defaults when this is null (see scoring.js).
+      const __fitted = (window.RailbirdFittedWeights && window.RailbirdFittedWeights.getSync()) || null;
       try {
         scored = window.RailbirdScoring.scoreRace(race, {
           version: 'v2',
           bias: biasToday,
           today: today,
+          fittedWeights: __fitted,
         });
       } catch (e) {
         // Defensive: if v2 throws, fall back to v1 path for this race so the

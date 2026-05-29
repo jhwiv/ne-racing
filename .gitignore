@@ -7,6 +7,9 @@
 data/normalized/
 data/ingest_log.jsonl
 training/
+!scripts/training/
+data/weights/_features.jsonl
+data/weights/_*.jsonl
 
 # Wrangler / Cloudflare
 .wrangler/

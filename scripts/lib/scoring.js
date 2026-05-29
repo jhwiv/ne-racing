@@ -241,6 +241,52 @@ function fieldStrengthMultiplier(scoredArr) {
 }
 
 // ── Composite scoring ────────────────────────────────────────────────────────
+// Hand-picked v2 defaults (the 6-vector originally hard-coded in compositeForHorse).
+// Sum to 1.0 by construction so the composite stays on the same 0..100 scale.
+const DEFAULT_V2_WEIGHTS = Object.freeze({
+  speed: 0.35, class: 0.20, pace: 0.15, tj: 0.15, bias: 0.10, fresh: 0.05,
+});
+
+/**
+ * Validate and accept a fitted-weights payload (the data/weights/v2.json shape
+ * written by scripts/training/fit_logit.py).
+ *
+ * Returns `{ weights, n_races, status }` when the payload is usable, else null.
+ * Callers may further gate on n_races (the engine wires this with a 200-race
+ * threshold, matching --min-races in the fitter).
+ */
+function loadFittedWeights(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  if (payload.status && payload.status !== 'fitted') return null;
+  const arr = Array.isArray(payload.weights_normalized) ? payload.weights_normalized : null;
+  const feats = Array.isArray(payload.features) ? payload.features : null;
+  if (!arr || !feats || arr.length !== 6 || feats.length !== 6) return null;
+  // Build a {speed,class,pace,tj,bias,fresh} object from the fitted features.
+  const required = ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'];
+  const w = {};
+  for (let i = 0; i < required.length; i++) {
+    const featIdx = feats.indexOf(required[i]);
+    if (featIdx < 0) return null;
+    const v = Number(arr[featIdx]);
+    if (!isFinite(v)) return null;
+    w[required[i]] = v;
+  }
+  // Normalize sign + magnitude: take absolute values then renormalize so weights sum to 1.
+  // (Conditional logit can produce negative coefficients when a sub-score is
+  // mis-signed in the training data — we treat them as pure magnitudes here, on
+  // the assumption that the v2 sub-scores are oriented "higher = better".)
+  let absSum = 0;
+  for (const k of required) { w[k] = Math.abs(w[k]); absSum += w[k]; }
+  if (absSum === 0) return null;
+  for (const k of required) w[k] /= absSum;
+  return {
+    weights: w,
+    n_races: Number(payload.n_races) || 0,
+    status: payload.status || 'fitted',
+    trained_at: payload.trained_at || null,
+  };
+}
+
 function compositeForHorse(horse, race, paceCtx, bias, opts) {
   const version = opts.version;
   const raceClassVal = classValueFor(race.type);
@@ -258,8 +304,12 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
   const freshScore = freshnessSubScore(horse, opts.today);
   const completeness = dataCompleteness(horse);
 
-  let composite = speedScore * 0.35 + classScore * 0.20 + paceScore * 0.15
-                + tjScore * 0.15 + biasScore * 0.10 + freshScore * 0.05;
+  // Use fitted v2 weights when supplied (and only for v2 engine); else fall
+  // back to the hand-picked defaults. Both shapes are {speed,class,pace,tj,bias,fresh}
+  // and both sum to 1 by construction.
+  const w = (version === 'v2' && opts.fittedWeights) ? opts.fittedWeights : DEFAULT_V2_WEIGHTS;
+  let composite = speedScore * w.speed + classScore * w.class + paceScore * w.pace
+                + tjScore   * w.tj    + biasScore  * w.bias  + freshScore * w.fresh;
 
   // Equipment change (both versions keep this; small directional effect).
   if (horse.equipmentChanges) composite = Math.min(100, composite + 5);
@@ -346,9 +396,24 @@ function scoreRace(race, opts) {
   const horses = (race.horses || []).filter(h => !h.scratched);
   if (!horses.length) return [];
 
+  // Resolve fitted weights (v2-only). Caller may pass either a parsed
+  // weights-file payload (we normalize it) or an already-normalized weights map.
+  let fittedWeights = null;
+  if (version === 'v2' && opts.fittedWeights) {
+    if (opts.fittedWeights.weights_normalized) {
+      // raw weights-file payload
+      const loaded = loadFittedWeights(opts.fittedWeights);
+      if (loaded) fittedWeights = loaded.weights;
+    } else if (typeof opts.fittedWeights.speed === 'number') {
+      fittedWeights = opts.fittedWeights;
+    }
+  }
+
   const paceCtx = buildPaceContext(horses);
   let scored = horses.map(h => compositeForHorse(h, race, paceCtx, opts.bias, {
-    version, today: opts.today, includeExpertInComposite: opts.includeExpertInComposite,
+    version, today: opts.today,
+    includeExpertInComposite: opts.includeExpertInComposite,
+    fittedWeights,
   }));
 
   if (version === 'v2') {
@@ -403,6 +468,8 @@ module.exports = {
   scoreCard,
   scoreToGrade,
   confidenceFor,
+  loadFittedWeights,
+  DEFAULT_V2_WEIGHTS,
   // pure pieces (exposed for tests and reuse)
   classValueFor,
   parseOddsToNum,

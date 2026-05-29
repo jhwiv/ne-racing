@@ -1,5 +1,68 @@
 # NE Racing — Changelog
 
+## v2.35.0 — PR #2 Checkpoint 3b: Fitted Weights Training Pipeline (2026-05-29)
+
+Completes PR #2's training arm. Adds a Python conditional-logit fitter that
+learns the v2 composite weights from race outcomes archived in the
+`RACE_HISTORY` KV namespace (PR #2 Checkpoint 1). The v2 engine auto-loads
+fitted weights at runtime when they meet a minimum-sample-size threshold, and
+falls back to the hand-picked defaults otherwise.
+
+### Added
+
+- `scripts/training/extract_features.js` — Node feature extractor. Pulls the
+  on-disk corpus (and, optionally, the Worker `/api/history` corpus), runs
+  `scoreRace(race, { version: 'v2' })` on each race with a recorded result,
+  and emits per-race JSONL containing the 6 sub-scores (speed, class, pace,
+  trainer/jockey, bias, freshness), the PP order, and the winner's index in
+  that order. Late-scratched winners and races without a recorded result are
+  skipped (with reason counts on stderr).
+- `scripts/training/fit_logit.py` — Python conditional-logit fitter. Uses
+  L-BFGS-B (scipy) to maximize
+  `ℓ(β) = Σ_i [ β·x_{i,winner(i)} − log Σ_k exp(β·x_{i,k}) ]`
+  with a small L2 ridge (default 0.001) for numerical stability. Outputs
+  `data/weights/v2.json` with: raw `beta`, Hessian-based standard errors,
+  `weights_normalized` (Σ=1, the actual production input), `n_races`,
+  date range, McFadden pseudo-R², top-1 hit rate, and a `status` field of
+  `fitted` or `insufficient`. Refuses to write fitted weights below
+  `--min-races` (default 200) unless `--write-anyway`.
+- `scripts/lib/scoring.js`:
+  - Exported `DEFAULT_V2_WEIGHTS` (the hand-picked
+    `{speed:0.35, class:0.20, pace:0.15, tj:0.15, bias:0.10, fresh:0.05}` vector).
+  - Exported `loadFittedWeights(payload)` to validate a weights-file payload
+    and normalize it for the engine.
+  - `scoreRace(race, opts)` now accepts `opts.fittedWeights`; when supplied
+    and version==='v2', it replaces the hand-picked weights in the composite.
+- `index.html` runtime:
+  - New `RailbirdFittedWeights` IIFE lazy-fetches `data/weights/v2.json` once
+    per session, caches the parsed payload, and enforces the 200-race minimum.
+  - `runAdviceEngine()` v2 delegation passes the cached payload as
+    `fittedWeights` to `RailbirdScoring.scoreRace`. Engine silently falls
+    back to defaults when no fitted weights are available.
+- `tests/fitted-weights.test.js` — 8 unit tests covering payload validation,
+  insufficient-sample rejection, absolute-value handling of negative
+  coefficients, default-weight passthrough, and version-gating (v1 ignores
+  fitted weights).
+
+### Behavior
+
+- Fitted weights are **gated on n_races >= 200**. Below that, the engine uses
+  the existing hand-picked defaults — no silent regressions on a small
+  early-meet corpus.
+- Conditional-logit coefficients can be negative if a sub-score is mis-signed
+  in training. The validator normalizes by absolute value and re-scales to
+  sum to 1, treating each sub-score as a positive influence (matches the
+  "higher = better" orientation the sub-scores are designed around).
+- Engine version remains opt-in via the existing A/B toggle. Default users
+  see v1; only those who flipped to v2 (Settings, `?engine=v2`, or sticky
+  device assignment) get the new weights.
+
+### Tests
+
+- 202/202 passing (previous 194 + 8 fitted-weights).
+
+---
+
 ## v2.34.1 — PR #2 Checkpoint 3a: Evaluate Any Bet UI (2026-05-29)
 
 User-facing UI for the bet evaluator landed in Checkpoint 2. Adds a bottom-
