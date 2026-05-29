@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260529-pr2-checkpoint-2-v2.34.0';
+var NE_APP_VERSION = '20260529-pr2-checkpoint-3a-v2.34.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.34.0-pr2-checkpoint-2';
+var RAILBIRD_VERSION = 'v2.34.1-pr2-checkpoint-3a';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -518,6 +518,762 @@ function confidenceFor(scored) {
   };
 })(typeof window !== "undefined" ? window : globalThis);
 /* RAILBIRD_SCORING_INLINE_END */
+
+/* RAILBIRD_BET_EVALUATOR_INLINE_BEGIN */
+/* RailbirdBetEvaluator — inlined from scripts/lib/bet_evaluator.js
+ * DO NOT EDIT THIS BLOCK BY HAND. Regenerate with:
+ *   node scripts/build/inline_bet_evaluator.js
+ */
+(function(global) {
+  "use strict";
+
+/**
+ * bet_evaluator.js — Pure bet evaluator for user-entered selections.
+ *
+ * Takes a race (or sequence of races for multi-race exotics), a user's
+ * selection, a structure (straight/box/key/wheel), and an amount, and returns:
+ *
+ *   - expectedValue:  $ EV per unit stake (after takeout)
+ *   - overlay:        verdict { isOverlay, marginPct, fairOdds, takenOdds }
+ *   - engineRank:     where the engine ranks the user's picks vs. the field
+ *   - probability:    estimated probability of the bet hitting
+ *   - cost:           total $ outlay for the chosen structure
+ *   - warnings:       array of structural-mistake flags (no anchor, all longshots,
+ *                     boxed favorites, etc.)
+ *   - confidence:     how reliable the verdict is, given data completeness
+ *
+ * Inputs use the same race/horse shape consumed by scoring.js. Caller is
+ * expected to have already run scoring.js to populate scored entries.
+ *
+ * Pricing model:
+ *   - WPS:           use scored probability × pool implied value, deducting takeout.
+ *   - Exotics:       use independent-event approximation (Harville for trifecta+)
+ *                    cross-checked against pool implied odds where available.
+ *   - Multi-race:    chain-multiply leg probabilities, then takeout once at end.
+ *
+ * Caveats are documented inline. This is a heuristic evaluator, not a tote-pool
+ * simulator. For backtesting it works against settled outcomes; for live use it
+ * relies on accurate morning-line + scored probabilities.
+ */
+
+// ── Takeout table ────────────────────────────────────────────────────────────
+// Sources (verified May 29, 2026):
+//   NYRA:       https://www.nyra.com/aqueduct/racing/betting-faq/
+//   NY State:   https://gaming.ny.gov/horse-racing-reports
+//   Charles Town: https://ironbetsracing.com/bet-charles-town/
+//   Churchill:  https://www.churchilldowns.com/come-to-the-track/visiting-information/event-information/
+//   Lone Star:  https://www.lonestarpark.com/wageringmenu/
+//
+// Keys are uppercase Equibase track codes. Rates are decimals (0.16 = 16%).
+// Missing entries fall back to NYRA defaults.
+const TAKEOUT_TABLE = {
+  // ── NYRA (Aqueduct, Belmont, Saratoga) ───────────────────────────────────
+  AQU: { win: 0.16, place: 0.16, show: 0.16, daily_double: 0.185, exacta: 0.185,
+         quinella: 0.185, trifecta: 0.24, superfecta: 0.24, pick3: 0.24, pick4: 0.24,
+         pick5: 0.15, pick6: 0.15, source: 'NYRA' },
+  BEL: { win: 0.16, place: 0.16, show: 0.16, daily_double: 0.185, exacta: 0.185,
+         quinella: 0.185, trifecta: 0.24, superfecta: 0.24, pick3: 0.24, pick4: 0.24,
+         pick5: 0.15, pick6: 0.15, source: 'NYRA' },
+  SAR: { win: 0.16, place: 0.16, show: 0.16, daily_double: 0.185, exacta: 0.185,
+         quinella: 0.185, trifecta: 0.24, superfecta: 0.24, pick3: 0.24, pick4: 0.24,
+         pick5: 0.15, pick6: 0.15, source: 'NYRA' },
+
+  // ── Charles Town (CT) ────────────────────────────────────────────────────
+  CT:  { win: 0.1725, place: 0.1725, show: 0.1725, daily_double: 0.19, exacta: 0.19,
+         quinella: 0.19, trifecta: 0.22, superfecta: 0.22, pick3: 0.22, pick4: 0.15,
+         pick5: 0.12, pick6: 0.12, source: 'Charles Town Hollywood Casino' },
+
+  // ── Churchill Downs (CD/CDX) ─────────────────────────────────────────────
+  CD:  { win: 0.175, place: 0.175, show: 0.175, daily_double: 0.22, exacta: 0.22,
+         quinella: 0.22, trifecta: 0.22, superfecta: 0.22, pick3: 0.22, pick4: 0.22,
+         pick5: 0.15, pick6: 0.22, source: 'Churchill Downs' },
+
+  // ── Lone Star (LS) ───────────────────────────────────────────────────────
+  LS:  { win: 0.18, place: 0.18, show: 0.18, daily_double: 0.21, exacta: 0.21,
+         quinella: 0.21, trifecta: 0.25, superfecta: 0.25, pick3: 0.25, pick4: 0.25,
+         pick5: 0.12, pick6: 0.12, source: 'Lone Star Park' },
+};
+
+// NYRA defaults are the fallback when a track isn't in the table.
+const TAKEOUT_FALLBACK = TAKEOUT_TABLE.AQU;
+
+function getTakeout(trackCode, poolName) {
+  const tbl = TAKEOUT_TABLE[(trackCode || '').toUpperCase()] || TAKEOUT_FALLBACK;
+  if (tbl[poolName] != null) return tbl[poolName];
+  return TAKEOUT_FALLBACK[poolName] != null ? TAKEOUT_FALLBACK[poolName] : 0.20;
+}
+
+function takeoutSource(trackCode) {
+  const tbl = TAKEOUT_TABLE[(trackCode || '').toUpperCase()];
+  return tbl ? tbl.source : `${TAKEOUT_FALLBACK.source} (fallback)`;
+}
+
+// ── Odds + probability helpers ──────────────────────────────────────────────
+
+/**
+ * Parse fractional odds ('7-2', '4/1', '9/5', '8') or decimal ('3.50') into
+ * an implied probability before takeout: prob = 1 / (decimal_odds).
+ *
+ * For fractional like '7-2', decimal = 7/2 + 1 = 4.5, so prob = 1/4.5 = 0.222.
+ */
+function parseOdds(oddsStr) {
+  if (oddsStr == null || oddsStr === '') return null;
+  if (typeof oddsStr === 'number' && isFinite(oddsStr)) {
+    return oddsStr > 0 ? 1 / (oddsStr + 1) : null;
+  }
+  const s = String(oddsStr).trim();
+
+  // Decimal odds like "3.50"
+  const decMatch = s.match(/^(\d+(?:\.\d+)?)$/);
+  if (decMatch) {
+    const dec = parseFloat(decMatch[1]);
+    return dec > 0 ? 1 / (dec + 1) : null;
+  }
+
+  // Fractional odds like "7-2", "7/2", "9-5"
+  const fracMatch = s.match(/^(\d+(?:\.\d+)?)[-/](\d+(?:\.\d+)?)$/);
+  if (fracMatch) {
+    const num = parseFloat(fracMatch[1]);
+    const den = parseFloat(fracMatch[2]);
+    if (den > 0 && num >= 0) {
+      const dec = (num / den) + 1;
+      return 1 / dec;
+    }
+  }
+  return null;
+}
+
+/**
+ * Inverse of parseOdds: prob (pre-takeout) → fractional odds string.
+ */
+function probToFractional(prob) {
+  if (!prob || prob <= 0 || prob >= 1) return null;
+  const dec = (1 / prob) - 1;
+  if (dec <= 0) return '1-99';
+  if (dec >= 99) return `${Math.round(dec)}-1`;
+  // Find a clean fractional approximation
+  const denominators = [1, 2, 5, 4, 3, 10];
+  let best = { err: Infinity, str: dec.toFixed(2) };
+  for (const den of denominators) {
+    const num = Math.round(dec * den);
+    if (num >= 0) {
+      const approx = num / den;
+      const err = Math.abs(approx - dec);
+      if (err < best.err) {
+        best = { err, str: `${num}-${den}` };
+      }
+    }
+  }
+  return best.str;
+}
+
+/**
+ * Convert win-pool probabilities to place/show probabilities using the
+ * Harville-style approximation. Cheap and serviceable for evaluator UI.
+ *
+ *   P(place) ≈ Σ_{j≠i}  p_i * p_j / (1 - p_i)         (i finishes 1st or 2nd)
+ *   P(show)  ≈ above + 3rd-place term
+ *
+ * Returns { place, show } for the target horse identified by pp.
+ */
+function placeShowProbabilities(scoredField, targetPp) {
+  const horses = scoredField.filter((h) => h && typeof h.prob === 'number' && h.prob > 0);
+  const target = horses.find((h) => h.pp === targetPp);
+  if (!target) return { place: null, show: null };
+
+  // Normalize in case scored probs don't sum to 1 (defensive)
+  const total = horses.reduce((s, h) => s + h.prob, 0);
+  if (total <= 0) return { place: null, show: null };
+  const probs = {};
+  horses.forEach((h) => { probs[h.pp] = h.prob / total; });
+  const pi = probs[targetPp];
+
+  // Place = P(1st) + P(2nd given not 1st)
+  let pPlace = pi;
+  for (const h of horses) {
+    if (h.pp === targetPp) continue;
+    const pj = probs[h.pp];
+    const denom = 1 - pj;
+    if (denom > 0) pPlace += pj * (pi / denom);
+  }
+
+  // Show = P(1st) + P(2nd) + P(3rd given not 1st or 2nd)
+  let pShow = pPlace;
+  for (const h1 of horses) {
+    if (h1.pp === targetPp) continue;
+    for (const h2 of horses) {
+      if (h2.pp === targetPp || h2.pp === h1.pp) continue;
+      const denom = (1 - probs[h1.pp]) * (1 - probs[h1.pp] - probs[h2.pp]);
+      if (denom > 0) {
+        pShow += probs[h1.pp] * probs[h2.pp] * (pi / denom);
+      }
+    }
+  }
+
+  return {
+    place: Math.min(0.999, pPlace),
+    show:  Math.min(0.999, pShow),
+  };
+}
+
+// ── Engine ranking helper ───────────────────────────────────────────────────
+
+/**
+ * Returns the 1-indexed rank of a horse (by pp) within a scored field, where
+ * 1 = engine's top pick. Ties broken arbitrarily but consistently.
+ */
+function engineRankOf(scoredField, pp) {
+  const sorted = scoredField
+    .filter((h) => h && typeof h.composite === 'number')
+    .slice()
+    .sort((a, b) => b.composite - a.composite);
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].pp === pp) return i + 1;
+  }
+  return null;
+}
+
+// ── WPS evaluator ───────────────────────────────────────────────────────────
+
+/**
+ * Evaluate a Win, Place, or Show bet on a single horse.
+ *
+ * Inputs:
+ *   race:      { trackCode, scoredField: [{pp, name, composite, prob, ml}] }
+ *   selection: { pp }
+ *   pool:      'win' | 'place' | 'show'
+ *   amount:    $ stake
+ *
+ * Returns: { type, cost, probability, expectedReturn, expectedValue, overlay,
+ *            engineRank, warnings, confidence }
+ */
+function evaluateWPS(race, selection, pool, amount) {
+  const scored = race.scoredField || [];
+  const horse = scored.find((h) => h.pp === selection.pp);
+  const warnings = [];
+
+  if (!horse) {
+    return { error: `Horse with pp=${selection.pp} not in field` };
+  }
+  if (!['win', 'place', 'show'].includes(pool)) {
+    return { error: `Unknown pool: ${pool}` };
+  }
+  if (!isFinite(amount) || amount <= 0) {
+    return { error: 'amount must be > 0' };
+  }
+
+  let prob;
+  if (pool === 'win') {
+    prob = horse.prob;
+  } else {
+    const ps = placeShowProbabilities(scored, horse.pp);
+    prob = pool === 'place' ? ps.place : ps.show;
+  }
+  if (prob == null) {
+    return { error: 'Could not compute probability — incomplete scoring data' };
+  }
+
+  const takeout = getTakeout(race.trackCode, pool);
+
+  // Implied odds from morning line (best available pre-pool estimate)
+  const mlProb = parseOdds(horse.ml);
+  const takenOddsProb = mlProb || prob; // fall back to model prob if no ML
+
+  // Decimal payoff per $1 stake = (1 - takeout) / takenOddsProb
+  const decimalPayoff = (1 - takeout) / Math.max(takenOddsProb, 0.001);
+  const expectedReturn = prob * decimalPayoff * amount;
+  const ev = expectedReturn - amount;
+
+  const fairOdds = probToFractional(prob);
+  const takenOdds = horse.ml || probToFractional(takenOddsProb);
+  const isOverlay = prob > takenOddsProb;
+  const marginPct = takenOddsProb > 0
+    ? ((prob - takenOddsProb) / takenOddsProb)
+    : 0;
+
+  // Structural warnings
+  const rank = engineRankOf(scored, horse.pp);
+  if (rank && rank > Math.ceil(scored.length / 2)) {
+    warnings.push({
+      level: 'warn',
+      code: 'low_rank',
+      msg: `Engine ranks #${horse.pp} ${rank} of ${scored.length} — below mid-field.`,
+    });
+  }
+  if (prob < 0.06) {
+    warnings.push({
+      level: 'warn',
+      code: 'long_shot',
+      msg: `Modeled win probability is only ${(prob * 100).toFixed(1)}% — verify your read.`,
+    });
+  }
+  if (pool === 'show' && prob > 0.45 && marginPct < 0.05) {
+    warnings.push({
+      level: 'info',
+      code: 'chalky_show',
+      msg: 'Heavy chalk in show pool — minimum payoff likely.',
+    });
+  }
+
+  return {
+    type: pool,
+    cost: amount,
+    probability: prob,
+    expectedReturn,
+    expectedValue: ev,
+    overlay: { isOverlay, marginPct, fairOdds, takenOdds },
+    engineRank: rank,
+    warnings,
+    confidence: confidenceFor(scored.length, horse.dataCompleteness),
+    takeout,
+    takeoutSource: takeoutSource(race.trackCode),
+  };
+}
+
+// ── Exotic evaluator (Exacta / Trifecta / Superfecta) ───────────────────────
+
+/**
+ * Generate all valid permutations for an exotic structure.
+ *
+ * structure ∈ { 'straight', 'box', 'key', 'wheel' }
+ * picks shape varies:
+ *   straight: { positions: [pp1, pp2, ...] }            order matters
+ *   box:      { horses:    [pp1, pp2, ...] }             all permutations
+ *   key:      { keyHorse: pp, withHorses: [pp, ...] }    key in 1st, others fill
+ *   wheel:    { positions: [ [pp,...], [pp,...], ...] }  ALL picks at each pos
+ */
+function generatePermutations(structure, picks, depth) {
+  const perms = [];
+
+  function permute(arr) {
+    if (arr.length <= 1) return [arr.slice()];
+    const out = [];
+    for (let i = 0; i < arr.length; i++) {
+      const rest = arr.slice(0, i).concat(arr.slice(i + 1));
+      for (const p of permute(rest)) {
+        out.push([arr[i]].concat(p));
+      }
+    }
+    return out;
+  }
+
+  function permuteOfSize(arr, size) {
+    if (size === 0) return [[]];
+    const out = [];
+    for (let i = 0; i < arr.length; i++) {
+      const rest = arr.slice(0, i).concat(arr.slice(i + 1));
+      for (const p of permuteOfSize(rest, size - 1)) {
+        out.push([arr[i]].concat(p));
+      }
+    }
+    return out;
+  }
+
+  function product(positionArrays) {
+    let acc = [[]];
+    for (const arr of positionArrays) {
+      const next = [];
+      for (const a of acc) {
+        for (const v of arr) {
+          if (a.indexOf(v) !== -1) continue; // no duplicate horses
+          next.push(a.concat([v]));
+        }
+      }
+      acc = next;
+    }
+    return acc;
+  }
+
+  if (structure === 'straight') {
+    if (picks.positions && picks.positions.length === depth) {
+      perms.push(picks.positions.slice());
+    }
+  } else if (structure === 'box') {
+    if (picks.horses && picks.horses.length >= depth) {
+      for (const p of permuteOfSize(picks.horses, depth)) perms.push(p);
+    }
+  } else if (structure === 'key') {
+    if (picks.keyHorse != null && picks.withHorses) {
+      // Key horse in 1st, others fill remaining positions in any order
+      const others = picks.withHorses.filter((p) => p !== picks.keyHorse);
+      if (others.length >= depth - 1) {
+        for (const tail of permuteOfSize(others, depth - 1)) {
+          perms.push([picks.keyHorse].concat(tail));
+        }
+      }
+    }
+  } else if (structure === 'wheel') {
+    if (picks.positions && picks.positions.length === depth) {
+      for (const p of product(picks.positions)) perms.push(p);
+    }
+  }
+  return perms;
+}
+
+/**
+ * Estimate the probability of a single permutation hitting using the Harville
+ * approximation:
+ *
+ *   P(A wins, B 2nd, C 3rd) = pA * (pB / (1 - pA)) * (pC / (1 - pA - pB))
+ */
+function harvilleProb(scoredField, perm) {
+  const probs = {};
+  let total = 0;
+  for (const h of scoredField) {
+    if (h && typeof h.prob === 'number' && h.prob > 0) {
+      probs[h.pp] = h.prob;
+      total += h.prob;
+    }
+  }
+  if (total <= 0) return 0;
+  // Normalize
+  for (const k of Object.keys(probs)) probs[k] /= total;
+
+  let p = 1;
+  let usedSum = 0;
+  for (const pp of perm) {
+    const pi = probs[pp];
+    if (pi == null) return 0;
+    const denom = 1 - usedSum;
+    if (denom <= 0) return 0;
+    p *= pi / denom;
+    usedSum += pi;
+  }
+  return p;
+}
+
+/**
+ * Evaluate an exotic (exacta/trifecta/superfecta) at a given structure.
+ *
+ * For pricing, we estimate a pool-implied payoff = avgWinPay / harvilleProb,
+ * then deduct takeout. This is a rough heuristic — real pool payoffs depend
+ * on bettor distribution which we can't see pre-race. Useful for ranking
+ * structures against each other, not for predicting exact $ payouts.
+ */
+function evaluateExotic(race, structure, picks, baseAmount, poolName) {
+  const depth = { exacta: 2, trifecta: 3, superfecta: 4 }[poolName];
+  if (!depth) return { error: `Unknown pool: ${poolName}` };
+
+  const scored = race.scoredField || [];
+  const warnings = [];
+  const perms = generatePermutations(structure, picks, depth);
+  if (perms.length === 0) {
+    return { error: `No valid permutations for ${structure} ${poolName}` };
+  }
+
+  // Cost = perms × baseAmount, but most tracks allow fractional base amounts
+  // for exotics ($1 exacta, $0.50 tri, $0.10 super). Caller provides baseAmount.
+  const cost = perms.length * baseAmount;
+
+  // Sum of permutation probabilities = total hit probability.
+  // Also track the highest single-permutation probability to estimate the
+  // expected per-winning-permutation payoff (only ONE permutation wins).
+  let hitProb = 0;
+  let perPermProbs = [];
+  for (const perm of perms) {
+    const pp = harvilleProb(scored, perm);
+    hitProb += pp;
+    perPermProbs.push(pp);
+  }
+  hitProb = Math.min(0.999, hitProb);
+
+  // Pricing: per fair-pool theory, gross payoff per $1 wagered on the
+  // *winning* permutation = (1 - takeout) / prob_of_that_permutation.
+  // We compute the probability-weighted expected payoff across our perms.
+  const takeout = getTakeout(race.trackCode, poolName);
+  let expectedReturn = 0;
+  for (let i = 0; i < perms.length; i++) {
+    const pp = perPermProbs[i];
+    if (pp <= 0) continue;
+    // If THIS permutation wins, we collect baseAmount * grossPayoffPerUnit
+    // (the other perms don't pay). Each perm has its own fair payoff.
+    const grossPayoff = baseAmount * ((1 - takeout) / pp);
+    expectedReturn += pp * grossPayoff;
+  }
+  // Representative "per-win" payoff: weighted average over winning perms.
+  const grossPayoffPerUnit = hitProb > 0 ? (expectedReturn / hitProb) / baseAmount : 0;
+  const ev = expectedReturn - cost;
+
+  // Engine rank summary across all horses used
+  const allHorses = new Set();
+  if (picks.positions) picks.positions.forEach((p) => {
+    if (Array.isArray(p)) p.forEach((pp) => allHorses.add(pp));
+    else allHorses.add(p);
+  });
+  if (picks.horses)    picks.horses.forEach((pp) => allHorses.add(pp));
+  if (picks.keyHorse != null) allHorses.add(picks.keyHorse);
+  if (picks.withHorses) picks.withHorses.forEach((pp) => allHorses.add(pp));
+
+  const ranks = Array.from(allHorses).map((pp) => ({
+    pp, rank: engineRankOf(scored, pp),
+  }));
+
+  // ── Structural warnings ──
+  if (structure === 'box' && picks.horses && picks.horses.length === depth) {
+    // Boxing the minimum is a $X bet — no extra value vs straight ticket.
+    warnings.push({
+      level: 'info',
+      code: 'minimal_box',
+      msg: `Boxing only ${depth} horses in a ${poolName} — same probability as a straight ticket, ${depth}× cost.`,
+    });
+  }
+  if (structure === 'box' && picks.horses && picks.horses.length >= depth) {
+    // Box with all longshots: low hit rate
+    const fieldProbs = picks.horses.map((pp) => {
+      const h = scored.find((x) => x.pp === pp);
+      return h && typeof h.prob === 'number' ? h.prob : 0;
+    });
+    const noFavorite = fieldProbs.every((p) => p < 0.18);
+    if (noFavorite) {
+      warnings.push({
+        level: 'warn',
+        code: 'no_anchor',
+        msg: 'No horse in your box has > 18% win probability — boxes without an anchor rarely cash.',
+      });
+    }
+  }
+  if (structure === 'key' && picks.keyHorse != null) {
+    const key = scored.find((h) => h.pp === picks.keyHorse);
+    if (key && key.prob != null && key.prob < 0.12) {
+      warnings.push({
+        level: 'warn',
+        code: 'weak_key',
+        msg: `Key horse #${picks.keyHorse} only has ${(key.prob * 100).toFixed(1)}% win probability — keys work best on heavier favorites.`,
+      });
+    }
+  }
+  if (cost > 50 && hitProb < 0.10) {
+    warnings.push({
+      level: 'warn',
+      code: 'expensive_long_shot',
+      msg: `Ticket costs $${cost.toFixed(2)} with only ${(hitProb * 100).toFixed(1)}% hit probability — high variance.`,
+    });
+  }
+
+  return {
+    type: poolName,
+    structure,
+    permutations: perms.length,
+    baseAmount,
+    cost,
+    probability: hitProb,
+    expectedReturn,
+    expectedValue: ev,
+    expectedPayoffPerWin: grossPayoffPerUnit * baseAmount,
+    engineRanks: ranks,
+    warnings,
+    confidence: confidenceFor(scored.length, null),
+    takeout,
+    takeoutSource: takeoutSource(race.trackCode),
+  };
+}
+
+// ── Multi-race evaluator (Pick 3/4/5/6) ─────────────────────────────────────
+
+/**
+ * Evaluate a sequential multi-race exotic.
+ *
+ * legs is an array of:
+ *   { race: <scored race object>, horses: [pp, ...] }
+ *
+ * Cost = product of leg sizes × baseAmount.
+ * Probability = product of (sum of selected horse probs) per leg.
+ */
+function evaluateMultiRace(legs, baseAmount, poolName) {
+  if (!Array.isArray(legs) || legs.length < 3) {
+    return { error: 'Multi-race exotics require at least 3 legs' };
+  }
+  const validPools = { pick3: 3, pick4: 4, pick5: 5, pick6: 6 };
+  if (!validPools[poolName] || validPools[poolName] !== legs.length) {
+    return { error: `Leg count ${legs.length} doesn't match ${poolName}` };
+  }
+
+  const warnings = [];
+  let totalCombos = 1;
+  let chainProb = 1;
+  const legSummaries = [];
+  // legHorseProbs[i] = map of pp → normalized probability for leg i.
+  // Used to enumerate fair payoffs across all winning combinations.
+  const legHorseProbs = [];
+
+  for (let i = 0; i < legs.length; i++) {
+    const leg = legs[i];
+    const scored = leg.race.scoredField || [];
+    const totalSelected = leg.horses.length;
+    if (totalSelected === 0) {
+      return { error: `Leg ${i + 1} has no horses selected` };
+    }
+
+    // Build the prob map across the full field (for fair-payoff calc), and
+    // separately compute the probability mass of the selected subset.
+    const probMap = {};
+    let fieldTotal = 0;
+    for (const h of scored) {
+      if (h && typeof h.prob === 'number' && h.prob > 0) {
+        probMap[h.pp] = h.prob;
+        fieldTotal += h.prob;
+      }
+    }
+    if (fieldTotal > 0) {
+      for (const k of Object.keys(probMap)) probMap[k] /= fieldTotal;
+    }
+    legHorseProbs.push(probMap);
+
+    let legProb = 0;
+    for (const pp of leg.horses) {
+      if (probMap[pp] != null) legProb += probMap[pp];
+    }
+    legProb = Math.min(0.999, legProb);
+    chainProb *= legProb;
+    totalCombos *= totalSelected;
+    legSummaries.push({
+      leg: i + 1,
+      horses: leg.horses.slice(),
+      legProb,
+      selected: totalSelected,
+      fieldSize: scored.length,
+    });
+
+    // Warnings on individual legs
+    if (totalSelected === 1) {
+      const h = scored.find((x) => x.pp === leg.horses[0]);
+      if (h && h.prob != null && h.prob < 0.30) {
+        warnings.push({
+          level: 'warn',
+          code: 'single_long',
+          msg: `Leg ${i + 1} is a single on a ${(h.prob * 100).toFixed(0)}% horse — high break-out risk.`,
+        });
+      }
+    }
+    if (totalSelected > scored.length / 2) {
+      warnings.push({
+        level: 'info',
+        code: 'wide_leg',
+        msg: `Leg ${i + 1} uses ${totalSelected} of ${scored.length} horses — wide coverage, expensive.`,
+      });
+    }
+  }
+
+  // Use the first leg's track code for takeout lookup (cross-track Pick 5s mix
+  // tracks, but takeout follows the host; for simplicity use first leg).
+  const hostTrack = legs[0].race.trackCode;
+  const takeout = getTakeout(hostTrack, poolName);
+
+  const cost = totalCombos * baseAmount;
+
+  // Fair-pricing expected return: enumerate every combination we're covering,
+  // and for each, expected payout = combo_prob × baseAmount × (1 - takeout) / combo_prob
+  // = baseAmount × (1 - takeout). So total ER over all our combos =
+  // (number of combos with positive prob) × baseAmount × (1 - takeout).
+  // But that overstates because not all combos have positive prob — we need
+  // to count only combinations whose combo_prob > 0 in the model.
+  //
+  // Equivalently: ER = baseAmount * (1 - takeout) * (#valid_combos),
+  // where a combo is valid iff every leg horse has positive model probability.
+  //
+  // Cleaner derivation: ER = Σ_{combos} P(combo) × [baseAmount × (1-t) / P(combo)]
+  //                       = baseAmount × (1-t) × #valid_combos.
+  let validCombos = 0;
+  function countValid(legIdx, alive) {
+    if (legIdx === legs.length) {
+      if (alive) validCombos++;
+      return;
+    }
+    const probMap = legHorseProbs[legIdx];
+    for (const pp of legs[legIdx].horses) {
+      const p = probMap[pp];
+      countValid(legIdx + 1, alive && p != null && p > 0);
+    }
+  }
+  countValid(0, true);
+  const expectedReturn = baseAmount * (1 - takeout) * validCombos;
+  // Representative "per win" payoff = expected return / chain hit probability.
+  const grossPayoffPerUnit = chainProb > 0 ? (expectedReturn / chainProb) / baseAmount : 0;
+  const ev = expectedReturn - cost;
+
+  if (cost > 200 && chainProb < 0.05) {
+    warnings.push({
+      level: 'warn',
+      code: 'high_cost_low_prob',
+      msg: `Ticket costs $${cost.toFixed(0)} with only ${(chainProb * 100).toFixed(2)}% chain probability.`,
+    });
+  }
+
+  return {
+    type: poolName,
+    legs: legSummaries,
+    combinations: totalCombos,
+    baseAmount,
+    cost,
+    probability: chainProb,
+    expectedReturn,
+    expectedValue: ev,
+    expectedPayoffPerWin: grossPayoffPerUnit * baseAmount,
+    warnings,
+    confidence: confidenceFor((legs[0].race.scoredField || []).length, null),
+    takeout,
+    takeoutSource: takeoutSource(hostTrack),
+  };
+}
+
+// ── Confidence helper ───────────────────────────────────────────────────────
+function confidenceFor(fieldSize, dataCompleteness) {
+  // Small fields are less reliable for Harville approximations.
+  // Data completeness < 0.7 means we're missing speed figs or pace data.
+  let c = 1.0;
+  if (fieldSize < 6) c *= 0.85;
+  if (fieldSize > 12) c *= 0.95;
+  if (typeof dataCompleteness === 'number' && dataCompleteness < 0.7) c *= 0.8;
+  return Math.max(0.3, Math.min(1, c));
+}
+
+// ── Top-level dispatcher ────────────────────────────────────────────────────
+
+/**
+ * Evaluate a user-entered bet. Single entry point for the UI.
+ *
+ * bet shape:
+ *   {
+ *     pool: 'win'|'place'|'show'|'exacta'|'trifecta'|'superfecta'|
+ *           'pick3'|'pick4'|'pick5'|'pick6',
+ *     race:  scored race object (for WPS/exotic),
+ *     legs:  [{race, horses}] (for multi-race),
+ *     selection: { pp } | { positions } | { horses } | { keyHorse, withHorses },
+ *     structure: 'straight'|'box'|'key'|'wheel',
+ *     amount: stake (WPS) or base amount (exotics),
+ *   }
+ */
+function evaluateBet(bet) {
+  const pool = String(bet.pool || '').toLowerCase();
+  if (['win', 'place', 'show'].includes(pool)) {
+    return evaluateWPS(bet.race, bet.selection, pool, bet.amount);
+  }
+  if (['exacta', 'trifecta', 'superfecta'].includes(pool)) {
+    return evaluateExotic(bet.race, bet.structure || 'straight', bet.selection, bet.amount, pool);
+  }
+  if (['pick3', 'pick4', 'pick5', 'pick6'].includes(pool)) {
+    return evaluateMultiRace(bet.legs, bet.amount, pool);
+  }
+  return { error: `Unknown pool: ${pool}` };
+}
+  global.RailbirdBetEvaluator = {
+    evaluateBet: evaluateBet,
+    evaluateWPS: evaluateWPS,
+    evaluateExotic: evaluateExotic,
+    evaluateMultiRace: evaluateMultiRace,
+    generatePermutations: generatePermutations,
+    harvilleProb: harvilleProb,
+    placeShowProbabilities: placeShowProbabilities,
+    engineRankOf: engineRankOf,
+    parseOdds: parseOdds,
+    probToFractional: probToFractional,
+    getTakeout: getTakeout,
+    takeoutSource: takeoutSource,
+    TAKEOUT_TABLE: TAKEOUT_TABLE,
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+/* RAILBIRD_BET_EVALUATOR_INLINE_END */
+
 
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
@@ -3889,6 +4645,145 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .bet-custom-row input:focus { outline: none; border-color: var(--color-racing-green); }
 .bet-picker-actions { display: flex; gap: 0.5rem; }
 .bet-picker-actions .btn { flex: 1; }
+
+/* =========================================================
+   PR #2: Evaluate Any Bet modal (mobile bottom sheet)
+   ========================================================= */
+.bet-eval-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 9999;
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+.bet-eval-overlay.hidden { display: none; }
+.bet-eval-sheet {
+  background: var(--color-white); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%; max-width: 480px;
+  max-height: 92vh; display: flex; flex-direction: column;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.28);
+  animation: slideUp 0.22s ease;
+}
+.bet-eval-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.85rem 1rem 0.65rem;
+  border-bottom: 1px solid #eee;
+  background: linear-gradient(135deg, #0F1A14 0%, #1a2820 100%);
+  color: var(--color-gold);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.bet-eval-header h3 {
+  margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 700;
+  letter-spacing: 0.04em; color: var(--color-gold);
+}
+.bet-eval-close {
+  background: transparent; border: 0; color: var(--color-gold);
+  font-size: 1.5rem; line-height: 1; padding: 0 0.25rem; cursor: pointer;
+}
+.bet-eval-body { padding: 0.85rem 1rem 1.1rem; overflow-y: auto; }
+.bet-eval-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  margin-bottom: 0.65rem;
+}
+.bet-eval-row label {
+  font-size: 0.75rem; font-weight: 700; color: var(--color-muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  min-width: 78px;
+}
+.bet-eval-row select, .bet-eval-row input {
+  flex: 1; padding: 0.45rem 0.55rem;
+  border: 1.5px solid #e0e0e0; border-radius: var(--radius-sm);
+  font-family: var(--font-sans); font-size: 0.88rem;
+  background: var(--color-white); color: var(--color-slate);
+}
+.bet-eval-row select:focus, .bet-eval-row input:focus {
+  outline: none; border-color: var(--color-racing-green);
+}
+.bet-eval-horses, .bet-eval-legs {
+  margin: 0.45rem 0 0.75rem;
+  max-height: 36vh; overflow-y: auto;
+  border: 1px solid #eee; border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  background: #fafafa;
+}
+.bet-eval-horses:empty, .bet-eval-legs:empty { display: none; }
+.bet-eval-horse-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.35rem 0.4rem; border-bottom: 1px solid #f0f0f0;
+  font-size: 0.82rem;
+}
+.bet-eval-horse-row:last-child { border-bottom: 0; }
+.bet-eval-horse-row .pp-badge {
+  display: inline-block; min-width: 22px; text-align: center;
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.75rem;
+  padding: 1px 5px; border-radius: 3px;
+  background: var(--color-racing-green); color: #fff;
+}
+.bet-eval-horse-row .horse-name { flex: 1; font-weight: 600; color: var(--color-slate); }
+.bet-eval-horse-row .horse-ml { font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-muted); }
+.bet-eval-horse-row label.role {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  font-size: 0.68rem; font-weight: 700; color: var(--color-muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  cursor: pointer; user-select: none;
+}
+.bet-eval-horse-row label.role input { margin: 0; }
+.bet-eval-leg {
+  border: 1px solid #e8e8e8; border-radius: var(--radius-sm);
+  padding: 0.4rem 0.55rem; margin-bottom: 0.5rem;
+  background: var(--color-white);
+}
+.bet-eval-leg-title {
+  font-size: 0.72rem; font-weight: 800; color: var(--color-racing-green);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 0.35rem;
+}
+.bet-eval-leg .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.bet-eval-leg .chip-pp {
+  padding: 3px 8px; border-radius: 12px; border: 1.5px solid #ddd;
+  font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700;
+  background: var(--color-white); color: var(--color-slate); cursor: pointer;
+  transition: all 0.12s;
+}
+.bet-eval-leg .chip-pp.active {
+  background: var(--color-racing-green); color: #fff; border-color: var(--color-racing-green);
+}
+.bet-eval-actions { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+.bet-eval-actions .btn { flex: 1; }
+.bet-eval-result {
+  margin-top: 0.85rem; padding: 0.85rem 0.9rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #f7f4ea 0%, #fffaf0 100%);
+  border: 1px solid var(--color-gold);
+  font-size: 0.85rem;
+}
+.bet-eval-result.hidden { display: none; }
+.bet-eval-result .res-headline {
+  font-family: var(--font-display); font-size: 1.05rem; font-weight: 700;
+  color: var(--color-racing-green); margin-bottom: 0.35rem;
+}
+.bet-eval-result .res-headline .verdict { float: right; font-size: 0.75rem; }
+.bet-eval-result .res-headline .verdict.overlay { color: #047857; }
+.bet-eval-result .res-headline .verdict.underlay { color: var(--color-burgundy); }
+.bet-eval-result .res-headline .verdict.fair { color: var(--color-muted); }
+.bet-eval-result .res-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem 0.85rem;
+  margin: 0.4rem 0;
+}
+.bet-eval-result .res-grid .lab {
+  font-size: 0.66rem; font-weight: 800; color: var(--color-muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.bet-eval-result .res-grid .val {
+  font-family: var(--font-mono); font-size: 0.92rem; font-weight: 700; color: var(--color-slate);
+}
+.bet-eval-result .res-warnings {
+  margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed #e0d8b8;
+  font-size: 0.76rem; color: var(--color-burgundy);
+}
+.bet-eval-result .res-warnings ul { margin: 0.2rem 0 0 1rem; padding: 0; }
+.bet-eval-result .res-footer {
+  margin-top: 0.45rem; font-size: 0.68rem; color: var(--color-muted);
+  font-style: italic;
+}
 
 /* Quick-select chips on BETS tab straight bet entries */
 .bet-quick-chips { display: flex; gap: 3px; flex-wrap: wrap; width: 100%; margin-top: 4px; }
@@ -7916,6 +8811,59 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     </div>
   </div>
 </div>
+<!-- PR #2: Evaluate Any Bet modal — user-entered bet evaluator -->
+<div id="bet-eval-overlay" class="bet-eval-overlay hidden" onclick="closeBetEvaluator(event)" role="dialog" aria-modal="true" aria-labelledby="bet-eval-title">
+  <div class="bet-eval-sheet" onclick="event.stopPropagation()">
+    <div class="bet-eval-header">
+      <h3 id="bet-eval-title">Evaluate Any Bet</h3>
+      <button class="bet-eval-close" onclick="closeBetEvaluator()" aria-label="Close">×</button>
+    </div>
+    <div class="bet-eval-body">
+      <div class="bet-eval-row">
+        <label for="bet-eval-race">Race</label>
+        <select id="bet-eval-race" onchange="onBetEvalRaceChange()"></select>
+      </div>
+      <div class="bet-eval-row">
+        <label for="bet-eval-pool">Pool</label>
+        <select id="bet-eval-pool" onchange="onBetEvalPoolChange()">
+          <option value="win">Win</option>
+          <option value="place">Place</option>
+          <option value="show">Show</option>
+          <option value="exacta">Exacta</option>
+          <option value="trifecta">Trifecta</option>
+          <option value="superfecta">Superfecta</option>
+          <option value="pick3">Pick 3</option>
+          <option value="pick4">Pick 4</option>
+          <option value="pick5">Pick 5</option>
+          <option value="pick6">Pick 6</option>
+        </select>
+      </div>
+      <!-- Structure picker (visible only for exotics) -->
+      <div class="bet-eval-row" id="bet-eval-structure-row" style="display:none">
+        <label for="bet-eval-structure">Structure</label>
+        <select id="bet-eval-structure" onchange="onBetEvalStructureChange()">
+          <option value="straight">Straight</option>
+          <option value="box">Box</option>
+          <option value="key">Key</option>
+          <option value="wheel">Wheel</option>
+        </select>
+      </div>
+      <!-- Horse picker (single race) -->
+      <div id="bet-eval-horses" class="bet-eval-horses"></div>
+      <!-- Multi-race legs (Pick 3/4/5/6) -->
+      <div id="bet-eval-legs" class="bet-eval-legs"></div>
+      <div class="bet-eval-row">
+        <label for="bet-eval-amount">Amount $</label>
+        <input id="bet-eval-amount" type="number" min="0.50" step="0.50" value="2" inputmode="decimal" />
+      </div>
+      <div class="bet-eval-actions">
+        <button class="btn btn-ghost btn-sm" onclick="closeBetEvaluator()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="runBetEvaluation()">Evaluate</button>
+      </div>
+      <div id="bet-eval-result" class="bet-eval-result hidden"></div>
+    </div>
+  </div>
+</div>
 <!-- Winner celebration overlay -->
 <div id="winner-overlay" onclick="dismissWinnerOverlay(event)">
   <div class="winner-confetti" id="winner-confetti"></div>
@@ -8285,6 +9233,25 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           </div>
           <div class="wl-chevron">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F1A14" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        </button>
+      </div>
+
+      <!-- PR #2: Evaluate Any Bet — user-entered bet evaluator -->
+      <div style="padding: 0.4rem 0.15rem 0">
+        <button class="wizard-launch-btn" onclick="openBetEvaluator()" style="background:linear-gradient(135deg,#0F1A14 0%,#1a2820 100%);border:1px solid #D4A849">
+          <div class="wl-icon">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M3 3v18h18" stroke="#D4A849" stroke-width="2" stroke-linecap="round"/>
+              <path d="M7 14l4-4 3 3 5-6" stroke="#D4A849" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </div>
+          <div style="flex:1">
+            <div class="wl-text" style="color:#D4A849">Evaluate Any Bet</div>
+            <div class="wl-sub" style="color:rgba(212,168,73,0.7)">Score your own pick · EV · overlay · warnings</div>
+          </div>
+          <div class="wl-chevron">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4A849" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </div>
         </button>
       </div>
@@ -10144,6 +11111,457 @@ function closeBetAmountPicker(e) {
   el('bet-amount-picker-overlay').classList.add('hidden');
   if (e && e.target && e.target.id === 'bet-amount-picker-overlay') _pendingBet = null;
 }
+
+// =========================================================
+// PR #2: Evaluate Any Bet — user-entered bet evaluator
+// Uses window.RailbirdBetEvaluator (inlined IIFE).
+// =========================================================
+var _betEvalState = {
+  selections: {},      // race-mode: pp -> 'key' | 'with' | 'on' | null
+  legSelections: {},   // multi-race: legIdx -> Set<pp>
+};
+
+// Convert advice items from _adviceByRaceId into the scoredField shape the
+// evaluator expects: {pp, prob, ml, composite, dataCompleteness}
+function _betEvalAdviceToScoredField(adviceList) {
+  if (!Array.isArray(adviceList)) return [];
+  return adviceList.map(function(a) {
+    var h = a.horse || {};
+    return {
+      pp: h.pp,
+      name: h.name || h.horseName || '',
+      prob: (typeof a.modelProb === 'number') ? a.modelProb : null,
+      ml: h.ml || h.morningLine || '',
+      composite: (typeof a.score === 'number') ? a.score : 0,
+      dataCompleteness: (typeof a.completeness === 'number') ? a.completeness : 1,
+    };
+  }).filter(function(r) { return r.pp != null && r.prob != null; });
+}
+
+function _betEvalCurrentRaces() {
+  var td = getTrackData();
+  if (!td || !Array.isArray(td.races)) return [];
+  return td.races.slice().sort(function(a,b) {
+    return (parseInt(a.raceNumber || a.number || 0,10)) - (parseInt(b.raceNumber || b.number || 0,10));
+  });
+}
+
+function openBetEvaluator() {
+  // Ensure advice cache is populated for the current track.
+  try {
+    if (!Object.keys(_adviceByRaceId || {}).length) runAdviceEngine();
+  } catch (e) { console.warn('[bet-eval] runAdviceEngine failed:', e); }
+
+  _betEvalState = { selections: {}, legSelections: {} };
+
+  // Populate the race dropdown
+  var raceSel = el('bet-eval-race');
+  if (raceSel) {
+    var races = _betEvalCurrentRaces();
+    if (!races.length) {
+      raceSel.innerHTML = '<option value="">(no races for active track)</option>';
+    } else {
+      raceSel.innerHTML = races.map(function(r) {
+        var num = r.raceNumber || r.number || '?';
+        var lbl = 'Race ' + num + (r.type ? ' — ' + r.type : '');
+        return '<option value="' + (r.id || r.raceId || ('r'+num)) + '">' + lbl.replace(/</g,'&lt;') + '</option>';
+      }).join('');
+    }
+  }
+
+  // Reset pool and structure
+  var pool = el('bet-eval-pool'); if (pool) pool.value = 'win';
+  var struct = el('bet-eval-structure'); if (struct) struct.value = 'straight';
+  var amt = el('bet-eval-amount'); if (amt) amt.value = '2';
+  var res = el('bet-eval-result'); if (res) { res.classList.add('hidden'); res.innerHTML = ''; }
+
+  onBetEvalPoolChange();   // syncs structure-row + horse/leg panels for current pool
+  el('bet-eval-overlay').classList.remove('hidden');
+}
+
+function closeBetEvaluator(e) {
+  // Allow inline close button calls (no event arg) and overlay-backdrop clicks.
+  // For backdrop clicks, only close when the click hit the overlay itself, not the sheet.
+  if (e && e.target && e.target.id && e.target.id !== 'bet-eval-overlay') {
+    // Click came from inside the sheet via bubbling; ignore.
+    return;
+  }
+  el('bet-eval-overlay').classList.add('hidden');
+}
+
+function _betEvalPool() { var p = el('bet-eval-pool'); return p ? p.value : 'win'; }
+function _betEvalStructure() { var s = el('bet-eval-structure'); return s ? s.value : 'straight'; }
+function _betEvalIsExotic(pool) { return ['exacta','trifecta','superfecta'].indexOf(pool) >= 0; }
+function _betEvalIsMulti(pool) { return ['pick3','pick4','pick5','pick6'].indexOf(pool) >= 0; }
+function _betEvalLegCount(pool) { return { pick3:3, pick4:4, pick5:5, pick6:6 }[pool] || 0; }
+
+function onBetEvalPoolChange() {
+  var pool = _betEvalPool();
+  var structRow = el('bet-eval-structure-row');
+  var horsesEl = el('bet-eval-horses');
+  var legsEl = el('bet-eval-legs');
+  var raceRow = el('bet-eval-race') ? el('bet-eval-race').parentElement : null;
+
+  _betEvalState.selections = {};
+  _betEvalState.legSelections = {};
+
+  if (_betEvalIsMulti(pool)) {
+    if (structRow) structRow.style.display = 'none';
+    if (horsesEl) horsesEl.innerHTML = '';
+    if (raceRow) raceRow.style.display = 'none';
+    renderBetEvalLegs(pool);
+  } else {
+    if (legsEl) legsEl.innerHTML = '';
+    if (raceRow) raceRow.style.display = 'flex';
+    if (structRow) structRow.style.display = _betEvalIsExotic(pool) ? 'flex' : 'none';
+    renderBetEvalHorses();
+  }
+}
+
+function onBetEvalRaceChange() {
+  _betEvalState.selections = {};
+  renderBetEvalHorses();
+}
+
+function onBetEvalStructureChange() {
+  _betEvalState.selections = {};
+  renderBetEvalHorses();
+}
+
+// Render single-race horse picker. UI varies by pool/structure:
+//   win/place/show → single radio
+//   exacta/trifecta/superfecta straight → ordered numeric position input next to each
+//   box → checkbox list
+//   key → one 'key' radio + checkbox 'with' set
+//   wheel → simplified: treat as box (positional wheel needs richer UI; punt with note)
+function renderBetEvalHorses() {
+  var horsesEl = el('bet-eval-horses');
+  if (!horsesEl) return;
+  var pool = _betEvalPool();
+  if (_betEvalIsMulti(pool)) { horsesEl.innerHTML = ''; return; }
+
+  var raceSel = el('bet-eval-race');
+  var raceId = raceSel ? raceSel.value : '';
+  var advice = (raceId && _adviceByRaceId[raceId]) || [];
+  if (!advice.length) {
+    horsesEl.innerHTML = '<div class="text-muted text-sm" style="padding:0.5rem;">No scored field for this race. Open the Advice tab first to populate.</div>';
+    return;
+  }
+
+  var structure = _betEvalStructure();
+  var isWPS = ['win','place','show'].indexOf(pool) >= 0;
+
+  var html = advice.slice().sort(function(a,b) { return (a.horse.pp||0) - (b.horse.pp||0); }).map(function(a) {
+    var h = a.horse || {};
+    var pp = h.pp;
+    var name = (h.name || h.horseName || '').replace(/</g,'&lt;');
+    var ml = h.ml || h.morningLine || '';
+    var control = '';
+    if (isWPS) {
+      control = '<label class="role"><input type="radio" name="bet-eval-pick" value="' + pp + '" onchange="_betEvalPickRadio(' + pp + ')" /> Pick</label>';
+    } else if (pool === 'exacta' || pool === 'trifecta' || pool === 'superfecta') {
+      if (structure === 'straight') {
+        control = '<input type="number" min="1" step="1" placeholder="pos" style="width:54px;" oninput="_betEvalPosInput(' + pp + ', this.value)" />';
+      } else if (structure === 'box' || structure === 'wheel') {
+        control = '<label class="role"><input type="checkbox" onchange="_betEvalToggle(' + pp + ', this.checked, \'on\')" /> Include</label>';
+      } else if (structure === 'key') {
+        control = '<label class="role"><input type="radio" name="bet-eval-key" onchange="_betEvalKeyRadio(' + pp + ')" /> Key</label>' +
+                  '<label class="role" style="margin-left:6px;"><input type="checkbox" onchange="_betEvalToggle(' + pp + ', this.checked, \'with\')" /> With</label>';
+      }
+    }
+    return '<div class="bet-eval-horse-row">' +
+      '<span class="pp-badge">' + pp + '</span>' +
+      '<span class="horse-name">' + (name || ('#'+pp)) + '</span>' +
+      '<span class="horse-ml">' + (ml ? ml : '') + '</span>' +
+      control +
+      '</div>';
+  }).join('');
+
+  var note = '';
+  if ((pool === 'exacta' || pool === 'trifecta' || pool === 'superfecta') && structure === 'straight') {
+    note = '<div class="text-muted text-sm" style="padding:0.3rem 0.4rem 0.45rem;">Enter finishing position (1, 2, 3, …) next to each horse you want in that spot.</div>';
+  } else if (structure === 'wheel') {
+    note = '<div class="text-muted text-sm" style="padding:0.3rem 0.4rem 0.45rem;">Wheel: pick the horses to use at every position (treated as a full box across selected runners).</div>';
+  }
+  horsesEl.innerHTML = note + html;
+}
+
+function _betEvalPickRadio(pp) {
+  _betEvalState.selections = {}; _betEvalState.selections[pp] = 'on';
+}
+function _betEvalKeyRadio(pp) {
+  // Strip any existing key
+  Object.keys(_betEvalState.selections).forEach(function(k) {
+    if (_betEvalState.selections[k] === 'key') delete _betEvalState.selections[k];
+  });
+  _betEvalState.selections[pp] = 'key';
+}
+function _betEvalToggle(pp, checked, role) {
+  if (checked) _betEvalState.selections[pp] = role;
+  else delete _betEvalState.selections[pp];
+}
+function _betEvalPosInput(pp, val) {
+  var n = parseInt(val, 10);
+  if (!val || isNaN(n) || n < 1) { delete _betEvalState.selections[pp]; return; }
+  _betEvalState.selections[pp] = 'pos:' + n;
+}
+
+// Multi-race legs: pick chips for each leg (from active track), starting at the
+// active race. User toggles individual horse chips per leg.
+function renderBetEvalLegs(pool) {
+  var legsEl = el('bet-eval-legs');
+  if (!legsEl) return;
+  var n = _betEvalLegCount(pool);
+  var races = _betEvalCurrentRaces();
+  if (!races.length) { legsEl.innerHTML = '<div class="text-muted text-sm" style="padding:0.5rem;">No races on the active track.</div>'; return; }
+
+  var startIdx = 0; // default to first available race; user can reassign per leg below
+  var html = '';
+  html += '<div class="text-muted text-sm" style="margin-bottom:0.4rem;">Pick the horses you want in each leg. Default starts at the earliest race; change the starting race below.</div>';
+  html += '<div class="bet-eval-row"><label>Start Race</label>' +
+    '<select id="bet-eval-start-race" onchange="renderBetEvalLegs(_betEvalPool())">' +
+    races.map(function(r, i) {
+      var num = r.raceNumber || r.number || (i+1);
+      return '<option value="' + i + '">Race ' + num + '</option>';
+    }).join('') +
+    '</select></div>';
+
+  // Read current start selection if it already exists
+  var existing = el('bet-eval-start-race');
+  if (existing) startIdx = parseInt(existing.value || '0', 10) || 0;
+
+  for (var i = 0; i < n; i++) {
+    var raceIdx = startIdx + i;
+    var r = races[raceIdx];
+    if (!r) {
+      html += '<div class="bet-eval-leg"><div class="bet-eval-leg-title">Leg ' + (i+1) + '</div>' +
+              '<div class="text-muted text-sm">No race available for this leg.</div></div>';
+      continue;
+    }
+    var advice = _adviceByRaceId[r.id] || [];
+    var num = r.raceNumber || r.number || (raceIdx+1);
+    var chips = '';
+    if (!advice.length) {
+      chips = '<div class="text-muted text-sm">No scored field for Race ' + num + '. Open Advice tab first.</div>';
+    } else {
+      if (!_betEvalState.legSelections[i]) _betEvalState.legSelections[i] = {};
+      var selMap = _betEvalState.legSelections[i];
+      chips = '<div class="chips">' +
+        advice.slice().sort(function(a,b) { return (a.horse.pp||0) - (b.horse.pp||0); }).map(function(a) {
+          var pp = a.horse.pp;
+          var active = selMap[pp] ? ' active' : '';
+          return '<button type="button" class="chip-pp' + active + '" onclick="_betEvalLegChipToggle(' + i + ',' + pp + ', this)">' + pp + '</button>';
+        }).join('') + '</div>';
+    }
+    html += '<div class="bet-eval-leg" data-leg="' + i + '" data-race-idx="' + raceIdx + '">' +
+            '<div class="bet-eval-leg-title">Leg ' + (i+1) + ' — Race ' + num + '</div>' +
+            chips + '</div>';
+  }
+
+  legsEl.innerHTML = html;
+}
+
+function _betEvalLegChipToggle(legIdx, pp, btn) {
+  if (!_betEvalState.legSelections[legIdx]) _betEvalState.legSelections[legIdx] = {};
+  var map = _betEvalState.legSelections[legIdx];
+  if (map[pp]) { delete map[pp]; btn.classList.remove('active'); }
+  else { map[pp] = true; btn.classList.add('active'); }
+}
+
+// Build the evaluator selection payload from current state.
+function _betEvalBuildSelection(pool, structure, scoredField) {
+  var sel = _betEvalState.selections;
+  if (['win','place','show'].indexOf(pool) >= 0) {
+    var pps = Object.keys(sel);
+    if (!pps.length) return { error: 'Pick one horse.' };
+    return { selection: { pp: parseInt(pps[0],10) } };
+  }
+  if (_betEvalIsExotic(pool)) {
+    var depth = pool === 'exacta' ? 2 : (pool === 'trifecta' ? 3 : 4);
+    if (structure === 'straight') {
+      // Build positions array from pos:N tags
+      var byPos = [];
+      Object.keys(sel).forEach(function(pp) {
+        var v = sel[pp];
+        if (typeof v === 'string' && v.indexOf('pos:') === 0) {
+          var n = parseInt(v.split(':')[1], 10);
+          if (n >= 1 && n <= depth) byPos[n-1] = parseInt(pp,10);
+        }
+      });
+      var positions = byPos.slice(0, depth);
+      if (positions.length !== depth || positions.some(function(x) { return x == null; })) {
+        return { error: 'Assign a horse to each finishing position (1.. ' + depth + ').' };
+      }
+      return { selection: { positions: positions } };
+    }
+    if (structure === 'box' || structure === 'wheel') {
+      var horses = Object.keys(sel).filter(function(p) { return sel[p] === 'on'; }).map(function(p) { return parseInt(p,10); });
+      if (horses.length < depth) return { error: 'Select at least ' + depth + ' horses.' };
+      return { selection: { horses: horses }, structure: 'box' };
+    }
+    if (structure === 'key') {
+      var keyPp = null;
+      var withHorses = [];
+      Object.keys(sel).forEach(function(p) {
+        if (sel[p] === 'key') keyPp = parseInt(p,10);
+        else if (sel[p] === 'with') withHorses.push(parseInt(p,10));
+      });
+      if (keyPp == null) return { error: 'Pick a key horse.' };
+      if (withHorses.length < depth-1) return { error: 'Pick at least ' + (depth-1) + ' "with" horses.' };
+      return { selection: { keyHorse: keyPp, withHorses: withHorses } };
+    }
+  }
+  return { error: 'Unsupported pool/structure.' };
+}
+
+function _betEvalBuildLegs(pool) {
+  var n = _betEvalLegCount(pool);
+  var races = _betEvalCurrentRaces();
+  var startEl = el('bet-eval-start-race');
+  var startIdx = startEl ? (parseInt(startEl.value || '0', 10) || 0) : 0;
+  var legs = [];
+  for (var i = 0; i < n; i++) {
+    var r = races[startIdx + i];
+    if (!r) return { error: 'Not enough races on the card for ' + pool + '.' };
+    var advice = _adviceByRaceId[r.id] || [];
+    if (!advice.length) return { error: 'No scored field for Race ' + (r.raceNumber || (startIdx+i+1)) + '. Open Advice tab first.' };
+    var map = _betEvalState.legSelections[i] || {};
+    var pps = Object.keys(map).map(function(p) { return parseInt(p,10); });
+    if (!pps.length) return { error: 'Leg ' + (i+1) + ' has no horses selected.' };
+    legs.push({
+      race: { trackCode: getActiveTrack(), scoredField: _betEvalAdviceToScoredField(advice) },
+      horses: pps,
+    });
+  }
+  return { legs: legs };
+}
+
+function runBetEvaluation() {
+  var resEl = el('bet-eval-result');
+  if (!resEl) return;
+  var pool = _betEvalPool();
+  var amt = parseFloat((el('bet-eval-amount') || {}).value || '2');
+  if (!isFinite(amt) || amt <= 0) amt = 2;
+
+  if (!window.RailbirdBetEvaluator || typeof window.RailbirdBetEvaluator.evaluateBet !== 'function') {
+    resEl.classList.remove('hidden');
+    resEl.innerHTML = '<div class="res-warnings">Bet evaluator not loaded. Reload the page.</div>';
+    return;
+  }
+
+  var bet;
+  if (_betEvalIsMulti(pool)) {
+    var built = _betEvalBuildLegs(pool);
+    if (built.error) { resEl.classList.remove('hidden'); resEl.innerHTML = '<div class="res-warnings">' + built.error + '</div>'; return; }
+    bet = { pool: pool, legs: built.legs, amount: amt };
+  } else {
+    var raceSel = el('bet-eval-race');
+    var raceId = raceSel ? raceSel.value : '';
+    var advice = _adviceByRaceId[raceId] || [];
+    if (!advice.length) {
+      resEl.classList.remove('hidden');
+      resEl.innerHTML = '<div class="res-warnings">No scored field for the selected race. Open the Advice tab first.</div>';
+      return;
+    }
+    var scoredField = _betEvalAdviceToScoredField(advice);
+    var structure = _betEvalIsExotic(pool) ? _betEvalStructure() : null;
+    var built2 = _betEvalBuildSelection(pool, structure, scoredField);
+    if (built2.error) { resEl.classList.remove('hidden'); resEl.innerHTML = '<div class="res-warnings">' + built2.error + '</div>'; return; }
+    bet = {
+      pool: pool,
+      race: { trackCode: getActiveTrack(), scoredField: scoredField },
+      selection: built2.selection,
+      amount: amt,
+    };
+    if (_betEvalIsExotic(pool)) bet.structure = built2.structure || structure;
+  }
+
+  var result;
+  try { result = window.RailbirdBetEvaluator.evaluateBet(bet); }
+  catch (e) {
+    console.error('[bet-eval] evaluateBet threw:', e);
+    resEl.classList.remove('hidden');
+    resEl.innerHTML = '<div class="res-warnings">Evaluator error: ' + (e && e.message ? e.message : e) + '</div>';
+    return;
+  }
+
+  if (result && result.error) {
+    resEl.classList.remove('hidden');
+    resEl.innerHTML = '<div class="res-warnings">' + result.error + '</div>';
+    return;
+  }
+
+  renderBetEvalResult(result);
+}
+
+function _betEvalFmtPct(p) { return (p == null || !isFinite(p)) ? '—' : (p * 100).toFixed(1) + '%'; }
+function _betEvalFmtMoney(v) { return (v == null || !isFinite(v)) ? '—' : ('$' + v.toFixed(2)); }
+function _betEvalFmtSigned(v) {
+  if (v == null || !isFinite(v)) return '—';
+  var s = v >= 0 ? '+' : '−';
+  return s + '$' + Math.abs(v).toFixed(2);
+}
+
+function renderBetEvalResult(r) {
+  var resEl = el('bet-eval-result');
+  if (!resEl) return;
+  var ev = r.expectedValue;
+  var verdictClass = 'fair', verdictTxt = 'Fair';
+  if (r.overlay && r.overlay.isOverlay && ev > 0) { verdictClass = 'overlay'; verdictTxt = 'OVERLAY'; }
+  else if (ev < 0 && (!r.overlay || !r.overlay.isOverlay)) { verdictClass = 'underlay'; verdictTxt = 'Underlay'; }
+
+  var poolLabel = (r.type || '').toUpperCase();
+  var probLine = (r.probability != null) ? ('Win-chain ' + _betEvalFmtPct(r.probability)) : '';
+
+  var html = '';
+  html += '<div class="res-headline">' + poolLabel + '<span class="verdict ' + verdictClass + '">' + verdictTxt + '</span></div>';
+
+  html += '<div class="res-grid">';
+  html += '<div class="lab">Cost</div><div class="val">' + _betEvalFmtMoney(r.cost) + '</div>';
+  html += '<div class="lab">Expected Return</div><div class="val">' + _betEvalFmtMoney(r.expectedReturn) + '</div>';
+  html += '<div class="lab">Expected Value</div><div class="val">' + _betEvalFmtSigned(r.expectedValue) + '</div>';
+  html += '<div class="lab">Probability</div><div class="val">' + _betEvalFmtPct(r.probability) + '</div>';
+  if (r.overlay && r.overlay.fairOdds) {
+    html += '<div class="lab">Fair Odds</div><div class="val">' + (r.overlay.fairOdds || '—') + '</div>';
+    html += '<div class="lab">Taken Odds</div><div class="val">' + (r.overlay.takenOdds || '—') + '</div>';
+  }
+  if (r.engineRank != null) {
+    html += '<div class="lab">Engine Rank</div><div class="val">#' + r.engineRank + '</div>';
+  }
+  if (r.takeout != null) {
+    html += '<div class="lab">Takeout</div><div class="val">' + (r.takeout * 100).toFixed(1) + '%</div>';
+  }
+  html += '</div>';
+
+  if (Array.isArray(r.warnings) && r.warnings.length) {
+    html += '<div class="res-warnings"><strong>Notes:</strong><ul>' +
+      r.warnings.map(function(w) { return '<li>' + (w.msg || w.code || '') + '</li>'; }).join('') +
+      '</ul></div>';
+  }
+
+  if (r.takeoutSource) {
+    html += '<div class="res-footer">Takeout source: ' + r.takeoutSource + (probLine ? ' · ' + probLine : '') + '</div>';
+  }
+
+  resEl.classList.remove('hidden');
+  resEl.innerHTML = html;
+}
+
+// Expose for inline handlers
+window.openBetEvaluator = openBetEvaluator;
+window.closeBetEvaluator = closeBetEvaluator;
+window.onBetEvalRaceChange = onBetEvalRaceChange;
+window.onBetEvalPoolChange = onBetEvalPoolChange;
+window.onBetEvalStructureChange = onBetEvalStructureChange;
+window.renderBetEvalLegs = renderBetEvalLegs;
+window.runBetEvaluation = runBetEvaluation;
+window._betEvalPool = _betEvalPool;
+window._betEvalPickRadio = _betEvalPickRadio;
+window._betEvalKeyRadio = _betEvalKeyRadio;
+window._betEvalToggle = _betEvalToggle;
+window._betEvalPosInput = _betEvalPosInput;
+window._betEvalLegChipToggle = _betEvalLegChipToggle;
+
 
 function setResultsModeFilter(filter) {
   resultsModeFilter = filter;

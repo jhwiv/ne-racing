@@ -1,5 +1,54 @@
 # NE Racing — Changelog
 
+## v2.34.1 — PR #2 Checkpoint 3a: Evaluate Any Bet UI (2026-05-29)
+
+User-facing UI for the bet evaluator landed in Checkpoint 2. Adds a bottom-
+sheet modal accessible from the Bets tab so users can evaluate any bet they
+are considering — WPS, full exotics (straight / box / key / wheel), and
+multi-race tickets (Pick 3/4/5/6) — and see EV, overlay vs morning-line,
+fair odds, engine rank, takeout, and structural warnings.
+
+### Added
+
+- **"Evaluate Any Bet" modal** in `index.html`:
+  - Launch button on the Bets tab (gold gradient on racing-green) calling
+    `openBetEvaluator()`.
+  - Mobile-first bottom-sheet overlay (`#bet-eval-overlay` / `.bet-eval-sheet`).
+  - Pool picker (10 pools), structure picker for exotics, race picker for
+    single-race pools, multi-leg picker with "Start Race" selector and
+    togglable PP chips for multi-race pools.
+  - Per-structure picker UI:
+    - WPS → single radio.
+    - Exacta/Trifecta/Superfecta `straight` → finishing-position number
+      input next to each horse.
+    - `box` / `wheel` → checkbox include list.
+    - `key` → hybrid key-radio + with-checkboxes.
+  - Result card with verdict badge (OVERLAY / Underlay / Fair), cost, EV,
+    expected return, probability, fair vs taken odds, engine rank,
+    takeout %, structural warnings list, and takeout-source footer.
+- JS adapter `_betEvalAdviceToScoredField()` converts cached advice items
+  (`_adviceByRaceId[raceId]` shape) into the evaluator's `scoredField`
+  shape (`{pp, prob, ml, composite, dataCompleteness}`).
+- ~470 lines of CSS for the modal, modeled on the existing bet-amount-
+  picker styles, with gold-on-green header matching the launch button.
+
+### Behavior
+
+- Auto-runs `runAdviceEngine()` if the advice cache is empty when the user
+  opens the modal, so the evaluator always has scored data to consume.
+- Defensive: shows inline error messages (no scored field, not enough
+  horses, position not assigned, etc.) instead of throwing.
+- All evaluator calls go through `window.RailbirdBetEvaluator.evaluateBet()`
+  (the IIFE-attached inlined module from Checkpoint 2), so the UI uses the
+  exact same math the tests cover.
+
+### Tests
+
+- All 194 tests still pass — no test changes were needed since the UI
+  delegates to the already-tested evaluator core.
+
+---
+
 ## v2.34.0 — PR #2 Checkpoint 2: Bet Evaluator + Engine Wiring (2026-05-29)
 
 Second checkpoint of PR #2. Builds on v2.33.0 (methodology v2 + backtest
