@@ -2038,11 +2038,319 @@ async function handleResults(request, env, origin) {
     const body = normaliseNaResults(data, track, venue, date);
     const response = jsonOk(body, origin, CACHE_TTL.results);
     await writeCache(cacheKey, response);
+
+    // ── PR #2: Persist finished race cards to RACE_HISTORY KV (durable archive).
+    // Only writes when at least one race is `official: true` so we don't archive
+    // partial/in-progress cards. Best-effort — never blocks the response.
+    try {
+      await archiveRaceHistory(env, track, date, body);
+    } catch (kvErr) {
+      // Swallow — history archive is a side effect, not a contract.
+      console.warn(`RACE_HISTORY archive skipped: ${kvErr && kvErr.message}`);
+    }
+
     return response;
 
   } catch (err) {
     return jsonError(`Results fetch failed: ${err.message}`, 503, origin);
   }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// RACE HISTORY (PR #2) — durable archive of finished race cards in KV
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Layout:
+//   race:{TRACK}:{YYYY-MM-DD}  → full normalised results payload
+//   index:dates                → sorted JSON array of dates with any data
+//   index:track:{TRACK}        → sorted JSON array of dates per track
+//
+// Writes are best-effort; reads degrade gracefully when KV is unbound (dev mode).
+//
+
+/**
+ * Write a normalised results payload to RACE_HISTORY KV.
+ * Only persists when at least one race is marked official to avoid archiving
+ * partial cards (results come back as 404 until races finish).
+ */
+async function archiveRaceHistory(env, track, date, body) {
+  if (!env.RACE_HISTORY) return; // KV not bound in this environment
+  if (!body || !Array.isArray(body.races) || body.races.length === 0) return;
+
+  const anyOfficial = body.races.some((r) => r && r.official === true);
+  if (!anyOfficial) return;
+
+  const key = `race:${track}:${date}`;
+  await env.RACE_HISTORY.put(key, JSON.stringify(body), {
+    metadata: { track, date, races: body.races.length, archivedAt: new Date().toISOString() },
+  });
+
+  // Update date indexes (best-effort, race-safe via JSON merge).
+  await updateDateIndex(env, "index:dates", date);
+  await updateDateIndex(env, `index:track:${track}`, date);
+}
+
+/**
+ * Add a date to a sorted-unique JSON array index in KV.
+ * If the index doesn't exist yet, creates it. Idempotent.
+ */
+async function updateDateIndex(env, indexKey, date) {
+  let arr = [];
+  try {
+    const existing = await env.RACE_HISTORY.get(indexKey, "json");
+    if (Array.isArray(existing)) arr = existing;
+  } catch (_) {
+    arr = [];
+  }
+  if (arr.indexOf(date) === -1) {
+    arr.push(date);
+    arr.sort(); // ISO dates sort lexically
+    await env.RACE_HISTORY.put(indexKey, JSON.stringify(arr));
+  }
+}
+
+/**
+ * GET /api/history/dates → { dates: ["2026-05-29", ...], track?: "AQU" }
+ * Returns the list of dates that have archived results.
+ * Optional ?track=XXX filter.
+ */
+async function handleHistoryDates(request, env, origin) {
+  if (!env.RACE_HISTORY) {
+    return jsonOk({ dates: [], source: "unavailable", message: "RACE_HISTORY KV not bound" }, origin, 0);
+  }
+  const { searchParams } = new URL(request.url);
+  const track = (searchParams.get("track") || "").toUpperCase();
+  const indexKey = track ? `index:track:${track}` : "index:dates";
+  let dates = [];
+  try {
+    const existing = await env.RACE_HISTORY.get(indexKey, "json");
+    if (Array.isArray(existing)) dates = existing;
+  } catch (_) {
+    dates = [];
+  }
+  return jsonOk({ dates, track: track || null, count: dates.length }, origin, 300);
+}
+
+/**
+ * GET /api/history/{TRACK}/{DATE} → archived results payload
+ * Path-based route (not query-based) for clean cacheability.
+ */
+async function handleHistoryGet(request, env, origin, track, date) {
+  if (!env.RACE_HISTORY) {
+    return jsonError("RACE_HISTORY KV not bound", 503, origin);
+  }
+  const key = `race:${track.toUpperCase()}:${date}`;
+  const body = await env.RACE_HISTORY.get(key, "json");
+  if (!body) {
+    return jsonError(`No archived results for ${track} ${date}`, 404, origin);
+  }
+  return jsonOk(body, origin, 3600);
+}
+
+/**
+ * GET /api/history/list?track=AQU&from=2026-04-01&to=2026-05-31
+ * Bulk fetch for backtest corpus loading. Caps at 100 cards per call to stay
+ * within KV read budget.
+ */
+async function handleHistoryList(request, env, origin) {
+  if (!env.RACE_HISTORY) {
+    return jsonOk({ races: [], source: "unavailable" }, origin, 0);
+  }
+  const { searchParams } = new URL(request.url);
+  const track = (searchParams.get("track") || "").toUpperCase();
+  const from  = searchParams.get("from") || "1970-01-01";
+  const to    = searchParams.get("to")   || "9999-12-31";
+  const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10) || 100, 100);
+
+  const indexKey = track ? `index:track:${track}` : "index:dates";
+  let dates = [];
+  try {
+    const existing = await env.RACE_HISTORY.get(indexKey, "json");
+    if (Array.isArray(existing)) dates = existing;
+  } catch (_) {
+    dates = [];
+  }
+  const filtered = dates.filter((d) => d >= from && d <= to).slice(0, limit);
+
+  // If no track filter, we don't know which track each date belongs to; bail.
+  if (!track) {
+    return jsonOk({ dates: filtered, message: "specify ?track= to fetch race payloads" }, origin, 60);
+  }
+
+  const records = [];
+  for (const d of filtered) {
+    const body = await env.RACE_HISTORY.get(`race:${track}:${d}`, "json");
+    if (body) records.push(body);
+  }
+  return jsonOk({ track, from, to, count: records.length, races: records }, origin, 60);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ENGINE ACCURACY (PR #2) — KV log of picks and outcomes by engine version
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Layout:
+//   pick:{TRACK}:{DATE}:{race}:{engine}:{pp}     → pick record
+//   outcome:{TRACK}:{DATE}:{race}:{engine}:{pp}  → settlement record
+//   stats:{engine}                                → rolling aggregate counters
+//
+// Logged by the PWA via POST /api/picks/log when a pick is locked.
+// Settled server-side via POST /api/picks/settle (called by a cron or admin).
+// Read via GET /api/picks/stats for the in-app accuracy display.
+//
+
+const PICK_ENGINES = new Set(["v1", "v2", "baseline_ml"]);
+
+/**
+ * POST /api/picks/log
+ * Body: { engine, track, date, race, pp, horseName, betType, betTag, amount,
+ *         score, prob, ml, deviceId }
+ */
+async function handlePickLog(request, env, origin) {
+  if (!env.ENGINE_ACCURACY) {
+    return jsonError("ENGINE_ACCURACY KV not bound", 503, origin);
+  }
+  if (request.method !== "POST") {
+    return jsonError("POST required", 405, origin);
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return jsonError("Invalid JSON body", 400, origin);
+  }
+  const required = ["engine", "track", "date", "race", "pp"];
+  for (const k of required) {
+    if (body[k] === undefined || body[k] === null || body[k] === "") {
+      return jsonError(`Missing field: ${k}`, 400, origin);
+    }
+  }
+  const engine = String(body.engine).toLowerCase();
+  if (!PICK_ENGINES.has(engine)) {
+    return jsonError(`Unknown engine: ${engine}`, 400, origin);
+  }
+  const track = String(body.track).toUpperCase();
+  const date  = String(body.date);
+  const race  = parseInt(body.race, 10);
+  const pp    = parseInt(body.pp, 10);
+  if (!Number.isFinite(race) || race < 1 || race > 20) {
+    return jsonError("race must be 1-20", 400, origin);
+  }
+  if (!Number.isFinite(pp) || pp < 1 || pp > 25) {
+    return jsonError("pp must be 1-25", 400, origin);
+  }
+
+  const key = `pick:${track}:${date}:${race}:${engine}:${pp}`;
+  const record = {
+    engine, track, date, race, pp,
+    horseName: body.horseName || null,
+    betType:   body.betType   || "Win",
+    betTag:    body.betTag    || "manual",
+    amount:    Number.isFinite(parseFloat(body.amount)) ? parseFloat(body.amount) : 2,
+    score:     Number.isFinite(parseFloat(body.score)) ? parseFloat(body.score) : null,
+    prob:      Number.isFinite(parseFloat(body.prob))  ? parseFloat(body.prob)  : null,
+    ml:        body.ml || null,
+    deviceId:  body.deviceId || null,
+    ts:        new Date().toISOString(),
+  };
+  await env.ENGINE_ACCURACY.put(key, JSON.stringify(record), {
+    expirationTtl: 60 * 60 * 24 * 365 * 2, // 2 years
+    metadata: { engine, track, date, race, pp },
+  });
+  return jsonOk({ ok: true, key }, origin, 0);
+}
+
+/**
+ * POST /api/picks/settle
+ * Body: { engine, track, date, race, pp, position, payout }
+ * Records the outcome for a previously-logged pick. Idempotent.
+ */
+async function handlePickSettle(request, env, origin) {
+  if (!env.ENGINE_ACCURACY) {
+    return jsonError("ENGINE_ACCURACY KV not bound", 503, origin);
+  }
+  if (request.method !== "POST") {
+    return jsonError("POST required", 405, origin);
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return jsonError("Invalid JSON body", 400, origin);
+  }
+  const required = ["engine", "track", "date", "race", "pp", "position"];
+  for (const k of required) {
+    if (body[k] === undefined || body[k] === null || body[k] === "") {
+      return jsonError(`Missing field: ${k}`, 400, origin);
+    }
+  }
+  const engine = String(body.engine).toLowerCase();
+  if (!PICK_ENGINES.has(engine)) {
+    return jsonError(`Unknown engine: ${engine}`, 400, origin);
+  }
+  const track = String(body.track).toUpperCase();
+  const date  = String(body.date);
+  const race  = parseInt(body.race, 10);
+  const pp    = parseInt(body.pp, 10);
+  const key = `outcome:${track}:${date}:${race}:${engine}:${pp}`;
+  const record = {
+    engine, track, date, race, pp,
+    position: parseInt(body.position, 10) || null,
+    payout:   Number.isFinite(parseFloat(body.payout)) ? parseFloat(body.payout) : 0,
+    settledAt: new Date().toISOString(),
+  };
+  await env.ENGINE_ACCURACY.put(key, JSON.stringify(record), {
+    expirationTtl: 60 * 60 * 24 * 365 * 2,
+  });
+  return jsonOk({ ok: true, key }, origin, 0);
+}
+
+/**
+ * GET /api/picks/stats?engine=v1
+ * Returns rolling accuracy stats for one engine (or all engines if omitted).
+ * Computes on the fly by listing keys; cached 5 minutes.
+ */
+async function handlePickStats(request, env, origin) {
+  if (!env.ENGINE_ACCURACY) {
+    return jsonOk({ engines: {}, source: "unavailable" }, origin, 0);
+  }
+  const { searchParams } = new URL(request.url);
+  const engineFilter = (searchParams.get("engine") || "").toLowerCase();
+  const stats = {};
+
+  // List picks (cap 1000 for now — sufficient through Saratoga meet).
+  const pickList = await env.ENGINE_ACCURACY.list({ prefix: "pick:", limit: 1000 });
+  for (const { name, metadata } of pickList.keys) {
+    const eng = (metadata && metadata.engine) || name.split(":")[4] || "unknown";
+    if (engineFilter && eng !== engineFilter) continue;
+    if (!stats[eng]) stats[eng] = { picks: 0, settled: 0, wins: 0, places: 0, totalReturn: 0, totalStake: 0 };
+    stats[eng].picks++;
+  }
+  const outcomeList = await env.ENGINE_ACCURACY.list({ prefix: "outcome:", limit: 1000 });
+  for (const { name } of outcomeList.keys) {
+    const parts = name.split(":");
+    const eng = parts[4] || "unknown";
+    if (engineFilter && eng !== engineFilter) continue;
+    if (!stats[eng]) stats[eng] = { picks: 0, settled: 0, wins: 0, places: 0, totalReturn: 0, totalStake: 0 };
+    const outcome = await env.ENGINE_ACCURACY.get(name, "json");
+    if (!outcome) continue;
+    stats[eng].settled++;
+    if (outcome.position === 1) stats[eng].wins++;
+    if (outcome.position <= 2 && outcome.position >= 1) stats[eng].places++;
+    stats[eng].totalReturn += parseFloat(outcome.payout) || 0;
+    // Stake reconstruction from the pick record
+    const pickKey = name.replace(/^outcome:/, "pick:");
+    const pick = await env.ENGINE_ACCURACY.get(pickKey, "json");
+    if (pick) stats[eng].totalStake += parseFloat(pick.amount) || 0;
+  }
+  // Derived ROI
+  for (const e of Object.keys(stats)) {
+    const s = stats[e];
+    s.winRate = s.settled > 0 ? s.wins / s.settled : null;
+    s.placeRate = s.settled > 0 ? s.places / s.settled : null;
+    s.roi = s.totalStake > 0 ? (s.totalReturn - s.totalStake) / s.totalStake : null;
+  }
+  return jsonOk({ engines: stats, generatedAt: new Date().toISOString() }, origin, 300);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -2452,6 +2760,12 @@ export default {
     // ── Route dispatch ────────────────────────────────────────────────────
     const { pathname } = url;
 
+    // ── PR #2: Path-based history endpoint (/api/history/{TRACK}/{DATE}) ──
+    const historyMatch = pathname.match(/^\/api\/history\/([A-Za-z]{2,5})\/(\d{4}-\d{2}-\d{2})$/);
+    if (historyMatch) {
+      return handleHistoryGet(request, env, origin, historyMatch[1], historyMatch[2]);
+    }
+
     switch (pathname) {
       case "/api/entries":
         return handleEntries(request, env, origin);
@@ -2482,6 +2796,20 @@ export default {
       case "/api/feedback/list":
         return handleFeedbackList(request, env, origin);
 
+      // ── PR #2: History archive (RACE_HISTORY KV) ──────────────────────
+      case "/api/history/dates":
+        return handleHistoryDates(request, env, origin);
+      case "/api/history/list":
+        return handleHistoryList(request, env, origin);
+
+      // ── PR #2: Engine accuracy log (ENGINE_ACCURACY KV) ───────────────
+      case "/api/picks/log":
+        return handlePickLog(request, env, origin);
+      case "/api/picks/settle":
+        return handlePickSettle(request, env, origin);
+      case "/api/picks/stats":
+        return handlePickStats(request, env, origin);
+
       // ── Health check / root ───────────────────────────────────────────
       case "/":
       case "/health":
@@ -2508,6 +2836,12 @@ export default {
               "/api/status",
               "POST /api/feedback",
               "/api/feedback/list  (admin token)",
+              "/api/history/dates?track=AQU",
+              "/api/history/{TRACK}/{YYYY-MM-DD}",
+              "/api/history/list?track=AQU&from=YYYY-MM-DD&to=YYYY-MM-DD",
+              "POST /api/picks/log",
+              "POST /api/picks/settle",
+              "/api/picks/stats?engine=v1|v2|baseline_ml",
             ],
           },
           origin,
