@@ -1,0 +1,11 @@
+# This directory holds fitted-weights output from scripts/training/fit_logit.py.
+#
+# Files:
+#   v2.json           — production fitted weights (commit when n_races >= 200
+#                       from real BEL/SAR/AQU corpus)
+#   _features.jsonl   — feature extractor intermediate output (gitignored)
+#   _*.jsonl          — any other scratch JSONL files (gitignored)
+#
+# Until the first real fit is produced, this directory is intentionally empty.
+# The RailbirdFittedWeights IIFE in index.html handles a 404 on v2.json
+# gracefully: v2 scoring silently falls back to DEFAULT_V2_WEIGHTS.

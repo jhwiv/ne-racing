@@ -1,5 +1,37 @@
 # NE Racing — Changelog
 
+## v2.35.1 — PR #2 QA fixes (2026-05-29)
+
+Post-checkpoint QA pass on the fitter pipeline. Fixes two issues found while
+smoke-testing end-to-end, plus a new regression test that locks in the
+fitter-output contract.
+
+### Fixed
+
+- `scripts/training/fit_logit.py`: `weights_normalized` now correctly takes
+  `|β|` before dividing by `Σ|β|`. Previously, negative coefficients leaked
+  through into the output file (the runtime validator handled this correctly,
+  so production scoring was unaffected, but the on-disk weights were
+  misleading and the report-card view could show negative values).
+- `scripts/training/fit_logit.py`: `datetime.utcnow()` replaced with
+  `datetime.now(timezone.utc)` to silence the Python 3.12+ deprecation
+  warning.
+
+### Added
+
+- `tests/fitter-output-contract.test.js`: end-to-end regression test that
+  invokes `fit_logit.py` against a synthetic JSONL corpus (250 races, baked-in
+  speed signal) and asserts: schema fields present, `weights_normalized` is
+  non-negative and sums to 1, `trained_at` is ISO-UTC, the runtime loader
+  (`loadFittedWeights`) accepts the produced payload. Skips automatically if
+  python3/scipy is unavailable.
+- `data/weights/.gitkeep`: documents the directory contract (production
+  `v2.json` is tracked; smoke-test artifacts are gitignored).
+
+### Tests
+
+203/203 passing (was 202/202).
+
 ## v2.35.0 — PR #2 Checkpoint 3b: Fitted Weights Training Pipeline (2026-05-29)
 
 Completes PR #2's training arm. Adds a Python conditional-logit fitter that

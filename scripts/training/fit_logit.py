@@ -207,10 +207,14 @@ def main() -> int:
             hits += 1
     hit_rate = hits / n_races
 
-    # Normalize weights to sum to 1 for the "report-card" weight (for display);
-    # keep the raw fitted coefficients separately for actual scoring.
-    abs_sum = float(np.sum(np.abs(beta)))
-    weights_normalized = (beta / abs_sum).tolist() if abs_sum > 0 else beta.tolist()
+    # Normalize |beta| to sum to 1 for the "report-card" weight that the
+    # runtime loader consumes. Sub-scores are constructed so higher = better;
+    # if a fitted coefficient came out negative it means the feature is
+    # mis-signed or just noise, but we still want a non-negative weight in
+    # the final composite. Keep raw fitted coefficients separately as `beta`.
+    abs_beta = np.abs(beta)
+    abs_sum = float(np.sum(abs_beta))
+    weights_normalized = (abs_beta / abs_sum).tolist() if abs_sum > 0 else [1.0 / len(beta)] * len(beta)
 
     payload = {
         'schema_version': 1,
@@ -235,7 +239,7 @@ def main() -> int:
         },
         'status': 'insufficient' if insufficient else 'fitted',
         'min_races_required': args.min_races,
-        'trained_at': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'trained_at': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
     }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
