@@ -1,0 +1,14 @@
+{
+  "name": "ne-racing",
+  "private": true,
+  "version": "2.33.0",
+  "description": "Railbird AI — NE Racing PWA",
+  "scripts": {
+    "test": "node --test tests/",
+    "backtest": "node scripts/backtest/run.js",
+    "backtest:demo": "node scripts/backtest/run.js --include-fixtures --require-results"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,5 +1,76 @@
 # NE Racing — Changelog
 
+## v2.33.0 — Methodology v2 + Backtest Harness (2026-05-29)
+
+First half of a two-PR effort to put the advice engine on an empirical
+footing. This PR is **purely additive** to the production UI — nothing in
+`index.html` changes behavior. The new code is exercised offline by the
+backtest harness so v2 can be validated before it's wired into the PWA.
+
+### Added
+
+- `scripts/lib/scoring.js` — pure scoring + probability module, no DOM/fetch.
+  Exposes `scoreRace()` and `scoreCard()` with a `version: 'v1' | 'v2'` flag.
+  - **v1** replicates the math currently in `index.html` for parity tests.
+  - **v2** fixes five peer-review issues:
+    1. **Probability normalization.** Replaces `score / Σscores` (not a
+       probability) with a temperature-scaled softmax so dispersion is
+       meaningful and overlay calculations are honest.
+    2. **Field-strength normalization.** A 75 composite in a 5-horse MCL no
+       longer looks identical to a 75 in a 12-horse stakes.
+    3. **Trainer + Jockey decoupling.** Stops averaging jockey% and trainer%
+       (which double-counted hot pairs); now scores them independently and
+       blends 60% high / 40% low.
+    4. **Bias additivity cap.** Style and rail bumps are explicit additive
+       components around a 50 baseline, capped [0, 100], with penalties for
+       wrong-style/wrong-post that v1 didn't apply.
+    5. **Expert consensus decoupling.** Off the composite by default in v2
+       (still surfaced for UI display as a benchmark). v1 default keeps the
+       legacy +3/+6/+10/+14 bonus.
+- `scripts/backtest/` — offline measurement harness.
+  - `load_corpus.js` reads `data/normalized/`, `data/entries-*.json`, and
+    optionally `data/fixtures/`. Dedupes by race id, preferring copies with
+    results regardless of source.
+  - `metrics.js` computes log-loss, multi-class Brier, top-1/top-3 hit rate,
+    flat $2 win ROI on top pick, overlay-bet ROI, and calibration deciles.
+  - `run.js` is the CLI entry point. Compares v1, v2, and a morning-line
+    baseline head-to-head and writes an optional JSON report.
+  - Degrades gracefully when no result data is present — still scores every
+    race and prints a clear unavailability notice.
+- `tests/scoring.test.js` — 35 new unit tests covering all sub-scores, both
+  probability normalizations, field-strength bounds, v1-vs-v2 differences,
+  and end-to-end `scoreRace()`.
+- `tests/backtest.test.js` — 18 new tests covering log-loss / Brier / hit-rate
+  primitives, calibration bucketing, and end-to-end `evaluateVersion()` with
+  and without result data.
+- `package.json` — added so `npm test` and `npm run backtest` work.
+- `scripts/backtest/README.md` — usage, metrics definitions, data sources,
+  known limitations, instructions for adding real result data.
+
+### Documented but not changed
+
+- Added a comment block above `runAdviceEngine()` in `index.html` listing the
+  five v1 methodology caveats so future readers know what's known to be wrong.
+- Discovered a sixth caveat during testing: identical speed figs trigger BOTH
+  the career-best (+8) and career-worst (−5) clauses simultaneously, and the
+  worst clause wins. Flat-form horses are silently depressed. Documented; not
+  fixed in v1 since fixing would be a behavior change.
+
+### Test results
+
+- 128/128 tests pass (`node --test tests/`).
+- End-to-end backtest demo run on the existing Saratoga placeholder fixture
+  with synthetic results: v1 calibration collapses into two probability
+  buckets (the score-share compression bug, visible empirically), v2 spreads
+  across three buckets. Both demo runs are inferior to the ML baseline on
+  synthetic data — expected, since the synthetic winners were drawn from ML.
+
+### Not in this PR (PR #2)
+
+- Conditional-logit (fitted) weights for v2.
+- UI toggle to run v2 in the live PWA.
+- Move methodology card behind login + accuracy storage to Cloudflare KV.
+
 ## v2.32.6 — About sheet in More tab (2026-05-28)
 
 Renamed the standalone "What's a railbird?" entry in the More sheet to a

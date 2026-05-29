@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260528-1934-about-sheet-v2.32.6';
+var NE_APP_VERSION = '20260529-methodology-v2-v2.33.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.32.6-about-sheet';
+var RAILBIRD_VERSION = 'v2.33.0-methodology-v2';
 
 // Nuclear force-update: unregister ALL service workers, clear ALL caches,
 // clear version from localStorage, then hard reload with cache bypass.
@@ -11345,6 +11345,20 @@ function closeHorseModalOnBg(e) { if (e.target === el('horse-modal')) closeHorse
 
 /* =============================================================
    ADVICE ENGINE
+   =============================================================
+   The math below is the v1 (heuristic) engine. A v2 (methodology-fixed)
+   engine lives in scripts/lib/scoring.js and is exercised offline by
+   scripts/backtest/run.js. v2 is NOT wired into this UI yet — it will be
+   activated in a follow-up PR once it has been validated against real
+   result data. See CHANGELOG.md "v2.33.0 — Methodology v2 + backtest harness".
+
+   Known v1 caveats (documented in the backtest README):
+     1. modelProb = score / Σ scores is not a true probability.
+     2. Trainer-Jockey averaging double-counts hot pairs.
+     3. Bias style+rail bonuses can stack additively.
+     4. Expert consensus boosts the composite AND is a measured benchmark.
+     5. Identical speed figures trigger both career-best (+8) and career-worst
+        (−5) clauses; the worst clause wins, depressing flat-form horses.
    ============================================================= */
 function runAdviceEngine() {
   const data = getTrackData();
