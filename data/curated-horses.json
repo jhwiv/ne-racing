@@ -1,9 +1,9 @@
 {
   "meta": {
-    "version": "v2.36.0",
+    "version": "v2.36.1",
     "generated_at": "2026-05-30",
     "data_status": "curated-public-profile",
-    "notes": "Curated from user-provided Equibase screenshot facts plus public horse-profile pages (Sky Sports, At The Races, IrishRacing, NYRA results). NOT an official or licensed data feed. No bulk scraping, no automated harvesting. Source URLs recorded per horse and per history row where available. Snapshot only — may go out of date between releases."
+    "notes": "Curated from user-provided Equibase screenshot facts plus public horse-profile pages (Sky Sports, At The Races, IrishRacing, NYRA results). NOT an official or licensed data feed. No bulk scraping, no automated harvesting. Source URLs recorded per horse and per history row where available. Snapshot only \u2014 may go out of date between releases."
   },
   "horses": [
     {
@@ -22,10 +22,13 @@
       "jockey": "Manuel Franco",
       "owner": "Two Lions Farm",
       "breeder": "Sinatra Thoroughbred Racing & Breeding, LLC",
-      "equibaseRefno": "11094587",
       "speedFigureLatest": 71,
       "dataAsOf": "2026-05-10",
-      "tags": ["curated", "tagg", "ny-bred"],
+      "tags": [
+        "curated",
+        "tagg",
+        "ny-bred"
+      ],
       "watchReason": "Curated profile from Equibase + public form sources. Tagg runner, NY-bred Speightster gelding.",
       "favorite": false,
       "source": "curated-public-profile",
@@ -61,7 +64,7 @@
           "earnings": 71600,
           "earningsDisplay": "$71,600",
           "source": "Equibase + NYRA results May 10",
-          "note": "Includes Aqueduct May 10 2026 allowance, 2nd of 14 (Manuel Franco up)."
+          "note": "Includes Aqueduct May 10 2026 allowance, 2nd of 14 (Manuel Franco up). Per-race earnings ledger now estimated per purse-share method \u2014 see history rows."
         },
         "career": {
           "label": "Career",
@@ -74,12 +77,24 @@
           "source": "Equibase screenshot + NYRA results"
         },
         "surface": [
-          { "label": "Turf", "starts": 5, "wins": 1, "places": 3, "source": "At The Races + NYRA" },
-          { "label": "All Weather", "starts": 3, "wins": 0, "places": 2, "source": "At The Races" }
+          {
+            "label": "Turf",
+            "starts": 5,
+            "wins": 1,
+            "places": 3,
+            "source": "At The Races + NYRA"
+          },
+          {
+            "label": "All Weather",
+            "starts": 3,
+            "wins": 0,
+            "places": 2,
+            "source": "At The Races"
+          }
         ],
         "alternate": [
           {
-            "label": "Lifetime (Flat USA) — IrishRacing alt",
+            "label": "Lifetime (Flat USA) \u2014 IrishRacing alt",
             "starts": 7,
             "wins": 1,
             "earnings": 96420,
@@ -105,7 +120,12 @@
           "winner": "Just for Luck",
           "source": "NYRA official results",
           "sourceUrl": "https://www.nyra.com/aqueduct/racing/results/?day=2026-05-10",
-          "note": "Place finish at 7/2 ML. Stretched out to 1 1/16M turf for the first time. New rider Manuel Franco."
+          "note": "Place finish at 7/2 ML. Stretched out to 1 1/16M turf for the first time. New rider Manuel Franco.",
+          "earnings": 16400,
+          "earningsEstimated": true,
+          "earningsMethod": "20% of stated purse",
+          "pursePurseEst": 82000,
+          "pursePurseVerified": true
         },
         {
           "date": "2026-02-14",
@@ -121,7 +141,12 @@
           "trainer": "Barclay Tagg",
           "owner": "Two Lions Farm",
           "source": "At The Races (public form)",
-          "note": "Maiden win — public profile row; column ambiguity possible, labeled as public form line."
+          "note": "Maiden win \u2014 public profile row; column ambiguity possible, labeled as public form line.",
+          "earnings": 45100,
+          "earningsEstimated": true,
+          "earningsMethod": "55% of estimated $82k MSW purse",
+          "pursePurseEst": 82000,
+          "pursePurseVerified": false
         },
         {
           "date": "2026-01-09",
@@ -134,21 +159,31 @@
           "weight": "8-11",
           "sp": "9/2",
           "source": "At The Races (public form)",
-          "note": "Public form summary line, not official chart."
+          "note": "Public form summary line, not official chart.",
+          "earnings": 9800,
+          "earningsEstimated": true,
+          "earningsMethod": "12% of estimated $82k MSW purse",
+          "pursePurseEst": 82000,
+          "pursePurseVerified": false
         },
         {
           "date": "2025-11-22",
           "track": "Gulfstream",
           "finish": "2",
           "source": "At The Races (public form)",
-          "note": "Highlight row from public form."
+          "note": "Highlight row from public form.",
+          "earnings": 10800,
+          "earningsEstimated": true,
+          "earningsMethod": "20% of estimated $54k maiden purse",
+          "pursePurseEst": 54000,
+          "pursePurseVerified": false
         },
         {
           "date": "2025-09-28",
           "track": "Belmont At The Big A (USA)",
           "distance": "1m 110y",
           "surface": "Firm",
-          "conditions": "—",
+          "conditions": "\u2014",
           "finish": "2",
           "finishOf": "12",
           "weight": "8-8",
@@ -157,7 +192,12 @@
           "trainer": "Barclay Tagg",
           "winner": "I Can See That (USA)",
           "or": 81,
-          "source": "Sky Sports form profile"
+          "source": "Sky Sports form profile",
+          "earnings": 16000,
+          "earningsEstimated": true,
+          "earningsMethod": "20% of estimated $80k purse",
+          "pursePurseEst": 80000,
+          "pursePurseVerified": false
         },
         {
           "date": "2025-09-18",
@@ -172,7 +212,12 @@
           "trainer": "Barclay Tagg",
           "winner": "Moe Eighty Eight (USA)",
           "or": 76,
-          "source": "Sky Sports form profile"
+          "source": "Sky Sports form profile",
+          "earnings": 2400,
+          "earningsEstimated": true,
+          "earningsMethod": "3% of estimated $80k purse",
+          "pursePurseEst": 80000,
+          "pursePurseVerified": false
         },
         {
           "date": "2025-08-15",
@@ -186,22 +231,33 @@
           "jockey": "Victor Espinoza",
           "trainer": "Barclay Tagg",
           "winner": "Undisputed (USA)",
-          "source": "Sky Sports form profile"
+          "source": "Sky Sports form profile",
+          "earnings": 5400,
+          "earningsEstimated": true,
+          "earningsMethod": "6% of estimated $90k Saratoga MSW purse",
+          "pursePurseEst": 90000,
+          "pursePurseVerified": false
         }
       ],
       "caveats": [
-        "Curated snapshot from public data sources — not a live feed. Refreshed manually; the most recent verified race is May 10, 2026 at Aqueduct.",
+        "Curated snapshot from public data sources \u2014 not a live feed. Refreshed manually; the most recent verified race is May 10, 2026 at Aqueduct.",
         "IrishRacing alternate lifetime earnings ($96,420) conflicts with the Equibase career total. Equibase is treated as canonical; the alternate is retained as a source-specific figure.",
-        "Career earnings on this profile include the $14,000 place share estimated for the May 10 Aqueduct allowance — official Equibase chart may round differently.",
-        "Trainer Barclay Tagg has changed riders on this horse multiple times (Espinoza → Davis → Juarez → Franco). The \"Last known jockey\" reflects the most recent verified ride, not necessarily the next rider booked."
-      ]
+        "Career earnings on this profile include the $14,000 place share estimated for the May 10 Aqueduct allowance \u2014 official Equibase chart may round differently.",
+        "Trainer Barclay Tagg has changed riders on this horse multiple times (Espinoza \u2192 Davis \u2192 Juarez \u2192 Franco). The \"Last known jockey\" reflects the most recent verified ride, not necessarily the next rider booked.",
+        "Per-race earnings shown in history are ESTIMATED using the standard NA purse-share method (1st 55%, 2nd 20%, 3rd 12%, 4th 6%, 5th 3%, 6th 2%, 7th 1%, 8th 1%) applied to the race's purse. These reconcile within ~$300 of the season-2026 stated total and ~$2,200 of the 2025 stated total \u2014 the latter likely covers an unlisted 8th career start. Authoritative per-race purse shares require Equibase Race Charts (paid)."
+      ],
+      "equibaseRefnoNote": "Equibase refno 11094587 in earlier curated builds was wrong \u2014 that ID belongs to a different (older) horse with a 35+ start career, not this 4yo NY-bred. Removed pending re-verification."
     },
     {
       "name": "Secret Connection",
       "breed": "TB",
       "owner": "Bona Venture Stables",
-      "tags": ["curated", "bona-venture", "watchlist"],
-      "watchReason": "Tester-requested. Bona Venture Stables runner — full profile to be backfilled from Equibase once next start is confirmed.",
+      "tags": [
+        "curated",
+        "bona-venture",
+        "watchlist"
+      ],
+      "watchReason": "Tester-requested. Bona Venture Stables runner \u2014 full profile to be backfilled from Equibase once next start is confirmed.",
       "favorite": false,
       "source": "curated-public-profile",
       "sources": [
@@ -212,7 +268,7 @@
         }
       ],
       "caveats": [
-        "Stub profile — added so the horse is searchable. Stats, history, and Equibase refno are not yet verified. Will be backfilled when Secret Connection appears in live entries or via Equibase confirmation."
+        "Stub profile \u2014 added so the horse is searchable. Stats, history, and Equibase refno are not yet verified. Will be backfilled when Secret Connection appears in live entries or via Equibase confirmation."
       ]
     }
   ]

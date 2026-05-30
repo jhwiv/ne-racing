@@ -24,12 +24,22 @@ test('curated horse Inspeightofcharlie has all required profile fields', () => {
   assert.equal(h.damsire, 'Noonmark');
   assert.equal(h.trainer, 'Barclay Tagg');
   assert.equal(h.owner, 'Two Lions Farm');
-  assert.equal(h.equibaseRefno, '11094587');
+  // v2.36.1 — equibaseRefno '11094587' was confirmed wrong (pointed at an unrelated older horse).
+  // Field is intentionally absent until re-verified; the UI falls back to a name search.
+  assert.equal(h.equibaseRefno, undefined, 'no unverified refno on file');
+  assert.ok(h.equibaseRefnoNote, 'has note explaining refno absence');
   assert.equal(h.source, 'curated-public-profile');
   assert.ok(Array.isArray(h.sources) && h.sources.length >= 3, 'has multi sources');
   assert.ok(h.stats && h.stats.career && h.stats.career.starts >= 7, 'career stats');
   assert.ok(h.stats.season2026 && h.stats.season2026.firsts === 1, '2026 stats');
   assert.ok(Array.isArray(h.history) && h.history.length >= 5, 'at least 5 form rows');
+  // v2.36.1 — every dated row that we know finishing position for should carry estimated earnings.
+  const rowsWithFinish = h.history.filter((r) => r.finish);
+  rowsWithFinish.forEach((row, i) => {
+    assert.ok(typeof row.earnings === 'number', `history row ${i} (date ${row.date}) has numeric earnings`);
+    assert.ok(row.earningsEstimated === true, `history row ${i} marked as estimated`);
+    assert.ok(row.earningsMethod, `history row ${i} has earnings method string`);
+  });
   // Every source row must have a URL.
   h.sources.forEach((s, i) => {
     assert.ok(s.url && /^https?:\/\//.test(s.url), `source[${i}] has URL`);

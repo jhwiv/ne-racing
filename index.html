@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260530-v2.36.0';
+var NE_APP_VERSION = '20260530-v2.36.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.36.0-beta-feedback';
+var RAILBIRD_VERSION = 'v2.36.1-charlie-earnings';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -8561,6 +8561,7 @@ tr:has(> td > .detail-stat-row),
 #virtual-barn-profile-modal .vb-chip-tag { background: rgba(36,59,90,0.08) !important; color: var(--msp-navy-ink) !important; }
 #virtual-barn-profile-modal .vb-chip-scratch { background: var(--msp-red-tint) !important; color: #7E2D27 !important; }
 #virtual-barn-profile-modal .vb-chip-finish { background: var(--msp-brass) !important; color: #1E2A36 !important; }
+#virtual-barn-profile-modal .vb-chip-earnings { background: rgba(46, 125, 50, 0.18) !important; color: #1B5E20 !important; border: 1px solid rgba(46, 125, 50, 0.30) !important; font-weight: 700 !important; cursor: help; }
 #virtual-barn-profile-modal .vb-hist-row,
 #virtual-barn-profile-modal .vb-stat-row,
 #virtual-barn-profile-modal .vb-src-row { border-top: 1px solid var(--msp-border) !important; }
@@ -20860,6 +20861,14 @@ document.addEventListener('keydown', e => {
       var chips = [];
       // v2.21.2: curated rows use finish/finishOf (no race number); demo rows use race number.
       if (row.finish) chips.push('<span class="vb-chip vb-chip-finish">Finish ' + esc(row.finish) + (row.finishOf ? '/' + esc(row.finishOf) : '') + '</span>');
+      // v2.36.1 — Earnings chip per race. When estimated, prefix with “Est.”
+      // and surface the method on hover via title attribute.
+      if (row.earnings != null) {
+        var earningsDisplay = '$' + (row.earnings.toLocaleString ? row.earnings.toLocaleString() : row.earnings);
+        var estPrefix = row.earningsEstimated ? 'Est. ' : '';
+        var titleAttr = row.earningsMethod ? ' title="' + esc(row.earningsMethod) + '"' : '';
+        chips.push('<span class="vb-chip vb-chip-earnings"' + titleAttr + '>' + estPrefix + earningsDisplay + '</span>');
+      }
       if (row.track || row.race) chips.push('<span class="vb-chip vb-chip-key">' + esc(row.track||'—') + (row.race ? ' R' + esc(row.race) : '') + '</span>');
       if (row.postTime) chips.push('<span class="vb-chip">PT ' + esc(row.postTime) + '</span>');
       if (row.distance) chips.push('<span class="vb-chip">' + esc(row.distance) + '</span>');
@@ -21009,6 +21018,7 @@ document.addEventListener('keydown', e => {
       /* v2.21.2: curated badge + stats + sources + form-row extras */
       '#virtual-barn-profile-modal .vb-src-badge-curated{background:rgba(125,200,140,0.2);color:#A8D4B3}' +
       '#virtual-barn-profile-modal .vb-chip-finish{background:rgba(201,168,76,0.28);color:#F5E3A8;font-weight:800}' +
+      '#virtual-barn-profile-modal .vb-chip-earnings{background:rgba(120,200,120,0.18);color:#9FE0A8;font-weight:800;border:1px solid rgba(120,200,120,0.30);cursor:help}' +
       '#virtual-barn-profile-modal .vb-hist-src{color:#8F8975;font-size:0.72rem;margin-top:3px;font-style:italic}' +
       '#virtual-barn-profile-modal .vb-stat-row{padding:10px 0;border-top:1px solid rgba(237,232,220,0.1)}' +
       '#virtual-barn-profile-modal .vb-stat-row:first-child{border-top:none;padding-top:2px}' +
@@ -21108,7 +21118,24 @@ document.addEventListener('keydown', e => {
         /* SAMPLE HISTORY / FORM HISTORY section */
         '<div class="vb-section open" data-vb-section>' +
           '<div class="vb-section-head" data-vb-toggle><h4>' + (isCurated ? 'Form history' : 'Sample history') + ' \u00B7 ' + appearancesCount + '</h4><span class="vb-section-caret" aria-hidden="true">\u203A</span></div>' +
-          '<div class="vb-section-body">' + hist + '</div>' +
+          '<div class="vb-section-body">' +
+            /* v2.36.1 — Equibase career deep link, always visible. Refno preferred, name fallback. */
+            (function(){
+              var eqLink = h.equibaseRefno
+                ? 'https://www.equibase.com/profiles/Results.cfm?type=Horse&refno=' + encodeURIComponent(h.equibaseRefno) + '&registry=T'
+                : 'https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=' + encodeURIComponent(h.name);
+              var label = h.equibaseRefno ? 'View full career on Equibase \u2197' : 'Find on Equibase \u2197';
+              var hint = h.equibaseRefno ? '' : '<div style="font-size:0.7rem;color:#8F8975;margin-top:2px">Equibase ID not confirmed for this horse \u2014 link opens a search by name.</div>';
+              var estNote = (h.history && h.history.some(function(r){return r.earningsEstimated;}))
+                ? '<div style="font-size:0.72rem;color:#8F8975;margin-top:6px;font-style:italic">Per-race earnings shown below are <b>estimated</b> using the standard NA purse-share method (1st 55%, 2nd 20%, 3rd 12%, 4th 6%, 5th 3%, etc.). Hover any earnings chip for the calculation. Authoritative per-race purse share comes from Equibase Race Charts (paid).</div>'
+                : '';
+              return '<div style="margin:0 0 10px;padding:8px 10px;background:rgba(201,168,76,0.10);border:1px solid rgba(201,168,76,0.25);border-radius:8px">' +
+                '<a href="' + eqLink + '" target="_blank" rel="noopener" style="color:#F0CB6A;text-decoration:none;font-weight:700;font-size:0.85rem">' + label + '</a>' +
+                hint +
+                estNote +
+                '</div>';
+            })() +
+            hist + '</div>' +
         '</div>' +
         /* SOURCES section (curated only) */
         (sourcesHtml ?

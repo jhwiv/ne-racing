@@ -1,5 +1,37 @@
 # NE Racing — Changelog
 
+## v2.36.1 — Charlie earnings by race (2026-05-30)
+
+Response to EG's "earnings by race" beta feedback for Inspeightofcharlie.
+
+### Added
+
+- **Per-race earnings on horse history rows.** A green earnings chip
+  appears next to the finish chip on every history row in the horse
+  detail panel. When earnings are estimated rather than chart-verified,
+  they're prefixed with "Est." and the calculation method is visible
+  on hover (e.g. "20% of $82,000 purse").
+- **Earnings methodology disclaimer.** Form history section opens with
+  a short note explaining that estimated earnings use the standard NA
+  purse-share method (1st 55%, 2nd 20%, 3rd 12%, etc.) and that
+  authoritative purse shares require Equibase Race Charts (paid).
+- **Equibase career deep link on every horse detail.** When an Equibase
+  refno is known, links straight to that horse's profile. When the
+  refno is missing or unverified, falls back to an Equibase search by
+  name, with a hint explaining why.
+- **Inspeightofcharlie history rows now carry earnings**, reconciling
+  within ~$300 of the stated 2026 season total and ~$2,200 of the
+  stated 2025 pre-meet total (the difference covers an unlisted debut
+  start).
+
+### Fixed
+
+- **Removed wrong Equibase refno (11094587) from Inspeightofcharlie's
+  curated profile.** That ID pointed to an unrelated older horse with
+  35+ starts since 2019 — not the 4yo NY-bred we're tracking. Field
+  is now blank pending re-verification; the Equibase deep link falls
+  back to search-by-name in the meantime.
+
 ## v2.36.0 — Beta feedback batch #1 (2026-05-30)
 
 First response to beta tester feedback. Four changes, all user-facing.
