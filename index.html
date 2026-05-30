@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260530-v2.36.2';
+var NE_APP_VERSION = '20260530-v2.36.3';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.36.2-search-feedback';
+var RAILBIRD_VERSION = 'v2.36.3-search-keyboard';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -12622,16 +12622,26 @@ function globalSearchScan(q) {
   // even before adding it to their Barn. Uses the cached candidate list from
   // buildLookupCandidates() — synchronous read; if not yet populated, this
   // pass is skipped and Barn+today's-card still match.
+  // v2.36.3 — Also match across trainer / owner / jockey so a tester typing
+  // a stable or connection name surfaces the horse.
   try {
     var cached = (typeof window.__getLookupCandidatesCached === 'function')
       ? window.__getLookupCandidatesCached() : null;
     if (Array.isArray(cached)) {
       cached.forEach(function(c){
         if (!c || !c.name) return;
-        var lower = String(c.name).toLowerCase();
-        if (lower.indexOf(needle) === -1 || seenHorse.has(lower)) return;
-        seenHorse.add(lower);
+        var lowerName = String(c.name).toLowerCase();
+        if (seenHorse.has(lowerName)) return;
         var p = c.profile || {};
+        var hay = [
+          lowerName,
+          String(p.trainer || '').toLowerCase(),
+          String(p.owner || '').toLowerCase(),
+          String(p.jockey || '').toLowerCase(),
+          String(p.sire || '').toLowerCase()
+        ].join(' \u00b7 ');
+        if (hay.indexOf(needle) === -1) return;
+        seenHorse.add(lowerName);
         var sourceLabel = c.source === 'curated' ? 'Curated profile'
                         : c.source === 'live'    ? 'Running today'
                         : c.source === 'demo'    ? 'Demo sample'
@@ -12666,10 +12676,21 @@ function renderGlobalSearchResults(q) {
   }
   const results = globalSearchScan(query);
   if (!results.total) {
+    // v2.36.3 — If candidate cache isn't loaded yet, show a loading state.
+    var cacheReady = (typeof window.__getLookupCandidatesCached === 'function')
+      && Array.isArray(window.__getLookupCandidatesCached());
+    if (!cacheReady) {
+      container.innerHTML =
+        '<div class="gs-empty">'
+          + '<strong>Loading horses\u2026</strong>'
+          + 'Fetching curated profiles. Results will appear in a moment.'
+        + '</div>';
+      return;
+    }
     container.innerHTML =
       '<div class="gs-empty">'
-        + '<strong>No matches yet</strong>'
-        + 'Nothing in your Barn or today\u2019s card matches \u201c' + escHtml(query) + '\u201d.'
+        + '<strong>No matches</strong>'
+        + 'Nothing in your Barn, today\u2019s card, or curated profiles matches \u201c' + escHtml(query) + '\u201d.'
       + '</div>';
     return;
   }
@@ -19670,7 +19691,7 @@ document.addEventListener('keydown', e => {
       '.barn-drawer-scrim{position:fixed;inset:0;background:rgba(10,22,40,0.55);z-index:299;opacity:0;pointer-events:none;transition:opacity 0.2s ease}' +
       '.barn-drawer-scrim:not(.open){display:none}' +
       '.barn-drawer-scrim.open{opacity:1;pointer-events:auto;display:block}' +
-      '.barn-drawer{position:fixed;left:0;right:0;bottom:0;z-index:300;background:#FBF7EB;border-top-left-radius:18px;border-top-right-radius:18px;box-shadow:0 -10px 30px rgba(10,22,40,0.4);transform:translateY(100%);transition:transform 0.25s ease;max-height:92vh;flex-direction:column;color:#1B2E4B}' +
+      '.barn-drawer{position:fixed;left:0;right:0;bottom:0;z-index:300;background:#FBF7EB;border-top-left-radius:18px;border-top-right-radius:18px;box-shadow:0 -10px 30px rgba(10,22,40,0.4);transform:translateY(100%);transition:transform 0.25s ease;max-height:92dvh;height:auto;flex-direction:column;color:#1B2E4B;overflow:hidden}' +
       '.barn-drawer:not(.open){display:none!important;visibility:hidden;pointer-events:none}' +
       '.barn-drawer[aria-hidden="true"]:not(.open){display:none!important}' +
       '.barn-drawer.open{display:flex;transform:translateY(0);visibility:visible;pointer-events:auto}' +
@@ -19679,7 +19700,9 @@ document.addEventListener('keydown', e => {
       '.barn-drawer-title{font-family:\'Cormorant Garamond\',serif;font-size:1.25rem;color:#1B2E4B;margin:0;letter-spacing:0.02em;font-weight:700}' +
       '.barn-drawer-close{background:transparent;border:1px solid rgba(27,46,75,0.18);color:#1B2E4B;border-radius:999px;min-width:40px;min-height:40px;font-size:1.1rem;cursor:pointer;padding:0 12px;font-weight:700}' +
       '.barn-drawer-close:hover{background:rgba(27,46,75,0.06)}' +
-      '.barn-drawer-body{flex:1;overflow-y:auto;padding:14px 16px;padding-bottom:calc(var(--tab-bar-height,64px) + env(safe-area-inset-bottom,0px) + 32px)}' +
+      '.barn-drawer-body{flex:1;overflow-y:auto;padding:14px 16px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 24px);-webkit-overflow-scrolling:touch;min-height:0;display:flex;flex-direction:column}' +
+      '.barn-drawer-search-wrap{position:sticky;top:0;background:#FBF7EB;padding:4px 0 10px;z-index:2;flex-shrink:0}' +
+      '.barn-drawer .barn-lookup-results{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}' +
       '.barn-drawer-sub{font-size:0.88rem;color:#3A4256;margin:0 0 10px;line-height:1.5}' +
       '</style>';
 
@@ -19775,8 +19798,10 @@ document.addEventListener('keydown', e => {
           '<button type="button" class="barn-drawer-close" id="barn-drawer-close" aria-label="Close">Done</button>' +
         '</div>' +
         '<div class="barn-drawer-body">' +
-          '<p class="barn-drawer-sub">Search curated profiles and the 2025 Saratoga sample. Tap <em>Add to Barn</em> to put a horse in your stable.</p>' +
-          '<input type="search" class="barn-lookup-input" id="barn-lookup-input" placeholder="Search by horse, trainer, owner, or jockey\u2026" autocomplete="off" spellcheck="false" />' +
+          '<div class="barn-drawer-search-wrap">' +
+            '<p class="barn-drawer-sub">Search curated profiles and the 2025 Saratoga sample. Tap <em>Add to Barn</em> to put a horse in your stable.</p>' +
+            '<input type="search" class="barn-lookup-input" id="barn-lookup-input" placeholder="Search by horse, trainer, owner, or jockey\u2026" autocomplete="off" spellcheck="false" autocapitalize="none" autocorrect="off" />' +
+          '</div>' +
           '<div class="barn-lookup-results" id="barn-lookup-results"><div class="barn-lookup-empty">Start typing to search, or pick from the suggestions below.</div></div>' +
         '</div>' +
       '</div>';
@@ -19841,19 +19866,55 @@ document.addEventListener('keydown', e => {
     }
   }
 
+  // v2.36.3 — visualViewport-aware drawer sizing. iOS Safari does not shrink
+  // window.innerHeight when the soft keyboard opens; the on-screen keyboard
+  // simply covers the lower half of the layout. We listen to visualViewport
+  // resize/scroll and explicitly set the drawer height + bottom offset so the
+  // input + results area stay above the keyboard.
+  function _barn_syncDrawerToViewport(){
+    var drawer = document.getElementById('barn-drawer');
+    if (!drawer || !window.__barnDrawerOpen) return;
+    var vv = window.visualViewport;
+    if (vv) {
+      // Lift the drawer so its bottom is flush with the visible viewport.
+      var kbInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      drawer.style.bottom = kbInset + 'px';
+      drawer.style.maxHeight = (vv.height * 0.92) + 'px';
+    } else {
+      drawer.style.bottom = '0px';
+      drawer.style.maxHeight = '92vh';
+    }
+  }
+  function _barn_attachViewportHandlers(){
+    if (window.__barnVVBound) return;
+    var vv = window.visualViewport;
+    if (!vv) return;
+    var h = function(){ _barn_syncDrawerToViewport(); };
+    vv.addEventListener('resize', h);
+    vv.addEventListener('scroll', h);
+    window.__barnVVBound = true;
+  }
+
   function barn_openDrawer() {
     window.__barnDrawerOpen = true;
     var scrim = document.getElementById('barn-drawer-scrim');
     var drawer = document.getElementById('barn-drawer');
     if (scrim) { scrim.classList.add('open'); scrim.removeAttribute('hidden'); scrim.setAttribute('aria-hidden','false'); }
     if (drawer) { drawer.classList.add('open'); drawer.removeAttribute('aria-hidden'); drawer.removeAttribute('hidden'); }
+    _barn_attachViewportHandlers();
+    _barn_syncDrawerToViewport();
     // First render of results (suggestions) happens here on demand.
     var input = document.getElementById('barn-lookup-input');
     if (input) {
       var q = String(input.value || '').trim().toLowerCase();
       window.__barnLookupQuery = q;
       try { barn_renderLookupResults(q); } catch(e){}
-      setTimeout(function(){ try { input.focus({ preventScroll: true }); } catch(_) { try { input.focus(); } catch(e){} } }, 220);
+      // Re-sync after keyboard slides up.
+      setTimeout(function(){
+        try { input.focus({ preventScroll: true }); } catch(_) { try { input.focus(); } catch(e){} }
+        setTimeout(_barn_syncDrawerToViewport, 250);
+        setTimeout(_barn_syncDrawerToViewport, 600);
+      }, 220);
     }
   }
   window.__barnOpenDrawer = barn_openDrawer;
@@ -19863,7 +19924,13 @@ document.addEventListener('keydown', e => {
     var scrim = document.getElementById('barn-drawer-scrim');
     var drawer = document.getElementById('barn-drawer');
     if (scrim) { scrim.classList.remove('open'); scrim.setAttribute('hidden',''); scrim.setAttribute('aria-hidden','true'); }
-    if (drawer) { drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); drawer.setAttribute('hidden',''); }
+    if (drawer) {
+      drawer.classList.remove('open');
+      drawer.setAttribute('aria-hidden', 'true');
+      drawer.setAttribute('hidden','');
+      drawer.style.bottom = '';
+      drawer.style.maxHeight = '';
+    }
   }
   window.__barnCloseDrawer = barn_closeDrawer;
 

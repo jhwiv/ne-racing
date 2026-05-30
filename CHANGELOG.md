@@ -1,5 +1,37 @@
 # NE Racing — Changelog
 
+## v2.36.3 — Keyboard-aware search drawers + better matching (2026-05-30)
+
+Beta tester reported: typing in the "Choose a horse" Barn drawer shifted
+the screen so the input was hidden behind the iOS keyboard / suggestion
+bar, and the results area disappeared entirely.
+
+### Fixed
+
+- **Barn drawer ("Choose a horse") respects the iOS keyboard.** Drawer
+  now uses `visualViewport` to detect the soft keyboard and lifts itself
+  above it, capping its own height at 92% of the visible viewport. Result:
+  the search input + suggestions stay visible the whole time.
+- **Search input is now sticky inside the drawer body.** A new
+  `barn-drawer-search-wrap` pins the input to the top of the scroll area
+  so it never gets pushed offscreen as results render.
+- **Results panel scrolls independently from the rest of the drawer**, so
+  long candidate lists don't bury the input under keyboard suggestions.
+- **`autocapitalize="none"` and `autocorrect="off"`** on the search
+  input — iOS Safari was autocapitalizing the first letter, which
+  doesn't matter for our case-insensitive matcher but looked broken.
+
+### Changed
+
+- **Global search now matches across trainer, owner, jockey, and sire**
+  on curated/demo/live horses (not just horse name). So typing
+  "bona venture" surfaces Secret Connection, "tagg" surfaces Charlie, etc.
+- **"Loading horses…" state** shown in global search when the candidate
+  cache hasn't finished loading yet — prevents the misleading
+  "No matches" message before fetch resolves.
+- **"No matches" copy expanded** to clarify the search covers Barn,
+  today's card, AND curated profiles — not just the first two.
+
 ## v2.36.2 — Search surfaces curated horses + anonymous feedback (2026-05-30)
 
 Response to beta tester: "I searched secret connection and it didn't surface"
