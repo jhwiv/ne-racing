@@ -1,5 +1,20 @@
 # NE Racing — Changelog
 
+## v2.35.3 — Picks-log POST fix (2026-05-30)
+
+Pre-beta QA sweep caught one production blocker: the worker's top-level
+method guard rejected POST on any path other than `/api/feedback`, which
+meant `/api/picks/log` and `/api/picks/settle` (new in v2.35.0) returned
+HTTP 405 before reaching the route dispatcher. Without this fix the
+ENGINE_ACCURACY KV would never receive a single write — silently
+breaking the eventual conditional-logit refit pipeline.
+
+### Fixed
+
+- `worker.js`: POST allowlist now includes `/api/picks/log` and
+  `/api/picks/settle` alongside the existing `/api/feedback`. All other
+  paths still 405 on POST.
+
 ## v2.35.2 — Bet Evaluator lazy advice load (2026-05-30)
 
 UX papercut fix: the Bet Evaluator no longer fails with "Open the Advice tab

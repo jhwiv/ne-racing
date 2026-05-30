@@ -2741,8 +2741,13 @@ export default {
     if (request.method !== "GET" && request.method !== "POST") {
       return jsonError("Method not allowed.", 405, origin);
     }
-    if (request.method === "POST" && url.pathname !== "/api/feedback") {
-      return jsonError("POST only allowed on /api/feedback.", 405, origin);
+    // v2.35.3: POST is now also accepted on /api/picks/log + /api/picks/settle
+    // (engine-accuracy logging). All other paths reject POST at the guard.
+    if (request.method === "POST") {
+      const postPaths = new Set(["/api/feedback", "/api/picks/log", "/api/picks/settle"]);
+      if (!postPaths.has(url.pathname)) {
+        return jsonError("POST not allowed on this endpoint.", 405, origin);
+      }
     }
 
     // ── Guard: require API_KEY only when DATA_SOURCE=theracingapi ─────────
