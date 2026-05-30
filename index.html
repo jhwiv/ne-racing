@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260530-v2.35.3';
+var NE_APP_VERSION = '20260530-v2.36.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.35.3-pickslog-post-fix';
+var RAILBIRD_VERSION = 'v2.36.0-beta-feedback';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -9090,6 +9090,9 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <button class="icon-btn" id="track-pill-btn" onclick="toggleTrackDrawer()" title="Switch track" aria-label="Switch track" aria-expanded="false">
         <span class="track-pill" id="track-pill-text">SAR — Saratoga</span>
       </button>
+      <button class="icon-btn" id="header-tour-btn" onclick="if(typeof startTour==='function'){startTour();}" title="Take the tour" aria-label="Take the tour">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5"/><line x1="12" y1="16.5" x2="12" y2="16.51"/></svg>
+      </button>
       <button class="icon-btn" onclick="openSettings()" title="Settings" aria-label="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
@@ -10506,6 +10509,13 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </button>
     </div>
     <div class="settings-group">
+      <h4>New here? Take the tour</h4>
+      <p class="text-xs text-muted" style="margin-top:-0.1rem;margin-bottom:0.55rem">A 60-second walkthrough of Track a Horse, the Barn, and how Railbird works.</p>
+      <button class="btn btn-primary btn-sm" onclick="if(typeof startTour==='function'){closeSettings&&closeSettings();startTour();}">
+        Start the tour
+      </button>
+    </div>
+    <div class="settings-group">
       <h4>Active Track</h4>
       <select id="settings-track" class="form-control" onchange="settingsChangeTrack(this.value)"></select>
       <div id="settings-track-availability" style="margin-top:0.45rem;font-size:0.72rem;color:var(--color-muted);line-height:1.4">Checking today's cards\u2026</div>
@@ -10591,10 +10601,6 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <button class="btn btn-outline btn-sm" style="margin-top:0.35rem" onclick="window.location.href='clear.html'">
         &#128259; Clear Cache Page
       </button>
-      <button class="btn btn-outline btn-sm" style="margin-top:0.35rem" onclick="if(typeof startTour==='function'){closeSettings&&closeSettings();startTour();}">
-        Replay Welcome Tour
-      </button>
-      <p class="text-xs text-muted" style="margin-top:0.35rem">Walks through Track a Horse, the Barn, and how Railbird works.</p>
     </div>
   </div>
 </div>
@@ -10870,6 +10876,9 @@ function saveRacesForDate(dateStr, races, code) {
     Object.keys(data.racesByDate).forEach(k => { if (k < cutoffStr) delete data.racesByDate[k]; });
     data.racesByDate[dateStr] = races;
     saveTrackData(data, code);
+    // v2.36.0 — fresh entries: drop the barn lookup cache so the next
+    // search rebuilds with the new horses included.
+    try { if (typeof window.__invalidateLookupCandidates === 'function') window.__invalidateLookupCandidates(); } catch(e){}
   } catch(e) { /* quota or serialize errors — non-fatal */ }
 }
 
@@ -12776,10 +12785,26 @@ function renderTodayTab() {
   }
 }
 
+// v2.36.0 — NYRA Bets deep links for NYRA tracks. Page-level link (race
+// number deep links are not publicly exposed by NYRA Bets).
+const NYRA_BETS_URLS = {
+  SAR: 'https://racing.nyrabets.com/handicapping/bet-saratoga',
+  AQU: 'https://racing.nyrabets.com/handicapping/bet-aqueduct',
+  BEL: 'https://racing.nyrabets.com/handicapping/bet-belmont',
+  BTP: 'https://racing.nyrabets.com/handicapping/bet-belmont'
+};
+function buildNyraBetsUrl(trackCode){
+  return NYRA_BETS_URLS[trackCode] || 'https://www.nyrabets.com';
+}
+
 function buildRaceCardHTML(race) {
   const horses = race.horses || [];
   const typeLbl = CLASS_LABELS[race.type] || race.type || '';
   const eqbUrl = race.equibaseUrl || buildEquibaseUrl(race.num);
+  // v2.36.0 — NYRA Bets link for NYRA tracks (SAR/AQU/BEL/BTP).
+  let activeTrackCode = 'SAR';
+  try { if (typeof getActiveTrack === 'function') activeTrackCode = getActiveTrack() || 'SAR'; } catch(e){}
+  const nyraBetsUrl = NYRA_BETS_URLS[activeTrackCode] || null;
   // MTP badge — show for any race with a future post time today
   let mtpHtml = '';
   (function() {
@@ -12868,7 +12893,7 @@ function buildRaceCardHTML(race) {
       <span class="race-num">${String(race.num).padStart(2,'0')}</span>
       <div class="race-info">
         <div class="race-title">${typeLbl} — ${race.distance || ''} ${race.surface ? '<span style="opacity:0.75">'+race.surface+'</span>' : ''}${mtpHtml}${statusBadge}${liveIndicator}</div>
-        <div class="race-meta">${race.postTime ? 'Post: ' + race.postTime + ' &nbsp;|&nbsp; ' : ''}${race.purse && race.purse !== 'N/A' ? 'Purse: ' + (String(race.purse).startsWith('$') ? race.purse : '$' + Number(String(race.purse).replace(/[^0-9.]/g,'')).toLocaleString()) : ''} &nbsp;${race.updated ? '· Updated ' + race.updated : ''}${eqbUrl ? ' &nbsp;<a href="'+eqbUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:0.68rem;color:var(--color-gold);text-decoration:none">View on Equibase ↗</a>' : ''}</div>
+        <div class="race-meta">${race.postTime ? 'Post: ' + race.postTime + ' &nbsp;|&nbsp; ' : ''}${race.purse && race.purse !== 'N/A' ? 'Purse: ' + (String(race.purse).startsWith('$') ? race.purse : '$' + Number(String(race.purse).replace(/[^0-9.]/g,'')).toLocaleString()) : ''} &nbsp;${race.updated ? '· Updated ' + race.updated : ''}${eqbUrl ? ' &nbsp;<a href="'+eqbUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:0.68rem;color:var(--color-gold);text-decoration:none">View on Equibase ↗</a>' : ''}${nyraBetsUrl ? ' &nbsp;<a href="'+nyraBetsUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:0.68rem;color:var(--color-gold);text-decoration:none">Bet on NYRA Bets ↗</a>' : ''}</div>
         ${inlineResultHtml}
       </div>
       <svg class="collapse-icon" id="collapse-icon-${race.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:18px;height:18px"><polyline points="6 9 12 15 18 9"/></svg>
@@ -19937,10 +19962,13 @@ document.addEventListener('keydown', e => {
       var pool;
       var headline = '';
       if (!q) {
-        // Suggested: curated first (max 4), then up to 4 demo.
+        // Suggested: curated first (max 4), then up to 6 live (today's card),
+        // then up to 4 demo. Live takes priority when a card is loaded so
+        // users see today's runners front and center.
         var curated = cands.filter(function(c){ return c.source === 'curated'; });
-        var demo = cands.filter(function(c){ return c.source === 'demo'; });
-        pool = curated.slice(0, 4).concat(demo.slice(0, 4));
+        var live    = cands.filter(function(c){ return c.source === 'live'; });
+        var demo    = cands.filter(function(c){ return c.source === 'demo'; });
+        pool = curated.slice(0, 4).concat(live.slice(0, 6)).concat(demo.slice(0, 4));
         headline = '<div class="barn-lookup-suggested-label">Suggested horses</div>';
       } else {
         // v2.21.5: match across name + trainer + owner + jockey to align with placeholder.
@@ -19953,7 +19981,7 @@ document.addEventListener('keydown', e => {
         }).slice(0, 20);
       }
       if (!pool.length) {
-        host.innerHTML = '<div class="barn-lookup-empty">No profiles match \u201C' + esc(query) + '\u201D. Try another horse, trainer, or owner \u2014 the pool is limited to curated profiles and the 2025 Saratoga sample.</div>';
+        host.innerHTML = '<div class="barn-lookup-empty">No profiles match \u201C' + esc(query) + '\u201D. The pool covers curated profiles, today\u2019s live entries, and the 2025 Saratoga sample. Try another horse, trainer, jockey, or owner.</div>';
         return;
       }
       var html = headline + pool.map(function(c){
@@ -19972,8 +20000,11 @@ document.addEventListener('keydown', e => {
         var state = window.__classifyBarnCandidate ? window.__classifyBarnCandidate(c) : 'new';
         var inBarn = (state === 'inbarn' || state === 'fav');
         var badges = '';
-        badges += '<span class="barn-lookup-badge ' + (c.source === 'curated' ? 'barn-lookup-badge-curated' : 'barn-lookup-badge-demo') + '">' +
-          (c.source === 'curated' ? 'Curated profile' : 'Demo sample') + '</span>';
+        var badgeCls, badgeLabel;
+        if (c.source === 'curated') { badgeCls = 'barn-lookup-badge-curated'; badgeLabel = 'Curated profile'; }
+        else if (c.source === 'live') { badgeCls = 'barn-lookup-badge-curated'; badgeLabel = 'Running today'; }
+        else { badgeCls = 'barn-lookup-badge-demo'; badgeLabel = 'Demo sample'; }
+        badges += '<span class="barn-lookup-badge ' + badgeCls + '">' + badgeLabel + '</span>';
         if (inBarn) badges += '<span class="barn-lookup-badge barn-lookup-badge-inbarn">In Barn</span>';
         var addBtn = inBarn
           ? '<button class="barn-lookup-add" disabled>In Barn</button>'
@@ -20673,6 +20704,36 @@ document.addEventListener('keydown', e => {
           };
         });
       }
+      // v2.36.0 — Also include horses from the currently loaded live card.
+      // This means any horse running today is one tap away in the lookup,
+      // even when no curated profile exists for them yet.
+      try {
+        if (typeof getTrackData === 'function') {
+          var td = getTrackData();
+          var races = (td && td.races) ? td.races : [];
+          races.forEach(function(race){
+            (race.horses || []).forEach(function(h){
+              if (!h || !h.name) return;
+              var key = String(h.name).trim().toLowerCase();
+              if (byName[key]) return; // curated/demo wins
+              byName[key] = {
+                name: h.name,
+                source: 'live',
+                profile: {
+                  name: h.name,
+                  trainer: h.trainer || '',
+                  jockey: h.jockey || '',
+                  owner: h.owner || '',
+                  sire: h.sire || '',
+                  source: 'live-entries',
+                  watchReason: 'Running in race ' + (race.num || '?') + ' at ' + (td && td.code ? td.code : 'today\'s card') + '.',
+                  tags: ['live-entry']
+                }
+              };
+            });
+          });
+        }
+      } catch(e){}
       _lookupCandidatesCache = Object.keys(byName).map(function(k){ return byName[k]; });
       _lookupCandidatesPromise = null;
       return _lookupCandidatesCache;
@@ -20684,6 +20745,12 @@ document.addEventListener('keydown', e => {
     return _lookupCandidatesPromise;
   }
   window.__buildLookupCandidates = buildLookupCandidates;
+  // v2.36.0 — expose an invalidator so callers (entries load, track switch)
+  // can force a rebuild that picks up freshly arrived live horses.
+  window.__invalidateLookupCandidates = function(){
+    _lookupCandidatesCache = null;
+    _lookupCandidatesPromise = null;
+  };
 
   // Classify a candidate relative to current barn for UI: 'fav'|'inbarn'|'new'.
   function classifyCandidate(candidate){

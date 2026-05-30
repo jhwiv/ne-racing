@@ -1,7 +1,7 @@
 {
   "meta": {
-    "version": "v2.32.2",
-    "generated_at": "2026-05-28",
+    "version": "v2.36.0",
+    "generated_at": "2026-05-30",
     "data_status": "curated-public-profile",
     "notes": "Curated from user-provided Equibase screenshot facts plus public horse-profile pages (Sky Sports, At The Races, IrishRacing, NYRA results). NOT an official or licensed data feed. No bulk scraping, no automated harvesting. Source URLs recorded per horse and per history row where available. Snapshot only — may go out of date between releases."
   },
@@ -194,6 +194,25 @@
         "IrishRacing alternate lifetime earnings ($96,420) conflicts with the Equibase career total. Equibase is treated as canonical; the alternate is retained as a source-specific figure.",
         "Career earnings on this profile include the $14,000 place share estimated for the May 10 Aqueduct allowance — official Equibase chart may round differently.",
         "Trainer Barclay Tagg has changed riders on this horse multiple times (Espinoza → Davis → Juarez → Franco). The \"Last known jockey\" reflects the most recent verified ride, not necessarily the next rider booked."
+      ]
+    },
+    {
+      "name": "Secret Connection",
+      "breed": "TB",
+      "owner": "Bona Venture Stables",
+      "tags": ["curated", "bona-venture", "watchlist"],
+      "watchReason": "Tester-requested. Bona Venture Stables runner — full profile to be backfilled from Equibase once next start is confirmed.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Secret+Connection",
+          "note": "Profile stub added 2026-05-30 to make the horse discoverable in barn lookup. Stats, history, and refno pending verification."
+        }
+      ],
+      "caveats": [
+        "Stub profile — added so the horse is searchable. Stats, history, and Equibase refno are not yet verified. Will be backfilled when Secret Connection appears in live entries or via Equibase confirmation."
       ]
     }
   ]

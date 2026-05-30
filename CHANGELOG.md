@@ -1,5 +1,37 @@
 # NE Racing — Changelog
 
+## v2.36.0 — Beta feedback batch #1 (2026-05-30)
+
+First response to beta tester feedback. Four changes, all user-facing.
+
+### Added
+
+- **Tour promotion.** A new `?` icon in the header opens the welcome tour
+  in one tap from anywhere in the app. The same tour now also sits at the
+  top of Settings under "New here? Take the tour" as a prominent primary
+  button. The old buried "Replay Welcome Tour" entry at the bottom of
+  Settings → Diagnostics is removed (it was easy to miss).
+- **Barn lookup now includes today's live entries.** Any horse running on
+  the currently loaded card is searchable by name, trainer, jockey, or
+  owner in the barn drawer — and the suggested list surfaces up to six
+  of them with a "Running today" badge. The lookup cache is invalidated
+  whenever a fresh card lands so newly arrived horses show up immediately.
+- **"Bet on NYRA Bets" deep link.** Each race header on NYRA tracks
+  (SAR, AQU, BEL, BTP) now has a "Bet on NYRA Bets ↗" link next to the
+  Equibase link. Opens the official NYRA Bets track page in a new tab.
+  No deep race-number link exists publicly, so this links to the track.
+- **Secret Connection (Bona Venture Stables)** added as a curated profile
+  stub so testers can find and add it to the Barn while we wait for the
+  full profile to be backfilled from Equibase.
+
+### Investigated, not shipped
+
+- **Per-race earnings ledger for horses in the Barn.** TheRacingAPI's
+  North America add-on exposes meets/entries/results by `meet_id` only —
+  there is no documented horse-history endpoint for NA. This data lives
+  in Equibase past performances and will be filled in via the parked
+  Equibase ingest (track 1, D1/R2 pipeline). Tracking separately.
+
 ## v2.35.3 — Picks-log POST fix (2026-05-30)
 
 Pre-beta QA sweep caught one production blocker: the worker's top-level
