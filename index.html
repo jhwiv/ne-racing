@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260529-pr2-checkpoint-3b-v2.35.1';
+var NE_APP_VERSION = '20260530-v2.35.2';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.35.1-pr2-checkpoint-3b';
+var RAILBIRD_VERSION = 'v2.35.2-bet-eval-lazy-advice';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -11347,6 +11347,47 @@ function onBetEvalRaceChange() {
   renderBetEvalHorses();
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * _betEvalEnsureAdvice(raceId)
+ *
+ * Lazy populator for the scored-field cache the Bet Evaluator depends on.
+ * Previously the evaluator failed with "Open the Advice tab first" any time
+ * a user launched it before visiting the Advice tab — a confusing papercut.
+ *
+ * This helper:
+ *   1. Returns immediately if the requested race is already cached.
+ *   2. Tries runAdviceEngine() to populate the cache for the active track.
+ *   3. Returns a small object describing the outcome so callers can show a
+ *      precise message (loading, no card loaded, wrong track, etc.).
+ *
+ * Returns: { ok: bool, reason: 'cached'|'engine-populated'|'no-card'|'race-not-found' }
+ * ─────────────────────────────────────────────────────────────────────────── */
+function _betEvalEnsureAdvice(raceId) {
+  if (raceId && _adviceByRaceId[raceId] && _adviceByRaceId[raceId].length) {
+    return { ok: true, reason: 'cached' };
+  }
+  var data = (typeof getTrackData === 'function') ? getTrackData() : null;
+  if (!data || !Array.isArray(data.races) || !data.races.length) {
+    return { ok: false, reason: 'no-card' };
+  }
+  try { runAdviceEngine(); }
+  catch (e) { console.warn('[bet-eval] runAdviceEngine failed:', e); }
+  if (raceId && _adviceByRaceId[raceId] && _adviceByRaceId[raceId].length) {
+    return { ok: true, reason: 'engine-populated' };
+  }
+  return { ok: false, reason: raceId ? 'race-not-found' : 'no-card' };
+}
+
+function _betEvalAdviceMissingMsg(reason) {
+  if (reason === 'no-card') {
+    return "Today's card hasn't loaded yet. Tap Refresh on the Card tab, then try again.";
+  }
+  if (reason === 'race-not-found') {
+    return 'This race is not in the current card. Switch tracks on the Card tab, then try again.';
+  }
+  return 'No scored field for the selected race. Open the Advice tab first.';
+}
+
 function onBetEvalStructureChange() {
   _betEvalState.selections = {};
   renderBetEvalHorses();
@@ -11366,9 +11407,11 @@ function renderBetEvalHorses() {
 
   var raceSel = el('bet-eval-race');
   var raceId = raceSel ? raceSel.value : '';
-  var advice = (raceId && _adviceByRaceId[raceId]) || [];
+  var ensured = _betEvalEnsureAdvice(raceId);
+  var advice = ensured.ok ? (_adviceByRaceId[raceId] || []) : [];
   if (!advice.length) {
-    horsesEl.innerHTML = '<div class="text-muted text-sm" style="padding:0.5rem;">No scored field for this race. Open the Advice tab first to populate.</div>';
+    horsesEl.innerHTML = '<div class="text-muted text-sm" style="padding:0.5rem;">' +
+      _betEvalAdviceMissingMsg(ensured.reason) + '</div>';
     return;
   }
 
@@ -11581,10 +11624,11 @@ function runBetEvaluation() {
   } else {
     var raceSel = el('bet-eval-race');
     var raceId = raceSel ? raceSel.value : '';
-    var advice = _adviceByRaceId[raceId] || [];
+    var ensured = _betEvalEnsureAdvice(raceId);
+    var advice = ensured.ok ? (_adviceByRaceId[raceId] || []) : [];
     if (!advice.length) {
       resEl.classList.remove('hidden');
-      resEl.innerHTML = '<div class="res-warnings">No scored field for the selected race. Open the Advice tab first.</div>';
+      resEl.innerHTML = '<div class="res-warnings">' + _betEvalAdviceMissingMsg(ensured.reason) + '</div>';
       return;
     }
     var scoredField = _betEvalAdviceToScoredField(advice);

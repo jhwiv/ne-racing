@@ -1,5 +1,24 @@
 # NE Racing — Changelog
 
+## v2.35.2 — Bet Evaluator lazy advice load (2026-05-30)
+
+UX papercut fix: the Bet Evaluator no longer fails with "Open the Advice tab
+first" when launched cold. The cache is now populated on-demand and missing-
+data states show precise, actionable messages.
+
+### Fixed
+
+- `index.html`: new `_betEvalEnsureAdvice(raceId)` helper lazily calls
+  `runAdviceEngine()` when the scored-field cache is empty for the requested
+  race. Both `renderBetEvalHorses()` and `runBetEvaluation()` now go through
+  this helper before reading the cache. First-time testers no longer have to
+  visit the Advice tab as a prerequisite.
+- `index.html`: when advice is genuinely unavailable, the modal now
+  distinguishes between three cases: today's card hasn't loaded yet (prompts
+  Refresh on the Card tab), the race isn't in the current card (wrong track),
+  and the generic fallback. Previous single "Open the Advice tab first"
+  message was confusing.
+
 ## v2.35.1 — PR #2 QA fixes (2026-05-29)
 
 Post-checkpoint QA pass on the fitter pipeline. Fixes two issues found while
