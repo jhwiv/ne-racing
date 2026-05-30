@@ -1,5 +1,33 @@
 # NE Racing — Changelog
 
+## v2.36.2 — Search surfaces curated horses + anonymous feedback (2026-05-30)
+
+Response to beta tester: "I searched secret connection and it didn't surface"
+and "Remove beta tester email option and name in feedback. I want to make it
+very easy."
+
+### Fixed
+
+- **Global search now surfaces curated horses.** Typing "sec" (or any
+  prefix/substring) now matches Secret Connection, Inspeightofcharlie, and
+  every other horse with a curated profile — not just horses already in
+  the user's Barn or on today's card. Implemented by scanning the cached
+  lookup-candidate set (curated + demo + live) inside `globalSearchScan()`,
+  with a cache warm-up triggered when the search overlay opens so the
+  first keystroke already has data.
+- **Tapping a curated search result adds the horse to the Barn and opens
+  its profile.** Previously curated horses (e.g. Secret Connection) had
+  no path from search; now one tap stages them in the Barn and surfaces
+  the full profile modal — the original tester complaint.
+
+### Changed
+
+- **Feedback form is now one-tap and anonymous.** Removed the optional
+  "Your name" and "Your email" inputs from the Send Feedback modal.
+  Subtitle updated to "Anonymous and goes directly to the builder."
+  Backend continues to accept name/email; the client now sends empty
+  strings for both so the worker schema is unchanged.
+
 ## v2.36.1 — Charlie earnings by race (2026-05-30)
 
 Response to EG's "earnings by race" beta feedback for Inspeightofcharlie.

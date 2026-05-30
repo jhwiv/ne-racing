@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260530-v2.36.1';
+var NE_APP_VERSION = '20260530-v2.36.2';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.36.1-charlie-earnings';
+var RAILBIRD_VERSION = 'v2.36.2-search-feedback';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10469,13 +10469,9 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 <div id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="fb-title" onclick="closeFeedbackModalOnBg(event)">
   <div class="fb-card" onclick="event.stopPropagation()">
     <h3 id="fb-title">Send Feedback</h3>
-    <div class="fb-sub">Bug reports, ideas, questions — anything. Goes directly to the builder.</div>
+    <div class="fb-sub">Bug reports, ideas, questions — anything. Anonymous and goes directly to the builder.</div>
     <label for="fb-message">Your feedback <span style="color:#B5371A">*</span></label>
     <textarea id="fb-message" placeholder="What's working, what's broken, what you'd love to see…" maxlength="5000"></textarea>
-    <label for="fb-name">Your name (optional)</label>
-    <input id="fb-name" type="text" maxlength="120" autocomplete="name" />
-    <label for="fb-email">Your email (optional — only if you want a reply)</label>
-    <input id="fb-email" type="email" maxlength="200" autocomplete="email" placeholder="you@example.com" />
     <div class="fb-status" id="fb-status"></div>
     <div class="fb-row">
       <button type="button" class="fb-cancel" onclick="closeFeedbackModal()">Cancel</button>
@@ -12497,6 +12493,18 @@ function openGlobalSearch() {
     setTimeout(function(){ try { input.focus(); } catch(_) {} }, 60);
   }
   renderGlobalSearchResults('');
+  // v2.36.2 — Warm the curated/demo/live candidate cache so curated horses
+  // (e.g. Charlie, Secret Connection) surface as soon as the user types,
+  // even if they haven't already triggered the Lookup panel.
+  try {
+    if (typeof window.__buildLookupCandidates === 'function') {
+      window.__buildLookupCandidates().then(function(){
+        // Re-render against whatever the user has typed so far.
+        var i = el('global-search-input');
+        if (i) renderGlobalSearchResults(i.value || '');
+      });
+    }
+  } catch(_) {}
   // Bind input handler once
   if (input && !input.__gsBound) {
     input.addEventListener('input', function(e){ renderGlobalSearchResults(e.target.value || ''); });
@@ -12609,6 +12617,36 @@ function globalSearchScan(q) {
     });
   });
 
+  // v2.36.2 — Also scan curated horses (e.g. Charlie, Secret Connection) and
+  // demo/live candidates so a tester can find any horse with a known profile
+  // even before adding it to their Barn. Uses the cached candidate list from
+  // buildLookupCandidates() — synchronous read; if not yet populated, this
+  // pass is skipped and Barn+today's-card still match.
+  try {
+    var cached = (typeof window.__getLookupCandidatesCached === 'function')
+      ? window.__getLookupCandidatesCached() : null;
+    if (Array.isArray(cached)) {
+      cached.forEach(function(c){
+        if (!c || !c.name) return;
+        var lower = String(c.name).toLowerCase();
+        if (lower.indexOf(needle) === -1 || seenHorse.has(lower)) return;
+        seenHorse.add(lower);
+        var p = c.profile || {};
+        var sourceLabel = c.source === 'curated' ? 'Curated profile'
+                        : c.source === 'live'    ? 'Running today'
+                        : c.source === 'demo'    ? 'Demo sample'
+                        : 'Known horse';
+        out.horses.push({
+          kind: 'horse',
+          source: c.source || 'curated',
+          title: c.name,
+          meta: [p.trainer ? 'T: ' + p.trainer : '', p.owner ? 'O: ' + p.owner : '', sourceLabel].filter(Boolean).join(' \u00b7 '),
+          payload: { horse: c.name, addFromLookup: true }
+        });
+      });
+    }
+  } catch(e){}
+
   out.total = out.horses.length + out.trainers.length + out.jockeys.length + out.races.length;
   return out;
 }
@@ -12663,7 +12701,22 @@ function handleGlobalSearchResult(kind, payloadEncoded) {
   try { payload = JSON.parse(decodeURIComponent(payloadEncoded || '%7B%7D')); } catch(_) {}
   closeGlobalSearch();
   if (kind === 'horse' && payload && (payload.id || payload.horse)) {
-    // Try to open horse profile if available; otherwise switch to barn.
+    var horseName = payload.id || payload.horse;
+    // v2.36.2 — If this result came from curated/demo/live candidates and
+    // the horse isn't in the user's Barn yet, add it first so the profile
+    // modal (which reads from store.barn) can render. Then open the profile.
+    if (payload.addFromLookup && typeof window.barnAddFromLookup === 'function') {
+      try {
+        window.barnAddFromLookup(horseName);
+        // barnAddFromLookup is async (awaits candidates); give it a tick.
+        setTimeout(function(){
+          try { if (typeof openHorseProfile === 'function') openHorseProfile(horseName); } catch(_) {}
+          try { switchTab('barn'); } catch(_) {}
+        }, 180);
+        return;
+      } catch(_) {}
+    }
+    // Try to open horse profile if already in barn; otherwise switch to barn.
     if (typeof openHorseProfile === 'function' && payload.id) {
       try { openHorseProfile(payload.id); return; } catch(_) {}
     }
@@ -16344,7 +16397,9 @@ function closeFeedbackModalOnBg(e) {
   if (e.target === el('feedback-modal')) closeFeedbackModal();
 }
 async function submitFeedback() {
-  var msgEl = el('fb-message'); var nameEl = el('fb-name'); var emailEl = el('fb-email');
+  // v2.36.2 — anonymous one-tap feedback. Name + email fields were removed
+  // from the UI; we still send empty strings so the worker schema is happy.
+  var msgEl = el('fb-message');
   var statusEl = el('fb-status'); var btn = el('fb-send-btn');
   if (!msgEl || !statusEl || !btn) return;
   var message = (msgEl.value || '').trim();
@@ -16358,8 +16413,8 @@ async function submitFeedback() {
     statusEl.className = 'fb-status error';
     return;
   }
-  var name  = (nameEl  && nameEl.value)  ? nameEl.value.trim().slice(0,120) : '';
-  var email = (emailEl && emailEl.value) ? emailEl.value.trim().slice(0,200) : '';
+  var name  = '';
+  var email = '';
   // Build base URL from store settings (same as data calls)
   var s = (typeof getStore === 'function') ? getStore() : null;
   var base = (s && s.settings && s.settings.workerUrl) ? s.settings.workerUrl : DEFAULT_WORKER_URL;
@@ -16389,7 +16444,6 @@ async function submitFeedback() {
     }
     statusEl.textContent = 'Thanks. Feedback received.';
     statusEl.className = 'fb-status success';
-    // Clear message but leave name+email if user filled them in
     msgEl.value = '';
     setTimeout(closeFeedbackModal, 1400);
   } catch (err) {
@@ -20746,6 +20800,10 @@ document.addEventListener('keydown', e => {
     return _lookupCandidatesPromise;
   }
   window.__buildLookupCandidates = buildLookupCandidates;
+  // v2.36.2 — expose a synchronous cache accessor so the global search bar
+  // (which runs synchronously on each keystroke) can scan curated/demo/live
+  // horses without awaiting a network round-trip.
+  window.__getLookupCandidatesCached = function(){ return _lookupCandidatesCache; };
   // v2.36.0 — expose an invalidator so callers (entries load, track switch)
   // can force a rebuild that picks up freshly arrived live horses.
   window.__invalidateLookupCandidates = function(){
