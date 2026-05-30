@@ -15,28 +15,17 @@ ALLOWED_ORIGIN = "https://railbirdai.com"
 binding = "FEEDBACK_LOG"
 id = "f4480a5e92fa463a88e014541224b85f"
 
-# v2.33.0 (PR #2) — RACE_HISTORY KV: durable archive of finished race cards.
-# Populated by handleResults() after a successful fetch when at least one race
-# is `official: true`. Read by /api/history/* endpoints and the offline backtest.
+# v2.33.0 (PR #2) — RACE_HISTORY + ENGINE_ACCURACY KV bindings intentionally
+# omitted at initial ship. The Worker guards every KV access (`if (!env.X)`),
+# so the new history-archive and engine-accuracy endpoints return 503 until
+# the namespaces are created and these blocks are re-added:
 #
-# Before first deploy, create the namespace and paste its id here:
 #   wrangler kv:namespace create RACE_HISTORY
 #   wrangler kv:namespace create RACE_HISTORY --preview
-[[kv_namespaces]]
-binding = "RACE_HISTORY"
-id = "REPLACE_WITH_RACE_HISTORY_KV_ID"
-preview_id = "REPLACE_WITH_RACE_HISTORY_PREVIEW_KV_ID"
-
-# v2.33.0 (PR #2) — ENGINE_ACCURACY KV: per-engine pick + outcome log.
-# Written by /api/picks/log + /api/picks/settle. Powers /api/picks/stats and
-# downstream conditional-logit refits.
-#
 #   wrangler kv:namespace create ENGINE_ACCURACY
 #   wrangler kv:namespace create ENGINE_ACCURACY --preview
-[[kv_namespaces]]
-binding = "ENGINE_ACCURACY"
-id = "REPLACE_WITH_ENGINE_ACCURACY_KV_ID"
-preview_id = "REPLACE_WITH_ENGINE_ACCURACY_PREVIEW_KV_ID"
+#
+# Bet Evaluator UI, fitted weights, and A/B toggle do not depend on these KVs.
 
 [observability]
 enabled = true
