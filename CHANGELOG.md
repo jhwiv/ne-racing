@@ -1,5 +1,301 @@
 # NE Racing — Changelog
 
+## v2.35.1 — PR #2 QA fixes (2026-05-29)
+
+Post-checkpoint QA pass on the fitter pipeline. Fixes two issues found while
+smoke-testing end-to-end, plus a new regression test that locks in the
+fitter-output contract.
+
+### Fixed
+
+- `scripts/training/fit_logit.py`: `weights_normalized` now correctly takes
+  `|β|` before dividing by `Σ|β|`. Previously, negative coefficients leaked
+  through into the output file (the runtime validator handled this correctly,
+  so production scoring was unaffected, but the on-disk weights were
+  misleading and the report-card view could show negative values).
+- `scripts/training/fit_logit.py`: `datetime.utcnow()` replaced with
+  `datetime.now(timezone.utc)` to silence the Python 3.12+ deprecation
+  warning.
+
+### Added
+
+- `tests/fitter-output-contract.test.js`: end-to-end regression test that
+  invokes `fit_logit.py` against a synthetic JSONL corpus (250 races, baked-in
+  speed signal) and asserts: schema fields present, `weights_normalized` is
+  non-negative and sums to 1, `trained_at` is ISO-UTC, the runtime loader
+  (`loadFittedWeights`) accepts the produced payload. Skips automatically if
+  python3/scipy is unavailable.
+- `data/weights/.gitkeep`: documents the directory contract (production
+  `v2.json` is tracked; smoke-test artifacts are gitignored).
+
+### Tests
+
+203/203 passing (was 202/202).
+
+## v2.35.0 — PR #2 Checkpoint 3b: Fitted Weights Training Pipeline (2026-05-29)
+
+Completes PR #2's training arm. Adds a Python conditional-logit fitter that
+learns the v2 composite weights from race outcomes archived in the
+`RACE_HISTORY` KV namespace (PR #2 Checkpoint 1). The v2 engine auto-loads
+fitted weights at runtime when they meet a minimum-sample-size threshold, and
+falls back to the hand-picked defaults otherwise.
+
+### Added
+
+- `scripts/training/extract_features.js` — Node feature extractor. Pulls the
+  on-disk corpus (and, optionally, the Worker `/api/history` corpus), runs
+  `scoreRace(race, { version: 'v2' })` on each race with a recorded result,
+  and emits per-race JSONL containing the 6 sub-scores (speed, class, pace,
+  trainer/jockey, bias, freshness), the PP order, and the winner's index in
+  that order. Late-scratched winners and races without a recorded result are
+  skipped (with reason counts on stderr).
+- `scripts/training/fit_logit.py` — Python conditional-logit fitter. Uses
+  L-BFGS-B (scipy) to maximize
+  `ℓ(β) = Σ_i [ β·x_{i,winner(i)} − log Σ_k exp(β·x_{i,k}) ]`
+  with a small L2 ridge (default 0.001) for numerical stability. Outputs
+  `data/weights/v2.json` with: raw `beta`, Hessian-based standard errors,
+  `weights_normalized` (Σ=1, the actual production input), `n_races`,
+  date range, McFadden pseudo-R², top-1 hit rate, and a `status` field of
+  `fitted` or `insufficient`. Refuses to write fitted weights below
+  `--min-races` (default 200) unless `--write-anyway`.
+- `scripts/lib/scoring.js`:
+  - Exported `DEFAULT_V2_WEIGHTS` (the hand-picked
+    `{speed:0.35, class:0.20, pace:0.15, tj:0.15, bias:0.10, fresh:0.05}` vector).
+  - Exported `loadFittedWeights(payload)` to validate a weights-file payload
+    and normalize it for the engine.
+  - `scoreRace(race, opts)` now accepts `opts.fittedWeights`; when supplied
+    and version==='v2', it replaces the hand-picked weights in the composite.
+- `index.html` runtime:
+  - New `RailbirdFittedWeights` IIFE lazy-fetches `data/weights/v2.json` once
+    per session, caches the parsed payload, and enforces the 200-race minimum.
+  - `runAdviceEngine()` v2 delegation passes the cached payload as
+    `fittedWeights` to `RailbirdScoring.scoreRace`. Engine silently falls
+    back to defaults when no fitted weights are available.
+- `tests/fitted-weights.test.js` — 8 unit tests covering payload validation,
+  insufficient-sample rejection, absolute-value handling of negative
+  coefficients, default-weight passthrough, and version-gating (v1 ignores
+  fitted weights).
+
+### Behavior
+
+- Fitted weights are **gated on n_races >= 200**. Below that, the engine uses
+  the existing hand-picked defaults — no silent regressions on a small
+  early-meet corpus.
+- Conditional-logit coefficients can be negative if a sub-score is mis-signed
+  in training. The validator normalizes by absolute value and re-scales to
+  sum to 1, treating each sub-score as a positive influence (matches the
+  "higher = better" orientation the sub-scores are designed around).
+- Engine version remains opt-in via the existing A/B toggle. Default users
+  see v1; only those who flipped to v2 (Settings, `?engine=v2`, or sticky
+  device assignment) get the new weights.
+
+### Tests
+
+- 202/202 passing (previous 194 + 8 fitted-weights).
+
+---
+
+## v2.34.1 — PR #2 Checkpoint 3a: Evaluate Any Bet UI (2026-05-29)
+
+User-facing UI for the bet evaluator landed in Checkpoint 2. Adds a bottom-
+sheet modal accessible from the Bets tab so users can evaluate any bet they
+are considering — WPS, full exotics (straight / box / key / wheel), and
+multi-race tickets (Pick 3/4/5/6) — and see EV, overlay vs morning-line,
+fair odds, engine rank, takeout, and structural warnings.
+
+### Added
+
+- **"Evaluate Any Bet" modal** in `index.html`:
+  - Launch button on the Bets tab (gold gradient on racing-green) calling
+    `openBetEvaluator()`.
+  - Mobile-first bottom-sheet overlay (`#bet-eval-overlay` / `.bet-eval-sheet`).
+  - Pool picker (10 pools), structure picker for exotics, race picker for
+    single-race pools, multi-leg picker with "Start Race" selector and
+    togglable PP chips for multi-race pools.
+  - Per-structure picker UI:
+    - WPS → single radio.
+    - Exacta/Trifecta/Superfecta `straight` → finishing-position number
+      input next to each horse.
+    - `box` / `wheel` → checkbox include list.
+    - `key` → hybrid key-radio + with-checkboxes.
+  - Result card with verdict badge (OVERLAY / Underlay / Fair), cost, EV,
+    expected return, probability, fair vs taken odds, engine rank,
+    takeout %, structural warnings list, and takeout-source footer.
+- JS adapter `_betEvalAdviceToScoredField()` converts cached advice items
+  (`_adviceByRaceId[raceId]` shape) into the evaluator's `scoredField`
+  shape (`{pp, prob, ml, composite, dataCompleteness}`).
+- ~470 lines of CSS for the modal, modeled on the existing bet-amount-
+  picker styles, with gold-on-green header matching the launch button.
+
+### Behavior
+
+- Auto-runs `runAdviceEngine()` if the advice cache is empty when the user
+  opens the modal, so the evaluator always has scored data to consume.
+- Defensive: shows inline error messages (no scored field, not enough
+  horses, position not assigned, etc.) instead of throwing.
+- All evaluator calls go through `window.RailbirdBetEvaluator.evaluateBet()`
+  (the IIFE-attached inlined module from Checkpoint 2), so the UI uses the
+  exact same math the tests cover.
+
+### Tests
+
+- All 194 tests still pass — no test changes were needed since the UI
+  delegates to the already-tested evaluator core.
+
+---
+
+## v2.34.0 — PR #2 Checkpoint 2: Bet Evaluator + Engine Wiring (2026-05-29)
+
+Second checkpoint of PR #2. Builds on v2.33.0 (methodology v2 + backtest
+harness) and v2.34.0-checkpoint-1 (KV recorder, A/B engine toggle, inlined
+scoring) by adding a full user-bet evaluator, wiring v2 scoring into the live
+`runAdviceEngine()` behind the A/B toggle, and adding a Worker-backed corpus
+loader for the backtest harness.
+
+### Added
+
+- `scripts/lib/bet_evaluator.js` — pure user-bet evaluator (~700 lines).
+  Single entry point `evaluateBet({pool, race, legs, selection, structure,
+  amount})` covering ten wager types:
+  - **Win / Place / Show** (Harville-approximated place/show probabilities,
+    overlay vs morning-line, engine rank, structural warnings).
+  - **Exacta / Trifecta / Superfecta** in four structures: straight, box,
+    key, wheel. Per-permutation Harville pricing with takeout deduction.
+  - **Pick 3 / 4 / 5 / 6** with multi-leg coverage and ticket-cost warnings.
+    Multi-race ER uses the fair-pricing identity
+    `ER = baseAmount × (1 − takeout) × validCombos`, validated against the
+    full-coverage identity `ER = (1 − takeout) × cost`.
+  - Per-track takeout table with NYRA fallback. Sources cited inline:
+    NYRA (Aqueduct/Belmont/Saratoga), Charles Town, Churchill Downs, Lone
+    Star Park. All takeout rates verified against the host association's
+    published FAQ on 2026-05-29.
+  - Returns `{cost, probability, expectedReturn, expectedValue, overlay,
+    engineRank, warnings, confidence, takeout, takeoutSource}`.
+- `tests/bet-evaluator.test.js` — 53 unit tests covering odds parsing,
+  takeout lookup, Harville probabilities, permutation generators, every
+  evaluator path, fair-pricing identities, and dispatcher routing.
+- `scripts/backtest/load_corpus.js` — added `loadCorpusFromWorker()` and
+  `mergeCorpora()`. The Worker-backed loader pulls archived race history
+  from `/api/history/list` + `/api/history/{TRACK}/{DATE}` so the backtest
+  harness can consume the production race archive without re-fetching from
+  vendor APIs. Merge applies the same "results-wins" de-dup policy across
+  on-disk and Worker sources.
+- `tests/load-corpus-worker.test.js` — 9 tests covering the worker loader
+  (empty listings, fetch failures, missing fields, per-day error skipping)
+  and the merge helper (uniqueness, results-wins, empty input).
+
+### Changed
+
+- `index.html` — `runAdviceEngine()` now delegates to
+  `window.RailbirdScoring.scoreRace(race, {version:'v2', bias, today})` when
+  `RailbirdEngine.isV2()` is true. v1 (legacy) remains the default; v2 is
+  opt-in via Settings, `?engine=v2`, or sticky device assignment.
+  Output shape is identical between paths so all downstream rendering
+  (advice rows, confidence bars, suggested bets, top picks card, bet slip
+  hooks) works unchanged. A defensive `try/catch` around the v2 call falls
+  back to the inline v1 path on any error so the UI never goes blank.
+- `scripts/ingest/theracingapi_adapter.js` — `trainingEligible` flipped
+  from `false` to `true`. Written ML-training approval from
+  support@theracingapi.com is on file as of 2026-05-29. License notes and
+  header comment updated to reflect approval.
+
+### Sources verified 2026-05-29
+
+- [NYRA betting FAQ](https://www.nyra.com/aqueduct/racing/betting-faq/) —
+  NYRA takeout rates (Win/Place/Show 16%, Exacta/DD 18.5%, Tri/Super/Pick3/
+  Pick4 24%, Pick5/Pick6 15%).
+- [NY Gaming Commission horse racing reports](https://gaming.ny.gov/horse-racing-reports)
+- [Iron Bets — Bet Charles Town](https://ironbetsracing.com/bet-charles-town/)
+- [Churchill Downs visiting information](https://www.churchilldowns.com/come-to-the-track/visiting-information/event-information/)
+- [Lone Star Park wagering menu](https://www.lonestarpark.com/wageringmenu/)
+
+### Test count
+
+130 → 192 (+62: 53 bet-evaluator, 9 worker-loader). All pass.
+
+### Deferred to Checkpoint 3
+
+- "Evaluate My Bet" UI in `index.html` (race+pool+horse+structure picker,
+  results card with EV/overlay/engine-rank/warnings, hook from bet slip).
+- `scripts/training/fit_logit.py` — Python conditional-logit fitter that
+  reads from the Worker's archived race history and exports
+  `data/weights/v2.json`.
+- v2 engine wiring to load fitted weights when `n_races ≥ 200`, with
+  fallback to hand-picked defaults below that threshold.
+
+---
+
+## v2.33.0 — Methodology v2 + Backtest Harness (2026-05-29)
+
+First half of a two-PR effort to put the advice engine on an empirical
+footing. This PR is **purely additive** to the production UI — nothing in
+`index.html` changes behavior. The new code is exercised offline by the
+backtest harness so v2 can be validated before it's wired into the PWA.
+
+### Added
+
+- `scripts/lib/scoring.js` — pure scoring + probability module, no DOM/fetch.
+  Exposes `scoreRace()` and `scoreCard()` with a `version: 'v1' | 'v2'` flag.
+  - **v1** replicates the math currently in `index.html` for parity tests.
+  - **v2** fixes five peer-review issues:
+    1. **Probability normalization.** Replaces `score / Σscores` (not a
+       probability) with a temperature-scaled softmax so dispersion is
+       meaningful and overlay calculations are honest.
+    2. **Field-strength normalization.** A 75 composite in a 5-horse MCL no
+       longer looks identical to a 75 in a 12-horse stakes.
+    3. **Trainer + Jockey decoupling.** Stops averaging jockey% and trainer%
+       (which double-counted hot pairs); now scores them independently and
+       blends 60% high / 40% low.
+    4. **Bias additivity cap.** Style and rail bumps are explicit additive
+       components around a 50 baseline, capped [0, 100], with penalties for
+       wrong-style/wrong-post that v1 didn't apply.
+    5. **Expert consensus decoupling.** Off the composite by default in v2
+       (still surfaced for UI display as a benchmark). v1 default keeps the
+       legacy +3/+6/+10/+14 bonus.
+- `scripts/backtest/` — offline measurement harness.
+  - `load_corpus.js` reads `data/normalized/`, `data/entries-*.json`, and
+    optionally `data/fixtures/`. Dedupes by race id, preferring copies with
+    results regardless of source.
+  - `metrics.js` computes log-loss, multi-class Brier, top-1/top-3 hit rate,
+    flat $2 win ROI on top pick, overlay-bet ROI, and calibration deciles.
+  - `run.js` is the CLI entry point. Compares v1, v2, and a morning-line
+    baseline head-to-head and writes an optional JSON report.
+  - Degrades gracefully when no result data is present — still scores every
+    race and prints a clear unavailability notice.
+- `tests/scoring.test.js` — 35 new unit tests covering all sub-scores, both
+  probability normalizations, field-strength bounds, v1-vs-v2 differences,
+  and end-to-end `scoreRace()`.
+- `tests/backtest.test.js` — 18 new tests covering log-loss / Brier / hit-rate
+  primitives, calibration bucketing, and end-to-end `evaluateVersion()` with
+  and without result data.
+- `package.json` — added so `npm test` and `npm run backtest` work.
+- `scripts/backtest/README.md` — usage, metrics definitions, data sources,
+  known limitations, instructions for adding real result data.
+
+### Documented but not changed
+
+- Added a comment block above `runAdviceEngine()` in `index.html` listing the
+  five v1 methodology caveats so future readers know what's known to be wrong.
+- Discovered a sixth caveat during testing: identical speed figs trigger BOTH
+  the career-best (+8) and career-worst (−5) clauses simultaneously, and the
+  worst clause wins. Flat-form horses are silently depressed. Documented; not
+  fixed in v1 since fixing would be a behavior change.
+
+### Test results
+
+- 128/128 tests pass (`node --test tests/`).
+- End-to-end backtest demo run on the existing Saratoga placeholder fixture
+  with synthetic results: v1 calibration collapses into two probability
+  buckets (the score-share compression bug, visible empirically), v2 spreads
+  across three buckets. Both demo runs are inferior to the ML baseline on
+  synthetic data — expected, since the synthetic winners were drawn from ML.
+
+### Not in this PR (PR #2)
+
+- Conditional-logit (fitted) weights for v2.
+- UI toggle to run v2 in the live PWA.
+- Move methodology card behind login + accuracy storage to Cloudflare KV.
+
 ## v2.32.6 — About sheet in More tab (2026-05-28)
 
 Renamed the standalone "What's a railbird?" entry in the More sheet to a

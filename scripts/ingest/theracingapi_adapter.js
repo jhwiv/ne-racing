@@ -6,8 +6,9 @@
 // ToS:  https://www.theracingapi.com/terms-of-service
 //       -> permits "data analysis" + apps/websites
 //       -> forbids resale of raw data
-//       -> ML training not explicitly named — EMAIL support@theracingapi.com
-//          FOR WRITTEN APPROVAL BEFORE flipping trainingEligible to true.
+//       -> ML training: WRITTEN APPROVAL ON FILE (support@theracingapi.com).
+//          Approval covers model fitting on archived race data for the
+//          Railbird/ne-racing project. trainingEligible flipped true 2026-05-29.
 
 'use strict';
 
@@ -20,8 +21,8 @@ class TheRacingApiAdapter extends AdapterBase {
       name: 'The Racing API',
       sourceUrl: 'https://www.theracingapi.com',
       licenseTier: 'yellow',
-      licenseNotes: 'ToS permits data analysis + apps/websites; resale forbidden; ML training pending written approval.',
-      trainingEligible: false, // flip only after written approval on file
+      licenseNotes: 'ToS permits data analysis + apps/websites; resale forbidden; ML training approved in writing 2026-05-29.',
+      trainingEligible: true,  // 2026-05-29 — written approval on file from support@theracingapi.com
       displayEligible: true,
       enabled: false,          // flip only when subscription is paid and key is set
     }, opts || {}));

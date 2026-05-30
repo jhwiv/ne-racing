@@ -7,6 +7,9 @@
 data/normalized/
 data/ingest_log.jsonl
 training/
+!scripts/training/
+data/weights/_features.jsonl
+data/weights/_*.jsonl
 
 # Wrangler / Cloudflare
 .wrangler/
@@ -16,3 +19,4 @@ node_modules/
 .DS_Store
 Thumbs.db
 .secrets-reference.txt
+PR_BODY.md

@@ -15,5 +15,17 @@ ALLOWED_ORIGIN = "https://railbirdai.com"
 binding = "FEEDBACK_LOG"
 id = "f4480a5e92fa463a88e014541224b85f"
 
+# v2.33.0 (PR #2) — RACE_HISTORY + ENGINE_ACCURACY KV bindings intentionally
+# omitted at initial ship. The Worker guards every KV access (`if (!env.X)`),
+# so the new history-archive and engine-accuracy endpoints return 503 until
+# the namespaces are created and these blocks are re-added:
+#
+#   wrangler kv:namespace create RACE_HISTORY
+#   wrangler kv:namespace create RACE_HISTORY --preview
+#   wrangler kv:namespace create ENGINE_ACCURACY
+#   wrangler kv:namespace create ENGINE_ACCURACY --preview
+#
+# Bet Evaluator UI, fitted weights, and A/B toggle do not depend on these KVs.
+
 [observability]
 enabled = true
