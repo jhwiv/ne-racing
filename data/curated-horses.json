@@ -1,9 +1,9 @@
 {
   "meta": {
-    "version": "v2.36.1",
+    "version": "v2.36.4",
     "generated_at": "2026-05-30",
     "data_status": "curated-public-profile",
-    "notes": "Curated from user-provided Equibase screenshot facts plus public horse-profile pages (Sky Sports, At The Races, IrishRacing, NYRA results). NOT an official or licensed data feed. No bulk scraping, no automated harvesting. Source URLs recorded per horse and per history row where available. Snapshot only \u2014 may go out of date between releases."
+    "notes": "Curated from user-provided Equibase screenshot facts plus public horse-profile pages (Sky Sports, At The Races, IrishRacing, NYRA results). NOT an official or licensed data feed. No bulk scraping, no automated harvesting. Source URLs recorded per horse and per history row where available. Snapshot only \u2014 may go out of date between releases. v2.36.4 adds 10 stub profiles for the 2026 Belmont Stakes field (Saratoga, June 6) so testers can search by horse, trainer, jockey, owner, and sire even when upstream entries APIs are empty. Stub profiles carry verified connections + sources; detailed history will be backfilled."
   },
   "horses": [
     {
@@ -269,6 +269,351 @@
       ],
       "caveats": [
         "Stub profile \u2014 added so the horse is searchable. Stats, history, and Equibase refno are not yet verified. Will be backfilled when Secret Connection appears in live entries or via Equibase confirmation."
+      ]
+    },
+    {
+      "name": "Golden Tempo",
+      "breed": "TB",
+      "sire": "Curlin",
+      "trainer": "Cherie DeVaux",
+      "jockey": "Jose Ortiz",
+      "owner": "Phipps Stable & St. Elias Stable",
+      "tags": [
+        "curated",
+        "belmont-2026",
+        "kentucky-derby-winner"
+      ],
+      "watchReason": "2026 Kentucky Derby winner (23-1 from last). 5 starts: 3-0-2. Skipped Preakness; pointing to Belmont at Saratoga June 6. Morning-line favorite at 13/2.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "NYRA Belmont Contenders \u2014 Golden Tempo",
+          "url": "https://www.nyra.com/belmont-stakes/racing/belmont-stakes-contenders/golden-tempo/",
+          "note": "Official Belmont contender profile."
+        },
+        {
+          "label": "America's Best Racing \u2014 2026 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Field overview."
+        },
+        {
+          "label": "DRF \u2014 early speed analysis",
+          "url": "https://www.drf.com/news/belmont-2026-lack-early-speed-negative-golden-tempo-renegade",
+          "note": "Pace shape commentary."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Golden+Tempo",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30 for Belmont Stakes searchability. Detailed past performances pending verified backfill."
+      ]
+    },
+    {
+      "name": "Renegade",
+      "breed": "TB",
+      "trainer": "Todd Pletcher",
+      "jockey": "Irad Ortiz Jr.",
+      "tags": [
+        "curated",
+        "belmont-2026",
+        "derby-runner-up"
+      ],
+      "watchReason": "2nd in 2026 Kentucky Derby by a neck. Morning-line Belmont favorite at 2-1. Pletcher/Irad combination.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "America's Best Racing \u2014 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Field overview & ML odds."
+        },
+        {
+          "label": "CBS Sports \u2014 Belmont odds & picks",
+          "url": "https://www.cbssports.com/general/news/2026-belmont-stakes-odds-date-predictions-expert-who-hit-4-of-last-8-winners-shares-horse-racing-picks/",
+          "note": "Public odds line."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Renegade",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30 for Belmont Stakes searchability."
+      ]
+    },
+    {
+      "name": "Chief Wallabee",
+      "breed": "TB",
+      "trainer": "Bill Mott",
+      "jockey": "Junior Alvarado",
+      "tags": [
+        "curated",
+        "belmont-2026"
+      ],
+      "watchReason": "4th in 2026 Kentucky Derby after a rough trip. Bill Mott trainee. Morning-line 9-2; likely to benefit from fairer trip.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "DRF \u2014 Chief Wallabee should benefit from a rough Derby run",
+          "url": "https://www.drf.com/news/belmont-2026-chief-wallabee-should-benefit-rough-run-derby",
+          "note": "Form analysis."
+        },
+        {
+          "label": "America's Best Racing \u2014 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Field overview."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Chief+Wallabee",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30."
+      ]
+    },
+    {
+      "name": "Commandment",
+      "breed": "TB",
+      "trainer": "Brad Cox",
+      "jockey": "John Velazquez",
+      "tags": [
+        "curated",
+        "belmont-2026",
+        "florida-derby-winner"
+      ],
+      "watchReason": "Won Fountain of Youth & Florida Derby this season. 7th in Kentucky Derby. Morning-line 6-1.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "MyWinners \u2014 Belmont 2026 trainer/jockey guide",
+          "url": "https://mywinners.com/blog/belmont-stakes-2026-trainer-jockey-guide",
+          "note": "Connections."
+        },
+        {
+          "label": "America's Best Racing \u2014 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Field overview."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Commandment",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30."
+      ]
+    },
+    {
+      "name": "Emerging Market",
+      "breed": "TB",
+      "trainer": "Chad Brown",
+      "jockey": "Flavien Prat",
+      "tags": [
+        "curated",
+        "belmont-2026"
+      ],
+      "watchReason": "10th in 2026 Kentucky Derby. Chad Brown trainee with Flavien Prat. Morning-line 8-1.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "America's Best Racing \u2014 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Field overview."
+        },
+        {
+          "label": "In the Money \u2014 Belmont field",
+          "url": "https://inthemoneypodcast.com/itm-telegraph-two-out-one-in-belmont-field-reshuffles-to-10/",
+          "note": "Field confirmations."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Emerging+Market",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30."
+      ]
+    },
+    {
+      "name": "Growth Equity",
+      "breed": "TB",
+      "trainer": "Chad Brown",
+      "jockey": "Manny Franco",
+      "tags": [
+        "curated",
+        "belmont-2026",
+        "peter-pan-winner"
+      ],
+      "watchReason": "Peter Pan Stakes winner. Chad Brown/Manny Franco for the Belmont. Morning-line 15-1.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "America's Best Racing \u2014 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Field overview."
+        },
+        {
+          "label": "MyWinners \u2014 trainer/jockey guide",
+          "url": "https://mywinners.com/blog/belmont-stakes-2026-trainer-jockey-guide",
+          "note": "Connections."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Growth+Equity",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30."
+      ]
+    },
+    {
+      "name": "Ocelli",
+      "breed": "TB",
+      "trainer": "Whit Beckman",
+      "jockey": "Tyler Gaffalione",
+      "tags": [
+        "curated",
+        "belmont-2026",
+        "triple-crown-trail"
+      ],
+      "watchReason": "3rd in Kentucky Derby + 4th in Preakness. Only horse contesting all three legs of the 2026 Triple Crown. Morning-line 20-1.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "America's Best Racing \u2014 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Triple Crown trail."
+        },
+        {
+          "label": "In the Money \u2014 Belmont field reshuffles to 10",
+          "url": "https://inthemoneypodcast.com/itm-telegraph-two-out-one-in-belmont-field-reshuffles-to-10/",
+          "note": "Field confirmation."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Ocelli",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30."
+      ]
+    },
+    {
+      "name": "Ottinho",
+      "breed": "TB",
+      "jockey": "Dylan Davis",
+      "tags": [
+        "curated",
+        "belmont-2026"
+      ],
+      "watchReason": "Blue Grass Stakes runner-up. Morning-line 20-1 for the Belmont.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "America's Best Racing \u2014 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Field overview."
+        },
+        {
+          "label": "MyWinners \u2014 trainer/jockey guide",
+          "url": "https://mywinners.com/blog/belmont-stakes-2026-trainer-jockey-guide",
+          "note": "Connections."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Ottinho",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30."
+      ]
+    },
+    {
+      "name": "Powershift",
+      "altNames": [
+        "Poweshift"
+      ],
+      "breed": "TB",
+      "tags": [
+        "curated",
+        "belmont-2026"
+      ],
+      "watchReason": "Recent maiden winner stepping up to Grade 1 Belmont. Morning-line 12-1 to 20-1.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "America's Best Racing \u2014 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Field overview."
+        },
+        {
+          "label": "In the Money \u2014 Belmont field reshuffles to 10",
+          "url": "https://inthemoneypodcast.com/itm-telegraph-two-out-one-in-belmont-field-reshuffles-to-10/",
+          "note": "Field confirmations (name appears as both Powershift and Poweshift)."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Powershift",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30. Public sources spell name as both 'Powershift' and 'Poweshift' \u2014 official program name to be confirmed."
+      ]
+    },
+    {
+      "name": "Vitruvian Man",
+      "breed": "TB",
+      "sire": "Vino Rosso",
+      "trainer": "Doug O'Neill",
+      "jockey": "Antonio Fresu",
+      "owner": "Glenn Sorgenstein, Run Fast Racing (incl. Lil Yachty, Lil Wayne, Rauw Alejandro)",
+      "tags": [
+        "curated",
+        "belmont-2026",
+        "celebrity-ownership"
+      ],
+      "watchReason": "3rd in Santa Anita Derby. 1-for-6 career. Ownership group includes Glenn Sorgenstein + Run Fast Racing (Lil Yachty, Lil Wayne, Rauw Alejandro). Morning-line 30-1 to 50-1.",
+      "favorite": false,
+      "source": "curated-public-profile",
+      "sources": [
+        {
+          "label": "America's Best Racing \u2014 Belmont cheat sheet",
+          "url": "https://www.americasbestracing.net/the-sport/2026-2026-belmont-stakes-cheat-sheet",
+          "note": "Field overview + ownership."
+        },
+        {
+          "label": "MyWinners \u2014 trainer/jockey guide",
+          "url": "https://mywinners.com/blog/belmont-stakes-2026-trainer-jockey-guide",
+          "note": "Connections."
+        },
+        {
+          "label": "Equibase search",
+          "url": "https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=Vitruvian+Man",
+          "note": "Equibase lookup."
+        }
+      ],
+      "caveats": [
+        "Stub profile added 2026-05-30."
       ]
     }
   ]

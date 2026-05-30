@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260530-v2.36.3';
+var NE_APP_VERSION = '20260530-v2.36.4';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.36.3-search-keyboard';
+var RAILBIRD_VERSION = 'v2.36.4-belmont-field';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -12633,12 +12633,17 @@ function globalSearchScan(q) {
         var lowerName = String(c.name).toLowerCase();
         if (seenHorse.has(lowerName)) return;
         var p = c.profile || {};
+        // v2.36.4 — also match watchReason text + alt-name spellings
+        var altNames = Array.isArray(p.altNames) ? p.altNames.map(function(n){ return String(n||'').toLowerCase(); }) : [];
         var hay = [
           lowerName,
+          altNames.join(' '),
           String(p.trainer || '').toLowerCase(),
           String(p.owner || '').toLowerCase(),
           String(p.jockey || '').toLowerCase(),
-          String(p.sire || '').toLowerCase()
+          String(p.sire || '').toLowerCase(),
+          String(p.watchReason || '').toLowerCase(),
+          (Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '')
         ].join(' \u00b7 ');
         if (hay.indexOf(needle) === -1) return;
         seenHorse.add(lowerName);
@@ -12687,10 +12692,22 @@ function renderGlobalSearchResults(q) {
         + '</div>';
       return;
     }
+    // v2.36.4 — Empty state now offers an Equibase fallback so the user
+    // can always reach a horse profile we don't have curated yet.
+    var eqUrl = 'https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=' + encodeURIComponent(query);
     container.innerHTML =
       '<div class="gs-empty">'
-        + '<strong>No matches</strong>'
+        + '<strong>No matches in app data</strong>'
         + 'Nothing in your Barn, today\u2019s card, or curated profiles matches \u201c' + escHtml(query) + '\u201d.'
+      + '</div>'
+      + '<div class="gs-section-label">Search externally</div>'
+      + '<div class="gs-result-row" tabindex="0" '
+        + 'onclick="window.open(\'' + eqUrl + '\', \'_blank\', \'noopener\')">'
+        + '<span class="gs-result-kind kind-horse">equibase</span>'
+        + '<div class="gs-result-body">'
+          + '<div class="gs-result-title">Search Equibase for &ldquo;' + escHtml(query) + '&rdquo;</div>'
+          + '<div class="gs-result-meta">Opens equibase.com in a new tab</div>'
+        + '</div>'
       + '</div>';
     return;
   }
@@ -20094,16 +20111,22 @@ document.addEventListener('keydown', e => {
         headline = '<div class="barn-lookup-suggested-label">Suggested horses</div>';
       } else {
         // v2.21.5: match across name + trainer + owner + jockey to align with placeholder.
+        // v2.36.4: also match sire, altNames, watchReason text, and tags so stubs surface.
         pool = cands.filter(function(c){
           var p = c.profile || {};
-          var hay = [c.name, p.trainer, p.owner, p.jockey]
+          var altNames = Array.isArray(p.altNames) ? p.altNames.join(' ') : '';
+          var tags = Array.isArray(p.tags) ? p.tags.join(' ') : '';
+          var hay = [c.name, altNames, p.trainer, p.owner, p.jockey, p.sire, p.watchReason, tags]
             .map(function(s){ return String(s == null ? '' : s).toLowerCase(); })
             .join(' \u00B7 ');
           return hay.indexOf(q) !== -1;
         }).slice(0, 20);
       }
       if (!pool.length) {
-        host.innerHTML = '<div class="barn-lookup-empty">No profiles match \u201C' + esc(query) + '\u201D. The pool covers curated profiles, today\u2019s live entries, and the 2025 Saratoga sample. Try another horse, trainer, jockey, or owner.</div>';
+        // v2.36.4 — always offer an Equibase fallback link from the drawer too.
+        var eqUrl = 'https://www.equibase.com/profiles/SearchResults.cfm?type=Horse&searchName=' + encodeURIComponent(query);
+        host.innerHTML = '<div class="barn-lookup-empty">No profiles match \u201C' + esc(query) + '\u201D in your Barn pool. '
+          + '<a href="' + eqUrl + '" target="_blank" rel="noopener" style="color:var(--color-rail,#3a7);text-decoration:underline">Search Equibase for \u201C' + esc(query) + '\u201D</a> to find the horse externally.</div>';
         return;
       }
       var html = headline + pool.map(function(c){

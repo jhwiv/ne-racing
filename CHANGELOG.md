@@ -1,5 +1,50 @@
 # NE Racing — Changelog
 
+## v2.36.4 — Belmont Stakes field added to curated horses (2026-05-30)
+
+Beta tester typed "golden tempo" and "secret connection" into search and
+got nothing. Root cause: upstream entries API returns `upstream_unavailable`
+for BEL/AQU/SAR, so the only horses the app could match against were two
+curated stubs. Search was promising "any horse" but the database only
+contained ~2.
+
+### Added
+
+- **10 Belmont Stakes 2026 stubs** in `data/curated-horses.json`:
+  Golden Tempo, Renegade, Chief Wallabee, Commandment, Emerging Market,
+  Growth Equity, Ocelli, Ottinho, Powershift, Vitruvian Man. Each carries
+  verified trainer + jockey + (where public) owner & sire so search hits
+  work on connections too. Each links to public sources (NYRA contender
+  page, America's Best Racing cheat sheet, DRF, In the Money Telegraph,
+  MyWinners) plus an Equibase search link for deep dives.
+- **Equibase fallback in global search empty state.** When nothing in the
+  app matches, search now shows a "Search Equibase for [name]" affordance
+  that opens equibase.com in a new tab — search is no longer a dead end.
+- **Equibase fallback in the Barn drawer empty state.** Same idea, from
+  the Choose-a-horse drawer.
+- **Alt-name matching.** `Powershift` has been spotted in public field
+  lists as `Poweshift` — both spellings now match.
+- **Broader haystack.** Global search and Barn drawer now also match
+  against `watchReason` text and tag strings, so typing
+  "kentucky derby winner" surfaces Golden Tempo, "triple crown trail"
+  surfaces Ocelli, "celebrity ownership" surfaces Vitruvian Man, etc.
+
+### Verified search hits after this release
+
+- `golden tempo` → Golden Tempo (curated)
+- `renegade` → Renegade
+- `chief wallabee` → Chief Wallabee
+- `secret connection` → Secret Connection
+- `bona venture` → Secret Connection (owner match)
+- `cherie devaux` → Golden Tempo (trainer match)
+- `curlin` → Golden Tempo (sire match)
+- `phipps` → Golden Tempo (owner match)
+- `lil yachty` → Vitruvian Man (owner match)
+- `chad brown` → Emerging Market + Growth Equity (trainer match)
+- `tagg` → Inspeightofcharlie
+- any unknown horse → Equibase fallback link
+
+
 ## v2.36.3 — Keyboard-aware search drawers + better matching (2026-05-30)
 
 Beta tester reported: typing in the "Choose a horse" Barn drawer shifted
