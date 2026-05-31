@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.38.0';
+var NE_APP_VERSION = '20260531-v2.38.1';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.0-about';
+var RAILBIRD_VERSION = 'v2.38.1-barn-cleanup';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10406,7 +10406,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.0</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.1</strong>.</p>
       </div>
     </div>
   </div>
@@ -21619,6 +21619,42 @@ document.addEventListener('keydown', e => {
     document.head.appendChild(st);
   }
 
+  // v2.38.1: Migrate prior auto-seeded CURATED horses OUT of personal barn.
+  // Curated horses are marked source='curated-public-profile'. Untouched
+  // entries (no fav, no notes, no custom tags) are removed from s.barn.horses
+  // and stashed in s.barn.curatedHidden so they can still be re-added from
+  // the lookup panel. True user-engaged entries (favorited / noted / tagged)
+  // are always preserved in place.
+  var CURATED_EVICTION_FLAG_KEY = 'railbird.barn.v381CuratedEviction';
+  function migrateCuratedHorsesOutOfBarn(){
+    try { if (localStorage.getItem(CURATED_EVICTION_FLAG_KEY) === '1') return { evicted: 0, kept: 0 }; } catch(e){}
+    var s = getBarnStoreSafe();
+    if (!s) return { evicted: 0, kept: 0 };
+    if (!Array.isArray(s.barn.curatedHidden)) s.barn.curatedHidden = [];
+    var evicted = 0, kept = 0;
+    var surviving = [];
+    (s.barn.horses || []).forEach(function(h){
+      var isCurated = h && h.source === 'curated-public-profile';
+      if (!isCurated) { surviving.push(h); return; }
+      var hasNotes = !!(h.notes && String(h.notes).trim());
+      var isFav = !!h.favorite;
+      var customTags = (Array.isArray(h.tags) ? h.tags : []).length > 0;
+      if (hasNotes || isFav || customTags) {
+        // User engaged with it — keep.
+        surviving.push(h);
+        kept += 1;
+      } else {
+        s.barn.curatedHidden.push(h);
+        evicted += 1;
+      }
+    });
+    s.barn.horses = surviving;
+    saveBarnStoreSafe(s);
+    try { localStorage.setItem(CURATED_EVICTION_FLAG_KEY, '1'); } catch(e){}
+    return { evicted: evicted, kept: kept };
+  }
+  window.__barnMigrateCuratedOut = migrateCuratedHorsesOutOfBarn;
+
   // v2.21.4: Migrate prior auto-seeded demo horses OUT of personal barn.
   // An auto-demo entry is "untouched" if it still has source='demo-saratoga-2025',
   // is not favorite, has no user notes, has no custom (non-demo/non-saratoga)
@@ -21661,18 +21697,20 @@ document.addEventListener('keydown', e => {
 
   function boot(){
     injectVBStyles();
-    // v2.21.4: STOP auto-seeding the long demo horse list. Run the one-time
-    // migration to move prior auto-seeded demo horses out of personal barn.
-    // Still upsert the curated public-profile horses (Inspeightofcharlie) so
-    // the showcase profile is available — but the primary "My Barn" stays
-    // small and user-driven.
+    // v2.38.1: STOP auto-seeding curated horses into every user's Barn.
+    // Curated horses remain available via the lookup registry (searchable +
+    // one-tap add). The personal Barn is now strictly user-driven.
+    //
+    // Also run a one-time migration to EVICT any curated horses that were
+    // auto-seeded by prior versions, so existing testers don't have to
+    // manually remove ~12 horses they never added. Eviction preserves any
+    // horse the user actually engaged with (favorited, noted, custom-tagged).
     setTimeout(function(){
       try { migrateDemoHorsesToLookup(); } catch(e){}
-      seedCuratedHorses().then(function(res){
-        applyBarnHighlights();
-        try { if (typeof barn_renderBarnTab === 'function') barn_renderBarnTab(); } catch(e){}
-        try { if (typeof barn_updateBadge === 'function') barn_updateBadge(); } catch(e){}
-      });
+      try { migrateCuratedHorsesOutOfBarn(); } catch(e){}
+      applyBarnHighlights();
+      try { if (typeof barn_renderBarnTab === 'function') barn_renderBarnTab(); } catch(e){}
+      try { if (typeof barn_updateBadge === 'function') barn_updateBadge(); } catch(e){}
     }, 1400);
 
     // Re-apply highlights whenever race rows mount / re-render.

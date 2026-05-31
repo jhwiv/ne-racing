@@ -1,5 +1,30 @@
 # NE Racing — Changelog
 
+## v2.38.1 — Barn: stop auto-seeding curated horses (2026-05-31)
+
+### Fixed
+
+- **Curated horses no longer auto-populate every tester's Barn.** Prior
+  versions silently upserted all entries from `data/curated-horses.json`
+  (12 horses as of v2.36.4 — the Belmont Stakes field) into each user's
+  personal Barn on every boot. Testers saw a Barn full of horses they
+  never added.
+- One-time migration (`migrateCuratedHorsesOutOfBarn`) evicts previously
+  auto-seeded curated horses from existing Barns. Horses the user
+  actually engaged with (favorited, noted, custom-tagged) are preserved.
+  Evicted horses are stashed in `s.barn.curatedHidden` and remain
+  searchable + addable from the lookup panel.
+- The personal Barn is now strictly user-driven.
+
+### Notes
+
+- Curated horse profiles are unchanged — they're still in
+  `data/curated-horses.json`, still indexed in the lookup registry, and
+  still one tap to add. They just aren't pre-installed.
+- `window.virtualBarnSeedCurated()` (manual force-seed) still works for
+  demo / showcase purposes.
+
+
 ## v2.38.0 — About: executive summary + tech stack (2026-05-31)
 
 Added two new rows to the About sheet:
