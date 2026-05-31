@@ -1,5 +1,27 @@
 # NE Racing — Changelog
 
+## v2.38.6 — iOS status-bar safe-area reserve (2026-05-31)
+
+### Fixed
+
+On iPhones running the app in Safari or as an installed PWA, the iOS
+status bar (time / cell / wifi / battery) was rendering on top of the
+SARATOGA 2026 header. The header used
+`padding-top: env(safe-area-inset-top, 0px)` which returned 0 in mobile
+Safari and in some standalone configurations, so no space was reserved.
+
+Fix:
+- `#top-header` now uses `min-height` (not fixed `height`) so a generous
+  inset can grow the header without clipping content.
+- A small inline script tags `<html>` with `data-ios="true"` on iOS UAs
+  (and `data-standalone="true"` when running as installed PWA).
+- CSS rule `html[data-ios="true"] #top-header` enforces a minimum
+  `max(env(safe-area-inset-top, 0px), 44px)` of reserved space — 44px is
+  the iPhone status-bar height. Non-iOS browsers (desktop, Android) are
+  unaffected.
+- `.stage-sheet` sticky offset uses the same expression so dropdowns
+  align under the header.
+
 ## v2.38.5 — Cream panel contrast fix, part 2 (2026-05-31)
 
 ### Fixed

@@ -18,9 +18,21 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.38.5';
+var NE_APP_VERSION = '20260531-v2.38.6';
+// v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
+(function(){
+  try {
+    var ua = navigator.userAgent || '';
+    var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) document.documentElement.setAttribute('data-ios', 'true');
+    // Also tag if running standalone (added to home screen).
+    if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+      document.documentElement.setAttribute('data-standalone', 'true');
+    }
+  } catch(e){}
+})();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.5-contrast-fix-2';
+var RAILBIRD_VERSION = 'v2.38.6-status-bar-safearea';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -2839,8 +2851,18 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 #app-frame { display: flex; flex-direction: column; min-height: auto; }
 #top-header {
   /* v2.16.6: reserve space for iOS Dynamic Island / notch so the gear,
-     track pill, and logo are never hidden behind system UI. */
-  height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+     track pill, and logo are never hidden behind system UI.
+     v2.38.6: use min-height + align-items:flex-end so the header content
+     sits BELOW the status bar reliably on iOS standalone PWAs where
+     apple-mobile-web-app-status-bar-style=black-translucent draws the
+     status bar over the web view. Earlier height: calc(...) +
+     align-items: center caused the logo/icons to drift up into the
+     status-bar area on some iPhones. */
+  /* v2.38.6: use plain env() (no max) by default so non-iOS browsers
+     don't get an unnecessary 44px gap. iOS standalone PWAs are detected
+     via a script that sets data-standalone="true" on <html>, which then
+     enforces a 44px minimum (iPhone status bar height). */
+  min-height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   padding-top: env(safe-area-inset-top, 0px);
   background: var(--color-white);
   color: var(--color-slate);
@@ -2848,6 +2870,23 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
   padding-left: 1rem; padding-right: 1rem;
   position: sticky; top: 0; z-index: 200;
   border-bottom: 1px solid #e5e0d5;
+  /* Force the flex items into the bottom (post-safe-area) band */
+  box-sizing: border-box;
+}
+/* Inner row that vertically centers within the body-height portion below
+   the safe-area padding. Wrap children by selecting direct children. */
+#top-header > * { align-self: center; }
+/* iOS standalone PWAs / Safari with collapsed URL bar:
+   the status bar overlays the page top. env(safe-area-inset-top) is
+   unreliable on devices/browsers where Safari treats inset as 0 even
+   though the status bar is visibly painted over. When <html data-standalone="true">
+   (set by JS below for any iOS device), force at least 44px reserve. */
+html[data-ios="true"] #top-header {
+  min-height: calc(var(--header-height) + max(env(safe-area-inset-top, 0px), 44px)) !important;
+  padding-top: max(env(safe-area-inset-top, 0px), 44px) !important;
+}
+html[data-ios="true"] .stage-sheet {
+  top: calc(var(--header-height) + max(env(safe-area-inset-top, 0px), 44px)) !important;
 }
 #main-content {
   flex: 1;
@@ -10407,7 +10446,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.5</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.6</strong>.</p>
       </div>
     </div>
   </div>
