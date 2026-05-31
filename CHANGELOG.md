@@ -1,5 +1,36 @@
 # NE Racing — Changelog
 
+## v2.38.7 — Field pass-through cleanup in worker→client transform (2026-05-31)
+
+### Fixed
+
+Three long-standing field-loss bugs in the Racing API NA data path:
+
+1. **Weight dropped.** `transformWorkerEntries` (index.html) hardcoded
+   `weight: ''` for every horse. The Worker has been emitting
+   `weight` (lbs carried) from the NA payload (`r.weight`) all along —
+   the client just discarded it. Horse-detail and form views now show
+   the actual weight when available.
+
+2. **damSire dropped.** Worker `normaliseNaEntries` correctly emits
+   `damSire` (from `r.dam_sire_name`) but the client transform never
+   pulled it through, so breeding views could only show sire and dam.
+   Now passed through. Same pass also forwards `programNumber`,
+   `equipment`, `medication`, and `claimingPrice` which the Worker
+   already produces.
+
+3. **expertPicks undefined on NA path.** The Worker's NA-path race
+   object did not include an `expertPicks` field at all, leaving the
+   client to handle `undefined`. The static GitHub-Pages path always
+   set `expertPicks: race.expertPicks || []`, so behavior was
+   inconsistent across data sources. The NA path now always emits
+   `expertPicks: []` for shape parity. Real picks remain available
+   only via `/api/expert-picks` against curated static JSON — Racing
+   API NA does not carry handicapper picks.
+
+No engine logic changed. No UI changes. Pure data-fidelity fixes that
+restore fields already paid for in the upstream feed.
+
 ## v2.38.6 — iOS status-bar safe-area reserve (2026-05-31)
 
 ### Fixed

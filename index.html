@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.38.6';
+var NE_APP_VERSION = '20260531-v2.38.7';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260531-v2.38.6';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.6-status-bar-safearea';
+var RAILBIRD_VERSION = 'v2.38.7-field-passthrough';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10446,7 +10446,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.6</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.7</strong>.</p>
       </div>
     </div>
   </div>
@@ -17321,7 +17321,8 @@ function transformWorkerEntries(json) {
       name: e.horseName || 'Unknown',
       jockey: e.jockey || 'N/A',
       trainer: e.trainer || 'N/A',
-      weight: '',
+      // v2.38.7: surface weight carried (lbs) from Worker payload; default '' when absent
+      weight: e.weight || '',
       ml: e.ml || 'N/A',
       liveOdds: e.liveOdds || null,
       scratched: e.status === 'SCRATCHED',
@@ -17337,6 +17338,13 @@ function transformWorkerEntries(json) {
       description: e.description || '',
       sire: e.sire || '',
       dam: e.dam || '',
+      // v2.38.7: carry damSire through (Worker emits, client was dropping it)
+      damSire: e.damSire || '',
+      // v2.38.7: pass-through additional Worker fields used elsewhere in the UI
+      programNumber: e.programNumber || null,
+      equipment: e.equipment || '',
+      medication: e.medication || '',
+      claimingPrice: e.claimingPrice || null,
       notes: '',
       wps: []
     })),

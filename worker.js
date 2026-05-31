@@ -1543,6 +1543,10 @@ function normaliseNaEntries(naData, track, venue, date) {
       minClaimPrice: rc.min_claim_price || null,
       maxClaimPrice: rc.max_claim_price || null,
       handicapperName: rc.handicapper_name || null,
+      // v2.38.7: always emit expertPicks as an array so the client never sees undefined.
+      // Racing API NA does not carry handicapper picks; picks come from curated static
+      // entries-{TRACK}-{DATE}.json on GitHub Pages and are surfaced via /api/expert-picks.
+      expertPicks: [],
       entries:   runners,
     };
   });
