@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.38.4';
+var NE_APP_VERSION = '20260531-v2.38.5';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.4-contrast-fix';
+var RAILBIRD_VERSION = 'v2.38.5-contrast-fix-2';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10407,7 +10407,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.4</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.5</strong>.</p>
       </div>
     </div>
   </div>
@@ -10800,6 +10800,61 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
   [id^="horse-detail-"] .sparkline-dot.latest,
   .horse-detail-panel .sparkline-dot.latest {
     fill: #D4A849 !important;
+  }
+
+  /* 8. Default .stat-val and .stat-label — the v2.12 block at line ~7246
+     forces .rec-bet-details .detail-stat-card .stat-val to #fff and label
+     to rgba(255,255,255,0.6). The v2.15 MSP block only covers
+     [id^="horse-detail-"] variants. We must re-cover .rec-bet-details. */
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card .stat-val,
+  .rec-bet-details:has(.detail-hero-row) .detail-stat-card .stat-val,
+  .rec-bet-details .detail-stat-card .stat-val,
+  [class*="expand"] .detail-stat-card .stat-val,
+  [id^="horse-detail-"] .detail-stat-card .stat-val,
+  .horse-detail-panel .detail-stat-card .stat-val {
+    color: #1E2A36 !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card .stat-label,
+  .rec-bet-details:has(.detail-hero-row) .detail-stat-card .stat-label,
+  .rec-bet-details .detail-stat-card .stat-label,
+  [class*="expand"] .detail-stat-card .stat-label,
+  [id^="horse-detail-"] .detail-stat-card .stat-label,
+  .horse-detail-panel .detail-stat-card .stat-label {
+    color: #4A5663 !important;
+  }
+  /* Re-apply colored variants AFTER the default override (later in cascade
+     wins at equal specificity) */
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card.positive .stat-val,
+  .rec-bet-details .detail-stat-card.positive .stat-val,
+  [id^="horse-detail-"] .detail-stat-card.positive .stat-val,
+  .horse-detail-panel .detail-stat-card.positive .stat-val {
+    color: #166534 !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card.negative .stat-val,
+  .rec-bet-details .detail-stat-card.negative .stat-val,
+  [id^="horse-detail-"] .detail-stat-card.negative .stat-val,
+  .horse-detail-panel .detail-stat-card.negative .stat-val {
+    color: #991B1B !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card.gold .stat-val,
+  .rec-bet-details .detail-stat-card.gold .stat-val,
+  [id^="horse-detail-"] .detail-stat-card.gold .stat-val,
+  .horse-detail-panel .detail-stat-card.gold .stat-val {
+    color: #8A6A1A !important;
+  }
+
+  /* 9. The "Data completeness:" line and other inline-styled labels in
+     buildExpandedDetails use rgba(255,255,255,0.5) on inline style.
+     Catch any inline-styled white-alpha inside the detail panel. */
+  .rec-bet-details:has(.detail-stat-row) [style*="color:rgba(255,255,255"],
+  .rec-bet-details:has(.detail-stat-row) [style*="color: rgba(255,255,255"],
+  .rec-bet-details:has(.detail-hero-row) [style*="color:rgba(255,255,255"],
+  .rec-bet-details:has(.detail-hero-row) [style*="color: rgba(255,255,255"],
+  [id^="horse-detail-"] [style*="color:rgba(255,255,255"],
+  [id^="horse-detail-"] [style*="color: rgba(255,255,255"],
+  .horse-detail-panel [style*="color:rgba(255,255,255"],
+  .horse-detail-panel [style*="color: rgba(255,255,255"] {
+    color: #4A5663 !important;
   }
 
   /* 7. Expert chips on cream */

@@ -1,5 +1,27 @@
 # NE Racing — Changelog
 
+## v2.38.5 — Cream panel contrast fix, part 2 (2026-05-31)
+
+### Fixed
+
+v2.38.4 fixed the SVG and card backgrounds but missed the default
+`.stat-val` / `.stat-label` color. An older v2.12 rule at index.html:7246
+forces `.rec-bet-details .detail-stat-card .stat-val { color: #fff }` and
+the v2.15 MSP-relight block at 8267 only covered the `[id^="horse-detail-"]`
+variant. Result: ML / Live / Our Model values plus jockey/trainer pills
+still rendered white on cream.
+
+This release adds explicit `color: #1E2A36` (--msp-ink) for `.stat-val`
+and `color: #4A5663` (--msp-ink-2) for `.stat-label` across every
+cream-panel ancestor (`.rec-bet-details`, `.rec-bet-details:has(...)`,
+`[id^="horse-detail-"]`, `.horse-detail-panel`, `[class*="expand"]`). Also
+re-applies the `.positive` / `.negative` / `.gold` color variants after
+the default override so they win the cascade.
+
+Adds a catch-all for any inline-styled `color:rgba(255,255,255,...)` text
+inside the detail panel (e.g. the "Data completeness:" line and the
+“dropping in class” arrow row).
+
 ## v2.38.4 — Cream panel contrast fix (2026-05-31)
 
 ### Fixed
