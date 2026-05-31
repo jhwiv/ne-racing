@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.38.3';
+var NE_APP_VERSION = '20260531-v2.38.4';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.3-about-swipe';
+var RAILBIRD_VERSION = 'v2.38.4-contrast-fix';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10407,7 +10407,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.3</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.4</strong>.</p>
       </div>
     </div>
   </div>
@@ -10639,6 +10639,184 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
   }
   #feedback-modal .fb-status.error { color: #B5371A; }
   #feedback-modal .fb-status.success { color: #2E7D32; }
+
+  /* ============================================================
+     v2.38.4 — CREAM PANEL CONTRAST FIX
+     The expanded horse detail panel (.rec-bet-details:has(.detail-stat-row),
+     [id^="horse-detail-"], .horse-detail-panel) renders on cream (--msp-panel
+     #F1E8D8). Previous overrides handled CSS `color:` but missed:
+       1. SVG `fill:` on score gauge + edge donut + sparkline text (white on cream → invisible)
+       2. SVG track `stroke:` rgba(255,255,255,0.06-0.08) (invisible on cream)
+       3. Card backgrounds rgba(255,255,255,0.04) that vanish on cream
+       4. .stat-val.positive/.negative/.gold colors picked for dark backgrounds
+     This block fixes all of them. Selectors target every cream-rendered
+     ancestor used by buildExpandedDetails(). Keeps the dark-navy variant
+     intact for any code path that genuinely renders on navy.
+     ============================================================ */
+
+  /* 1. SVG <text> fills on cream — score, win prob, and their labels */
+  .rec-bet-details:has(.detail-stat-row) .gauge-score,
+  .rec-bet-details:has(.detail-hero-row) .gauge-score,
+  [id^="horse-detail-"] .gauge-score,
+  .horse-detail-panel .gauge-score {
+    fill: #1E2A36 !important; /* --msp-ink */
+  }
+  .rec-bet-details:has(.detail-stat-row) .gauge-label,
+  .rec-bet-details:has(.detail-hero-row) .gauge-label,
+  [id^="horse-detail-"] .gauge-label,
+  .horse-detail-panel .gauge-label {
+    fill: #4A5663 !important; /* --msp-ink-2 */
+  }
+  .rec-bet-details:has(.detail-stat-row) .edge-label,
+  .rec-bet-details:has(.detail-hero-row) .edge-label,
+  [id^="horse-detail-"] .edge-label,
+  .horse-detail-panel .edge-label {
+    fill: #1E2A36 !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .edge-sublabel,
+  .rec-bet-details:has(.detail-hero-row) .edge-sublabel,
+  [id^="horse-detail-"] .edge-sublabel,
+  .horse-detail-panel .edge-sublabel {
+    fill: #4A5663 !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .sparkline-label,
+  [id^="horse-detail-"] .sparkline-label,
+  .horse-detail-panel .sparkline-label {
+    fill: #4A5663 !important;
+  }
+
+  /* 2. SVG track strokes on cream — make rings/arcs visible */
+  .rec-bet-details:has(.detail-stat-row) .gauge-track,
+  .rec-bet-details:has(.detail-hero-row) .gauge-track,
+  [id^="horse-detail-"] .gauge-track,
+  .horse-detail-panel .gauge-track,
+  .rec-bet-details:has(.detail-stat-row) .edge-track,
+  .rec-bet-details:has(.detail-hero-row) .edge-track,
+  [id^="horse-detail-"] .edge-track,
+  .horse-detail-panel .edge-track,
+  .rec-bet-details:has(.detail-stat-row) .comp-track,
+  [id^="horse-detail-"] .comp-track,
+  .horse-detail-panel .comp-track {
+    stroke: rgba(30,42,54,0.14) !important; /* --msp-ink at 14% */
+  }
+
+  /* 3. Card backgrounds on cream — restore visible surface */
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card,
+  .rec-bet-details:has(.detail-hero-row) .detail-stat-card,
+  [id^="horse-detail-"] .detail-stat-card,
+  .horse-detail-panel .detail-stat-card {
+    background: #FAF4E6 !important; /* slightly lifted cream */
+    border: 1px solid #D8CDB8 !important; /* --msp-border */
+  }
+  .rec-bet-details:has(.detail-stat-row) .detail-class-move,
+  [id^="horse-detail-"] .detail-class-move,
+  .horse-detail-panel .detail-class-move,
+  .rec-bet-details:has(.detail-stat-row) .detail-pace-pill,
+  [id^="horse-detail-"] .detail-pace-pill,
+  .horse-detail-panel .detail-pace-pill,
+  .rec-bet-details:has(.detail-stat-row) .detail-field-rank,
+  [id^="horse-detail-"] .detail-field-rank,
+  .horse-detail-panel .detail-field-rank,
+  .rec-bet-details:has(.detail-stat-row) .detail-completeness,
+  [id^="horse-detail-"] .detail-completeness,
+  .horse-detail-panel .detail-completeness,
+  .rec-bet-details:has(.detail-stat-row) .detail-experts,
+  [id^="horse-detail-"] .detail-experts,
+  .horse-detail-panel .detail-experts,
+  .rec-bet-details:has(.detail-stat-row) .detail-sparkline,
+  [id^="horse-detail-"] .detail-sparkline,
+  .horse-detail-panel .detail-sparkline {
+    background: #FAF4E6 !important;
+    border: 1px solid #D8CDB8 !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .detail-section-divider,
+  [id^="horse-detail-"] .detail-section-divider,
+  .horse-detail-panel .detail-section-divider {
+    background: #D8CDB8 !important;
+  }
+  /* Inline-style "arrow" spans inside class-move use rgba(255,255,255,0.25/0.4) */
+  .rec-bet-details:has(.detail-stat-row) .detail-class-move span[style*="rgba(255,255,255,0.25"],
+  .rec-bet-details:has(.detail-stat-row) .detail-class-move span[style*="rgba(255,255,255,0.4"],
+  [id^="horse-detail-"] .detail-class-move span[style*="rgba(255,255,255"],
+  .horse-detail-panel .detail-class-move span[style*="rgba(255,255,255"] {
+    color: #4A5663 !important;
+  }
+  /* Inline-style field-position labels (rgba 0.4) */
+  .rec-bet-details:has(.detail-stat-row) .detail-field-rank span[style*="rgba(255,255,255"],
+  [id^="horse-detail-"] .detail-field-rank span[style*="rgba(255,255,255"],
+  .horse-detail-panel .detail-field-rank span[style*="rgba(255,255,255"] {
+    color: #4A5663 !important;
+  }
+
+  /* 4. Colored stat-vals (positive/negative/gold) — darker AA tones on cream */
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card.positive .stat-val,
+  [id^="horse-detail-"] .detail-stat-card.positive .stat-val,
+  .horse-detail-panel .detail-stat-card.positive .stat-val {
+    color: #166534 !important; /* dark green, AA on cream */
+  }
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card.negative .stat-val,
+  [id^="horse-detail-"] .detail-stat-card.negative .stat-val,
+  .horse-detail-panel .detail-stat-card.negative .stat-val {
+    color: #991B1B !important; /* dark red, AA on cream */
+  }
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card.gold .stat-val,
+  [id^="horse-detail-"] .detail-stat-card.gold .stat-val,
+  .horse-detail-panel .detail-stat-card.gold .stat-val {
+    color: #8A6A1A !important; /* dark gold, AA on cream */
+  }
+  /* Highlighted edge card — green-tinted background on cream */
+  .rec-bet-details:has(.detail-stat-row) .detail-stat-card.highlight,
+  [id^="horse-detail-"] .detail-stat-card.highlight,
+  .horse-detail-panel .detail-stat-card.highlight {
+    background: #E7F2E0 !important;
+    border-color: rgba(22,101,52,0.30) !important;
+  }
+
+  /* 5. Odds-movement chips inside Live stat-card */
+  .rec-bet-details:has(.detail-stat-row) .detail-odds-move,
+  [id^="horse-detail-"] .detail-odds-move,
+  .horse-detail-panel .detail-odds-move {
+    color: #4A5663 !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .odds-move-drop,
+  [id^="horse-detail-"] .odds-move-drop { color: #166534 !important; }
+  .rec-bet-details:has(.detail-stat-row) .odds-move-drift,
+  [id^="horse-detail-"] .odds-move-drift { color: #991B1B !important; }
+
+  /* 6. Sparkline strokes — they used #60A5FA which is OK on cream, but the
+     area gradient and dot fills also need to be checked */
+  .rec-bet-details:has(.detail-stat-row) .sparkline-line,
+  [id^="horse-detail-"] .sparkline-line,
+  .horse-detail-panel .sparkline-line {
+    stroke: #2563EB !important;
+    fill: none !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .sparkline-dot,
+  [id^="horse-detail-"] .sparkline-dot,
+  .horse-detail-panel .sparkline-dot {
+    fill: #2563EB !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .sparkline-dot.latest,
+  [id^="horse-detail-"] .sparkline-dot.latest,
+  .horse-detail-panel .sparkline-dot.latest {
+    fill: #D4A849 !important;
+  }
+
+  /* 7. Expert chips on cream */
+  .rec-bet-details:has(.detail-stat-row) .detail-expert-chip,
+  [id^="horse-detail-"] .detail-expert-chip,
+  .horse-detail-panel .detail-expert-chip {
+    background: #FAF4E6 !important;
+    border: 1px solid #D8CDB8 !important;
+    color: #1E2A36 !important;
+  }
+  .rec-bet-details:has(.detail-stat-row) .detail-expert-chip.no-pick,
+  [id^="horse-detail-"] .detail-expert-chip.no-pick,
+  .horse-detail-panel .detail-expert-chip.no-pick {
+    background: #F1E8D8 !important;
+    border-color: #D8CDB8 !important;
+    color: #6B7785 !important;
+  }
 </style>
 <div id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="fb-title" onclick="closeFeedbackModalOnBg(event)">
   <div class="fb-card" onclick="event.stopPropagation()">

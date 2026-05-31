@@ -1,5 +1,41 @@
 # NE Racing — Changelog
 
+## v2.38.4 — Cream panel contrast fix (2026-05-31)
+
+### Fixed
+
+- Expanded horse detail panel was rendering white-on-cream text in
+  several places, making them nearly invisible:
+  - SVG `<text>` fills inside the score gauge ("32" and "SCORE") and the
+    edge donut (win-prob % and "Win Prob" label) were `fill:#fff`/
+    `fill:rgba(255,255,255,0.5)`. The previous cream-relight cascade
+    only handled CSS `color:` and missed SVG `fill:` entirely. Now
+    relit to `#1E2A36` (--msp-ink) and `#4A5663` (--msp-ink-2).
+  - SVG track strokes (`.gauge-track`, `.edge-track`, `.comp-track`)
+    were `stroke:rgba(255,255,255,0.06-0.08)` and disappeared on cream.
+    Now `rgba(30,42,54,0.14)`.
+  - Stat-card backgrounds (`.detail-stat-card`, `.detail-class-move`,
+    `.detail-pace-pill`, `.detail-field-rank`, `.detail-completeness`,
+    `.detail-experts`, `.detail-sparkline`) used
+    `background:rgba(255,255,255,0.04)` which is invisible on cream.
+    Now `#FAF4E6` with `#D8CDB8` border.
+  - `.detail-stat-card.positive/.negative/.gold` used bright tones
+    (#4ADE80 / #EF4444 / #D4A849) picked for dark navy. Re-toned to
+    AA-passing dark variants on cream (#166534 / #991B1B / #8A6A1A).
+  - Inline-styled `rgba(255,255,255,0.25/0.4)` spans in class-move
+    arrow and field-position labels now use `#4A5663`.
+  - Sparkline line + dots re-toned for cream.
+  - Expert chips re-themed for cream.
+
+### Why this slipped through earlier
+
+The v2.12/v2.15 cream-relight cascade was built around CSS `color:`
+properties. SVG `<text>` elements use the `fill:` attribute, which is
+not affected by `color:` overrides. The earlier `* { color: ... }`
+blanket rule had no effect on SVG paint. This release adds explicit
+`fill:` and `stroke:` overrides targeted at every cream-rendering
+ancestor of `buildExpandedDetails()` output.
+
 ## v2.38.3 — About: swipe-to-close in any direction (2026-05-31)
 
 ### Added
