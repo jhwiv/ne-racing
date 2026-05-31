@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.37.0';
+var NE_APP_VERSION = '20260531-v2.38.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.37.0-d1-archive';
+var RAILBIRD_VERSION = 'v2.38.0-about';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10339,6 +10339,74 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </button>
       <div id="about-answer-audience" class="about-answer">
         <p style="margin:0;">It&rsquo;s not for retards, douchebags or assholes. It&rsquo;s for fine gentlemen, just like you.</p>
+      </div>
+
+      <!-- v2.38.0 — Executive summary -->
+      <button type="button" class="about-item" data-row="summary" onclick="toggleAboutRow('summary')" aria-expanded="false" aria-controls="about-answer-summary">
+        <span class="about-item-body">
+          <span class="about-item-q">Executive summary</span>
+          <span class="about-item-hint">What Railbird AI is, on one page</span>
+        </span>
+        <svg class="about-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div id="about-answer-summary" class="about-answer">
+        <p style="margin:0 0 10px 0;"><strong>Railbird AI</strong> is an AI-powered handicapping companion for thoroughbred horse racing. It pairs a curated card of the day&rsquo;s feature races with an analyst-style writeup of each entrant &mdash; pedigree, recent form, class, pace, and connections &mdash; so a fan at the rail can read a race in minutes instead of an hour.</p>
+        <p style="margin:0 0 8px 0;"><strong>What it does</strong></p>
+        <ul style="margin:0 0 10px 18px; padding:0;">
+          <li>Surfaces the day&rsquo;s marquee races at NYRA, Churchill, Del Mar, Santa Anita, and the Triple Crown / Breeders&rsquo; Cup meets.</li>
+          <li>Generates a plain-English race preview and per-horse profile from live data and an archived past-performance database.</li>
+          <li>Lets you save horses to a personal <em>Barn</em>, leave feedback on calls, and revisit prior cards.</li>
+          <li>Falls back to a deep Equibase lookup when a horse isn&rsquo;t in the curated set.</li>
+        </ul>
+        <p style="margin:0 0 8px 0;"><strong>Who it&rsquo;s for</strong></p>
+        <p style="margin:0 0 10px 0;">The serious recreational fan &mdash; someone who watches the workouts, knows a closer from a need-the-lead, and wants a sharper read on a card without subscribing to four data services.</p>
+        <p style="margin:0 0 8px 0;"><strong>What makes it different</strong></p>
+        <ul style="margin:0 0 10px 18px; padding:0;">
+          <li><strong>Editorial voice</strong> &mdash; reads like a turf writer, not a tip sheet.</li>
+          <li><strong>Mobile-first</strong> &mdash; built for the phone in your hand at the rail, not a desktop terminal.</li>
+          <li><strong>Horse-centric</strong> &mdash; the unit of analysis is the animal, not the wager.</li>
+        </ul>
+        <p style="margin:0 0 4px 0;"><strong>Status</strong></p>
+        <p style="margin:0;">Live at railbirdai.com. Continuously deployed. Curated coverage of major NY and national stakes cards, backed by an archive of 1,900+ horses and 15,000+ past performances from the 2023 NYRA meets.</p>
+      </div>
+
+      <!-- v2.38.0 — Tech stack -->
+      <button type="button" class="about-item" data-row="stack" onclick="toggleAboutRow('stack')" aria-expanded="false" aria-controls="about-answer-stack">
+        <span class="about-item-body">
+          <span class="about-item-q">Tech stack</span>
+          <span class="about-item-hint">What&rsquo;s under the hood</span>
+        </span>
+        <svg class="about-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div id="about-answer-stack" class="about-answer">
+        <p style="margin:0 0 8px 0;"><strong>Frontend</strong></p>
+        <ul style="margin:0 0 10px 18px; padding:0;">
+          <li>Vanilla HTML / CSS / JavaScript &mdash; single-file PWA, no framework runtime tax.</li>
+          <li>Service worker for offline-friendly caching and version pinning.</li>
+          <li>Playfair Display + system sans for an editorial, print-magazine feel.</li>
+          <li>Hosted on <strong>GitHub Pages</strong> at <a href="https://railbirdai.com" target="_blank" rel="noopener">railbirdai.com</a>.</li>
+        </ul>
+        <p style="margin:0 0 8px 0;"><strong>Backend &mdash; Cloudflare</strong></p>
+        <ul style="margin:0 0 10px 18px; padding:0;">
+          <li><strong>Workers</strong> &mdash; edge API for race previews, horse lookups, feedback intake, and Equibase fallback search.</li>
+          <li><strong>D1</strong> &mdash; SQLite-at-the-edge archive of past performances (horses, races, PP entries, workouts, surface splits).</li>
+          <li><strong>KV</strong> &mdash; race-history cache, engine-accuracy log, anonymous feedback log.</li>
+          <li><strong>R2</strong> &mdash; reserved for raw Equibase XML mirroring.</li>
+        </ul>
+        <p style="margin:0 0 8px 0;"><strong>AI &amp; data</strong></p>
+        <ul style="margin:0 0 10px 18px; padding:0;">
+          <li><strong>Perplexity API</strong> &mdash; generates race previews and per-horse writeups from live web context.</li>
+          <li><strong>Equibase</strong> SIMD XML feeds &mdash; ingested via a TypeScript pipeline into D1 (parser handles charts, PPs, points-of-call, race summaries, workouts).</li>
+          <li><strong>Curated stubs</strong> &mdash; hand-picked horse and race metadata for editorial control of the daily card.</li>
+        </ul>
+        <p style="margin:0 0 8px 0;"><strong>Dev &amp; ops</strong></p>
+        <ul style="margin:0 0 10px 18px; padding:0;">
+          <li><strong>GitHub</strong> (<code>jhwiv/ne-racing</code>) &mdash; source of truth, Pages auto-deploys on push to master.</li>
+          <li><strong>Wrangler</strong> &mdash; Worker / D1 / KV deployment.</li>
+          <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
+          <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
+        </ul>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.0</strong>.</p>
       </div>
     </div>
   </div>

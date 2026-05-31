@@ -1,5 +1,20 @@
 # NE Racing — Changelog
 
+## v2.38.0 — About: executive summary + tech stack (2026-05-31)
+
+Added two new rows to the About sheet:
+
+- **Executive summary** — one-page description of what Railbird AI is,
+  who it's for, what makes it different, and current status.
+- **Tech stack** — frontend, Cloudflare backend (Workers / D1 / KV / R2),
+  AI & data sources (Perplexity API, Equibase SIMD), and dev/ops tooling.
+
+Equibase D1 backfill paused at 1,907 horses / 15,272 past performances /
+261 races across the 2023 BEL and SAR meets. Further historical backfill
+deprioritized — D1 archive remains live as a fallback enrichment layer
+for the curated daily card.
+
+
 ## v2.37.0 — Equibase D1 archive online (2026-05-31)
 
 First slice of the Dropbox → R2 → D1 Equibase ingestion pipeline shipped. The
