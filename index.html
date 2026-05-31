@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260530-v2.36.4';
+var NE_APP_VERSION = '20260531-v2.37.0';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.36.4-belmont-field';
+var RAILBIRD_VERSION = 'v2.37.0-d1-archive';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -21310,6 +21310,113 @@ document.addEventListener('keydown', e => {
       '</div>';
 
     document.body.appendChild(modal);
+
+    // v2.37.0 — Equibase D1 archive hydration. Async lookup of the canonical
+    // 2023 PP archive (Cloudflare D1) for the horse just opened. We render a
+    // placeholder slot immediately and replace it once the network call
+    // resolves. If the horse isn't in the archive (e.g. a 2026 stub), we
+    // simply hide the slot — it never appears as an empty box.
+    (function hydrateD1Archive(){
+      try {
+        var card = modal.querySelector('.vb-card') || modal.firstElementChild;
+        if (!card) return;
+        var slotId = 'vb-d1-archive-' + Math.random().toString(36).slice(2,9);
+        var slot = document.createElement('div');
+        slot.className = 'vb-section open';
+        slot.setAttribute('data-vb-section', '');
+        slot.id = slotId;
+        slot.style.display = 'none'; // hide until data arrives
+        slot.innerHTML =
+          '<div class="vb-section-head" data-vb-toggle>' +
+            '<h4>Equibase archive (2023) <span class="vb-d1-count" style="opacity:0.7;font-weight:500"></span></h4>' +
+            '<span class="vb-section-caret" aria-hidden="true">\u203A</span>' +
+          '</div>' +
+          '<div class="vb-section-body vb-d1-body"></div>';
+        // Insert before the Notes & tags section if present, else append.
+        var notesSec = Array.prototype.slice.call(card.querySelectorAll('[data-vb-section]'))
+          .find(function(sec){ var h = sec.querySelector('h4'); return h && /Notes/i.test(h.textContent); });
+        if (notesSec) card.insertBefore(slot, notesSec); else card.appendChild(slot);
+
+        var s = getBarnStoreSafe();
+        var base = (s && s.settings && s.settings.workerUrl) ? s.settings.workerUrl : DEFAULT_WORKER_URL;
+        var url = base.replace(/\/$/, '') + '/api/d1/horse-stats/' + encodeURIComponent(h.name) + '?limit=20';
+        fetch(url, { method: 'GET', credentials: 'omit' })
+          .then(function(r){ return r.ok ? r.json() : null; })
+          .then(function(json){
+            if (!json || !json.horse || !Array.isArray(json.pastRaces) || !json.pastRaces.length) return;
+            // Show the slot now that we have data.
+            slot.style.display = '';
+            var cnt = slot.querySelector('.vb-d1-count');
+            if (cnt) cnt.textContent = '\u00B7 ' + json.pastRaces.length + ' line' + (json.pastRaces.length === 1 ? '' : 's');
+            var body = slot.querySelector('.vb-d1-body');
+            if (!body) return;
+
+            function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+            function fmtDist(v,u){ if (v==null) return ''; var f=(v/100); return f + (u==='F' ? 'f' : (u||'')); }
+            function fmtBSF(v){ if (v==null) return ''; return Math.round(v/10).toString(); }
+            function fmtPurse(p){ if (p==null) return ''; try { return '$' + Number(p).toLocaleString(); } catch(_) { return '$' + p; } }
+
+            var head = '';
+            var sireDam = [];
+            if (json.horse.sire_name) sireDam.push('<b>Sire:</b> ' + esc(json.horse.sire_name));
+            if (json.horse.dam_name) sireDam.push('<b>Dam:</b> ' + esc(json.horse.dam_name));
+            if (json.horse.foaling_date) sireDam.push('<b>Foaled:</b> ' + esc(json.horse.foaling_date));
+            if (json.horse.foaling_area) sireDam.push('<b>Bred:</b> ' + esc(json.horse.foaling_area));
+            if (sireDam.length) {
+              head += '<div style="font-size:0.78rem;color:#5A5648;margin:0 0 8px;line-height:1.45">' + sireDam.join(' \u00B7 ') + '</div>';
+            }
+
+            // Career summary rollup (sum across breed/surface rows).
+            if (Array.isArray(json.summaries) && json.summaries.length) {
+              var agg = {};
+              json.summaries.forEach(function(r){
+                if (!r) return;
+                var k = r.year || '?';
+                if (!agg[k]) agg[k] = { year:k, starts:0, wins:0, seconds:0, thirds:0, earnings:0 };
+                agg[k].starts += (r.starts||0);
+                agg[k].wins += (r.wins||0);
+                agg[k].seconds += (r.seconds||0);
+                agg[k].thirds += (r.thirds||0);
+                agg[k].earnings += (Number(r.earnings_usa)||0);
+              });
+              var years = Object.keys(agg).sort(function(a,b){ return Number(b) - Number(a); });
+              if (years.length) {
+                head += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px">';
+                years.forEach(function(y){
+                  var a = agg[y];
+                  var rec = a.starts + ': ' + a.wins + '-' + a.seconds + '-' + a.thirds;
+                  head += '<span class="vb-chip" title="Earnings ' + fmtPurse(a.earnings) + '">' + esc(y) + ' \u00B7 ' + esc(rec) + '</span>';
+                });
+                head += '</div>';
+              }
+            }
+
+            var rows = json.pastRaces.map(function(p){
+              var chips = [];
+              if (p.past_official_finish != null) chips.push('<span class="vb-chip vb-chip-finish">Finish ' + esc(p.past_official_finish) + (p.past_field_size ? '/' + esc(p.past_field_size) : '') + '</span>');
+              if (p.past_track_code) chips.push('<span class="vb-chip vb-chip-key">' + esc(p.past_track_code) + (p.past_race_number ? ' R' + esc(p.past_race_number) : '') + '</span>');
+              var d = fmtDist(p.past_distance_id, p.past_distance_unit);
+              if (d) chips.push('<span class="vb-chip">' + esc(d) + '</span>');
+              if (p.past_surface) chips.push('<span class="vb-chip">' + esc(p.past_surface) + '</span>');
+              if (p.past_speed_figure != null) chips.push('<span class="vb-chip vb-chip-ml" title="Equibase Speed Figure">BSF ' + esc(fmtBSF(p.past_speed_figure)) + '</span>');
+              if (p.past_purse_usa != null) chips.push('<span class="vb-chip vb-chip-earnings">' + esc(fmtPurse(p.past_purse_usa)) + '</span>');
+              if (p.past_post_position != null) chips.push('<span class="vb-chip vb-chip-num">PP ' + esc(p.past_post_position) + '</span>');
+              return '<div class="vb-hist-row">' +
+                '<div class="vb-hist-head">' +
+                  '<span class="vb-hist-date">' + esc(p.past_date||'\u2014') + '</span>' +
+                  '<span class="vb-hist-chips">' + chips.join('') + '</span>' +
+                '</div>' +
+              '</div>';
+            }).join('');
+
+            body.innerHTML = head +
+              '<div style="font-size:0.72rem;color:#8F8975;margin:0 0 6px">Source: Equibase Past Performance archive \u00B7 D1 (loaded ' + esc(json.pastRaces.length) + ' line' + (json.pastRaces.length===1?'':'s') + ').</div>' +
+              rows;
+          })
+          .catch(function(){ /* silent \u2014 archive miss is acceptable */ });
+      } catch (_) { /* never throw out of profile open */ }
+    })();
+
     function close(){ if (modal && modal.parentNode) modal.parentNode.removeChild(modal); }
 
     modal.addEventListener('click', function(ev){

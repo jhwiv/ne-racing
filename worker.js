@@ -2201,6 +2201,140 @@ async function handleHistoryList(request, env, origin) {
 
 const PICK_ENGINES = new Set(["v1", "v2", "baseline_ml"]);
 
+// ── v2.37.0: D1 Equibase archive (RAILBIRD_DB) ──────────────────────────
+//
+// The RAILBIRD_DB D1 database is populated off-band by the Dropbox → R2 →
+// parser → D1 pipeline (railbird_pp_parser.ts + railbird_d1_loader.ts).
+// It holds the canonical Equibase past-performance corpus: horses,
+// historical race results, point-of-call splits, workouts, and per-year
+// career summaries.
+//
+// Endpoints:
+//   GET /api/d1/horse/:name        → { horse, totalPastRaces, sample }
+//   GET /api/d1/horse-stats/:name  → { horse, summaries[], pastRaces[] }
+//
+// Name matching is case-insensitive, LIKE-based. We trim and collapse
+// internal whitespace before matching to tolerate user-entered variants.
+// All reads are cached at the CDN edge for 5 minutes — the underlying
+// archive is immutable for any given date, so staleness is not a concern.
+
+function d1NormalizeHorseName(raw) {
+  if (!raw) return "";
+  // Decode any URL-encoded characters, strip outer whitespace, collapse internal.
+  let s;
+  try { s = decodeURIComponent(raw); } catch (_) { s = raw; }
+  return String(s).trim().replace(/\s+/g, " ");
+}
+
+async function handleD1HorseLookup(request, env, origin, rawName) {
+  if (!env.RAILBIRD_DB) {
+    return jsonOk(
+      { horse: null, source: "unavailable", message: "RAILBIRD_DB not bound" },
+      origin, 0
+    );
+  }
+  const name = d1NormalizeHorseName(rawName);
+  if (!name) return jsonError("horse name required", 400, origin);
+
+  try {
+    // Exact case-insensitive match first.
+    const HORSE_COLS = "registration_no, name, sire_name, dam_name, broodmare_sire_name, foaling_date, year_of_birth, foaling_area, breeder_name, color_code, sex_code";
+    let row = await env.RAILBIRD_DB
+      .prepare(`SELECT ${HORSE_COLS} FROM horse WHERE LOWER(name) = LOWER(?) LIMIT 1`)
+      .bind(name)
+      .first();
+
+    // Fallback: LIKE prefix match if no exact hit.
+    if (!row) {
+      row = await env.RAILBIRD_DB
+        .prepare(`SELECT ${HORSE_COLS} FROM horse WHERE LOWER(name) LIKE LOWER(?) LIMIT 1`)
+        .bind(name + "%")
+        .first();
+    }
+
+    if (!row) {
+      return jsonOk(
+        { horse: null, source: "d1", query: name, message: "no match in archive" },
+        origin, 60
+      );
+    }
+
+    // Count past races for this horse (joined via pp_entry).
+    const cnt = await env.RAILBIRD_DB
+      .prepare("SELECT COUNT(*) AS n FROM pp_past_race p JOIN pp_entry e ON e.pp_entry_id = p.pp_entry_id WHERE e.horse_reg_no = ?")
+      .bind(row.registration_no)
+      .first();
+    const total = cnt && typeof cnt.n === "number" ? cnt.n : 0;
+
+    // Sample of 3 most recent past races for the lookup card.
+    const sample = await env.RAILBIRD_DB
+      .prepare("SELECT p.past_date, p.past_track_code, p.past_distance_id, p.past_distance_unit, p.past_surface, p.past_official_finish, p.past_speed_figure, p.past_purse_usa FROM pp_past_race p JOIN pp_entry e ON e.pp_entry_id = p.pp_entry_id WHERE e.horse_reg_no = ? ORDER BY p.past_date DESC LIMIT 3")
+      .bind(row.registration_no)
+      .all();
+
+    return jsonOk({
+      source: "d1",
+      query: name,
+      horse: row,
+      totalPastRaces: total,
+      sample: (sample && sample.results) || []
+    }, origin, 300);
+  } catch (err) {
+    return jsonError(`D1 lookup failed: ${err && err.message || err}`, 500, origin);
+  }
+}
+
+async function handleD1HorseStats(request, env, origin, rawName) {
+  if (!env.RAILBIRD_DB) {
+    return jsonOk(
+      { horse: null, source: "unavailable", message: "RAILBIRD_DB not bound" },
+      origin, 0
+    );
+  }
+  const name = d1NormalizeHorseName(rawName);
+  if (!name) return jsonError("horse name required", 400, origin);
+
+  const { searchParams } = new URL(request.url);
+  const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10) || 50, 200);
+
+  try {
+    const HORSE_COLS = "registration_no, name, sire_name, dam_name, broodmare_sire_name, foaling_date, year_of_birth, foaling_area, breeder_name, color_code, sex_code";
+    const horseRow = await env.RAILBIRD_DB
+      .prepare(`SELECT ${HORSE_COLS} FROM horse WHERE LOWER(name) = LOWER(?) OR LOWER(name) LIKE LOWER(?) LIMIT 1`)
+      .bind(name, name + "%")
+      .first();
+
+    if (!horseRow) {
+      return jsonOk(
+        { horse: null, source: "d1", query: name, message: "no match" },
+        origin, 60
+      );
+    }
+
+    // pp_race_summary is per-pp_entry (per-race-card), so we join through pp_entry by horse_reg_no.
+    const [summaries, pastRaces] = await Promise.all([
+      env.RAILBIRD_DB
+        .prepare("SELECT s.year, s.country, s.breed_type, s.surface, s.starts, s.wins, s.seconds, s.thirds, s.earnings_usa FROM pp_race_summary s JOIN pp_entry e ON e.pp_entry_id = s.pp_entry_id WHERE e.horse_reg_no = ? ORDER BY s.year DESC")
+        .bind(horseRow.registration_no)
+        .all(),
+      env.RAILBIRD_DB
+        .prepare("SELECT p.past_date, p.past_track_code, p.past_race_number, p.past_distance_id, p.past_distance_unit, p.past_surface, p.past_official_finish, p.past_speed_figure, p.past_purse_usa, p.past_post_position, p.past_field_size FROM pp_past_race p JOIN pp_entry e ON e.pp_entry_id = p.pp_entry_id WHERE e.horse_reg_no = ? ORDER BY p.past_date DESC LIMIT ?")
+        .bind(horseRow.registration_no, limit)
+        .all()
+    ]);
+
+    return jsonOk({
+      source: "d1",
+      query: name,
+      horse: horseRow,
+      summaries: (summaries && summaries.results) || [],
+      pastRaces: (pastRaces && pastRaces.results) || []
+    }, origin, 300);
+  } catch (err) {
+    return jsonError(`D1 stats failed: ${err && err.message || err}`, 500, origin);
+  }
+}
+
 /**
  * POST /api/picks/log
  * Body: { engine, track, date, race, pp, horseName, betType, betTag, amount,
@@ -2771,6 +2905,16 @@ export default {
       return handleHistoryGet(request, env, origin, historyMatch[1], historyMatch[2]);
     }
 
+    // ── v2.37.0: D1 horse lookups ────────────────────────────────────
+    const d1HorseStatsMatch = pathname.match(/^\/api\/d1\/horse-stats\/(.+)$/);
+    if (d1HorseStatsMatch) {
+      return handleD1HorseStats(request, env, origin, d1HorseStatsMatch[1]);
+    }
+    const d1HorseMatch = pathname.match(/^\/api\/d1\/horse\/(.+)$/);
+    if (d1HorseMatch) {
+      return handleD1HorseLookup(request, env, origin, d1HorseMatch[1]);
+    }
+
     switch (pathname) {
       case "/api/entries":
         return handleEntries(request, env, origin);
@@ -2844,6 +2988,8 @@ export default {
               "/api/history/dates?track=AQU",
               "/api/history/{TRACK}/{YYYY-MM-DD}",
               "/api/history/list?track=AQU&from=YYYY-MM-DD&to=YYYY-MM-DD",
+              "/api/d1/horse/{NAME}",
+              "/api/d1/horse-stats/{NAME}?limit=50",
               "POST /api/picks/log",
               "POST /api/picks/settle",
               "/api/picks/stats?engine=v1|v2|baseline_ml",

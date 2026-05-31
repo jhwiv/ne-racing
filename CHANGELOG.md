@@ -1,5 +1,43 @@
 # NE Racing — Changelog
 
+## v2.37.0 — Equibase D1 archive online (2026-05-31)
+
+First slice of the Dropbox → R2 → D1 Equibase ingestion pipeline shipped. The
+production Cloudflare worker now talks to a D1 database (`railbird`) that
+holds the parsed 2023 Past Performance corpus. The Belmont Day 2023 sample
+is already loaded — 133 horses, 1,046 historical race lines, 13 races,
+including Arcangelo (2023 Belmont winner), Tapit Shoes, Forte, Hit Show,
+Angel of Empire, National Treasure, Red Route One, etc.
+
+### Added
+
+- **Worker D1 binding (`RAILBIRD_DB`)** and two new public endpoints:
+  - `GET /api/d1/horse/{NAME}` — fast lookup; returns pedigree + count of
+    archived past races + 3 most recent lines.
+  - `GET /api/d1/horse-stats/{NAME}?limit=50` — deeper card with summaries
+    by year and up to 200 past performances.
+  Both endpoints are case-insensitive and tolerate URL-encoded whitespace.
+  Edge-cached for 5 minutes.
+- **Horse profile modal — “Equibase archive (2023)” panel.** When you open
+  any horse in your Barn, the app now asynchronously hydrates archived
+  Equibase past performance lines from D1 alongside the curated/demo data.
+  Renders sire/dam/foaling info, an aggregated year-by-year career record
+  (starts: W-P-S, earnings on hover), and a chip-formatted list of past
+  races (track, distance, surface, finish/field, BSF, purse, post).
+  Panel hides silently if the horse isn't in the archive yet — no empty
+  state shown.
+
+### Notes / known limitations
+
+- The Dropbox archive is 2023-only. The 2026 Belmont stubs (Golden Tempo,
+  Renegade, etc.) will not light up the new archive panel — those horses
+  were juveniles in 2023 and not yet in the corpus. The panel only renders
+  when there is data to show.
+- Backfill of the rest of the 2023 NY-track meets (BEL spring, SAR, Big A
+  fall) is queued. Currently only Belmont Day 2023 (Jun 10) is loaded.
+- Speed figures from Equibase are stored as integer×10 (BSF 970 = BSF 97).
+  The app divides by 10 when rendering chips.
+
 ## v2.36.4 — Belmont Stakes field added to curated horses (2026-05-30)
 
 Beta tester typed "golden tempo" and "secret connection" into search and

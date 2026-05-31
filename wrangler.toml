@@ -31,5 +31,15 @@ binding = "ENGINE_ACCURACY"
 id = "d4523fe63a12409795fea068ac61874e"
 preview_id = "dced19300ac24b7cb59fd8ab96fe17f1"
 
+# v2.37.0 — RAILBIRD D1: Equibase past-performance + result chart archive.
+# Populated by the off-band Dropbox→parser pipeline (railbird_pp_parser.ts +
+# railbird_d1_loader.ts). Tables: horse, race, pp_entry, pp_past_race,
+# pp_past_point_of_call, pp_workout, pp_race_summary, person, etc.
+# Read via /api/d1/horse/:name and /api/d1/horse-stats/:name.
+[[d1_databases]]
+binding = "RAILBIRD_DB"
+database_name = "railbird"
+database_id = "dd369ea1-023a-4eaa-941f-50124f6beace"
+
 [observability]
 enabled = true
