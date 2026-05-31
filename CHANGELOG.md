@@ -1,5 +1,18 @@
 # NE Racing — Changelog
 
+## v2.38.3 — About: swipe-to-close in any direction (2026-05-31)
+
+### Added
+
+- The About sheet card now closes on swipe in any direction (up, down,
+  left, right). 60px swipe threshold. Card follows the finger during
+  the drag and flies off in the swipe direction on release.
+- Vertical swipes only close when the card's content is scrolled to
+  the top (swipe down) or bottom (swipe up) — otherwise the swipe
+  scrolls the content as normal.
+- The X close button and tap-outside-to-close still work as before.
+
+
 ## v2.38.2 — About: center the sheet vertically (2026-05-31)
 
 ### Changed

@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.38.2';
+var NE_APP_VERSION = '20260531-v2.38.3';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.2-about-centered';
+var RAILBIRD_VERSION = 'v2.38.3-about-swipe';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10407,7 +10407,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.2</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.3</strong>.</p>
       </div>
     </div>
   </div>
@@ -10455,6 +10455,111 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       }
     }
   });
+
+  // v2.38.3 — Swipe-to-close in any direction.
+  // Tracks the first touch on the card; if the user drags 60px+ in any
+  // direction (and isn't actively scrolling the card's content), the
+  // sheet closes. Card follows the finger during the drag for feel.
+  var SWIPE_THRESHOLD = 60;
+  var swipeState = null;
+  function getAboutCard() {
+    var m = document.getElementById('about-sheet');
+    return m ? m.querySelector('.about-card') : null;
+  }
+  function onAboutTouchStart(e) {
+    var card = getAboutCard();
+    if (!card) return;
+    if (!e.touches || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    swipeState = {
+      x0: t.clientX, y0: t.clientY,
+      dx: 0, dy: 0,
+      scrollTop0: card.scrollTop,
+      scrollMax: card.scrollHeight - card.clientHeight,
+      axis: null, // 'x' | 'y' | 'cancel'
+      moved: false
+    };
+  }
+  function onAboutTouchMove(e) {
+    if (!swipeState) return;
+    var card = getAboutCard();
+    if (!card) return;
+    var t = e.touches[0];
+    var dx = t.clientX - swipeState.x0;
+    var dy = t.clientY - swipeState.y0;
+    swipeState.dx = dx;
+    swipeState.dy = dy;
+
+    // Lock to dominant axis after a small movement
+    if (!swipeState.axis && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+      swipeState.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      // If vertical and the card has scrollable content in the direction
+      // of the swipe, let the scroll happen instead of dragging the card.
+      if (swipeState.axis === 'y') {
+        var swipingDown = dy > 0;
+        var atTop = swipeState.scrollTop0 <= 0;
+        var atBottom = swipeState.scrollTop0 >= swipeState.scrollMax - 1;
+        if (swipingDown && !atTop) { swipeState.axis = 'cancel'; return; }
+        if (!swipingDown && !atBottom) { swipeState.axis = 'cancel'; return; }
+      }
+    }
+    if (swipeState.axis === 'cancel' || !swipeState.axis) return;
+
+    // Drag the card with a little resistance past threshold
+    var useDx = swipeState.axis === 'x' ? dx : 0;
+    var useDy = swipeState.axis === 'y' ? dy : 0;
+    card.style.transition = 'none';
+    card.style.transform = 'translate(' + useDx + 'px, ' + useDy + 'px)';
+    card.style.opacity = String(Math.max(0.4, 1 - Math.max(Math.abs(useDx), Math.abs(useDy)) / 400));
+    swipeState.moved = true;
+    // Prevent the page underneath from scrolling while dragging
+    if (e.cancelable) e.preventDefault();
+  }
+  function onAboutTouchEnd() {
+    if (!swipeState) return;
+    var card = getAboutCard();
+    var dx = swipeState.dx, dy = swipeState.dy;
+    var axis = swipeState.axis;
+    swipeState = null;
+    if (!card) return;
+    var trigger = false;
+    if (axis === 'x' && Math.abs(dx) > SWIPE_THRESHOLD) trigger = true;
+    if (axis === 'y' && Math.abs(dy) > SWIPE_THRESHOLD) trigger = true;
+    if (trigger) {
+      // Fly the card off in the swipe direction, then close
+      var flyX = axis === 'x' ? (dx > 0 ? 600 : -600) : 0;
+      var flyY = axis === 'y' ? (dy > 0 ? 800 : -800) : 0;
+      card.style.transition = 'transform 0.22s ease-out, opacity 0.22s ease-out';
+      card.style.transform = 'translate(' + flyX + 'px, ' + flyY + 'px)';
+      card.style.opacity = '0';
+      setTimeout(function(){
+        closeAboutSheet();
+        // Reset inline styles so the next open is clean
+        card.style.transition = '';
+        card.style.transform = '';
+        card.style.opacity = '';
+      }, 220);
+    } else {
+      // Snap back
+      card.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+      card.style.transform = '';
+      card.style.opacity = '';
+      setTimeout(function(){ card.style.transition = ''; }, 220);
+    }
+  }
+  function wireSwipe() {
+    var card = getAboutCard();
+    if (!card || card.__swipeWired) return;
+    card.addEventListener('touchstart', onAboutTouchStart, { passive: true });
+    card.addEventListener('touchmove', onAboutTouchMove, { passive: false });
+    card.addEventListener('touchend', onAboutTouchEnd, { passive: true });
+    card.addEventListener('touchcancel', onAboutTouchEnd, { passive: true });
+    card.__swipeWired = true;
+  }
+  // Wire on first open (card exists at DOM load but harmless to defer)
+  var _origOpen = openAboutSheet;
+  openAboutSheet = function() { _origOpen(); wireSwipe(); };
+
   window.openAboutSheet = openAboutSheet;
   window.closeAboutSheet = closeAboutSheet;
   window.closeAboutSheetOnBg = closeAboutSheetOnBg;
