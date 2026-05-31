@@ -18,9 +18,9 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.38.1';
+var NE_APP_VERSION = '20260531-v2.38.2';
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.1-barn-cleanup';
+var RAILBIRD_VERSION = 'v2.38.2-about-centered';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10243,30 +10243,31 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 
 <!-- v2.32.6 — ABOUT SHEET ============================================== -->
 <style>
+  /* v2.38.2: center the About sheet vertically on all screen sizes so
+     expanded rows don't feel like they're hovering at the bottom. */
   #about-sheet {
     position: fixed; inset: 0; z-index: 9100;
     background: rgba(30, 42, 54, 0.55);
-    display: none; align-items: flex-end; justify-content: center;
-    padding: 0;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+    overflow-y: auto;
   }
   @media (min-width: 520px) {
-    #about-sheet { align-items: center; padding: 24px; }
+    #about-sheet { padding: 24px; }
   }
   #about-sheet.open { display: flex; }
   .about-card {
     background: var(--color-cream, #F8F4EA);
     color: var(--color-ink, #1E2A36);
     width: 100%; max-width: 480px;
-    border-radius: 16px 16px 0 0;
+    border-radius: 16px;
     padding: 22px 20px 24px;
-    max-height: 92vh;
+    max-height: calc(100vh - 32px);
     overflow-y: auto;
-    box-shadow: 0 -10px 30px rgba(0,0,0,0.18);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.22);
     box-sizing: border-box;
     position: relative;
-  }
-  @media (min-width: 520px) {
-    .about-card { border-radius: 16px; }
+    margin: auto;
   }
   .about-close {
     position: absolute; top: 12px; right: 12px;
@@ -10406,7 +10407,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.1</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.2</strong>.</p>
       </div>
     </div>
   </div>

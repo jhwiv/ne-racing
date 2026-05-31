@@ -1,5 +1,16 @@
 # NE Racing — Changelog
 
+## v2.38.2 — About: center the sheet vertically (2026-05-31)
+
+### Changed
+
+- The About sheet is now vertically centered on all screen sizes
+  (was anchored to the bottom on mobile). Expanded rows (Executive
+  summary, Tech stack) now sit in the middle of the viewport instead
+  of hovering at the bottom edge.
+- Rounded corners on all four sides on mobile (was bottom-square).
+
+
 ## v2.38.1 — Barn: stop auto-seeding curated horses (2026-05-31)
 
 ### Fixed
