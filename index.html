@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260601-v2.38.14';
+var NE_APP_VERSION = '20260601-v2.38.15';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260601-v2.38.14';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.14-picker-add-refresh';
+var RAILBIRD_VERSION = 'v2.38.15-jockey-trainer-search';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10469,7 +10469,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.14</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.15</strong>.</p>
       </div>
     </div>
   </div>
@@ -13097,6 +13097,24 @@ function globalSearchScan(q) {
     var cached = (typeof window.__getLookupCandidatesCached === 'function')
       ? window.__getLookupCandidatesCached() : null;
     if (Array.isArray(cached)) {
+      // v2.38.15 — Tally jockey + trainer counts across the entire candidate
+      // pool so we can emit them as first-class jockey/trainer rows (not just
+      // as horse rows whose meta happens to include the name). Without this,
+      // searching "Rosario" or "Saez" on a dark day returned zero jockey hits
+      // even though those riders are attached to curated horses.
+      var jockeyCount = {}, trainerCount = {};
+      cached.forEach(function(c){
+        var p = (c && c.profile) || {};
+        if (p.jockey) {
+          var jk = String(p.jockey).trim();
+          if (jk) jockeyCount[jk] = (jockeyCount[jk] || 0) + 1;
+        }
+        if (p.trainer) {
+          var tk = String(p.trainer).trim();
+          if (tk) trainerCount[tk] = (trainerCount[tk] || 0) + 1;
+        }
+      });
+
       cached.forEach(function(c){
         if (!c || !c.name) return;
         var lowerName = String(c.name).toLowerCase();
@@ -13126,6 +13144,36 @@ function globalSearchScan(q) {
           title: c.name,
           meta: [p.trainer ? 'T: ' + p.trainer : '', p.owner ? 'O: ' + p.owner : '', sourceLabel].filter(Boolean).join(' \u00b7 '),
           payload: { horse: c.name, addFromLookup: true }
+        });
+      });
+
+      // v2.38.15 — Emit jockey + trainer rows for names that match the query
+      // and aren't already in the results. Meta shows how many horses in the
+      // candidate pool list this connection, so the user can judge depth.
+      Object.keys(jockeyCount).forEach(function(name){
+        var lower = name.toLowerCase();
+        if (seenJockey.has(lower)) return;
+        if (lower.indexOf(needle) === -1) return;
+        seenJockey.add(lower);
+        var n = jockeyCount[name];
+        out.jockeys.push({
+          kind: 'jockey',
+          title: name,
+          meta: 'Jockey \u00b7 ' + n + ' known mount' + (n === 1 ? '' : 's'),
+          payload: { name: name }
+        });
+      });
+      Object.keys(trainerCount).forEach(function(name){
+        var lower = name.toLowerCase();
+        if (seenTrainer.has(lower)) return;
+        if (lower.indexOf(needle) === -1) return;
+        seenTrainer.add(lower);
+        var n = trainerCount[name];
+        out.trainers.push({
+          kind: 'trainer',
+          title: name,
+          meta: 'Trainer \u00b7 ' + n + ' horse' + (n === 1 ? '' : 's') + ' in pool',
+          payload: { name: name }
         });
       });
     }
