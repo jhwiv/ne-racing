@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260601-v2.38.10';
+var NE_APP_VERSION = '20260601-v2.38.11';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260601-v2.38.10';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.10-heart-crash-equibase';
+var RAILBIRD_VERSION = 'v2.38.11-handicap-race-label';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10469,7 +10469,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.10</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.11</strong>.</p>
       </div>
     </div>
   </div>
@@ -11741,7 +11741,7 @@ function _betEvalCurrentRaces() {
   var td = getTrackData();
   if (!td || !Array.isArray(td.races)) return [];
   return td.races.slice().sort(function(a,b) {
-    return (parseInt(a.raceNumber || a.number || 0,10)) - (parseInt(b.raceNumber || b.number || 0,10));
+    return (parseInt(a.num || a.raceNumber || a.number || 0,10)) - (parseInt(b.num || b.raceNumber || b.number || 0,10));
   });
 }
 
@@ -11761,7 +11761,7 @@ function openBetEvaluator() {
       raceSel.innerHTML = '<option value="">(no races for active track)</option>';
     } else {
       raceSel.innerHTML = races.map(function(r) {
-        var num = r.raceNumber || r.number || '?';
+        var num = r.num || r.raceNumber || r.number || '?';
         var lbl = 'Race ' + num + (r.type ? ' — ' + r.type : '');
         return '<option value="' + (r.id || r.raceId || ('r'+num)) + '">' + lbl.replace(/</g,'&lt;') + '</option>';
       }).join('');
@@ -11963,7 +11963,7 @@ function renderBetEvalLegs(pool) {
   html += '<div class="bet-eval-row"><label>Start Race</label>' +
     '<select id="bet-eval-start-race" onchange="renderBetEvalLegs(_betEvalPool())">' +
     races.map(function(r, i) {
-      var num = r.raceNumber || r.number || (i+1);
+      var num = r.num || r.raceNumber || r.number || (i+1);
       return '<option value="' + i + '">Race ' + num + '</option>';
     }).join('') +
     '</select></div>';
@@ -11981,7 +11981,7 @@ function renderBetEvalLegs(pool) {
       continue;
     }
     var advice = _adviceByRaceId[r.id] || [];
-    var num = r.raceNumber || r.number || (raceIdx+1);
+    var num = r.num || r.raceNumber || r.number || (raceIdx+1);
     var chips = '';
     if (!advice.length) {
       chips = '<div class="text-muted text-sm">No scored field for Race ' + num + '. Open Advice tab first.</div>';
@@ -12066,7 +12066,7 @@ function _betEvalBuildLegs(pool) {
     var r = races[startIdx + i];
     if (!r) return { error: 'Not enough races on the card for ' + pool + '.' };
     var advice = _adviceByRaceId[r.id] || [];
-    if (!advice.length) return { error: 'No scored field for Race ' + (r.raceNumber || (startIdx+i+1)) + '. Open Advice tab first.' };
+    if (!advice.length) return { error: 'No scored field for Race ' + (r.num || r.raceNumber || (startIdx+i+1)) + '. Open Advice tab first.' };
     var map = _betEvalState.legSelections[i] || {};
     var pps = Object.keys(map).map(function(p) { return parseInt(p,10); });
     if (!pps.length) return { error: 'Leg ' + (i+1) + ' has no horses selected.' };
@@ -13055,7 +13055,7 @@ function globalSearchScan(q) {
   const races = Array.isArray(data.races) ? data.races : [];
   races.forEach(function(r, idx){
     if (!r) return;
-    const raceNo = r.raceNumber || r.race || (idx + 1);
+    const raceNo = r.num || r.raceNumber || r.race || (idx + 1);
     const raceLabel = 'Race ' + raceNo + (r.name ? ' \u2014 ' + r.name : '');
     const raceMeta = [r.surface, r.distance, r.purse ? '$' + r.purse : ''].filter(Boolean).join(' \u00b7 ');
     if (raceLabel.toLowerCase().indexOf(needle) > -1) {
@@ -14872,7 +14872,7 @@ function populateHandicapMaster() {
   var prev = master.value;
   var html = '<option value="all">All Races</option>';
   races.forEach(function(r) {
-    var num = r.number || r.race || r.raceNumber;
+    var num = r.num || r.number || r.race || r.raceNumber;
     var label = 'Race ' + num;
     if (r.distance) label += ' \u2014 ' + r.distance;
     html += '<option value="' + num + '">' + label + '</option>';
