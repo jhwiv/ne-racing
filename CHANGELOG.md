@@ -1,5 +1,45 @@
 # NE Racing — Changelog
 
+## v2.38.9 — Pedigree + equipment rendering, weights stub (2026-05-31)
+
+### Fixed (caught in full click-through QA against railbirdai.com)
+
+**Dam Sire was forwarded but never displayed in the horse modal.**
+
+v2.38.7 added `damSire` to `transformWorkerEntries` so it survived from the
+Worker payload into the in-memory horse record, but the horse-detail modal's
+breeding line at index.html:13929 only rendered Sire + Dam. The Worker has
+been sending `damSire` (e.g. `Poet's Voice*GB` for Little Trilby) but no user
+ever saw it. Now the breeding line reads `Sire: X · Dam: Y · Dam Sire: Z`
+when present, falling back gracefully when any one piece is missing.
+
+**Equipment / medication changes never reached the badge.**
+
+The Worker emits `equipment` and `medication` (strings like `blinkers on`,
+`L` for Lasix) from The Racing API NA payload, but the UI's equipment badge
+reads `equipmentChanges`. The two field names never matched, so the badge
+was always blank for live data. The transform now merges `equipment` and
+`medication` into `equipmentChanges` when the new combined field isn't
+already present — preserving any future static feed that wants to set
+`equipmentChanges` directly.
+
+**`/data/weights/v2.json` 404 noise on every page load.**
+
+The lazy fetched fitted-weights override file didn't exist yet (the engine
+falls back to `DEFAULT_V2_WEIGHTS` when absent — by design), but the missing
+file produced a network-level 404 in the console on every load. Added a
+placeholder file with `status: "insufficient"` so the existing threshold
+check rejects it and falls back to defaults, with no console noise.
+
+### Real-browser QA harness
+
+This release was validated against the live site with Playwright + iPhone 13
+viewport + Chrome iOS user agent. Every nav tab, the horse modal, the
+bet-builder wizard (Daily Double end-to-end with leg selection), the W/P/S
+flow, the bets tab, the more sheet, and the settings modal were all
+exercised with real DOM clicks. Bugs above were confirmed by reading the
+actual rendered text returned from the live page — no guessing.
+
 ## v2.38.8 — Smart Tips "+ Add" button fix (2026-05-31)
 
 ### Fixed
