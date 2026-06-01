@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.38.7';
+var NE_APP_VERSION = '20260531-v2.38.8';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260531-v2.38.7';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.7-field-passthrough';
+var RAILBIRD_VERSION = 'v2.38.8-smart-tips-add-fix';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -1796,10 +1796,17 @@ function neForceUpdate(newVersion) {
     return tips.slice(0, 3);
   }
 
-  // Apply an advice action
-  window.wizApplyAdvice = function(actionJson) {
+  // v2.38.8: registry of advice actions keyed by index so onclick handlers
+  // don't need to embed JSON in an HTML attribute (the old approach broke
+  // whenever an action payload contained double quotes, e.g. horse names
+  // like Ziggle Pops (GB) — the `"` in JSON terminated onclick="..." early).
+  window.__wizAdviceActions = [];
+
+  // Apply an advice action by registry index
+  window.wizApplyAdvice = function(idx) {
     try {
-      var action = JSON.parse(actionJson);
+      var action = window.__wizAdviceActions[idx];
+      if (!action) return;
       if (action.type === 'addBox') {
         var sels = wizState.selections['box'] || [];
         if (sels.indexOf(action.pp) === -1) sels.push(action.pp);
@@ -1818,9 +1825,23 @@ function neForceUpdate(newVersion) {
     renderWizardStep();
   };
 
+  // Minimal HTML escape for text rendered into innerHTML (headline,
+  // explanation, horse names). Prevents both XSS and broken attributes
+  // for names containing &, <, >, ", or '.
+  function wizEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function renderAdviceCard() {
     var tips = generateExoticAdvice();
     if (tips.length === 0) return '';
+    // v2.38.8: reset the per-render action registry so indices stay in sync.
+    window.__wizAdviceActions = [];
     var h = '<div id="wiz-advice-card" style="margin:0.75rem 0;padding:0.75rem;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);border-radius:10px">';
     h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">';
     h += '<span style="font-size:0.78rem;font-weight:700;color:#fbbf24;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:0.35rem"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:0.95rem;height:0.95rem"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>SMART TIPS</span>';
@@ -1828,10 +1849,12 @@ function neForceUpdate(newVersion) {
     h += '</div>';
     tips.forEach(function(tip) {
       h += '<div style="margin-bottom:0.6rem;padding-bottom:0.6rem;border-bottom:1px solid rgba(255,255,255,0.06)">';
-      h += '<div style="font-size:0.78rem;font-weight:600;color:rgba(255,255,255,0.9);margin-bottom:3px">' + tip.icon + ' ' + tip.headline + '</div>';
-      h += '<div style="font-size:0.68rem;color:rgba(255,255,255,0.5);line-height:1.4">' + tip.explanation + '</div>';
+      h += '<div style="font-size:0.78rem;font-weight:600;color:rgba(255,255,255,0.9);margin-bottom:3px">' + wizEsc(tip.icon) + ' ' + wizEsc(tip.headline) + '</div>';
+      h += '<div style="font-size:0.68rem;color:rgba(255,255,255,0.5);line-height:1.4">' + wizEsc(tip.explanation) + '</div>';
       if (tip.action) {
-        h += '<button onclick="wizApplyAdvice(\'' + JSON.stringify(tip.action).replace(/'/g, "\\'") + '\')" style="margin-top:6px;padding:4px 12px;font-size:0.68rem;font-weight:600;background:rgba(251,191,36,0.2);color:#fbbf24;border:1px solid rgba(251,191,36,0.4);border-radius:6px;cursor:pointer">+ Add ' + (tip.action.name || 'Horse') + '</button>';
+        var idx = window.__wizAdviceActions.length;
+        window.__wizAdviceActions.push(tip.action);
+        h += '<button type="button" onclick="wizApplyAdvice(' + idx + ')" style="margin-top:6px;padding:4px 12px;font-size:0.68rem;font-weight:600;background:rgba(251,191,36,0.2);color:#fbbf24;border:1px solid rgba(251,191,36,0.4);border-radius:6px;cursor:pointer">+ Add ' + wizEsc(tip.action.name || 'Horse') + '</button>';
       }
       h += '</div>';
     });
@@ -10446,7 +10469,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.7</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.8</strong>.</p>
       </div>
     </div>
   </div>

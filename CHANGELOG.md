@@ -1,5 +1,32 @@
 # NE Racing — Changelog
 
+## v2.38.8 — Smart Tips "+ Add" button fix (2026-05-31)
+
+### Fixed
+
+**Smart Tips "+ Add {Horse}" button did nothing when clicked.**
+
+The button on the wizard review screen (e.g. "+ Add Ziggle Pops (GB)")
+rendered visually but the click was a no-op. Root cause: the click
+handler embedded the action payload as a JSON-stringified literal
+inside an HTML `onclick="..."` attribute. Because JSON uses double
+quotes around keys and values, the first `"` after the opening `{`
+terminated the `onclick` attribute prematurely, leaving the rest of
+the JSON as stray (ignored) HTML attributes. The button rendered
+correctly but had no functional onclick handler.
+
+Fix: replaced the inline JSON-in-attribute pattern with an indexed
+registry. Each render of the advice card stores tip actions in
+`window.__wizAdviceActions[]` and the button calls
+`wizApplyAdvice(idx)` with a plain integer index. Same pass also
+adds proper HTML escaping (`wizEsc`) for headline / explanation /
+horse names rendered into `innerHTML`, so any future horse with `&`,
+`<`, `>`, `"`, or `'` in its name (common with foreign-bred names)
+renders safely.
+
+Affects all three advice action types: `addBox`, `addWith`, `addLeg`.
+No change to engine logic, no change to advice generation rules.
+
 ## v2.38.7 — Field pass-through cleanup in worker→client transform (2026-05-31)
 
 ### Fixed
