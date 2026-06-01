@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260601-v2.38.12';
+var NE_APP_VERSION = '20260601-v2.38.13';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260601-v2.38.12';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.12-barn-today-strip';
+var RAILBIRD_VERSION = 'v2.38.13-barn-today-clear';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10469,7 +10469,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.12</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.13</strong>.</p>
       </div>
     </div>
   </div>
@@ -19745,7 +19745,18 @@ document.addEventListener('keydown', e => {
       '.barn-today-rides{display:inline-flex;flex-wrap:wrap;gap:4px 6px;margin-left:4px;vertical-align:middle}' +
       '.barn-today-ride{display:inline-flex;align-items:center;gap:5px;background:transparent;border:1px solid rgba(201,168,76,0.3);color:rgba(237,232,220,0.85);font-size:0.74rem;padding:2px 8px 2px 4px;border-radius:999px;cursor:pointer;line-height:1.3;font-family:inherit;transition:background 0.15s ease,border-color 0.15s ease}' +
       '.barn-today-ride:hover,.barn-today-ride:focus{background:rgba(201,168,76,0.16);border-color:rgba(201,168,76,0.55);outline:none}' +
-      '.barn-chip-race-sm{display:inline-block;background:rgba(201,168,76,0.28);color:#F0CB6A;font-weight:800;font-size:0.62rem;letter-spacing:0.04em;padding:1px 5px;border-radius:999px;line-height:1.3}';
+      '.barn-chip-race-sm{display:inline-block;background:rgba(201,168,76,0.28);color:#F0CB6A;font-weight:800;font-size:0.62rem;letter-spacing:0.04em;padding:1px 5px;border-radius:999px;line-height:1.3}' +
+      // v2.38.13 — Clear-all + per-item × buttons inside the strip
+      '.barn-today-actions{margin-left:auto;display:inline-flex;align-items:center;gap:6px}' +
+      '.barn-today-clearall{background:transparent;border:1px solid rgba(217,134,122,0.55);color:#E9A39A;font-size:0.7rem;font-weight:600;letter-spacing:0.04em;padding:5px 10px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background 0.15s ease,border-color 0.15s ease,color 0.15s ease;font-family:inherit}' +
+      '.barn-today-clearall:hover,.barn-today-clearall:focus{background:rgba(217,134,122,0.18);border-color:rgba(217,134,122,0.85);color:#F5C7BF;outline:none}' +
+      '.barn-today-chip-wrap{display:inline-flex;align-items:center;background:rgba(201,168,76,0.14);border:1px solid rgba(201,168,76,0.4);border-radius:999px;overflow:hidden}' +
+      '.barn-today-chip-wrap .barn-today-chip{background:transparent;border:none;border-radius:0;padding:5px 8px 5px 6px}' +
+      '.barn-today-chip-wrap .barn-today-chip:hover,.barn-today-chip-wrap .barn-today-chip:focus{background:rgba(201,168,76,0.18)}' +
+      '.barn-today-x{background:transparent;border:none;border-left:1px solid rgba(201,168,76,0.3);color:rgba(237,232,220,0.7);font-size:1rem;line-height:1;font-weight:600;padding:0 9px;height:100%;min-height:28px;cursor:pointer;transition:background 0.15s ease,color 0.15s ease;font-family:inherit;display:inline-flex;align-items:center}' +
+      '.barn-today-x:hover,.barn-today-x:focus{background:rgba(217,134,122,0.22);color:#F5C7BF;outline:none}' +
+      '.barn-today-x-inline{border-left:none;border:1px solid rgba(201,168,76,0.3);border-radius:999px;min-height:0;width:22px;height:22px;padding:0;font-size:0.95rem;margin-right:6px;vertical-align:middle;display:inline-flex;align-items:center;justify-content:center}' +
+      '.barn-today-x-inline:hover,.barn-today-x-inline:focus{border-color:rgba(217,134,122,0.85)}';
     document.head.appendChild(st);
   }
   function barn_horseState(barnHorses, name) {
@@ -19894,11 +19905,17 @@ document.addEventListener('keydown', e => {
     var countLine = followedLabel + ' \u00b7 ' + entriesLabel;
 
     // Horse chips: "R2 Venetta" style — consistent with jockey/trainer lines.
+    // Each chip is a flex row: tap the body to jump to the race, tap the
+    // × to remove that horse from your barn.
     var horseList = matches.horses.map(function(m) {
-      return '<button class="barn-today-chip" onclick="barnJumpToRace(' + m.race.num + ')" title="Jump to R' + m.race.num + ' \u2014 ' + m.horse.name + '">' +
-        '<span class="barn-chip-race">R' + m.race.num + '</span>' +
-        '<span class="barn-chip-name">' + m.horse.name + '</span>' +
-        '</button>';
+      var safeName = String(m.horse.name).replace(/'/g, "\\'");
+      return '<span class="barn-today-chip-wrap">' +
+        '<button class="barn-today-chip" onclick="barnJumpToRace(' + m.race.num + ')" title="Jump to R' + m.race.num + ' \u2014 ' + m.horse.name + '">' +
+          '<span class="barn-chip-race">R' + m.race.num + '</span>' +
+          '<span class="barn-chip-name">' + m.horse.name + '</span>' +
+        '</button>' +
+        '<button class="barn-today-x" onclick="barnStripRemove(\'horses\',\'' + safeName + '\')" aria-label="Remove ' + m.horse.name + ' from barn" title="Remove ' + m.horse.name + ' from your barn">\u00d7</button>' +
+      '</span>';
     }).join('');
 
     var jockeyMap = {}, trainerMap = {};
@@ -19921,12 +19938,20 @@ document.addEventListener('keydown', e => {
       '</button>';
     }
     var jockeyList = Object.keys(jockeyMap).map(function(j) {
-      return '<div class="barn-today-line"><span style="color:' + C.gold + ';font-weight:600">J:</span> ' + j +
-        ' <span class="barn-today-rides">' + jockeyMap[j].map(rideChip).join('') + '</span></div>';
+      var safeJ = String(j).replace(/'/g, "\\'");
+      return '<div class="barn-today-line">' +
+        '<button class="barn-today-x barn-today-x-inline" onclick="barnStripRemove(\'jockeys\',\'' + safeJ + '\')" aria-label="Unfollow ' + j + '" title="Unfollow ' + j + '">\u00d7</button>' +
+        '<span style="color:' + C.gold + ';font-weight:600">J:</span> ' + j +
+        ' <span class="barn-today-rides">' + jockeyMap[j].map(rideChip).join('') + '</span>' +
+      '</div>';
     }).join('');
     var trainerList = Object.keys(trainerMap).map(function(t) {
-      return '<div class="barn-today-line"><span style="color:' + C.gold + ';font-weight:600">T:</span> ' + t +
-        ' <span class="barn-today-rides">' + trainerMap[t].map(rideChip).join('') + '</span></div>';
+      var safeT = String(t).replace(/'/g, "\\'");
+      return '<div class="barn-today-line">' +
+        '<button class="barn-today-x barn-today-x-inline" onclick="barnStripRemove(\'trainers\',\'' + safeT + '\')" aria-label="Unfollow ' + t + '" title="Unfollow ' + t + '">\u00d7</button>' +
+        '<span style="color:' + C.gold + ';font-weight:600">T:</span> ' + t +
+        ' <span class="barn-today-rides">' + trainerMap[t].map(rideChip).join('') + '</span>' +
+      '</div>';
     }).join('');
 
     var html =
@@ -19934,7 +19959,10 @@ document.addEventListener('keydown', e => {
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:' + (matches.horses.length ? '10' : '4') + 'px">' +
           '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="' + C.gold + '" d="M12 21s-7-4.35-9.5-8.5C.86 9.57 2.7 6 6 6c2 0 3.5 1.2 4 2.5C10.5 7.2 12 6 14 6c3.3 0 5.14 3.57 3.5 6.5C19 16.65 12 21 12 21z"/></svg>' +
           '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.05rem;letter-spacing:0.04em">Your Barn today</div>' +
-          '<button class="barn-today-viewall" onclick="switchTab(\'barn\')" title="Open your full Virtual Barn" aria-label="Open your full Virtual Barn">View full barn \u2192</button>' +
+          '<div class="barn-today-actions">' +
+            '<button class="barn-today-clearall" onclick="barnStripClearAll()" title="Remove every horse, jockey, and trainer from your barn" aria-label="Clear entire barn">Clear all</button>' +
+            '<button class="barn-today-viewall" onclick="switchTab(\'barn\')" title="Open your full Virtual Barn" aria-label="Open your full Virtual Barn">View full barn \u2192</button>' +
+          '</div>' +
         '</div>' +
         '<div class="barn-today-meta">' + countLine + '</div>' +
         (horseList ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:' + (followedHorseCount ? '8' : '0') + 'px 0 ' + (jockeyList || trainerList ? '8' : '0') + 'px">' + horseList + '</div>' : '') +
@@ -19944,6 +19972,74 @@ document.addEventListener('keydown', e => {
 
     container.insertAdjacentHTML('afterbegin', html);
   }
+  // v2.38.13 — Remove a single hearted entity directly from the
+  // "Your Barn today" strip. Horses use the explicit barnRemoveHorse
+  // path (with Undo); jockeys/trainers route through barnToggle which
+  // already removes when present.
+  window.barnStripRemove = function(kind, name) {
+    try {
+      if (kind === 'horses' && typeof window.barnRemoveHorse === 'function') {
+        window.barnRemoveHorse('horses', name);
+      } else if (typeof window.barnToggle === 'function') {
+        window.barnToggle(kind, name);
+      }
+    } catch(e) {
+      try { console.warn('barnStripRemove failed', e); } catch(_){}
+    }
+  };
+
+  // v2.38.13 — Clear every horse, jockey, and trainer from the barn
+  // in one shot with an Undo affordance. Settings, hidden lists, and
+  // other store fields are preserved.
+  window.barnStripClearAll = function() {
+    try {
+      var barn = barnGet();
+      var snapshot = {
+        horses: (barn.horses || []).slice(),
+        jockeys: (barn.jockeys || []).slice(),
+        trainers: (barn.trainers || []).slice(),
+      };
+      var totalBefore = snapshot.horses.length + snapshot.jockeys.length + snapshot.trainers.length;
+      if (totalBefore === 0) {
+        try { if (typeof showToast === 'function') showToast('Your barn is already empty', 'info', 2000); } catch(_){}
+        return;
+      }
+      barn.horses = [];
+      barn.jockeys = [];
+      barn.trainers = [];
+      barnSave(barn);
+      try { barn_decorateHorseRows(); } catch(e){}
+      try { barn_updateTodayStrip(); } catch(e){}
+      try { barn_updateBadge(); } catch(e){}
+      try { applyBarnHighlights(); } catch(e){}
+      try { barn_renderBarnTab(); } catch(e){}
+
+      var msg = 'Cleared ' + totalBefore + ' item' + (totalBefore === 1 ? '' : 's') + ' from your barn';
+      var restore = function(){
+        var cur = barnGet();
+        cur.horses   = snapshot.horses.slice();
+        cur.jockeys  = snapshot.jockeys.slice();
+        cur.trainers = snapshot.trainers.slice();
+        barnSave(cur);
+        try { barn_decorateHorseRows(); } catch(e){}
+        try { barn_updateTodayStrip(); } catch(e){}
+        try { barn_updateBadge(); } catch(e){}
+        try { applyBarnHighlights(); } catch(e){}
+        try { barn_renderBarnTab(); } catch(e){}
+        try { if (typeof showToast === 'function') showToast('Restored ' + totalBefore + ' item' + (totalBefore === 1 ? '' : 's') + ' to your barn', 'success', 2500); } catch(_){}
+      };
+      try {
+        if (typeof showUndoToast === 'function') {
+          showUndoToast(msg, restore);
+        } else if (typeof showToast === 'function') {
+          showToast(msg, 'info', 3000);
+        }
+      } catch(_){}
+    } catch(e) {
+      try { console.warn('barnStripClearAll failed', e); } catch(_){}
+    }
+  };
+
   window.barnJumpToRace = function(raceNum) {
     var card = document.querySelector('[data-race-num="' + raceNum + '"]') ||
                document.querySelector('#race-card-' + raceNum) ||
