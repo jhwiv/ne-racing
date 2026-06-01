@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260531-v2.38.9';
+var NE_APP_VERSION = '20260601-v2.38.10';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260531-v2.38.9';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.9-pedigree-equipment';
+var RAILBIRD_VERSION = 'v2.38.10-heart-crash-equibase';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10469,7 +10469,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.9</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.10</strong>.</p>
       </div>
     </div>
   </div>
@@ -13592,11 +13592,33 @@ function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'
 function escJs(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"  ); }
 
 function buildEquibaseUrl(raceNum) {
+  // v2.38.10: Equibase deep-link to a specific race uses the canonical static
+  // entry page, not the query-param hub (which ignored our params and just
+  // showed the generic Entries index).
+  //   Race page: https://www.equibase.com/static/entry/{TRK}{MMDDYY}USA{RN}-EQB.html
+  //   Full card: https://www.equibase.com/static/entry/RaceCardIndex{TRK}{MMDDYY}USA-EQB.html
+  // Pages are only published once Equibase has finalized that day's card; for
+  // future/unpublished dates the static file returns 404. Callers should
+  // open in a new tab so the user can hit back if Equibase hasn't published.
   const code = getActiveTrack();
   const date = loadedRaceDate || getTodayStr();
   if (!date || !code) return null;
-  const dt = date.replace(/-/g, '').slice(4) + date.slice(0, 4); // MMDDYYYY
-  return `https://www.equibase.com/static/entry/index.html?type=Entry&dt=${dt}&cy=USA&tk=${code}&rn=${raceNum}`;
+  // date is 'YYYY-MM-DD' — build MMDDYY (6 digits, two-digit year, no zero-pad on RN)
+  const y = date.slice(0, 4);
+  const m = date.slice(5, 7);
+  const d = date.slice(8, 10);
+  const mmddyy = m + d + y.slice(2);
+  const rn = String(raceNum || '').replace(/[^0-9]/g, '') || '1';
+  return `https://www.equibase.com/static/entry/${code}${mmddyy}USA${rn}-EQB.html`;
+}
+
+function buildEquibaseFullCardUrl() {
+  // v2.38.10: "View full card on Equibase" fallback.
+  const code = getActiveTrack();
+  const date = loadedRaceDate || getTodayStr();
+  if (!date || !code) return null;
+  const mmddyy = date.slice(5, 7) + date.slice(8, 10) + date.slice(2, 4);
+  return `https://www.equibase.com/static/entry/RaceCardIndex${code}${mmddyy}USA-EQB.html`;
 }
 
 function parseOddsToNum(odds) {
@@ -14716,7 +14738,10 @@ function updateTopPicksCard(allScores) {
 
   // Store ticket text for copy
   const ticketText = "TODAY'S TICKET \u2014 " + (track ? track.name : '') + ' ' + dateStr + '\n\n' + ticketLines.join('\n') + '\n\nEst. Cost: ' + fmt$(totalBetCost) + ' | Budget: ' + fmt$(dailyBudget);
-  html += `<button class="copy-ticket-btn" onclick="copyTicket()">&#128203; Copy Ticket</button>`;
+  // v2.38.10: clarify that this copies a plain-text summary of the recommended
+  // ticket to the clipboard so the user can paste it into an ADW slip, notes,
+  // or send to a friend. Previous label "Copy Ticket" left users guessing.
+  html += `<button class="copy-ticket-btn" onclick="copyTicket()" title="Copy this ticket as plain text \u2014 paste into your ADW, a note, or share it." aria-label="Copy ticket to clipboard">&#128203; Copy ticket to clipboard</button>`;
   var bMode = getBettingMode();
   if (bMode === 'real') {
     // v2.30.2: real-mode disclaimer removed alongside ADW suppression
@@ -21965,6 +21990,18 @@ document.addEventListener('keydown', e => {
   window.openVirtualBarnProfile = openHorseProfile;
 
   // Add the "In Barn" pill + row highlight to active race rows.
+  // v2.38.10 — IDEMPOTENT highlight pass.
+  //
+  // Previous version unconditionally removed + re-appended pills on every call.
+  // The second MutationObserver below watches the races container and re-fires
+  // applyBarnHighlights on every mutation. The remove/append churn was itself a
+  // mutation, so the observer kept firing forever — an infinite mutation loop
+  // that froze the page after any heart tap. (User-reported: "press a heart it
+  // crashes the app and you have to do a full reset.")
+  //
+  // Fix: short-circuit when the row is already in the desired state. The
+  // function now only mutates when the In Barn / Curated state actually
+  // changed, so re-entrant observer calls converge in one pass.
   function applyBarnHighlights(){
     var s = getBarnStoreSafe();
     if (!s) return;
@@ -21979,34 +22016,43 @@ document.addEventListener('keydown', e => {
       if (!nameSpan) return;
       var n = nameSpan.textContent.trim().toLowerCase();
       var hit = names[n];
-      // Always clear existing pills first so toggle state is reflected.
       var cell = nameSpan.parentElement;
-      if (cell) {
-        cell.querySelectorAll('.vb-row-pill').forEach(function(p){ p.parentNode.removeChild(p); });
-      }
+      var isInBarnNow = row.classList.contains('in-virtual-barn');
+      var existingPill = cell ? cell.querySelector('.vb-row-pill:not(.vb-row-pill-curated)') : null;
+      var existingCurated = cell ? cell.querySelector('.vb-row-pill.vb-row-pill-curated') : null;
       if (hit){
-        // v2.22.1 — simple-barn: membership-only highlight. No favorite class
-        // or pill; a horse is either In Barn or it is not.
-        row.classList.add('in-virtual-barn');
+        var isCurated = hit.source === 'curated-public-profile' || !!(hit.sources && hit.sources.length);
+        var desiredCurated = isCurated ? 'on' : 'off';
+        var currentCurated = existingCurated ? 'on' : 'off';
+        // Already in correct state — no DOM mutation, no observer re-trigger.
+        if (isInBarnNow && existingPill && currentCurated === desiredCurated) return;
+        if (!isInBarnNow) row.classList.add('in-virtual-barn');
         row.classList.remove('vb-fav-row');
         if (cell){
-          var isCurated = hit.source === 'curated-public-profile' || !!(hit.sources && hit.sources.length);
-          var inPill = document.createElement('span');
-          inPill.className = 'vb-row-pill';
-          inPill.textContent = 'In Barn';
-          inPill.title = hit.name + ' is in your Virtual Barn';
-          cell.appendChild(inPill);
-          if (isCurated) {
+          if (!existingPill){
+            var inPill = document.createElement('span');
+            inPill.className = 'vb-row-pill';
+            inPill.textContent = 'In Barn';
+            inPill.title = hit.name + ' is in your Virtual Barn';
+            cell.appendChild(inPill);
+          }
+          if (isCurated && !existingCurated){
             var cPill = document.createElement('span');
             cPill.className = 'vb-row-pill vb-row-pill-curated';
             cPill.textContent = 'Curated';
             cPill.title = 'Curated public profile';
             cell.appendChild(cPill);
+          } else if (!isCurated && existingCurated){
+            existingCurated.parentNode.removeChild(existingCurated);
           }
         }
       } else {
+        // Not in barn — only mutate if there's something to clean up.
+        if (!isInBarnNow && !existingPill && !existingCurated) return;
         row.classList.remove('in-virtual-barn');
         row.classList.remove('vb-fav-row');
+        if (existingPill) existingPill.parentNode.removeChild(existingPill);
+        if (existingCurated) existingCurated.parentNode.removeChild(existingCurated);
       }
     });
   }
@@ -22138,6 +22184,22 @@ document.addEventListener('keydown', e => {
       if (!t || !t.closest) return;
       if (t.closest('.barn-heart')) setTimeout(applyBarnHighlights, 80);
     }, true);
+
+    // v2.38.10 — belt-and-braces safety net: if any future regression makes
+    // applyBarnHighlights non-idempotent, this re-entrancy guard prevents the
+    // page from hanging. Re-entrant calls are coalesced into one trailing pass.
+    if (!applyBarnHighlights.__guarded) {
+      var inner = applyBarnHighlights;
+      var running = false, pending = false;
+      applyBarnHighlights = function(){
+        if (running) { pending = true; return; }
+        running = true;
+        try { inner(); } catch(e) {}
+        running = false;
+        if (pending) { pending = false; setTimeout(applyBarnHighlights, 0); }
+      };
+      applyBarnHighlights.__guarded = true;
+    }
 
     // Wire the whole horse row (name area + chevron) to open the profile.
     // v2.21.1: clicks on the chevron or empty row area now also open, and

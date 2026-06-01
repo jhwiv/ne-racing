@@ -1,5 +1,58 @@
 # NE Racing — Changelog
 
+## v2.38.10 — Heart-tap crash, Equibase deep-link, copy-ticket label (2026-06-01)
+
+Three user-reported bugs, all confirmed in the live browser and fixed.
+
+### Heart tap crashed the app (CRITICAL)
+
+Reported: "hearts don't do anything except when you press a heart it crashes
+the app and you have to do a full reset." Confirmed in Playwright: clicking
+any `.barn-heart` button closed the page within ~2 seconds, no JS exception.
+
+Root cause: an **infinite mutation loop** between two MutationObservers both
+watching `#races-container`. The second observer (line ~22136) fired
+`applyBarnHighlights` on every mutation, and `applyBarnHighlights` itself
+mutated the DOM unconditionally by removing every `.vb-row-pill` and
+re-appending fresh ones on every call. The append was a mutation, which
+re-fired the observer, which mutated again, forever. The browser eventually
+killed the tab.
+
+Fix: made `applyBarnHighlights` idempotent at the DOM level — it now
+short-circuits when a row is already in the correct In Barn / Curated state
+and only touches the DOM when something actually changed. Also wrapped it
+in a re-entrancy guard that coalesces nested calls into a single trailing
+pass, so any future regression that re-introduces non-idempotency still
+can't hang the page.
+
+### "View in Equibase" sent users to the generic site
+
+Reported: "View in equibase link sends user to general equibase site, not
+the race in question."
+
+Root cause: the URL builder used
+`equibase.com/static/entry/index.html?type=Entry&dt=...&tk=...&rn=...`. Live
+test confirmed Equibase **ignores those query parameters entirely** and just
+renders the generic Entries hub regardless of date or track.
+
+Fix: switched to Equibase's actual race-level static URL format,
+`equibase.com/static/entry/{TRACK}{MMDDYY}USA{RACE}-EQB.html`. Verified that
+published race pages (e.g. Churchill Downs / Gulfstream) resolve to the
+correct single-race entries page. Also added `buildEquibaseFullCardUrl()`
+as a future fallback. Caveat: Equibase only publishes static pages for
+finalized cards — future-dated races may 404 until Equibase posts them.
+
+### "Copy Ticket" button purpose was unclear
+
+Reported: "What is the purpose of the copy bet button?" — referring to the
+📋 Copy Ticket button on the recommended-bets card. It does work; it copies
+a plain-text summary (best bet + value plays + action exotic + estimated
+cost + budget) to the clipboard so the user can paste into an ADW slip,
+share with a friend, or save to notes.
+
+Fix: relabelled to "Copy ticket to clipboard" and added a descriptive title
++ aria-label so the purpose is obvious from the button alone.
+
 ## v2.38.9 — Pedigree + equipment rendering, weights stub (2026-05-31)
 
 ### Fixed (caught in full click-through QA against railbirdai.com)
