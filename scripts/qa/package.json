@@ -1,0 +1,20 @@
+{
+  "name": "railbird-qa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pre-ship QA harness for Railbird AI. Drives the real UI and reads the real DOM so storage-layer bugs can't hide.",
+  "scripts": {
+    "l1": "node layers/01-smoke-crawl.js",
+    "l2": "node layers/02-interaction-matrix.js",
+    "l3": "node layers/03-data-coverage.js",
+    "l4": "node layers/04-state-transitions.js",
+    "l5": "node layers/05-visual-regression.js",
+    "preship": "node run-all.js --preship",
+    "all": "node run-all.js"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0",
+    "pixelmatch": "^5.3.0",
+    "pngjs": "^7.0.0"
+  }
+}
