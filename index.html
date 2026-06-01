@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260601-v2.38.13';
+var NE_APP_VERSION = '20260601-v2.38.14';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260601-v2.38.13';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.38.13-barn-today-clear';
+var RAILBIRD_VERSION = 'v2.38.14-picker-add-refresh';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10469,7 +10469,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.13</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.14</strong>.</p>
       </div>
     </div>
   </div>
@@ -20994,6 +20994,19 @@ document.addEventListener('keydown', e => {
   } else {
     boot();
   }
+
+  // v2.38.14 — Expose barn render helpers on window so callers in *other*
+  // IIFEs (barn lookup picker, profile modal, seeders) can trigger a refresh.
+  // Without this, every `if (typeof barn_renderBarnTab === 'function')` guard
+  // in the picker IIFE silently fails because the function is locked inside
+  // this IIFE's closure. Result: "Add to Barn" wrote to localStorage but the
+  // open barn tab + today strip + heart highlights never refreshed, so users
+  // saw "0 IN BARN" right after adding a horse. (Reported 2026-06-01.)
+  window.barn_renderBarnTab    = barn_renderBarnTab;
+  window.barn_decorateHorseRows = barn_decorateHorseRows;
+  window.barn_updateBadge      = barn_updateBadge;
+  window.barn_updateTodayStrip = barn_updateTodayStrip;
+  window.barn_scanRaces        = barn_scanRaces;
 })();
 
 
