@@ -1,5 +1,18 @@
 # NE Racing — Changelog
 
+## v2.38.17 — About modal: Saratoga-only copy (2026-06-02)
+
+The About → Executive summary modal still claimed Railbird covered
+"NYRA, Churchill, Del Mar, Santa Anita, and the Triple Crown / Breeders'
+Cup meets." That hasn't been true since the product narrowed to the
+Saratoga 2026 meet. Rewrote the copy to match reality:
+  - Lead is now Saratoga-specific.
+  - "Covers every race day of the Saratoga meet, opening through closing."
+  - Added "Saratoga-focused" as the first differentiator (one meet done
+    well, vs. a thin layer over the whole country).
+  - Status line updated to "Saratoga 2026 coverage."
+  - Archive figures kept (1,907 horses / 15,272 past races in D1).
+
 ## v2.38.16 — Tap-to-rank for straight exotics (2026-06-02)
 
 Replaced the cramped `1/2/3` number-box inputs in the Evaluate Any Bet modal
