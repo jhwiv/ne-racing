@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260602-v2.38.17';
+var NE_APP_VERSION = '20260602-v2.38.18';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -10327,12 +10327,23 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 <style>
   /* v2.38.2: center the About sheet vertically on all screen sizes so
      expanded rows don't feel like they're hovering at the bottom. */
+  /* v2.38.18 — full-bleed overlay using dynamic viewport units so the
+     iOS Safari URL bar can't leave the bottom tab nav visible behind
+     the sheet. Only the inner card scrolls — sheet itself is a flex
+     container with no scroll of its own. */
   #about-sheet {
-    position: fixed; inset: 0; z-index: 9100;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;     /* fallback for older browsers */
+    height: 100dvh;    /* honors dynamic toolbars on iOS Safari/Chrome */
+    z-index: 10000;
     background: rgba(30, 42, 54, 0.55);
     display: none; align-items: center; justify-content: center;
     padding: 16px;
-    overflow-y: auto;
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
   @media (min-width: 520px) {
     #about-sheet { padding: 24px; }
@@ -10344,12 +10355,14 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     width: 100%; max-width: 480px;
     border-radius: 16px;
     padding: 22px 20px 24px;
-    max-height: calc(100vh - 32px);
+    max-height: 100%;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     box-shadow: 0 10px 30px rgba(0,0,0,0.22);
     box-sizing: border-box;
     position: relative;
-    margin: auto;
+    margin: 0;
   }
   .about-close {
     position: absolute; top: 12px; right: 12px;
@@ -10421,7 +10434,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <svg class="about-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <div id="about-answer-audience" class="about-answer">
-        <p style="margin:0;">It&rsquo;s not for retards, douchebags or assholes. It&rsquo;s for fine gentlemen, just like you.</p>
+        <p style="margin:0 0 8px 0;">The serious recreational fan &mdash; the railbird who watches the workouts, knows a closer from a need-the-lead, and wants a sharper read on the Saratoga card without subscribing to four data services.</p>
+        <p style="margin:0;">If you read the <em>Form</em> on the train up and you&rsquo;d rather talk about the horse than the ticket, this is for you.</p>
       </div>
 
       <!-- v2.38.0 — Executive summary -->
@@ -10490,7 +10504,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.17</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.18</strong>.</p>
       </div>
     </div>
   </div>

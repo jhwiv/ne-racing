@@ -1,5 +1,52 @@
 # NE Racing — Changelog
 
+## v2.38.18 — About modal: real fixes after click-by-click QA (2026-06-02)
+
+User report: "In the about section card open close and swipe doesn't
+work correctly. Test it by clicking and scrolling. Don't guess."
+
+Ran a real Playwright session at iPhone 13 viewport (390×664) — open
+from More → About, scroll, expand all four rows, swipe to close.
+Found and fixed three concrete bugs:
+
+### 1. "Who is this app for?" answer was offensive copy (P0)
+
+The audience row still contained dev-time placeholder text mocking
+"retards, douchebags or assholes." Replaced with a real audience
+statement aligned with the rest of the About sheet — the serious
+recreational fan / railbird who reads the Form on the train up. Would
+have been the second thing a beta tester saw on opening day.
+
+### 2. Modal didn't fully cover the bottom tab bar (P0)
+
+The sheet used `position: fixed; inset: 0` with the page's regular
+`100vh` semantics. On iOS Safari/Chrome, with the URL bar showing,
+the document is shorter than the layout viewport — `inset: 0` left a
+sliver at the bottom where `#bottom-tab-bar` (z-index 200) stayed
+tappable behind a sheet that was supposed to be modal. Confirmed in
+Playwright: tab nav was hit-testable under the open sheet.
+
+Fix: switched the sheet to explicit `top/left/right/bottom: 0` with
+`height: 100dvh` (dynamic viewport units that honor the live toolbar
+height) and bumped `z-index` from 9100 to 10000 so nothing in the
+app can sit above it.
+
+### 3. Double scroll containers fought each other (P1)
+
+Both `#about-sheet` and `.about-card` had `overflow-y: auto`. When all
+four rows were expanded (`scrollHeight=2491` vs `clientHeight=632`),
+iOS rubber-banding split between the two containers and the swipe-to-
+close handler couldn't tell which one the user was scrolling.
+
+Fix: sheet is now `overflow: hidden` (pure flex backdrop). Only the
+card scrolls, with `overscroll-behavior: contain` so scroll chaining
+stops at the card boundary. `max-height: calc(100vh - 32px)` →
+`max-height: 100%` since the sheet's padding now bounds it.
+
+Swipe-to-close logic at line ~10546 was already correct (locks to
+dominant axis, only triggers from `scrollTop=0` on a downward swipe);
+removing the outer scroll container is what lets it work reliably.
+
 ## v2.38.17 — About modal: Saratoga-only copy (2026-06-02)
 
 The About → Executive summary modal still claimed Railbird covered
