@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260601-v2.38.15';
+var NE_APP_VERSION = '20260602-v2.38.16';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -4912,6 +4912,26 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   cursor: pointer; user-select: none;
 }
 .bet-eval-horse-row label.role input { margin: 0; }
+/* Tap-to-rank slot: tap a horse to assign next finishing position.
+   Tap again to clear (remaining ranks shift down). Thumb-sized for iOS. */
+.bet-eval-horse-row .tap-rank-slot {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1.5px solid var(--color-racing-green);
+  background: var(--color-white);
+  color: var(--color-racing-green);
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.95rem;
+  cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+  flex: 0 0 auto;
+}
+.bet-eval-horse-row .tap-rank-slot:active { transform: scale(0.92); }
+.bet-eval-horse-row .tap-rank-slot.ranked {
+  background: var(--color-racing-green); color: #fff;
+  border-color: var(--color-racing-green);
+}
+.bet-eval-horse-row .tap-rank-slot.ranked-1 { background: #c9a227; border-color: #c9a227; color: #fff; }
+.bet-eval-horse-row.has-rank { background: rgba(20, 83, 45, 0.04); }
 .bet-eval-leg {
   border: 1px solid #e8e8e8; border-radius: var(--radius-sm);
   padding: 0.4rem 0.55rem; margin-bottom: 0.5rem;
@@ -11903,7 +11923,18 @@ function renderBetEvalHorses() {
       control = '<label class="role"><input type="radio" name="bet-eval-pick" value="' + pp + '" onchange="_betEvalPickRadio(' + pp + ')" /> Pick</label>';
     } else if (pool === 'exacta' || pool === 'trifecta' || pool === 'superfecta') {
       if (structure === 'straight') {
-        control = '<input type="number" min="1" step="1" placeholder="pos" style="width:54px;" oninput="_betEvalPosInput(' + pp + ', this.value)" />';
+        // Tap-to-rank: read current rank from state and render a pill button.
+        var curVal = _betEvalState.selections[pp];
+        var curRank = (typeof curVal === 'string' && curVal.indexOf('pos:') === 0)
+          ? parseInt(curVal.split(':')[1], 10) : 0;
+        var rankCls = curRank ? (' ranked ranked-' + curRank) : '';
+        var rankLbl = curRank ? String(curRank) : '–';
+        var aria = curRank
+          ? 'Finishing position ' + curRank + '. Tap to clear.'
+          : 'Tap to assign next finishing position.';
+        control = '<button type="button" class="tap-rank-slot' + rankCls + '" '
+                + 'aria-label="' + aria + '" '
+                + 'onclick="_betEvalTapRank(' + pp + ')">' + rankLbl + '</button>';
       } else if (structure === 'box' || structure === 'wheel') {
         control = '<label class="role"><input type="checkbox" onchange="_betEvalToggle(' + pp + ', this.checked, \'on\')" /> Include</label>';
       } else if (structure === 'key') {
@@ -11921,7 +11952,8 @@ function renderBetEvalHorses() {
 
   var note = '';
   if ((pool === 'exacta' || pool === 'trifecta' || pool === 'superfecta') && structure === 'straight') {
-    note = '<div class="text-muted text-sm" style="padding:0.3rem 0.4rem 0.45rem;">Enter finishing position (1, 2, 3, …) next to each horse you want in that spot.</div>';
+    var depth = pool === 'exacta' ? 2 : (pool === 'trifecta' ? 3 : 4);
+    note = '<div class="text-muted text-sm" style="padding:0.3rem 0.4rem 0.45rem;">Tap horses in finish order — first tap = 1st, second tap = 2nd' + (depth >= 3 ? ', and so on' : '') + '. Tap again to clear.</div>';
   } else if (structure === 'wheel') {
     note = '<div class="text-muted text-sm" style="padding:0.3rem 0.4rem 0.45rem;">Wheel: pick the horses to use at every position (treated as a full box across selected runners).</div>';
   }
@@ -11943,9 +11975,54 @@ function _betEvalToggle(pp, checked, role) {
   else delete _betEvalState.selections[pp];
 }
 function _betEvalPosInput(pp, val) {
+  // Legacy entry point — kept for any external callers/tests. Tap-to-rank is
+  // the new default; this still works if some surface decides to set a pos.
   var n = parseInt(val, 10);
   if (!val || isNaN(n) || n < 1) { delete _betEvalState.selections[pp]; return; }
   _betEvalState.selections[pp] = 'pos:' + n;
+}
+
+// Tap-to-rank: assigns the next available finishing position when tapped on
+// an unranked horse, or clears + compacts ranks when tapped on an already-
+// ranked horse. Ranks are bounded by the pool depth (exacta=2, tri=3, super=4)
+// so the user can't assign "3" in an exacta.
+function _betEvalTapRank(pp) {
+  var pool = _betEvalPool();
+  var depth = pool === 'exacta' ? 2 : (pool === 'trifecta' ? 3 : (pool === 'superfecta' ? 4 : 0));
+  if (!depth) return;
+  var sel = _betEvalState.selections;
+  var key = String(pp);
+  var cur = sel[key];
+  var curRank = (typeof cur === 'string' && cur.indexOf('pos:') === 0)
+    ? parseInt(cur.split(':')[1], 10) : 0;
+
+  if (curRank) {
+    // Clear this rank and shift any higher ranks down by 1 so there are no
+    // gaps (e.g. clearing 1 promotes the old 2 to 1).
+    delete sel[key];
+    Object.keys(sel).forEach(function(k) {
+      var v = sel[k];
+      if (typeof v === 'string' && v.indexOf('pos:') === 0) {
+        var n = parseInt(v.split(':')[1], 10);
+        if (n > curRank) sel[k] = 'pos:' + (n - 1);
+      }
+    });
+  } else {
+    // Find the next unused rank (1..depth). If all slots are taken, no-op.
+    var used = {};
+    Object.keys(sel).forEach(function(k) {
+      var v = sel[k];
+      if (typeof v === 'string' && v.indexOf('pos:') === 0) {
+        used[parseInt(v.split(':')[1], 10)] = true;
+      }
+    });
+    var next = 0;
+    for (var i = 1; i <= depth; i++) { if (!used[i]) { next = i; break; } }
+    if (!next) return;
+    sel[key] = 'pos:' + next;
+  }
+  // Re-render so every row reflects the new global rank state.
+  renderBetEvalHorses();
 }
 
 // Multi-race legs: pick chips for each leg (from active track), starting at the

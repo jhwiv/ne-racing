@@ -1,5 +1,16 @@
 # NE Racing — Changelog
 
+## v2.38.16 — Tap-to-rank for straight exotics (2026-06-02)
+
+Replaced the cramped `1/2/3` number-box inputs in the Evaluate Any Bet modal
+(Exacta / Trifecta / Superfecta · Straight) with a single thumb-sized circular
+slot per horse. First tap assigns 1st, next tap assigns 2nd, and so on.
+Tapping a ranked horse clears its slot and compacts the remaining ranks so
+there are no gaps. No keyboard. No focus juggling. One-handed.
+
+Underlying selection state (`pos:N`) is unchanged, so `_betEvalBuildSelection`
+and every downstream code path keep working without modification.
+
 ## v2.38.10 — Heart-tap crash, Equibase deep-link, copy-ticket label (2026-06-01)
 
 Three user-reported bugs, all confirmed in the live browser and fixed.

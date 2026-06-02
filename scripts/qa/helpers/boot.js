@@ -35,9 +35,33 @@ async function newSession(browser, { version, baseUrl }) {
 
   const page = await ctx.newPage();
   const errors = [];
-  page.on('pageerror', e => errors.push({ type: 'pageerror', message: e.message }));
+  // Filter out errors that are environmental artifacts of running the harness
+  // locally rather than real app bugs:
+  //   - Worker CORS rejections when running from 127.0.0.1 (the worker only
+  //     allows the railbirdai.com origin in production, by design).
+  //   - The matching "Failed to load resource" lines those CORS rejections
+  //     produce.
+  // These errors do not appear when the app runs on its real domain, and
+  // suppressing them locally keeps the harness focused on real regressions.
+  const isHarmlessLocalError = (msg) => {
+    if (!msg) return false;
+    const s = String(msg);
+    if (s.includes('cloudflare-worker.jhwiv-online.workers.dev') && s.includes('CORS')) return true;
+    if (s.includes('net::ERR_FAILED') && s.includes('cloudflare-worker.jhwiv-online.workers.dev')) return true;
+    // Chrome emits a bare "Failed to load resource: net::ERR_FAILED" line
+    // immediately after each CORS rejection — same root cause, no URL in the
+    // message itself. Swallow it on local-server runs only.
+    if (/^Failed to load resource: net::ERR_FAILED/i.test(s.trim()) && baseUrl.startsWith('http://127.')) return true;
+    return false;
+  };
+  page.on('pageerror', e => {
+    if (!isHarmlessLocalError(e.message)) errors.push({ type: 'pageerror', message: e.message });
+  });
   page.on('console', m => {
-    if (m.type() === 'error') errors.push({ type: 'console.error', message: m.text() });
+    if (m.type() === 'error') {
+      const text = m.text();
+      if (!isHarmlessLocalError(text)) errors.push({ type: 'console.error', message: text });
+    }
   });
 
   const cacheBust = Date.now();

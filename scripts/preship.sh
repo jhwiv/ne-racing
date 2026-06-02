@@ -33,9 +33,11 @@ if [ "$MODE" = "local" ]; then
   # Spin up a tiny static server on a free port. Python is universally available.
   PORT=$((8000 + RANDOM % 1000))
   echo "==> Starting local server on :$PORT"
-  (cd "$REPO_ROOT" && python3 -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1) &
+  # Use setsid + nohup so the server is fully detached and doesn't keep
+  # parent FDs open (otherwise the script can hang after node exits).
+  (cd "$REPO_ROOT" && setsid nohup python3 -m http.server "$PORT" --bind 127.0.0.1 </dev/null >/dev/null 2>&1) &
   SERVER_PID=$!
-  trap "kill $SERVER_PID 2>/dev/null || true" EXIT
+  trap "kill -9 $SERVER_PID 2>/dev/null || true; pkill -9 -P $SERVER_PID 2>/dev/null || true" EXIT
   sleep 1
 
   # Pull NE_APP_VERSION out of index.html so the version pin matches the
