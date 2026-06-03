@@ -1,5 +1,30 @@
 # NE Racing — Changelog
 
+## v2.38.19 — TODAY tab was rolling to tomorrow at 8pm EDT (2026-06-02)
+
+User report: "Why does it look like there were races today?"
+
+At 9:21 PM EDT on June 2 (opening eve), the TODAY tab was already
+showing June 3 — Saratoga's opening-day card — with the heading still
+reading "Today's Card." Confirmed via Playwright at America/New_York
+timezone:
+
+  jsNow:        Tue Jun 02 2026 21:21:56 GMT-0400 (EDT)
+  getTodayStr:  2026-06-03   ← wrong
+  activeTrack:  SAR
+
+Root cause: `getTodayStr()` was `new Date().toISOString().split('T')[0]`,
+which is UTC. After 8pm EDT (00:00 UTC), every "today" check returned
+tomorrow. That fed into the track-data loader, the date-strip
+highlight, and the bet-history "today" filter, so the entire app
+flipped a day early.
+
+Fix: `getTodayStr()` now uses `Intl.DateTimeFormat` pinned to
+`America/New_York` (Saratoga's local time), with a local-time fallback
+if Intl isn't available. The two other UTC fallbacks elsewhere in the
+file were also rewritten to call `getTodayStr()` first or use local
+time as the fallback, so no code path can reintroduce the bug.
+
 ## v2.38.18 — About modal: real fixes after click-by-click QA (2026-06-02)
 
 User report: "In the about section card open close and swipe doesn't

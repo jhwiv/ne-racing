@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260602-v2.38.18';
+var NE_APP_VERSION = '20260602-v2.38.19';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -10504,7 +10504,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.18</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.19</strong>.</p>
       </div>
     </div>
   </div>
@@ -11395,7 +11395,29 @@ function setSetting(key, val) {
 }
 
 function getTodayStr() {
-  return new Date().toISOString().split('T')[0];
+  // v2.38.19: return today in the track's local timezone (America/New_York
+  // for Saratoga). Using new Date().toISOString() returned UTC, which
+  // rolls over to tomorrow at 8pm EDT — so on the night of June 2 the
+  // app was already showing opening-day (June 3) as "Today's Card".
+  try {
+    var parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    var y = '', m = '', d = '';
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].type === 'year')  y = parts[i].value;
+      if (parts[i].type === 'month') m = parts[i].value;
+      if (parts[i].type === 'day')   d = parts[i].value;
+    }
+    if (y && m && d) return y + '-' + m + '-' + d;
+  } catch (_) {}
+  // Fallback: local time of the user's device.
+  var now = new Date();
+  var yy = now.getFullYear();
+  var mm = String(now.getMonth() + 1).padStart(2, '0');
+  var dd = String(now.getDate()).padStart(2, '0');
+  return yy + '-' + mm + '-' + dd;
 }
 
 function generateId() {
@@ -15291,8 +15313,8 @@ function renderTodaysLockedBets() {
   var data = getTrackData();
   var bets = (data && data.bets) ? data.bets : [];
 
-  // Filter to today's bets
-  var today = new Date().toISOString().slice(0, 10);
+  // Filter to today's bets (v2.38.19: use local-time helper, not UTC)
+  var today = (typeof getTodayStr === 'function') ? getTodayStr() : new Date().toISOString().slice(0, 10);
   var todayBets = bets.filter(function(b) {
     if (!b.date) return true; // no date = assume today
     return String(b.date).indexOf(today) === 0 || String(b.date).indexOf(today.replace(/-/g, '')) !== -1;
@@ -21182,7 +21204,12 @@ document.addEventListener('keydown', e => {
 
   function trk_todayStr() {
     try { return (typeof getTodayStr === 'function') ? getTodayStr() : new Date().toISOString().slice(0,10); }
-    catch(_) { return new Date().toISOString().slice(0,10); }
+    catch(_) {
+      // v2.38.19: fall back to local-time, not UTC, so the date
+      // doesn't roll over at 8pm EDT.
+      var n = new Date();
+      return n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0');
+    }
   }
 
   function trk_getTracks() {
