@@ -1,5 +1,12 @@
 # NE Racing — Changelog
 
+## v2.39.4 — Remove duplicate Jim's Way label (2026-06-03)
+
+The ticket-card variant rendered "🤷 Jim's Way" twice — once in the
+`rec-bet-tag` row and again immediately below in the `card-explainer`
+row. Kept the styled tag, removed the duplicate explainer line.
+Compact variant unchanged (only had the label once).
+
 ## v2.39.3 — Rename fallback label to "Jim's Way" (2026-06-03)
 
 User-facing label change only. The PASS-race fallback is now labeled

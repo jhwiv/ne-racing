@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260603-v2.39.3';
+var NE_APP_VERSION = '20260603-v2.39.4';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -15459,7 +15459,6 @@ function renderJimFallbackBet(fb, compact) {
   // Ticket-card variant
   return `<div class="rec-bet-item card-jim" style="border-left:3px solid #c1962b;background:rgba(212,165,116,0.08)">
     <div class="rec-bet-tag" style="background:#c1962b;color:#fff">\uD83E\uDD37 Jim\u2019s Way</div>
-    <div class="card-explainer" style="font-size:0.72rem">${label}</div>
     <div class="rec-bet-detail">Race ${fb.race.num}: <strong>#${pp} ${horseName.toUpperCase()}</strong> ${modeLbl}</div>
     <div class="rec-bet-amount">$${fb.amount} ${fb.mode === 'win' ? 'to Win' : 'to Place'}</div>
     ${fb.payout ? '<div class="ticket-payout">' + fb.payout + '</div>' : ''}
