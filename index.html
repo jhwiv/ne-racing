@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260603-v2.38.23';
+var NE_APP_VERSION = '20260603-v2.39.0';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -9008,81 +9008,321 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     margin-top: 18px;
     letter-spacing: 0.05em;
   }
+  /* v2.39.0 — invite request form */
+  #beta-gate .bg-row {
+    margin-top: 10px;
+    text-align: left;
+  }
+  #beta-gate .bg-row label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.65;
+    margin-bottom: 4px;
+  }
+  #beta-gate input[type="text"],
+  #beta-gate input[type="email"] {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(248, 244, 234, 0.25);
+    background: rgba(0,0,0,0.25);
+    color: #F8F4EA;
+    font-size: 16px;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+  }
+  #beta-gate input[type="text"]:focus,
+  #beta-gate input[type="email"]:focus {
+    outline: none;
+    border-color: #C9A961;
+  }
+  #beta-gate .bg-link {
+    margin-top: 16px;
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  #beta-gate .bg-link a {
+    color: #C9A961;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  #beta-gate .bg-ok {
+    font-size: 13px;
+    color: #B4E4B0;
+    margin-top: 14px;
+    line-height: 1.5;
+  }
 </style>
 <div id="beta-gate" class="hidden" role="dialog" aria-modal="true" aria-labelledby="bg-title">
   <div class="bg-card">
     <h1 id="bg-title">RAILBIRD AI</h1>
-    <div class="bg-sub">Closed beta. Enter the access code provided to you.</div>
-    <input id="beta-gate-input" type="password" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="Access code" />
-    <button id="beta-gate-btn" type="button">Unlock</button>
-    <div class="bg-error" id="beta-gate-err"></div>
+    <!-- MODE A: existing access-code unlock (backup) -->
+    <div id="bg-mode-code">
+      <div class="bg-sub">Closed beta. Enter the access code provided to you.</div>
+      <input id="beta-gate-input" type="password" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="Access code" />
+      <button id="beta-gate-btn" type="button">Unlock</button>
+      <div class="bg-error" id="beta-gate-err"></div>
+      <div class="bg-link">Have an invite? <a id="bg-switch-to-request">Request access</a></div>
+    </div>
+    <!-- MODE B: invite → request access form (v2.39.0) -->
+    <div id="bg-mode-request" style="display:none;">
+      <div class="bg-sub" id="bg-request-sub">You’ve been invited to the Railbird AI beta. Tell us who you are and we’ll send you access.</div>
+      <div class="bg-row">
+        <label for="bg-first">First name</label>
+        <input id="bg-first" type="text" autocomplete="given-name" autocapitalize="words" spellcheck="false" />
+      </div>
+      <div class="bg-row">
+        <label for="bg-last">Last name</label>
+        <input id="bg-last" type="text" autocomplete="family-name" autocapitalize="words" spellcheck="false" />
+      </div>
+      <div class="bg-row">
+        <label for="bg-email">Email</label>
+        <input id="bg-email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" />
+      </div>
+      <div class="bg-row">
+        <label for="bg-invited-by">Invited by</label>
+        <input id="bg-invited-by" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Their name" />
+      </div>
+      <button id="bg-request-btn" type="button" style="margin-top:18px;">Request access</button>
+      <div class="bg-error" id="bg-request-err"></div>
+      <div class="bg-ok" id="bg-request-ok" style="display:none;"></div>
+      <div class="bg-link"><a id="bg-switch-to-code">I have an access code instead</a></div>
+    </div>
+    <!-- MODE C: approved — redeeming unlock token (v2.39.0) -->
+    <div id="bg-mode-approved" style="display:none;">
+      <div class="bg-sub" id="bg-approved-msg">Unlocking your access…</div>
+      <div class="bg-error" id="bg-approved-err"></div>
+    </div>
     <div class="bg-foot">Powered by Barrier Island Digital, LLC</div>
   </div>
 </div>
 <script>
 (function(){
-  // Beta access — SHA-256 hash of the access code (so the code is not visible
-  // in the bundle to anyone reading the raw HTML).
-  // To rotate: compute  sha256("NEWCODE")  and replace the constant below.
+  // ─── Beta access — three modes ────────────────────────────────────────
+  //   MODE A (default): existing access-code unlock (kept as backup).
+  //   MODE B (?invite=<slug>): request-access form  → /api/beta-request.
+  //   MODE C (?approved=<token>): redeem unlock token → /api/beta-unlock.
+  // The owner approves a request from email; the requester then opens the
+  // ?approved=<token> link on their phone and the app unlocks for them.
+  // ──────────────────────────────────────────────────────────────────────
   var BETA_HASH = 'c5e6c12d42ceae0ccc49585c2ca2a59c43ffb108a4136ba8bf728017acfeb8b3'; // sha256("SARATOGA2026")
   var FLAG_KEY  = 'railbird-beta-unlocked-v1';
 
-  // ?dev=1 bypass for the builder
-  try {
-    var sp = new URLSearchParams(window.location.search);
-    if (sp.get('dev') === '1') {
-      localStorage.setItem(FLAG_KEY, '1');
-    }
-  } catch(e){}
+  // Worker base URL — mirror logic from the admin block (kept self-contained
+  // here because the gate runs before the admin script is parsed).
+  function workerBaseUrl() {
+    try {
+      var s = JSON.parse(localStorage.getItem('racing2026') || '{}');
+      var w = s && s.settings && s.settings.workerUrl;
+      if (w && /^https?:\/\//.test(w)) return w;
+    } catch (_) {}
+    return 'https://cloudflare-worker.jhwiv-online.workers.dev';
+  }
 
-  // Already unlocked? show app.
-  try { if (localStorage.getItem(FLAG_KEY) === '1') return; } catch(e){ return; }
+  // Read query params (defensive — never throw).
+  var sp;
+  try { sp = new URLSearchParams(window.location.search); } catch(_) { sp = new URLSearchParams(''); }
 
-  // Otherwise mount the gate.
+  // ?dev=1 bypass for the builder.
+  if (sp.get('dev') === '1') {
+    try { localStorage.setItem(FLAG_KEY, '1'); } catch(_){}
+  }
+
+  var invite   = (sp.get('invite')   || '').trim();
+  var approved = (sp.get('approved') || '').trim();
+  var alreadyUnlocked = false;
+  try { alreadyUnlocked = localStorage.getItem(FLAG_KEY) === '1'; } catch(_){}
+
+  // Fast path: already unlocked AND no ?approved= to redeem → show app.
+  if (alreadyUnlocked && !approved) return;
+
   var gate = document.getElementById('beta-gate');
+  if (!gate) return;
+  var modeCode    = document.getElementById('bg-mode-code');
+  var modeRequest = document.getElementById('bg-mode-request');
+  var modeApprov  = document.getElementById('bg-mode-approved');
+
+  function showMode(which) {
+    if (modeCode)    modeCode.style.display    = (which === 'code')     ? '' : 'none';
+    if (modeRequest) modeRequest.style.display = (which === 'request')  ? '' : 'none';
+    if (modeApprov)  modeApprov.style.display  = (which === 'approved') ? '' : 'none';
+  }
+
+  function revealGate() {
+    gate.classList.remove('hidden');
+    try { document.documentElement.style.visibility = 'visible'; } catch(_){}
+  }
+
+  // ── MODE C: ?approved=<token> — redeem and unlock ─────────────────────
+  if (approved) {
+    revealGate();
+    showMode('approved');
+    var aMsg = document.getElementById('bg-approved-msg');
+    var aErr = document.getElementById('bg-approved-err');
+    (async function redeem(){
+      try {
+        var url = workerBaseUrl().replace(/\/$/, '') + '/api/beta-unlock?token=' + encodeURIComponent(approved);
+        var res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) {
+          aMsg.textContent = '';
+          aErr.textContent = res.status === 404
+            ? 'This access link is invalid or has been revoked.'
+            : 'Could not verify your access (HTTP ' + res.status + ').';
+          return;
+        }
+        var data = await res.json();
+        if (!data || !data.ok) {
+          aMsg.textContent = '';
+          aErr.textContent = 'Access response was malformed.';
+          return;
+        }
+        // Persist unlock + cache the user's name for the share flow.
+        try { localStorage.setItem(FLAG_KEY, '1'); } catch(_){}
+        try {
+          localStorage.setItem('railbird.userName.v1', JSON.stringify({
+            first: data.first || '',
+            last:  data.last  || '',
+            email: data.email || ''
+          }));
+        } catch(_){}
+        aMsg.innerHTML = 'Welcome, ' + (data.first ? String(data.first).replace(/[<>&"']/g,'') : 'friend') + '. You\u2019re in.';
+        // Brief beat so user sees the welcome, then drop the gate and
+        // clean the URL so the token isn\'t visible / re-redeemable on share.
+        setTimeout(function(){
+          try {
+            var clean = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, '', clean);
+          } catch(_){}
+          gate.classList.add('hidden');
+        }, 900);
+      } catch (e) {
+        aMsg.textContent = '';
+        aErr.textContent = 'Network error: ' + (e && e.message || e);
+      }
+    })();
+    return;
+  }
+
+  // ── MODE B: ?invite=<slug> — show request-access form ─────────────────
+  // Or user clicked "Request access" link from the code panel.
+  var initialMode = invite ? 'request' : 'code';
+  revealGate();
+  showMode(initialMode);
+
+  // Mode-A wiring (existing access-code unlock, unchanged behavior).
   var inp  = document.getElementById('beta-gate-input');
   var btn  = document.getElementById('beta-gate-btn');
   var err  = document.getElementById('beta-gate-err');
-  if (!gate || !inp || !btn) return;
-  gate.classList.remove('hidden');
-  // Reveal even if the FOUC kill is still hiding the doc
-  try { document.documentElement.style.visibility = 'visible'; } catch(e){}
-  setTimeout(function(){ try { inp.focus(); } catch(e){} }, 50);
+  if (initialMode === 'code' && inp) {
+    setTimeout(function(){ try { inp.focus(); } catch(_){} }, 50);
+  }
 
   async function sha256Hex(str) {
-    if (!window.crypto || !window.crypto.subtle) {
-      // Fallback: no crypto.subtle (very old browsers) — just allow plain compare against placeholder.
-      return null;
-    }
+    if (!window.crypto || !window.crypto.subtle) return null;
     var enc = new TextEncoder().encode(str);
     var buf = await window.crypto.subtle.digest('SHA-256', enc);
     return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
   }
-
   async function tryUnlock() {
     err.textContent = '';
     var code = (inp.value || '').trim().toUpperCase();
     if (!code) { err.textContent = 'Enter your access code.'; return; }
     var hex = await sha256Hex(code);
     if (hex === null) {
-      // Subtle crypto unavailable — fallback to direct compare against known
-      // value (only used on legacy browsers; security degrades gracefully).
-      if (code === 'SARATOGA2026') { proceed(); return; }
+      if (code === 'SARATOGA2026') { proceedFromCode(); return; }
       err.textContent = 'Browser too old. Update Chrome or Safari.';
       return;
     }
-    if (hex === BETA_HASH) { proceed(); return; }
+    if (hex === BETA_HASH) { proceedFromCode(); return; }
     err.textContent = 'Incorrect code.';
     inp.value = '';
     inp.focus();
   }
-  function proceed(){
-    try { localStorage.setItem(FLAG_KEY, '1'); } catch(e){}
+  function proceedFromCode(){
+    try { localStorage.setItem(FLAG_KEY, '1'); } catch(_){}
     gate.classList.add('hidden');
   }
-  btn.addEventListener('click', tryUnlock);
-  inp.addEventListener('keydown', function(e){
+  if (btn) btn.addEventListener('click', tryUnlock);
+  if (inp) inp.addEventListener('keydown', function(e){
     if (e.key === 'Enter') { e.preventDefault(); tryUnlock(); }
+  });
+
+  // ── Mode-B wiring (request access form) ───────────────────────────────
+  var fFirst   = document.getElementById('bg-first');
+  var fLast    = document.getElementById('bg-last');
+  var fEmail   = document.getElementById('bg-email');
+  var fInvBy   = document.getElementById('bg-invited-by');
+  var rBtn     = document.getElementById('bg-request-btn');
+  var rErr     = document.getElementById('bg-request-err');
+  var rOk      = document.getElementById('bg-request-ok');
+
+  // Pre-fill "Invited by" from the invite slug if it looks like a name.
+  // Invite slugs are constructed client-side as "first-last-<8charuuid>" — we
+  // best-effort parse the leading name parts so the field isn\'t empty.
+  if (invite && fInvBy && !fInvBy.value) {
+    var parts = invite.split('-').filter(function(s){ return s && !/^[a-f0-9]{6,}$/i.test(s); });
+    if (parts.length >= 1) {
+      var pretty = parts.slice(0, 2).map(function(p){
+        return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+      }).join(' ');
+      if (pretty) fInvBy.value = pretty;
+    }
+  }
+
+  function isEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+
+  async function submitRequest() {
+    rErr.textContent = '';
+    rOk.style.display = 'none';
+    var first = (fFirst && fFirst.value || '').trim();
+    var last  = (fLast  && fLast.value  || '').trim();
+    var email = (fEmail && fEmail.value || '').trim();
+    var invBy = (fInvBy && fInvBy.value || '').trim();
+    if (!first || !last) { rErr.textContent = 'First and last name required.'; return; }
+    if (!isEmail(email)) { rErr.textContent = 'Enter a valid email address.'; return; }
+    if (rBtn) { rBtn.disabled = true; rBtn.textContent = 'Sending\u2026'; }
+    try {
+      var url = workerBaseUrl().replace(/\/$/, '') + '/api/beta-request';
+      var res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ first: first, last: last, email: email, invited_by: invBy })
+      });
+      if (!res.ok) {
+        var body = null;
+        try { body = await res.json(); } catch(_){}
+        rErr.textContent = (body && body.message) || ('Request failed (HTTP ' + res.status + ').');
+        return;
+      }
+      rOk.innerHTML = 'Thanks, <b>' + first.replace(/[<>&"']/g,'') + '</b>. Your request was sent. ' +
+        'You\u2019ll get an email at <b>' + email.replace(/[<>&"']/g,'') + '</b> once approved.';
+      rOk.style.display = '';
+      // Hide the form inputs to make the confirmation feel final.
+      var rows = document.querySelectorAll('#bg-mode-request .bg-row');
+      for (var i = 0; i < rows.length; i++) rows[i].style.display = 'none';
+      if (rBtn) rBtn.style.display = 'none';
+      var subEl = document.getElementById('bg-request-sub');
+      if (subEl) subEl.style.display = 'none';
+    } catch (e) {
+      rErr.textContent = 'Network error: ' + (e && e.message || e);
+    } finally {
+      if (rBtn) { rBtn.disabled = false; rBtn.textContent = 'Request access'; }
+    }
+  }
+  if (rBtn) rBtn.addEventListener('click', submitRequest);
+
+  // Mode-switch links.
+  var toRequest = document.getElementById('bg-switch-to-request');
+  if (toRequest) toRequest.addEventListener('click', function(e){
+    e.preventDefault(); showMode('request');
+    setTimeout(function(){ try { fFirst && fFirst.focus(); } catch(_){} }, 50);
+  });
+  var toCode = document.getElementById('bg-switch-to-code');
+  if (toCode) toCode.addEventListener('click', function(e){
+    e.preventDefault(); showMode('code');
+    setTimeout(function(){ try { inp && inp.focus(); } catch(_){} }, 50);
   });
 })();
 </script>
@@ -10339,6 +10579,22 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         </span>
         <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <!-- v2.39.0 — Invite a friend (native share + copy fallback) -->
+      <button class="more-item" onclick="closeMoreSheet(); inviteAFriend();">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="8.5" cy="7" r="4"/>
+            <line x1="20" y1="8" x2="20" y2="14"/>
+            <line x1="17" y1="11" x2="23" y2="11"/>
+          </svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">Invite a friend</span>
+          <span class="more-item-sub">Share your invite link — they’ll request access, you’ll approve</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
       <!-- v2.32.6 — About (contains 'What's a railbird?' and 'Who is this app for?') -->
       <button class="more-item" onclick="closeMoreSheet(); openAboutSheet();">
         <span class="more-item-icon" aria-hidden="true">
@@ -10683,6 +10939,13 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <button type="button" onclick="adminLoadUsers()">Load</button>
     </div>
     <div id="admin-output"></div>
+    <!-- v2.39.0 — Beta access requests panel (uses same token) -->
+    <div id="admin-pending-section" style="margin-top:28px; padding-top:20px; border-top:1px solid rgba(248,244,234,0.12);">
+      <h3 style="margin:0 0 8px; font-size:16px; letter-spacing:0.04em;">Access Requests</h3>
+      <p class="admin-sub" style="margin:0 0 10px;">Pending invite requests. Approve/reject also works from the email link.</p>
+      <button type="button" onclick="adminLoadPending()" style="font-size:13px;">Load requests</button>
+      <div id="admin-pending-output" style="margin-top:12px;"></div>
+    </div>
   </div>
 </div>
 <script>
@@ -10872,9 +11135,133 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     document.addEventListener('DOMContentLoaded', maybeRevealAdmin);
   }
 
+  // ─── v2.39.0: Admin — list pending beta requests ────────────────────
+  async function adminLoadPending() {
+    var out = document.getElementById('admin-pending-output');
+    var input = document.getElementById('admin-token-input');
+    var token = (input && input.value || '').trim();
+    if (!token) {
+      out.innerHTML = '<div class="admin-msg err">Enter your admin token above first.</div>';
+      return;
+    }
+    try { sessionStorage.setItem(TOKEN_CACHE_KEY, token); } catch(_){}
+    out.innerHTML = '<div class="admin-msg">Loading\u2026</div>';
+    var url = workerBaseUrl().replace(/\/$/, '') + '/api/beta-pending';
+    try {
+      var res = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + token },
+        cache: 'no-store'
+      });
+      if (!res.ok) {
+        var msg = res.status === 401 ? 'Invalid token.' : ('HTTP ' + res.status);
+        out.innerHTML = '<div class="admin-msg err">' + esc(msg) + '</div>';
+        return;
+      }
+      var data = await res.json();
+      var reqs = data.requests || [];
+      if (!reqs.length) {
+        out.innerHTML = '<div class="admin-msg">No requests yet.</div>';
+        return;
+      }
+      var statusPill = function(s) {
+        var color = s === 'approved' ? '#7ee7c1' : (s === 'rejected' ? '#ff8a8a' : '#f3d27a');
+        return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:rgba(255,255,255,0.06);color:' + color + ';text-transform:uppercase;letter-spacing:0.06em;">' + esc(s) + '</span>';
+      };
+      var rows = reqs.map(function(r){
+        return '<tr>' +
+          '<td>' + esc((r.first || '') + ' ' + (r.last || '')) + '</td>' +
+          '<td class="mono">' + esc(r.email || '') + '</td>' +
+          '<td>' + esc(r.invited_by || '') + '</td>' +
+          '<td>' + esc(fmtDate(r.ts)) + '</td>' +
+          '<td>' + statusPill(r.status || 'pending') + '</td>' +
+          '</tr>';
+      }).join('');
+      var summary =
+        '<div class="admin-summary" style="margin-bottom:10px;">' +
+          '<div class="admin-stat"><div class="admin-stat-label">Pending</div><div class="admin-stat-value">' + (data.pending || 0) + '</div></div>' +
+          '<div class="admin-stat"><div class="admin-stat-label">Approved</div><div class="admin-stat-value">' + (data.approved || 0) + '</div></div>' +
+          '<div class="admin-stat"><div class="admin-stat-label">Rejected</div><div class="admin-stat-value">' + (data.rejected || 0) + '</div></div>' +
+        '</div>';
+      out.innerHTML = summary +
+        '<table class="admin-tbl"><thead><tr>' +
+          '<th>Name</th><th>Email</th><th>Invited by</th><th>When</th><th>Status</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<div class="admin-msg" style="margin-top:10px;font-size:11px;opacity:0.6;">Approve/reject via the buttons in the request email. The links are HMAC-signed and one-click.</div>';
+    } catch (e) {
+      out.innerHTML = '<div class="admin-msg err">Request failed: ' + esc(e.message || e) + '</div>';
+    }
+  }
+
+  // ─── v2.39.0: Invite a friend (native share + copy fallback) ──────────
+  // Slug = first-last-<8charuuid>. Pre-fills the requester\'s "Invited by"
+  // field client-side (best-effort). The recipient opens the link, fills
+  // in their info, the owner gets an email with Approve/Reject buttons.
+  function buildInviteSlug() {
+    var nameRaw = null;
+    try { nameRaw = localStorage.getItem('railbird.userName.v1'); } catch(_){}
+    var first = '', last = '';
+    if (nameRaw) {
+      try {
+        var parsed = JSON.parse(nameRaw);
+        first = (parsed && parsed.first) || '';
+        last  = (parsed && parsed.last)  || '';
+      } catch(_){}
+    }
+    var slugify = function(s) {
+      return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20);
+    };
+    var fs = slugify(first), ls = slugify(last);
+    var uuid = getOrCreateUuid() || '';
+    var short = uuid.replace(/-/g, '').slice(0, 8) || 'friend00';
+    if (fs && ls) return fs + '-' + ls + '-' + short;
+    if (fs)       return fs + '-' + short;
+    return 'invite-' + short;
+  }
+  function buildInviteUrl() {
+    return 'https://railbirdai.com/?invite=' + encodeURIComponent(buildInviteSlug());
+  }
+  function toast(msg) {
+    // Reuse the global toast if present; otherwise fall back to alert.
+    try {
+      if (typeof window.showToast === 'function') { window.showToast(msg); return; }
+    } catch(_){}
+    try { alert(msg); } catch(_){}
+  }
+  async function inviteAFriend() {
+    var url = buildInviteUrl();
+    var shareData = {
+      title: 'Railbird AI',
+      text:  'Try Railbird AI — horse-racing handicapping app I\u2019m beta-testing. Use this invite link:',
+      url:   url
+    };
+    // 1) Native share if available.
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (e) {
+        // User cancelled — fall through to clipboard.
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    // 2) Clipboard fallback.
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast('Invite link copied to clipboard');
+        return;
+      }
+    } catch(_){}
+    // 3) Last resort: prompt() so the user can long-press-copy.
+    try { window.prompt('Copy your invite link:', url); } catch(_){}
+  }
+
   window.openAdminSheet = openAdminSheet;
   window.closeAdminSheet = closeAdminSheet;
   window.adminLoadUsers = adminLoadUsers;
+  window.inviteAFriend = inviteAFriend;
+  window.buildInviteUrl = buildInviteUrl;
+  window.adminLoadPending = adminLoadPending;
 })();
 </script>
 

@@ -23,6 +23,21 @@ id = "f4480a5e92fa463a88e014541224b85f"
 binding = "BETA_VISITS"
 id = "88359534063440468af41dccfa3233cd"
 
+# v2.39.0 — BETA_REQUESTS KV: pending access requests from invitees.
+# Key: req:<id> -> { id, first, last, email, invited_by, created_at,
+# status: 'pending'|'approved'|'rejected', ip, ua }. TTL: none (manual).
+[[kv_namespaces]]
+binding = "BETA_REQUESTS"
+id = "93a68573bb29466d93098731e1962db7"
+
+# v2.39.0 — BETA_ACCESS KV: minted access tokens. Each tester who's been
+# approved gets a record. Key: tok:<accessToken> -> { first, last, email,
+# invited_by, created_at, request_id, last_used_at }. App's /?approved=<tok>
+# unlock path looks up here to set localStorage flag.
+[[kv_namespaces]]
+binding = "BETA_ACCESS"
+id = "c5947eb94d814f5da1c0b970c444e6ef"
+
 # v2.33.0 (PR #2) — RACE_HISTORY KV: durable archive of finished race cards.
 # Populated by handleResults() after a successful fetch when at least one race
 # is `official: true`. Read by /api/history/* endpoints and the offline backtest.

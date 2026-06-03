@@ -2907,6 +2907,431 @@ async function handleAdminUsers(request, env, origin) {
   }, origin, 0);
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// v2.39.0 — Beta invite / approve flow (Option Y: approval-only, no per-user pw)
+// ──────────────────────────────────────────────────────────────────────────────
+// Endpoints:
+//   POST /api/beta-request           public; logs a request, emails owner
+//   GET  /api/beta-approve?id=&sig=  owner email link; mints access token, emails requester
+//   GET  /api/beta-reject?id=&sig=   owner email link; marks rejected
+//   GET  /api/beta-unlock?token=     client redeems token from ?approved= URL
+//
+// KV layout:
+//   BETA_REQUESTS  req:<id>  -> { id, ts, first, last, email, invited_by, ua, ip,
+//                                 status: "pending"|"approved"|"rejected",
+//                                 reviewed_ts, access_token }
+//   BETA_ACCESS    tok:<token> -> { token, ts, req_id, first, last, email, invited_by }
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Base64url helpers (no padding) — Worker runtime exposes btoa.
+function b64urlFromBytes(bytes) {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function bytesFromB64url(s) {
+  s = (s || "").replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function randomBase64Url(byteLen) {
+  const buf = new Uint8Array(byteLen);
+  crypto.getRandomValues(buf);
+  return b64urlFromBytes(buf);
+}
+async function hmacSign(text, secret) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" },
+    false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(text));
+  return b64urlFromBytes(new Uint8Array(sig));
+}
+async function hmacVerify(text, sig, secret) {
+  if (!sig) return false;
+  const expected = await hmacSign(text, secret);
+  // Constant-time compare on byte arrays of equal length.
+  if (expected.length !== sig.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) {
+    diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function htmlPage(title, bodyHtml, origin, status = 200) {
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+  :root { color-scheme: dark; }
+  html,body{margin:0;padding:0;background:#0b1220;color:#e6edf7;
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  .wrap{max-width:560px;margin:8vh auto;padding:32px 24px;
+    background:#111a2e;border:1px solid #1f2a44;border-radius:14px;
+    box-shadow:0 8px 32px rgba(0,0,0,.35);}
+  h1{font-size:22px;margin:0 0 12px;color:#f3d27a;}
+  p{margin:8px 0;color:#cbd5e1;}
+  .ok{color:#7ee7c1;} .bad{color:#ff8a8a;}
+  code{background:#0b1220;padding:2px 6px;border-radius:6px;
+    border:1px solid #1f2a44;color:#e6edf7;}
+  a.btn{display:inline-block;margin-top:14px;padding:10px 16px;
+    background:#f3d27a;color:#1a1a1a;text-decoration:none;border-radius:8px;font-weight:600;}
+</style></head><body><div class="wrap">${bodyHtml}</div></body></html>`;
+  return new Response(html, {
+    status,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Access-Control-Allow-Origin": origin,
+    },
+  });
+}
+
+function sanitizeName(s) {
+  return (s || "").toString().trim().replace(/\s+/g, " ").slice(0, 80);
+}
+function isEmail(s) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.length <= 200;
+}
+function escapeHtml(s) {
+  return (s || "").toString()
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// POST /api/beta-request  body: { first, last, email, invited_by, ua }
+async function handleBetaRequest(request, env, origin) {
+  if (!env.BETA_REQUESTS) {
+    return jsonError("Invite storage not configured.", 500, origin);
+  }
+  if (!env.BETA_APPROVE_SECRET) {
+    return jsonError("Approval signing not configured.", 500, origin);
+  }
+  let body = {};
+  try { body = await request.json(); } catch (_) {
+    return jsonError("Invalid JSON body.", 400, origin);
+  }
+  const first      = sanitizeName(body.first);
+  const last       = sanitizeName(body.last);
+  const email      = (body.email || "").toString().trim().slice(0, 200);
+  const invited_by = sanitizeName(body.invited_by);
+  if (!first || !last) return jsonError("First and last name required.", 400, origin);
+  if (!isEmail(email)) return jsonError("Valid email required.", 400, origin);
+
+  const ua = (request.headers.get("User-Agent") || "").slice(0, 240);
+  const ip = request.headers.get("CF-Connecting-IP") || "";
+  const country = (request.cf && request.cf.country) || "";
+  const ts = new Date().toISOString();
+  const id = randomBase64Url(9); // 12-char id
+
+  const record = {
+    id, ts, first, last, email, invited_by,
+    ua, ip, country,
+    status: "pending",
+    reviewed_ts: null,
+    access_token: null,
+  };
+  try {
+    // 30 day TTL on pending requests.
+    await env.BETA_REQUESTS.put("req:" + id, JSON.stringify(record), {
+      expirationTtl: 60 * 60 * 24 * 30,
+      metadata: { ts, status: "pending", email },
+    });
+  } catch (err) {
+    return jsonError(`Failed to store request: ${err.message}`, 500, origin);
+  }
+
+  // Build signed approve / reject URLs (owner clicks from email).
+  // Worker base URL — derive from request so it works in dev/prod alike.
+  const base = new URL(request.url);
+  const workerBase = base.origin;
+  const approveSig = await hmacSign("approve:" + id, env.BETA_APPROVE_SECRET);
+  const rejectSig  = await hmacSign("reject:"  + id, env.BETA_APPROVE_SECRET);
+  const approveUrl = `${workerBase}/api/beta-approve?id=${encodeURIComponent(id)}&sig=${encodeURIComponent(approveSig)}`;
+  const rejectUrl  = `${workerBase}/api/beta-reject?id=${encodeURIComponent(id)}&sig=${encodeURIComponent(rejectSig)}`;
+
+  // Email owner — best effort, never blocks success.
+  let emailStatus = "skipped";
+  if (env.FEEDBACK_SENDGRID_KEY && env.FEEDBACK_EMAIL_TO) {
+    try {
+      const fromAddr = env.FEEDBACK_EMAIL_FROM || "noreply@railbirdai.com";
+      const subject = `Railbird beta request — ${first} ${last}`;
+      const text = [
+        `New beta access request.`,
+        ``,
+        `Name:       ${first} ${last}`,
+        `Email:      ${email}`,
+        `Invited by: ${invited_by || "(not specified)"}`,
+        `When:       ${ts}`,
+        `Country:    ${country || "(unknown)"}`,
+        `IP:         ${ip || "(unknown)"}`,
+        `UA:         ${ua}`,
+        ``,
+        `APPROVE:  ${approveUrl}`,
+        `REJECT:   ${rejectUrl}`,
+        ``,
+        `Request ID: ${id}`,
+      ].join("\n");
+      const html = `<div style="font:14px/1.5 -apple-system,BlinkMacSystemFont,sans-serif;color:#111;max-width:560px">
+<h2 style="margin:0 0 12px">New Railbird beta request</h2>
+<p><b>${escapeHtml(first)} ${escapeHtml(last)}</b><br>
+<a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>
+<p><b>Invited by:</b> ${escapeHtml(invited_by || "(not specified)")}<br>
+<b>When:</b> ${escapeHtml(ts)}<br>
+<b>Country:</b> ${escapeHtml(country || "(unknown)")}</p>
+<p style="margin-top:18px">
+<a href="${approveUrl}" style="display:inline-block;padding:10px 18px;background:#1f9d55;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;margin-right:8px">Approve</a>
+<a href="${rejectUrl}" style="display:inline-block;padding:10px 18px;background:#b91c1c;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Reject</a>
+</p>
+<p style="color:#666;font-size:12px;margin-top:24px">Request ID: ${escapeHtml(id)}</p></div>`;
+      const emailRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.FEEDBACK_SENDGRID_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: env.FEEDBACK_EMAIL_TO }] }],
+          from: { email: fromAddr, name: "Railbird AI Beta" },
+          reply_to: { email },
+          subject,
+          content: [
+            { type: "text/plain", value: text },
+            { type: "text/html",  value: html },
+          ],
+        }),
+      });
+      emailStatus = emailRes.ok ? "sent" : `failed:${emailRes.status}`;
+    } catch (err) {
+      emailStatus = `error:${(err && err.message) || "unknown"}`;
+    }
+  }
+
+  return jsonOk({ ok: true, id, emailStatus }, origin, 0);
+}
+
+// GET /api/beta-approve?id=<id>&sig=<sig>
+async function handleBetaApprove(request, env, origin) {
+  if (!env.BETA_REQUESTS || !env.BETA_ACCESS) {
+    return htmlPage("Error", `<h1 class="bad">Not configured</h1>
+      <p>Beta storage is not configured on this worker.</p>`, origin, 500);
+  }
+  if (!env.BETA_APPROVE_SECRET) {
+    return htmlPage("Error", `<h1 class="bad">Not configured</h1>
+      <p>Approval signing is not configured.</p>`, origin, 500);
+  }
+  const u = new URL(request.url);
+  const id  = (u.searchParams.get("id")  || "").trim();
+  const sig = (u.searchParams.get("sig") || "").trim();
+  if (!id) return htmlPage("Invalid link", `<h1 class="bad">Invalid link</h1>
+    <p>Missing request id.</p>`, origin, 400);
+  const ok = await hmacVerify("approve:" + id, sig, env.BETA_APPROVE_SECRET);
+  if (!ok) return htmlPage("Invalid signature", `<h1 class="bad">Invalid signature</h1>
+    <p>This approval link is not valid (signature mismatch).</p>`, origin, 403);
+
+  const raw = await env.BETA_REQUESTS.get("req:" + id);
+  if (!raw) return htmlPage("Not found", `<h1 class="bad">Not found</h1>
+    <p>That request expired or no longer exists.</p>`, origin, 404);
+  let record;
+  try { record = JSON.parse(raw); } catch (_) {
+    return htmlPage("Corrupt", `<h1 class="bad">Corrupt record</h1>`, origin, 500);
+  }
+
+  // Idempotent: if already approved, return the existing access URL.
+  if (record.status === "approved" && record.access_token) {
+    const url = `https://railbirdai.com/?approved=${encodeURIComponent(record.access_token)}`;
+    return htmlPage("Already approved", `<h1>Already approved</h1>
+      <p>${escapeHtml(record.first)} ${escapeHtml(record.last)} (${escapeHtml(record.email)}) was already approved.</p>
+      <p>Unlock URL: <code>${escapeHtml(url)}</code></p>`, origin, 200);
+  }
+  if (record.status === "rejected") {
+    return htmlPage("Already rejected", `<h1 class="bad">Already rejected</h1>
+      <p>${escapeHtml(record.first)} ${escapeHtml(record.last)} (${escapeHtml(record.email)}) was previously rejected.</p>`, origin, 200);
+  }
+
+  // Mint access token, write to BETA_ACCESS, update request record.
+  const accessToken = randomBase64Url(24); // 32-char urlsafe
+  const nowIso = new Date().toISOString();
+  const tokenRecord = {
+    token: accessToken,
+    ts: nowIso,
+    req_id: id,
+    first: record.first,
+    last: record.last,
+    email: record.email,
+    invited_by: record.invited_by,
+  };
+  await env.BETA_ACCESS.put("tok:" + accessToken, JSON.stringify(tokenRecord), {
+    // No TTL — tokens are durable until manually revoked.
+    metadata: { ts: nowIso, email: record.email },
+  });
+  record.status = "approved";
+  record.reviewed_ts = nowIso;
+  record.access_token = accessToken;
+  await env.BETA_REQUESTS.put("req:" + id, JSON.stringify(record), {
+    // Keep approved record for 180 days for audit trail.
+    expirationTtl: 60 * 60 * 24 * 180,
+    metadata: { ts: record.ts, status: "approved", email: record.email },
+  });
+
+  const unlockUrl = `https://railbirdai.com/?approved=${encodeURIComponent(accessToken)}`;
+
+  // Email the requester their unlock URL.
+  let emailStatus = "skipped";
+  if (env.FEEDBACK_SENDGRID_KEY) {
+    try {
+      const fromAddr = env.FEEDBACK_EMAIL_FROM || "noreply@railbirdai.com";
+      const subject = `You're in — Railbird AI beta`;
+      const text = [
+        `Hi ${record.first},`,
+        ``,
+        `Your access to the Railbird AI beta has been approved.`,
+        `Open this link on your phone to unlock the app:`,
+        ``,
+        unlockUrl,
+        ``,
+        `This link is unique to you — don't share it.`,
+        `If you have questions, just reply to this email.`,
+        ``,
+        `— Railbird AI`,
+      ].join("\n");
+      const html = `<div style="font:14px/1.5 -apple-system,BlinkMacSystemFont,sans-serif;color:#111;max-width:560px">
+<h2 style="margin:0 0 12px">You're in — Railbird AI beta</h2>
+<p>Hi ${escapeHtml(record.first)},</p>
+<p>Your access to the Railbird AI beta has been approved.</p>
+<p><a href="${unlockUrl}" style="display:inline-block;padding:12px 20px;background:#f3d27a;color:#1a1a1a;text-decoration:none;border-radius:8px;font-weight:700">Open Railbird AI</a></p>
+<p style="color:#666;font-size:12px">Or copy this link: <code style="background:#f4f4f4;padding:2px 6px;border-radius:4px">${escapeHtml(unlockUrl)}</code></p>
+<p style="color:#666;font-size:12px">This link is unique to you — please don't share it.</p>
+<p>— Railbird AI</p></div>`;
+      const emailRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.FEEDBACK_SENDGRID_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: record.email, name: `${record.first} ${record.last}` }] }],
+          from: { email: fromAddr, name: "Railbird AI" },
+          reply_to: env.FEEDBACK_EMAIL_TO ? { email: env.FEEDBACK_EMAIL_TO } : undefined,
+          subject,
+          content: [
+            { type: "text/plain", value: text },
+            { type: "text/html",  value: html },
+          ],
+        }),
+      });
+      emailStatus = emailRes.ok ? "sent" : `failed:${emailRes.status}`;
+    } catch (err) {
+      emailStatus = `error:${(err && err.message) || "unknown"}`;
+    }
+  }
+
+  return htmlPage("Approved", `<h1 class="ok">Approved ✓</h1>
+    <p><b>${escapeHtml(record.first)} ${escapeHtml(record.last)}</b> (${escapeHtml(record.email)}) is in.</p>
+    <p>Email status: <code>${escapeHtml(emailStatus)}</code></p>
+    <p>Unlock URL: <code>${escapeHtml(unlockUrl)}</code></p>`, origin, 200);
+}
+
+// GET /api/beta-reject?id=<id>&sig=<sig>
+async function handleBetaReject(request, env, origin) {
+  if (!env.BETA_REQUESTS) {
+    return htmlPage("Error", `<h1 class="bad">Not configured</h1>`, origin, 500);
+  }
+  if (!env.BETA_APPROVE_SECRET) {
+    return htmlPage("Error", `<h1 class="bad">Not configured</h1>`, origin, 500);
+  }
+  const u = new URL(request.url);
+  const id  = (u.searchParams.get("id")  || "").trim();
+  const sig = (u.searchParams.get("sig") || "").trim();
+  if (!id) return htmlPage("Invalid link", `<h1 class="bad">Invalid link</h1>`, origin, 400);
+  const ok = await hmacVerify("reject:" + id, sig, env.BETA_APPROVE_SECRET);
+  if (!ok) return htmlPage("Invalid signature", `<h1 class="bad">Invalid signature</h1>`, origin, 403);
+
+  const raw = await env.BETA_REQUESTS.get("req:" + id);
+  if (!raw) return htmlPage("Not found", `<h1 class="bad">Not found</h1>`, origin, 404);
+  let record;
+  try { record = JSON.parse(raw); } catch (_) {
+    return htmlPage("Corrupt", `<h1 class="bad">Corrupt record</h1>`, origin, 500);
+  }
+  if (record.status === "approved") {
+    return htmlPage("Already approved", `<h1 class="bad">Already approved</h1>
+      <p>This request was already approved. Reject ignored.</p>`, origin, 200);
+  }
+  record.status = "rejected";
+  record.reviewed_ts = new Date().toISOString();
+  await env.BETA_REQUESTS.put("req:" + id, JSON.stringify(record), {
+    // Keep rejected record for 90 days for audit.
+    expirationTtl: 60 * 60 * 24 * 90,
+    metadata: { ts: record.ts, status: "rejected", email: record.email },
+  });
+  return htmlPage("Rejected", `<h1>Rejected</h1>
+    <p>${escapeHtml(record.first)} ${escapeHtml(record.last)} (${escapeHtml(record.email)}) was rejected. They will not be notified.</p>`, origin, 200);
+}
+
+// GET /api/beta-unlock?token=<token>
+async function handleBetaUnlock(request, env, origin) {
+  if (!env.BETA_ACCESS) {
+    return jsonError("Access storage not configured.", 500, origin);
+  }
+  const u = new URL(request.url);
+  const token = (u.searchParams.get("token") || "").trim();
+  if (!token || token.length < 8 || token.length > 128) {
+    return jsonError("Invalid token.", 400, origin);
+  }
+  let raw = null;
+  try {
+    raw = await env.BETA_ACCESS.get("tok:" + token);
+  } catch (_) { raw = null; }
+  if (!raw) return jsonError("Token not found.", 404, origin);
+  let rec;
+  try { rec = JSON.parse(raw); } catch (_) {
+    return jsonError("Corrupt token record.", 500, origin);
+  }
+  return jsonOk({
+    ok: true,
+    first: rec.first,
+    last: rec.last,
+    email: rec.email,
+    invited_by: rec.invited_by,
+    ts: rec.ts,
+  }, origin, 0);
+}
+
+// GET /api/beta-pending  (owner-only)
+async function handleBetaPending(request, env, origin) {
+  if (!env.BETA_REQUESTS) {
+    return jsonError("Invite storage not configured.", 500, origin);
+  }
+  const auth = (request.headers.get("Authorization") || "").trim();
+  const expected = `Bearer ${(env.FEEDBACK_ADMIN_TOKEN || "").trim()}`;
+  if (!env.FEEDBACK_ADMIN_TOKEN || auth.toLowerCase() !== expected.toLowerCase()) {
+    return jsonError("Unauthorized.", 401, origin);
+  }
+  const listed = await env.BETA_REQUESTS.list({ prefix: "req:", limit: 1000 });
+  const requests = [];
+  for (const k of listed.keys) {
+    try {
+      const raw = await env.BETA_REQUESTS.get(k.name);
+      if (raw) requests.push(JSON.parse(raw));
+    } catch (_) { /* skip malformed */ }
+  }
+  requests.sort((a, b) => (b.ts || "").localeCompare(a.ts || ""));
+  return jsonOk({
+    ok: true,
+    total: requests.length,
+    pending: requests.filter(r => r.status === "pending").length,
+    approved: requests.filter(r => r.status === "approved").length,
+    rejected: requests.filter(r => r.status === "rejected").length,
+    requests,
+  }, origin, 0);
+}
+
+
 export default {
   /**
    * Cloudflare Worker entry point.
@@ -2955,7 +3380,7 @@ export default {
     // v2.35.3: POST is now also accepted on /api/picks/log + /api/picks/settle
     // (engine-accuracy logging). All other paths reject POST at the guard.
     if (request.method === "POST") {
-      const postPaths = new Set(["/api/feedback", "/api/picks/log", "/api/picks/settle", "/api/beta-ping"]);
+      const postPaths = new Set(["/api/feedback", "/api/picks/log", "/api/picks/settle", "/api/beta-ping", "/api/beta-request"]);
       if (!postPaths.has(url.pathname)) {
         return jsonError("POST not allowed on this endpoint.", 405, origin);
       }
@@ -3030,6 +3455,21 @@ export default {
         return handleBetaPing(request, env, origin);
       case "/api/admin/users":
         return handleAdminUsers(request, env, origin);
+
+      // ── v2.39.0 Beta invite / approve flow ─────────────────────────
+      case "/api/beta-request":
+        if (request.method !== "POST") {
+          return jsonError("POST required for /api/beta-request.", 405, origin);
+        }
+        return handleBetaRequest(request, env, origin);
+      case "/api/beta-approve":
+        return handleBetaApprove(request, env, origin);
+      case "/api/beta-reject":
+        return handleBetaReject(request, env, origin);
+      case "/api/beta-unlock":
+        return handleBetaUnlock(request, env, origin);
+      case "/api/beta-pending":
+        return handleBetaPending(request, env, origin);
 
       // ── PR #2: History archive (RACE_HISTORY KV) ──────────────────────
       case "/api/history/dates":

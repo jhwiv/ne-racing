@@ -1,5 +1,51 @@
 # NE Racing — Changelog
 
+## v2.39.0 — Invite & approve flow (Option Y) (2026-06-03)
+
+New owner-approved beta access path. No per-user passwords — each approved
+requester gets a unique unlock token by email.
+
+**Worker (5 new endpoints):**
+
+- `POST /api/beta-request` — public. Validates first/last/email/invited_by,
+  stores `req:<id>` in `BETA_REQUESTS` KV (30-day TTL on pending), emails
+  the owner with HMAC-signed Approve/Reject buttons.
+- `GET  /api/beta-approve?id=&sig=` — HMAC-verified. Mints a 32-char urlsafe
+  access token, writes `tok:<token>` in `BETA_ACCESS` KV (no TTL), emails
+  the requester their personal unlock URL. Idempotent: re-clicking the
+  approve link returns the same token instead of minting a new one.
+- `GET  /api/beta-reject?id=&sig=`  — HMAC-verified. Marks request rejected
+  (90-day retention for audit). Requester is not notified.
+- `GET  /api/beta-unlock?token=`    — redeem an access token; returns the
+  requester’s name/email so the client can personalize the welcome.
+- `GET  /api/beta-pending`          — owner-only (same admin token as
+  `/api/feedback/list`). Returns all requests with status summary.
+
+HMAC signatures use SHA-256 + `BETA_APPROVE_SECRET` (43-char urlsafe random
+worker secret). Constant-time verification rejects tampered ids or wrong
+intents (approve vs reject).
+
+**Client (`index.html`):**
+
+- Beta gate now has three modes: existing access-code (backup), invite
+  request form (`?invite=<slug>`), and token redemption (`?approved=<tok>`).
+- `?approved=` flow auto-redeems, persists `railbird-beta-unlocked-v1`,
+  caches the user’s name to `railbird.userName.v1`, replaces history so
+  the token isn’t shareable from the URL bar.
+- More sheet → “Invite a friend”: native `navigator.share` first, clipboard
+  fallback, `prompt()` last-resort. Slug is `first-last-<8charuuid>` derived
+  from the cached user name + stable device UUID.
+- Admin sheet adds an “Access Requests” panel with pending/approved/rejected
+  counts and a request table.
+
+**Infra:**
+
+- KV namespaces `BETA_REQUESTS` (`93a68573bb29466d93098731e1962db7`) and
+  `BETA_ACCESS` (`c5947eb94d814f5da1c0b970c444e6ef`) added to `wrangler.toml`.
+- Worker secret `BETA_APPROVE_SECRET` set (HTTP 201).
+- Existing `FEEDBACK_ADMIN_TOKEN` is reused for `/api/beta-pending` — no
+  new auth surface for the owner.
+
 ## v2.38.23 — Admin token UX fix: iOS auto-caps bypass (2026-06-03)
 
 User report: "Password doesn't work" after setting token to lowercase.
