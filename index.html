@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260602-v2.38.19';
+var NE_APP_VERSION = '20260603-v2.38.20';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -10504,7 +10504,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.19</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.20</strong>.</p>
       </div>
     </div>
   </div>
@@ -11253,8 +11253,17 @@ function initStore() {
       existing.settings.ctMigrationV25 = true;
       mutated = true;
     }
+    // v2.38.20: legacy stores from before the per-track migration have no
+    // `tracks` key at all. Without this, getTrackData() throws
+    // "Cannot read properties of undefined (reading 'SAR')" at boot,
+    // halts initApp(), and the TODAY card never loads. Repro'd live on
+    // opening day 2026-06-03 with a pre-migration store shape.
+    if (!existing.tracks || typeof existing.tracks !== 'object') {
+      existing.tracks = {};
+      mutated = true;
+    }
     // Ensure CT track data bucket exists (in case old store predates CT in registry)
-    if (existing.tracks && !existing.tracks.CT) {
+    if (!existing.tracks.CT) {
       existing.tracks.CT = { bets: [], races: [], bias: [], notes: {}, adviceLog: [], scratchHistory: [] };
       mutated = true;
     }
@@ -11270,7 +11279,7 @@ function initStore() {
       mutated = true;
     }
     // Ensure SAR track data bucket exists
-    if (existing.tracks && !existing.tracks.SAR) {
+    if (!existing.tracks.SAR) {
       existing.tracks.SAR = { bets: [], races: [], bias: [], notes: {}, adviceLog: [], scratchHistory: [] };
       mutated = true;
     }
@@ -11329,6 +11338,11 @@ function getTrackData(code) {
   const store = getStore();
   if (!store) return null;
   const tc = code || getActiveTrack();
+  // v2.38.20: belt-and-suspenders — even if migration missed, never
+  // assume store.tracks exists. Previously threw at boot for legacy stores.
+  if (!store.tracks || typeof store.tracks !== 'object') {
+    store.tracks = {};
+  }
   if (!store.tracks[tc]) {
     store.tracks[tc] = { bets: [], races: [], bias: [], notes: {}, adviceLog: [], scratchHistory: [] };
     saveStore(store);

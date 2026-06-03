@@ -1,5 +1,44 @@
 # NE Racing — Changelog
 
+## v2.38.20 — Opening-day boot crash for legacy stores (2026-06-03)
+
+User at 5:44 AM EDT opening morning: "Track live today. Take a spin
+through the app. Everything ok?"
+
+Not ok. Playwright spin at iPhone 13 / America/New_York surfaced this:
+
+  getTodayStr:  2026-06-03      ✓
+  activeTrack:  SAR              ✓
+  worker /api/entries SAR/2026-06-03: 200 OK with 10 races  ✓
+  raceCount on TODAY tab:  0     ✗
+  pageerror:   "Cannot read properties of undefined (reading 'SAR')"
+               at getTrackData (index.html:11332)
+               at deduplicateBets (index.html:12755)
+               at initApp (index.html:12790)
+
+Reproduced deterministically by seeding a pre-migration localStorage
+shape: `{ settings, bets, barn }` with no `tracks` key.
+
+Root cause: the migration in getStore() guarded each track-bucket
+creation with `if (existing.tracks && !existing.tracks.SAR)`. The
+guard was meant to skip when the bucket already existed, but it also
+skipped when `existing.tracks` was missing entirely — so legacy stores
+stayed unmigrated. Then getTrackData() did `store.tracks[tc]` and
+threw. The throw was inside initApp(), so it halted before
+loadEntries() ran. Result: "Preparing the day's card…" forever, on
+opening day, for any user whose store predates the per-track migration.
+
+Fix:
+1. getStore() now creates `existing.tracks = {}` first if it's missing,
+   then unconditionally seeds CT and SAR buckets.
+2. getTrackData() defensively re-creates `store.tracks` if it's still
+   missing for any reason, so no future code path can re-trigger this.
+
+Verified with both store shapes (legacy + fresh): zero JS errors,
+store.tracks.SAR exists post-boot.
+
+QA: preship.sh L1–L4 PASS 56/56.
+
 ## v2.38.19 — TODAY tab was rolling to tomorrow at 8pm EDT (2026-06-02)
 
 User report: "Why does it look like there were races today?"
