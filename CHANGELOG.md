@@ -1,5 +1,30 @@
 # NE Racing — Changelog
 
+## v2.39.2 — Jim fallback bet (2026-06-03)
+
+For users who refuse to skip a race even when the engine recommends PASS.
+Whenever a race auto-passes (low confidence AND top score < 60), the app now
+surfaces a small fallback recommendation labeled:
+
+> 🤷 If you don't want to skip this race and you need to bet because your
+> name is Jim, here's what you should do
+
+The fallback picks the best available horse (top score, but prefers an
+overlay horse within 6 points of the top), suggests a $2 stake, and
+recommends PLACE instead of WIN in small fields (≤5 horses) or when the
+top score is brutally low (<50).
+
+Renders in three places:
+
+- Today-tab race-card detail panels (compact inline block)
+- Handicap-mode advice panels (compact inline block)
+- Daily ticket: one card per PASS race (ticket-style card with bet-slip button)
+
+No backend changes. Two new helpers added next to `buildSuggestedBets`:
+`buildJimFallbackBet(race, scored, opts)` and `renderJimFallbackBet(fb, compact)`.
+All three call sites wrap the render in a try/catch so a helper bug can never
+break the existing PASS render.
+
 ## v2.39.0 — Invite & approve flow (Option Y) (2026-06-03)
 
 New owner-approved beta access path. No per-user passwords — each approved
