@@ -2834,6 +2834,75 @@ async function handleFeedbackList(request, env, origin) {
   }, origin, 0);
 }
 
+// v2.38.21 — Beta user tracking. Device-count only, no PII.
+// POST /api/beta-ping  body: { uuid, version, ua }
+//   Idempotent upsert into BETA_VISITS KV at key `seen:<uuid>`.
+//   Records first_seen, last_seen, visit_count, last_ua_short, last_version.
+// GET  /api/admin/users
+//   Token-gated (Authorization: Bearer <FEEDBACK_ADMIN_TOKEN>).
+//   Returns total device count, plus a sorted list of devices by last_seen.
+async function handleBetaPing(request, env, origin) {
+  if (!env.BETA_VISITS) {
+    return jsonError("Beta visit storage not configured.", 500, origin);
+  }
+  let body = {};
+  try { body = await request.json(); } catch (_) { /* ignore malformed */ }
+  let uuid = (body.uuid || "").toString().trim();
+  // Defensive: accept only UUID-ish shapes to keep KV clean.
+  if (!/^[a-zA-Z0-9_-]{8,64}$/.test(uuid)) {
+    return jsonError("Invalid uuid.", 400, origin);
+  }
+  const version = (body.version || "").toString().slice(0, 40);
+  // Trim the UA to keep storage small. We only want a hint of the device.
+  let uaShort = (body.ua || request.headers.get("User-Agent") || "").toString();
+  uaShort = uaShort.slice(0, 160);
+  const now = new Date().toISOString();
+  const key = "seen:" + uuid;
+  let existing = null;
+  try {
+    const raw = await env.BETA_VISITS.get(key);
+    if (raw) existing = JSON.parse(raw);
+  } catch (_) { existing = null; }
+  const record = {
+    uuid: uuid,
+    first_seen: existing && existing.first_seen ? existing.first_seen : now,
+    last_seen: now,
+    visit_count: ((existing && existing.visit_count) || 0) + 1,
+    last_ua_short: uaShort,
+    last_version: version,
+  };
+  // No TTL — we want the full beta-tester roster to stick.
+  await env.BETA_VISITS.put(key, JSON.stringify(record));
+  return jsonOk({ ok: true }, origin, 0);
+}
+
+async function handleAdminUsers(request, env, origin) {
+  if (!env.BETA_VISITS) {
+    return jsonError("Beta visit storage not configured.", 500, origin);
+  }
+  const auth = request.headers.get("Authorization") || "";
+  const expected = `Bearer ${env.FEEDBACK_ADMIN_TOKEN || ""}`;
+  if (!env.FEEDBACK_ADMIN_TOKEN || auth !== expected) {
+    return jsonError("Unauthorized.", 401, origin);
+  }
+  // KV list() caps at 1000 — fine for a beta with N=3.
+  const listed = await env.BETA_VISITS.list({ prefix: "seen:", limit: 1000 });
+  const devices = [];
+  for (const k of listed.keys) {
+    try {
+      const raw = await env.BETA_VISITS.get(k.name);
+      if (raw) devices.push(JSON.parse(raw));
+    } catch (_) { /* skip malformed */ }
+  }
+  devices.sort((a, b) => (b.last_seen || "").localeCompare(a.last_seen || ""));
+  return jsonOk({
+    ok: true,
+    total_devices: devices.length,
+    truncated: listed.list_complete === false,
+    devices: devices,
+  }, origin, 0);
+}
+
 export default {
   /**
    * Cloudflare Worker entry point.
@@ -2882,7 +2951,7 @@ export default {
     // v2.35.3: POST is now also accepted on /api/picks/log + /api/picks/settle
     // (engine-accuracy logging). All other paths reject POST at the guard.
     if (request.method === "POST") {
-      const postPaths = new Set(["/api/feedback", "/api/picks/log", "/api/picks/settle"]);
+      const postPaths = new Set(["/api/feedback", "/api/picks/log", "/api/picks/settle", "/api/beta-ping"]);
       if (!postPaths.has(url.pathname)) {
         return jsonError("POST not allowed on this endpoint.", 405, origin);
       }
@@ -2949,6 +3018,15 @@ export default {
       case "/api/feedback/list":
         return handleFeedbackList(request, env, origin);
 
+      // ── v2.38.21 Beta user tracking ────────────────────────────────
+      case "/api/beta-ping":
+        if (request.method !== "POST") {
+          return jsonError("POST required for /api/beta-ping.", 405, origin);
+        }
+        return handleBetaPing(request, env, origin);
+      case "/api/admin/users":
+        return handleAdminUsers(request, env, origin);
+
       // ── PR #2: History archive (RACE_HISTORY KV) ──────────────────────
       case "/api/history/dates":
         return handleHistoryDates(request, env, origin);
@@ -2989,6 +3067,8 @@ export default {
               "/api/status",
               "POST /api/feedback",
               "/api/feedback/list  (admin token)",
+              "POST /api/beta-ping",
+              "/api/admin/users  (admin token)",
               "/api/history/dates?track=AQU",
               "/api/history/{TRACK}/{YYYY-MM-DD}",
               "/api/history/list?track=AQU&from=YYYY-MM-DD&to=YYYY-MM-DD",

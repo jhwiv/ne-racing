@@ -15,6 +15,14 @@ ALLOWED_ORIGIN = "https://railbirdai.com"
 binding = "FEEDBACK_LOG"
 id = "f4480a5e92fa463a88e014541224b85f"
 
+# v2.38.21 — BETA_VISITS KV namespace for device-count user tracking.
+# One key per device UUID: seen:<uuid> -> { first_seen, last_seen,
+# visit_count, last_ua_short, last_version }. Read by token-gated
+# /api/admin/users endpoint, written by POST /api/beta-ping on app boot.
+[[kv_namespaces]]
+binding = "BETA_VISITS"
+id = "88359534063440468af41dccfa3233cd"
+
 # v2.33.0 (PR #2) — RACE_HISTORY KV: durable archive of finished race cards.
 # Populated by handleResults() after a successful fetch when at least one race
 # is `official: true`. Read by /api/history/* endpoints and the offline backtest.

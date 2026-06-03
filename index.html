@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260603-v2.38.20';
+var NE_APP_VERSION = '20260603-v2.38.21';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -10258,6 +10258,20 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         </span>
         <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <!-- v2.38.21 — Admin (token-gated; owner-only) -->
+      <button class="more-item" id="more-item-admin" onclick="closeMoreSheet(); openAdminSheet();" style="display:none;">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 3 7v6c0 5 4 8 9 9 5-1 9-4 9-9V7l-9-5z"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">Admin</span>
+          <span class="more-item-sub">Beta tester device count (owner only)</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
       <!-- v2.32.0 — Send Feedback (beta) -->
       <button class="more-item" onclick="closeMoreSheet(); openFeedbackModal();">
         <span class="more-item-icon" aria-hidden="true">
@@ -10504,11 +10518,267 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.20</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.38.21</strong>.</p>
       </div>
     </div>
   </div>
 </div>
+
+<!-- v2.38.21 — ADMIN SHEET (owner-only, token-gated) ====================== -->
+<style>
+  #admin-sheet {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw; height: 100vh; height: 100dvh;
+    z-index: 10000;
+    background: rgba(30,42,54,0.55);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+    overflow: hidden;
+  }
+  #admin-sheet.open { display: flex; }
+  .admin-card {
+    background: var(--color-cream, #F8F4EA);
+    color: var(--color-ink, #1E2A36);
+    width: 100%; max-width: 520px;
+    border-radius: 16px;
+    padding: 22px 20px 24px;
+    max-height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+    box-sizing: border-box;
+    position: relative;
+  }
+  .admin-close {
+    position: absolute; top: 12px; right: 12px;
+    background: transparent; border: none; cursor: pointer;
+    width: 36px; height: 36px; padding: 0;
+    color: var(--color-ink, #1E2A36);
+    font-size: 24px; line-height: 1;
+  }
+  .admin-title { margin: 0 36px 12px 0; font-family: 'Cormorant Garamond', serif; font-size: 22px; }
+  .admin-sub { margin: 0 0 14px; color: #6B7785; font-size: 13px; }
+  .admin-token-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .admin-token-row input { flex: 1; padding: 9px 10px; border-radius: 8px; border: 1px solid #CDBDA1; font-size: 14px; font-family: monospace; }
+  .admin-token-row button { padding: 9px 14px; border-radius: 8px; border: 0; background: #1B2E4B; color: #F8F4EA; font-weight: 600; cursor: pointer; }
+  .admin-summary { display: flex; gap: 16px; margin: 14px 0; }
+  .admin-stat { background: #1B2E4B; color: #F8F4EA; border-radius: 12px; padding: 12px 14px; flex: 1; }
+  .admin-stat-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
+  .admin-stat-value { font-size: 28px; font-weight: 700; margin-top: 2px; }
+  .admin-flag { background: #B5651D; color: #fff; padding: 8px 12px; border-radius: 8px; margin: 10px 0; font-size: 13px; }
+  .admin-flag.ok { background: #2F5D3A; }
+  .admin-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .admin-tbl th, .admin-tbl td { padding: 6px 4px; border-bottom: 1px solid #E4D9C2; vertical-align: top; text-align: left; }
+  .admin-tbl th { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #6B7785; }
+  .admin-tbl td.mono { font-family: monospace; font-size: 11px; }
+  .admin-msg { padding: 10px 12px; border-radius: 8px; margin: 10px 0; font-size: 13px; }
+  .admin-msg.err { background: #C5443D; color: #fff; }
+  .admin-self-row { background: #FFF9E6; }
+</style>
+<div id="admin-sheet" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+  <div class="admin-card" role="document">
+    <button class="admin-close" type="button" aria-label="Close" onclick="closeAdminSheet()">×</button>
+    <h2 class="admin-title" id="admin-title">Beta Testers — Device Count</h2>
+    <p class="admin-sub">Owner-only view. Paste your admin token to load.</p>
+    <div class="admin-token-row">
+      <input type="password" id="admin-token-input" placeholder="FEEDBACK_ADMIN_TOKEN" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="button" onclick="adminLoadUsers()">Load</button>
+    </div>
+    <div id="admin-output"></div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict';
+
+  // ---- Stable device UUID --------------------------------------------
+  var UUID_KEY = 'railbird.deviceId.v1';
+  function getOrCreateUuid() {
+    try {
+      var v = localStorage.getItem(UUID_KEY);
+      if (v && /^[a-zA-Z0-9_-]{8,64}$/.test(v)) return v;
+      // RFC 4122-ish v4 — don't need crypto-grade, just unique.
+      var u = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+        var r = Math.random()*16|0; var v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16);
+      });
+      localStorage.setItem(UUID_KEY, u);
+      return u;
+    } catch (_) { return null; }
+  }
+  window.getDeviceUuid = getOrCreateUuid;
+
+  // ---- Boot ping (fire-and-forget) -----------------------------------
+  function workerBaseUrl() {
+    try {
+      var s = JSON.parse(localStorage.getItem('racing2026') || '{}');
+      var w = s && s.settings && s.settings.workerUrl;
+      if (w && /^https?:\/\//.test(w)) return w;
+    } catch (_) {}
+    return 'https://cloudflare-worker.jhwiv-online.workers.dev';
+  }
+  function uaShort() {
+    var ua = navigator.userAgent || '';
+    return ua.slice(0, 160);
+  }
+  function fireBetaPing() {
+    var uuid = getOrCreateUuid();
+    if (!uuid) return;
+    var url = workerBaseUrl().replace(/\/$/, '') + '/api/beta-ping';
+    var body = JSON.stringify({
+      uuid: uuid,
+      version: window.NE_APP_VERSION || '',
+      ua: uaShort()
+    });
+    try {
+      // Use keepalive so the request can finish if the user navigates away.
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body,
+        keepalive: true,
+        cache: 'no-store'
+      }).catch(function(){ /* swallow — ping is best-effort */ });
+    } catch (_) {}
+  }
+  // Run once after first frame so it doesn't compete with TODAY load.
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(fireBetaPing, 800);
+  } else {
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(fireBetaPing, 800); });
+  }
+
+  // ---- Admin sheet open/close/load -----------------------------------
+  var TOKEN_CACHE_KEY = 'railbird.adminToken.v1';
+  function openAdminSheet() {
+    var m = document.getElementById('admin-sheet');
+    if (!m) return;
+    m.classList.add('open');
+    var input = document.getElementById('admin-token-input');
+    if (input) {
+      try { input.value = sessionStorage.getItem(TOKEN_CACHE_KEY) || ''; } catch (_) {}
+      setTimeout(function(){ try { input.focus(); } catch(_){} }, 50);
+    }
+  }
+  function closeAdminSheet() {
+    var m = document.getElementById('admin-sheet');
+    if (!m) return;
+    m.classList.remove('open');
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    } catch (_) { return iso; }
+  }
+  function uaSummary(ua) {
+    if (!ua) return '';
+    var s = '';
+    if (/iPhone/i.test(ua)) s = 'iPhone';
+    else if (/iPad/i.test(ua)) s = 'iPad';
+    else if (/Android/i.test(ua)) s = 'Android';
+    else if (/Macintosh/i.test(ua)) s = 'Mac';
+    else if (/Windows/i.test(ua)) s = 'Windows';
+    else s = 'Other';
+    if (/CriOS|Chrome/i.test(ua)) s += ' · Chrome';
+    else if (/Safari/i.test(ua)) s += ' · Safari';
+    else if (/Firefox/i.test(ua)) s += ' · Firefox';
+    return s;
+  }
+  async function adminLoadUsers() {
+    var out = document.getElementById('admin-output');
+    var input = document.getElementById('admin-token-input');
+    var token = (input && input.value || '').trim();
+    if (!token) {
+      out.innerHTML = '<div class="admin-msg err">Enter a token first.</div>';
+      return;
+    }
+    try { sessionStorage.setItem(TOKEN_CACHE_KEY, token); } catch (_) {}
+    out.innerHTML = '<div class="admin-msg">Loading…</div>';
+    var url = workerBaseUrl().replace(/\/$/, '') + '/api/admin/users';
+    try {
+      var res = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + token },
+        cache: 'no-store'
+      });
+      if (!res.ok) {
+        var status = res.status;
+        var msg = status === 401 ? 'Invalid token.' : ('HTTP ' + status);
+        out.innerHTML = '<div class="admin-msg err">' + esc(msg) + '</div>';
+        return;
+      }
+      var data = await res.json();
+      var total = data.total_devices || 0;
+      var devs = data.devices || [];
+      var myUuid = getOrCreateUuid();
+      var flagHtml;
+      if (total <= 2) {
+        flagHtml = '<div class="admin-flag ok">Within expected count (≤ 2 testers + you).</div>';
+      } else {
+        flagHtml = '<div class="admin-flag">' + total + ' devices seen — ' + (total - 3) + ' more than expected (2 testers + your device).</div>';
+      }
+      var rows = devs.map(function(d){
+        var isSelf = d.uuid === myUuid;
+        return '<tr' + (isSelf ? ' class="admin-self-row"' : '') + '>' +
+          '<td class="mono">' + esc((d.uuid || '').slice(0, 8)) + (isSelf ? ' (this device)' : '') + '</td>' +
+          '<td>' + esc(fmtDate(d.first_seen)) + '</td>' +
+          '<td>' + esc(fmtDate(d.last_seen)) + '</td>' +
+          '<td>' + esc(d.visit_count || 0) + '</td>' +
+          '<td>' + esc(uaSummary(d.last_ua_short)) + '</td>' +
+          '<td class="mono">' + esc(d.last_version || '') + '</td>' +
+          '</tr>';
+      }).join('');
+      out.innerHTML =
+        '<div class="admin-summary">' +
+          '<div class="admin-stat"><div class="admin-stat-label">Total devices</div><div class="admin-stat-value">' + total + '</div></div>' +
+          '<div class="admin-stat"><div class="admin-stat-label">Expected</div><div class="admin-stat-value">3</div></div>' +
+        '</div>' +
+        flagHtml +
+        '<table class="admin-tbl"><thead><tr>' +
+          '<th>UUID</th><th>First seen</th><th>Last seen</th><th>Visits</th><th>Device</th><th>Version</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table>';
+    } catch (e) {
+      out.innerHTML = '<div class="admin-msg err">Request failed: ' + esc(e.message || e) + '</div>';
+    }
+  }
+
+  // ---- Owner-only reveal of Admin item in More sheet -----------------
+  // The Admin button is display:none by default. We show it when the user
+  // has already cached an admin token in sessionStorage (i.e. has used
+  // the feature before) OR when the URL has ?admin=1 (manual reveal).
+  function maybeRevealAdmin() {
+    var btn = document.getElementById('more-item-admin');
+    if (!btn) return;
+    var hasToken = false;
+    try { hasToken = !!sessionStorage.getItem(TOKEN_CACHE_KEY); } catch (_) {}
+    var paramReveal = false;
+    try { paramReveal = /[?&]admin=1\b/.test(window.location.search); } catch (_) {}
+    var localPref = false;
+    try { localPref = localStorage.getItem('railbird.adminUnlocked.v1') === '1'; } catch (_) {}
+    if (hasToken || paramReveal || localPref) {
+      btn.style.display = '';
+      try { localStorage.setItem('railbird.adminUnlocked.v1', '1'); } catch (_) {}
+    }
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(maybeRevealAdmin, 50);
+  } else {
+    document.addEventListener('DOMContentLoaded', maybeRevealAdmin);
+  }
+
+  window.openAdminSheet = openAdminSheet;
+  window.closeAdminSheet = closeAdminSheet;
+  window.adminLoadUsers = adminLoadUsers;
+})();
+</script>
+
 <script>
 (function(){
   'use strict';

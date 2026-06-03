@@ -1,5 +1,56 @@
 # NE Racing — Changelog
 
+## v2.38.21 — Beta user tracking, owner-only Admin tab (2026-06-03)
+
+User report: "Can you add something that will keep track of users?
+I've given to two beta testers but it seems like someone else got
+the link. Can you count unique users? This is info for me only."
+
+### What it does
+
+- One stable UUID per device (localStorage `railbird.deviceId.v1`,
+  generated client-side on first visit).
+- One boot-time `POST /api/beta-ping` per page load (fire-and-forget,
+  `keepalive: true`, runs 800ms after DOMContentLoaded so it never
+  competes with the TODAY card render).
+- Worker upserts the device record in a new `BETA_VISITS` KV namespace:
+  `seen:<uuid> -> { first_seen, last_seen, visit_count, last_ua_short,
+  last_version }`. No TTL.
+- `GET /api/admin/users` (gated by existing `FEEDBACK_ADMIN_TOKEN`
+  Worker secret) returns total device count + sorted device list.
+- New "Admin" item in the More sheet, hidden by default. Reveals when
+  the user has cached the admin token in sessionStorage, when
+  `?admin=1` is in the URL, or once they've unlocked the feature once.
+- Admin sheet renders a 2-stat summary (Total / Expected = 3) plus a
+  table: UUID short, first seen, last seen, visit count, device
+  summary (e.g. "iPhone · Chrome"), last version. Your own device is
+  highlighted and marked "(this device)".
+- Flag panel: green "≤ 2 testers + you" or amber "N devices seen — N-3
+  more than expected."
+
+### Decisions / non-decisions
+
+- Device count only, per your answer. No IP, no fingerprint, no geo.
+- Reuses `FEEDBACK_ADMIN_TOKEN` rather than creating a second secret.
+- No public list endpoint. `/api/admin/users` returns 401 without
+  the bearer token.
+- The boot ping is the only user-facing telemetry. It's a single POST
+  per load, no heartbeat, no error beacons (per earlier "No" on those).
+- Schema is forward-compatible: if you later want IP/geo, just add
+  fields to the record — the admin renderer ignores unknown columns.
+
+### Implementation
+
+Worker: `worker.js` adds `handleBetaPing`, `handleAdminUsers`,
+`BETA_VISITS` binding in `wrangler.toml` (KV id
+`88359534063440468af41dccfa3233cd`), `/api/beta-ping` to the POST
+allowlist, routes wired in the dispatch switch.
+
+App: `index.html` adds the Admin sheet (full-bleed flex overlay,
+z-index 10000, same pattern as About v2.38.18), the boot-ping IIFE,
+and the More-sheet Admin item. The Admin item is `display:none` by
+default so beta testers never see it.
+
 ## v2.38.20 — Opening-day boot crash for legacy stores (2026-06-03)
 
 User at 5:44 AM EDT opening morning: "Track live today. Take a spin
