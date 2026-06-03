@@ -1,5 +1,35 @@
 # NE Racing — Changelog
 
+## v2.38.22 — Visible "Update available" banner (2026-06-03)
+
+User request: "Add a visible 'Update available — tap to refresh' banner
+instead of silent force-reload (less surprising UX)."
+
+### What changed
+
+- New fixed pill at bottom-center (above the tab bar) that appears when the
+  60-second version-poll detects a newer build on the server. Dark slate
+  background, gold pulsing dot, gold "Tap to refresh" CTA. Tapping triggers
+  the same nuclear force-update (`neForceUpdate`) that was previously silent.
+- Boot-time version mismatch (page just opened, user has not engaged) still
+  silently force-updates — no banner needed because there's nothing to
+  interrupt. Runtime mismatch (user is in the app) shows the banner.
+- Banner is non-dismissible. Once it appears, it stays until the user taps.
+  It only re-arms for new pending versions (no flicker on repeat polls).
+- Exposed `window.__neShowUpdateBanner(version)` for debugging.
+
+### Why
+
+A user mid-handicap or mid-bet should not be yanked into a reload. The
+banner lets them finish what they're doing and refresh on their own timing.
+
+### QA
+
+- Preship L1-L4: 56/56 PASS
+- Playwright: banner appears within 1s of stub returning a newer version,
+  tap fires neForceUpdate path, hidden when versions match.
+- No regressions to v2.38.21 admin tab or beta-ping.
+
 ## v2.38.21 — Beta user tracking, owner-only Admin tab (2026-06-03)
 
 User report: "Can you add something that will keep track of users?
