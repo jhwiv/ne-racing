@@ -1,5 +1,12 @@
 # NE Racing — Changelog
 
+## v2.39.3 — Rename fallback label to "Jim's Way" (2026-06-03)
+
+User-facing label change only. The PASS-race fallback is now labeled
+"🤷 Jim's Way" everywhere instead of "🤷 Jim Fallback" / the longer
+"if you don't want to skip this race..." line. Ticket line uses
+"JIM'S WAY — Race N: ...". No logic changes.
+
 ## v2.39.2 — Jim fallback bet (2026-06-03)
 
 For users who refuse to skip a race even when the engine recommends PASS.
