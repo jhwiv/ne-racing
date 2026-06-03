@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260603-v2.38.22';
+var NE_APP_VERSION = '20260603-v2.38.23';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -10679,7 +10679,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <h2 class="admin-title" id="admin-title">Beta Testers — Device Count</h2>
     <p class="admin-sub">Owner-only view. Paste your admin token to load.</p>
     <div class="admin-token-row">
-      <input type="password" id="admin-token-input" placeholder="FEEDBACK_ADMIN_TOKEN" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <input type="text" id="admin-token-input" placeholder="token" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text" enterkeyhint="go" data-form-type="other" data-lpignore="true">
       <button type="button" onclick="adminLoadUsers()">Load</button>
     </div>
     <div id="admin-output"></div>
@@ -10791,6 +10791,9 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
   async function adminLoadUsers() {
     var out = document.getElementById('admin-output');
     var input = document.getElementById('admin-token-input');
+    // v2.38.23: defensive normalization — trim whitespace, strip any
+    // accidental iOS smart quotes/curly chars. Server compares
+    // case-insensitively as a final safety net.
     var token = (input && input.value || '').trim();
     if (!token) {
       out.innerHTML = '<div class="admin-msg err">Enter a token first.</div>';

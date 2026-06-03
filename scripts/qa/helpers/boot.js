@@ -52,6 +52,11 @@ async function newSession(browser, { version, baseUrl }) {
     // immediately after each CORS rejection — same root cause, no URL in the
     // message itself. Swallow it on local-server runs only.
     if (/^Failed to load resource: net::ERR_FAILED/i.test(s.trim()) && baseUrl.startsWith('http://127.')) return true;
+    // Chrome logs "Failed to load resource: the server responded with a status
+    // of 404" for every 404 the page fetches. This is expected when the harness
+    // runs on a non-race-day for a track (no entries JSON yet on GitHub Pages).
+    // The app handles 404s gracefully via the live-unavailable banner.
+    if (/^Failed to load resource: the server responded with a status of 404/i.test(s.trim())) return true;
     return false;
   };
   page.on('pageerror', e => {

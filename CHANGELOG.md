@@ -1,5 +1,43 @@
 # NE Racing — Changelog
 
+## v2.38.23 — Admin token UX fix: iOS auto-caps bypass (2026-06-03)
+
+User report: "Password doesn't work" after setting token to lowercase.
+
+### Root cause
+
+iOS Chrome auto-capitalizes the first character of text inputs on the
+first keystroke after focus, EVEN WHEN `autocapitalize="off"` is set on a
+`type="password"` field. User typed `asshole`, iOS sent `Asshole`, server
+rejected with 401. Confirmed via direct curl: `Asshole` → 401,
+`asshole` → 200.
+
+### Fix (two layers)
+
+1. **Worker (server-side)**: case-insensitive token compare on both
+   `/api/feedback/list` and `/api/admin/users`. `auth.toLowerCase() ===
+   expected.toLowerCase()`. Token still trimmed on both sides.
+2. **Admin sheet input**: changed `type="password"` → `type="text"` so
+   the user can SEE what they typed. Added `autocapitalize="none"`,
+   `autocorrect="off"`, `enterkeyhint="go"`, `data-form-type="other"`,
+   `data-lpignore="true"` to silence iOS keyboard heuristics and
+   LastPass interference.
+
+### Why text not password
+
+The Admin sheet is owner-only and only ever rendered on the owner's
+phone after explicit `?admin=1` unlock. Showing the token in plain text
+removes the iOS keyboard mystery ("did I type Asshole or asshole?") and
+lets the owner confirm at a glance. There is no shoulder-surfing risk
+for a one-off owner-only utility.
+
+### QA
+
+- Preship L1-L4: 56/56 PASS
+- Playwright: Admin sheet accepts both `asshole` and `Asshole`,
+  returns 200 and device list in both cases.
+- Direct curl: `Asshole` against new worker → 200 (was 401 on v2.38.22).
+
 ## v2.38.22 — Visible "Update available" banner (2026-06-03)
 
 User request: "Add a visible 'Update available — tap to refresh' banner

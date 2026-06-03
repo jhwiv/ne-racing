@@ -2806,9 +2806,12 @@ async function handleFeedbackList(request, env, origin) {
   if (!env.FEEDBACK_LOG) {
     return jsonError("Feedback storage not configured.", 500, origin);
   }
-  const auth = request.headers.get("Authorization") || "";
-  const expected = `Bearer ${env.FEEDBACK_ADMIN_TOKEN || ""}`;
-  if (!env.FEEDBACK_ADMIN_TOKEN || auth !== expected) {
+  // v2.38.23: case-insensitive token compare. iOS auto-caps the first
+  // letter of text inputs even when autocapitalize=off, so we accept any
+  // casing of the token to keep the owner-only flow from failing on mobile.
+  const auth = (request.headers.get("Authorization") || "").trim();
+  const expected = `Bearer ${(env.FEEDBACK_ADMIN_TOKEN || "").trim()}`;
+  if (!env.FEEDBACK_ADMIN_TOKEN || auth.toLowerCase() !== expected.toLowerCase()) {
     return jsonError("Unauthorized.", 401, origin);
   }
   const { searchParams } = new URL(request.url);
@@ -2880,9 +2883,10 @@ async function handleAdminUsers(request, env, origin) {
   if (!env.BETA_VISITS) {
     return jsonError("Beta visit storage not configured.", 500, origin);
   }
-  const auth = request.headers.get("Authorization") || "";
-  const expected = `Bearer ${env.FEEDBACK_ADMIN_TOKEN || ""}`;
-  if (!env.FEEDBACK_ADMIN_TOKEN || auth !== expected) {
+  // v2.38.23: case-insensitive token compare (matches handleFeedbackList).
+  const auth = (request.headers.get("Authorization") || "").trim();
+  const expected = `Bearer ${(env.FEEDBACK_ADMIN_TOKEN || "").trim()}`;
+  if (!env.FEEDBACK_ADMIN_TOKEN || auth.toLowerCase() !== expected.toLowerCase()) {
     return jsonError("Unauthorized.", 401, origin);
   }
   // KV list() caps at 1000 — fine for a beta with N=3.
