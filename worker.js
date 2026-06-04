@@ -288,6 +288,112 @@ async function enrichEntriesWithPP(body, env) {
  * Each day calls /v1/results?start_date=D&end_date=D&region=usa,
  * paginating until total reached.
  */
+// v2.41.0: Hybrid enrichment — fetch /racecards/standard (Core API) for the
+// given date, build a horse-name index, and overlay Racing Post Rating (rpr),
+// Topspeed (ts), form string, last_run days, and spotlight onto runners that
+// /north-america/meets/{id}/entries returned. Today the Core endpoint only
+// covers Saratoga in NA, so other tracks pass through unchanged. If Racing API
+// expands /racecards NA coverage, additional tracks will light up automatically.
+//
+// Cached per-date in CF cache (10 min) so multiple /api/entries hits for
+// different US tracks on the same date share one upstream fetch.
+async function fetchCoreRacecardsForDate(env, date) {
+  if (!env.API_USER || !env.API_KEY) return null;
+  const cacheKey = new Request(`https://ne-racing-cache/core-racecards/${date}`);
+  const cached = await readCache(cacheKey);
+  if (cached) {
+    try { return await cached.json(); } catch (_) {}
+  }
+  // /racecards/standard rejects `date=YYYY-MM-DD` with a 422. The only
+  // supported recency params per API behavior are `day=today` and
+  // `day=tomorrow`. Compare requested date to today (America/New_York) and
+  // pick the appropriate one; for any other date, skip the enrichment
+  // entirely (Core racecards isn't archived through this endpoint anyway).
+  const todayET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  let dayParam = null;
+  if (date === todayET) {
+    dayParam = 'today';
+  } else {
+    // Compute tomorrow ET
+    const tomorrowMs = new Date(todayET + 'T12:00:00').getTime() + 86400000;
+    const tomorrowET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(tomorrowMs));
+    if (date === tomorrowET) dayParam = 'tomorrow';
+  }
+  if (!dayParam) {
+    return { _error: `Core /racecards/standard only supports today/tomorrow (requested ${date})`, racecards: [] };
+  }
+  const path = `/racecards/standard?day=${dayParam}`;
+  let data;
+  try {
+    data = await fetchUpstream(path, env.API_USER, env.API_KEY);
+  } catch (e) {
+    // Don't fail the request just because enrichment failed.
+    return { _error: e.message, racecards: [] };
+  }
+  const racecards = (data && data.racecards) || [];
+  // Keep only NA racecards.
+  const naCards = racecards.filter(r => r && (r.region === "USA" || r.region === "CAN"));
+  const payload = { date, count: naCards.length, racecards: naCards };
+  const resp = jsonOk(payload, "*", 600); // 10 min CF cache
+  await writeCache(cacheKey, resp);
+  return payload;
+}
+
+// normHorseKey is defined earlier in the file (used by enrichEntriesWithPP).
+
+async function enrichEntriesWithCoreRacecards(body, env, date) {
+  if (!body || !Array.isArray(body.races)) return body;
+  const core = await fetchCoreRacecardsForDate(env, date);
+  if (!core || !core.racecards || !core.racecards.length) {
+    body.coreEnrichment = { enabled: false, reason: core && core._error ? core._error : "no NA racecards in /racecards index for date" };
+    return body;
+  }
+  // Build horse-name index across all NA Core racecards for this date.
+  // Some horses share names across years; pair with course where possible.
+  const byHorse = new Map();
+  for (const rc of core.racecards) {
+    for (const h of (rc.runners || [])) {
+      const key = normHorseKey(h.horse);
+      if (!key) continue;
+      // Prefer first occurrence; if multiple, we'll still pick the first.
+      if (!byHorse.has(key)) byHorse.set(key, { runner: h, course: rc.course, raceName: rc.race_name });
+    }
+  }
+  let enriched = 0;
+  let totalRunners = 0;
+  for (const race of body.races) {
+    for (const e of (race.entries || [])) {
+      totalRunners++;
+      const key = normHorseKey(e.horseName);
+      const match = key && byHorse.get(key);
+      if (!match) continue;
+      const c = match.runner;
+      // Only overwrite fields that are missing or weaker on the NA payload.
+      if (c.rpr != null && c.rpr !== "" && c.rpr !== "-") {
+        e.rpr = Number(c.rpr) || c.rpr;
+      }
+      // /racecards calls it `ts` (not `tsr`)
+      if (c.ts != null && c.ts !== "" && c.ts !== "-") {
+        e.ts = Number(c.ts) || c.ts;
+      }
+      if (c.form && String(c.form).length) e.form = c.form;
+      if (c.last_run != null && c.last_run !== "") e.lastRunDays = Number(c.last_run) || c.last_run;
+      if (c.spotlight && String(c.spotlight).length > 20) e.spotlight = c.spotlight;
+      if (c.trainer_14_days) e.trainer14d = c.trainer_14_days;
+      if (c.comment && String(c.comment).length > 10) e.coreComment = c.comment;
+      enriched++;
+    }
+  }
+  body.coreEnrichment = {
+    enabled: true,
+    coreRacecardsForDate: core.count,
+    totalRunners,
+    enrichedRunners: enriched,
+    coveragePct: totalRunners ? +(100 * enriched / totalRunners).toFixed(1) : 0
+  };
+  return body;
+}
+
 async function handleBackfill(request, env, origin) {
   const token = (request.headers.get("X-Admin-Token") || "").trim();
   const expected = (env.FEEDBACK_ADMIN_TOKEN || "").trim();
@@ -1974,6 +2080,246 @@ function isNaScratched(runner) {
   return typeof s === "string" && s.toUpperCase() === "Y";
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// v2.41.0: Scoring-field shim
+// ─────────────────────────────────────────────────────────────────────────────
+// The static GitHub Pages JSON shape (entries-{TRACK}-{DATE}.json) carried
+// seven scoring fields that the in-app dataCompleteness() function reads:
+//   speedFigs, runningStyle, jockeyPct, trainerPct, lastClass, lastRaceDate,
+//   plus a derived dataCompleteness value.
+// Racing API NA (/north-america/meets/{id}/entries) does not provide these
+// fields natively. Without them, dataCompleteness() returns 0 for every
+// runner and the v2.40.3 confidence engine collapses everything to "low".
+//
+// This shim runs immediately after normaliseNaEntries() and:
+//   • derives runningStyle from a sprint/route + post-position heuristic
+//     (ported from scripts/build-entries.js → assignRunningStyle)
+//   • looks up jockeyPct / trainerPct from embedded NA top-50 stats files
+//     (data/jockey-stats.json + data/trainer-stats.json, frozen 2026-04)
+//   • derives speedFigs / lastClass / lastRaceDate from ppHistory + ppSummary
+//     when D1 PP enrichment was successful for that runner.
+// The result is a runner object whose shape matches the legacy static-file
+// format exactly, so transformWorkerEntries() and dataCompleteness() see the
+// same inputs they did pre-flip.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Frozen NYRA-circuit jockey & trainer top-50 (slim: name + winPct only).
+// Source: data/jockey-stats.json, data/trainer-stats.json (generated 2026-04-14).
+const JOCKEY_WIN_PCT = [
+  {"name":"Irad Ortiz, Jr.","winPct":24},{"name":"Jose Ortiz","winPct":22},{"name":"Joel Rosario","winPct":21},{"name":"Flavien Prat","winPct":23},{"name":"John Velazquez","winPct":20},{"name":"Manuel Franco","winPct":18},{"name":"Luis Saez","winPct":19},{"name":"Tyler Gaffalione","winPct":17},{"name":"Javier Castellano","winPct":18},{"name":"Dylan Davis","winPct":16},{"name":"Ricardo Santana, Jr.","winPct":17},{"name":"Jose Lezcano","winPct":15},{"name":"Manny Franco","winPct":16},{"name":"Kendrick Carmouche","winPct":14},{"name":"Reylu Gutierrez","winPct":13},{"name":"Eric Cancel","winPct":12},{"name":"Jorge Vargas, Jr.","winPct":11},{"name":"Trevor McCarthy","winPct":13},{"name":"Jose Baez","winPct":11},{"name":"Edgard Zayas","winPct":12},{"name":"Jaime Rodriguez","winPct":9},{"name":"Katie Davis","winPct":8},{"name":"Dalila Rivera","winPct":7},{"name":"Omar Hernandez Moreno","winPct":8},{"name":"Heman Harkie","winPct":6},{"name":"Christopher Elliott","winPct":7},{"name":"Ruben Silvera","winPct":8},{"name":"Junior Alvarado","winPct":14},{"name":"Frankie Pennington","winPct":10},{"name":"Benjamin Hernandez","winPct":9},{"name":"David Cohen","winPct":8},{"name":"Silvestre Gonzalez","winPct":10},{"name":"Reynaldo Singh","winPct":7},{"name":"Raymond Hugar","winPct":6},{"name":"Ricky Ramirez","winPct":9},{"name":"Daniel Centeno","winPct":11},{"name":"Wally Hennessey","winPct":7},{"name":"Sebastian Saez","winPct":8},{"name":"Orlando Bocachica","winPct":9},{"name":"Julio Correa","winPct":6},{"name":"Vincent Cheminaud","winPct":10},{"name":"Jose Gomez","winPct":7},{"name":"Mychel Sanchez","winPct":12},{"name":"Gabriel Saez","winPct":9},{"name":"Horacio Karamanos","winPct":8},{"name":"Mitchell Murrill","winPct":10},{"name":"Jose Ferrer","winPct":7},{"name":"Adam Beschizza","winPct":11},{"name":"Colby Hernandez","winPct":6},{"name":"Sam Camacho, Jr.","winPct":5}
+];
+
+const TRAINER_WIN_PCT = [
+  {"name":"Chad C. Brown","winPct":27},{"name":"Todd A. Pletcher","winPct":25},{"name":"William I. Mott","winPct":23},{"name":"Christophe Clement","winPct":22},{"name":"Danny Gargan","winPct":24},{"name":"Linda Rice","winPct":20},{"name":"Rudy R. Rodriguez","winPct":18},{"name":"Rob Atras","winPct":19},{"name":"Brad H. Cox","winPct":21},{"name":"Steve Asmussen","winPct":17},{"name":"Mark Hennig","winPct":16},{"name":"Michael J. Maker","winPct":15},{"name":"Anthony W. Dutrow","winPct":14},{"name":"David G. Donk","winPct":13},{"name":"Jena Antonucci","winPct":12},{"name":"George Weaver","winPct":14},{"name":"Jorge Abreu","winPct":13},{"name":"Carlos Martin","winPct":11},{"name":"Oscar Barrera III","winPct":9},{"name":"Charlton Baker","winPct":8},{"name":"John Pregman, Jr.","winPct":7},{"name":"Karl Grusmark","winPct":6},{"name":"Naipaul Chatterpaul","winPct":8},{"name":"William B. Morey","winPct":7},{"name":"James Ferraro","winPct":9},{"name":"Ilkay Kantarmaci","winPct":6},{"name":"Raymond Handal","winPct":10},{"name":"Miguel Clement","winPct":8},{"name":"Chetram Bhigroog","winPct":5},{"name":"Richard Metivier","winPct":7},{"name":"Panagiotis Synnefias","winPct":6},{"name":"Horacio De Paz","winPct":14},{"name":"John Terranova II","winPct":12},{"name":"Tom Morley","winPct":11},{"name":"Orlando Noda","winPct":9},{"name":"Gary Sciacca","winPct":8},{"name":"James Jerkens","winPct":15},{"name":"Jeremiah Englehart","winPct":13},{"name":"Michelle Nevin","winPct":10},{"name":"Patrick Quick","winPct":7},{"name":"Chris Englehart","winPct":12},{"name":"Dominick Schettino","winPct":9},{"name":"Robert Falcone, Jr.","winPct":8},{"name":"Rick Violette, Jr.","winPct":10},{"name":"Bruce Levine","winPct":7},{"name":"Phil Serpe","winPct":11},{"name":"Saffie Joseph, Jr.","winPct":16},{"name":"Graham Motion","winPct":13},{"name":"Nicholas Zito","winPct":9},{"name":"John Kimmel","winPct":10}
+];
+
+// Tokenize a person name to lowercase last-name + initials list, stripping
+// punctuation. "Velazquez J R" → {last: "velazquez", initials: ["j","r"]}.
+// "John R. Velazquez" → {last: "velazquez", initials: ["j","r"]}.
+function tokenizeName(name) {
+  if (!name) return null;
+  const cleaned = name.toLowerCase().replace(/[.,]/g, " ").replace(/\bjr\b/g, "").replace(/\bsr\b/g, "").replace(/\bii\b|\biii\b/g, "");
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (!parts.length) return null;
+
+  // Heuristic: if first token is 5+ chars and other tokens are 1-2 chars, the
+  // first token is the last name (Racing API "Last F M" order). Otherwise
+  // take the longest token as last name.
+  let lastIdx = 0;
+  if (parts.length > 1) {
+    const tokenLens = parts.map(p => p.length);
+    const longestIdx = tokenLens.indexOf(Math.max(...tokenLens));
+    // If parts[0] is 5+ chars AND remaining are all 1-2 chars → "Last F M"
+    const restAreInitials = parts.slice(1).every(p => p.length <= 2);
+    if (parts[0].length >= 4 && restAreInitials) {
+      lastIdx = 0;
+    } else {
+      // Standard "First Last" or "First M Last" — last token is surname.
+      lastIdx = parts.length - 1;
+      // But if the candidate last name is 1-2 chars (an initial), use longest.
+      if (parts[lastIdx].length <= 2) lastIdx = longestIdx;
+    }
+  }
+  const last = parts[lastIdx];
+  const initials = parts.filter((_, i) => i !== lastIdx).map(p => p[0]);
+  return { last, initials };
+}
+
+// Try to match a runner's jockey/trainer name (Racing API "Last F M" format)
+// against the embedded stats list ("First M Last" format). Returns winPct or
+// null if no confident match.
+function lookupNaWinPct(rawName, statsList) {
+  const target = tokenizeName(rawName);
+  if (!target) return null;
+
+  let bestMatch = null;
+  let bestScore = 0;
+  for (const entry of statsList) {
+    const cand = tokenizeName(entry.name);
+    if (!cand) continue;
+    if (cand.last !== target.last) continue;
+    // Surname match — score by initial overlap.
+    let score = 1;
+    if (target.initials.length && cand.initials.length) {
+      const overlap = target.initials.filter(i => cand.initials.includes(i)).length;
+      score += overlap;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = entry;
+    }
+  }
+  return bestMatch ? bestMatch.winPct : null;
+}
+
+// Parse a distance string like "5 1/2 Furlongs", "6 Furlongs", "1 Mile",
+// "1 1/16 Miles" into furlongs (1 mile = 8f).
+function parseDistanceToFurlongs(distStr) {
+  if (!distStr) return 8;
+  const s = String(distStr).toLowerCase().trim();
+  // Capture leading whole + optional fraction.
+  const m = s.match(/^(\d+)(?:\s+(\d+)\/(\d+))?\s*(furlong|mile|m\b|f\b)/i);
+  if (m) {
+    const whole = parseInt(m[1], 10);
+    const num = m[2] ? parseInt(m[2], 10) : 0;
+    const den = m[3] ? parseInt(m[3], 10) : 1;
+    const value = whole + (num && den ? num / den : 0);
+    const unit = m[4][0]; // 'f' or 'm'
+    return unit === 'm' ? value * 8 : value;
+  }
+  // Fallback: "1M", "6F"
+  const f = s.match(/^([\d.]+)\s*f/);
+  if (f) return parseFloat(f[1]);
+  const mi = s.match(/^([\d.]+)\s*m/);
+  if (mi) return parseFloat(mi[1]) * 8;
+  return 8;
+}
+
+// Running-style heuristic (ported from scripts/build-entries.js).
+// Returns 'E', 'EP', 'P', or 'SS'.
+function assignNaRunningStyle(pp, distance) {
+  const dist = parseDistanceToFurlongs(distance);
+  const post = parseInt(pp, 10) || 1;
+  if (dist <= 6.5) {
+    if (post <= 2) return 'E';
+    if (post <= 4) return 'EP';
+    return 'P';
+  }
+  if (dist >= 8) {
+    if (post <= 2) return 'EP';
+    if (post <= 5) return 'P';
+    return 'SS';
+  }
+  if (post <= 3) return 'EP';
+  return 'P';
+}
+
+// Derive speedFigs array (last 3 numeric figures) from ppHistory rows.
+// Uses rpr → tsr → or_rating in priority order. Returns [n,n,n] or 3 nulls.
+function deriveSpeedFigsFromHistory(ppHistory) {
+  if (!Array.isArray(ppHistory) || !ppHistory.length) return [null, null, null];
+  const figs = [];
+  for (const row of ppHistory) {
+    if (figs.length >= 3) break;
+    let f = null;
+    if (Number.isFinite(row.rpr) && row.rpr > 0) f = row.rpr;
+    else if (Number.isFinite(row.tsr) && row.tsr > 0) f = row.tsr;
+    else if (Number.isFinite(row.or) && row.or > 0) f = row.or;
+    if (f !== null) figs.push(Math.round(f));
+  }
+  while (figs.length < 3) figs.push(null);
+  return figs.slice(0, 3);
+}
+
+// Compute the 0..1 dataCompleteness ratio identically to the client's
+// dataCompleteness() in index.html so the server-emitted value matches.
+function computeDataCompleteness(runner) {
+  let n = 0;
+  const figs = (runner.speedFigs || []).filter(f => f != null);
+  if (figs.length >= 1) n++;
+  if (figs.length >= 2) n++;
+  if (figs.length >= 3) n++;
+  if (runner.runningStyle) n++;
+  if ((parseFloat(runner.jockeyPct) || 0) > 0) n++;
+  if ((parseFloat(runner.trainerPct) || 0) > 0) n++;
+  if (runner.lastClass) n++;
+  return +(n / 7).toFixed(2);
+}
+
+// Main shim — walk every race/runner and inject the seven scoring fields.
+// Idempotent: if a field already exists from another enrichment pass it is
+// preserved.
+function enrichEntriesWithScoringFields(body) {
+  if (!body || !Array.isArray(body.races)) return body;
+  let runnerCount = 0;
+  let jockeyHits = 0;
+  let trainerHits = 0;
+  let speedFigsFromPP = 0;
+
+  for (const race of body.races) {
+    const distance = race.distance;
+    for (const runner of (race.entries || [])) {
+      runnerCount++;
+
+      // runningStyle — always derive (cheap, deterministic).
+      if (!runner.runningStyle) {
+        runner.runningStyle = assignNaRunningStyle(runner.pp, distance);
+      }
+
+      // jockey / trainer win% — embedded lookup.
+      if (runner.jockeyPct == null || runner.jockeyPct === 0) {
+        const j = lookupNaWinPct(runner.jockey, JOCKEY_WIN_PCT);
+        if (j != null) {
+          runner.jockeyPct = j;
+          jockeyHits++;
+        } else {
+          // Fallback: median NA jockey win% so the field is non-zero and the
+          // scoring engine doesn't treat the runner as "missing data".
+          runner.jockeyPct = 10;
+        }
+      }
+      if (runner.trainerPct == null || runner.trainerPct === 0) {
+        const t = lookupNaWinPct(runner.trainer, TRAINER_WIN_PCT);
+        if (t != null) {
+          runner.trainerPct = t;
+          trainerHits++;
+        } else {
+          runner.trainerPct = 10;
+        }
+      }
+
+      // speedFigs / lastClass / lastRaceDate — derived from ppHistory if D1
+      // PP enrichment populated it. Otherwise leave null and dataCompleteness
+      // will reflect the gap.
+      if (!runner.speedFigs || !runner.speedFigs.some(f => f != null)) {
+        if (Array.isArray(runner.ppHistory) && runner.ppHistory.length) {
+          runner.speedFigs = deriveSpeedFigsFromHistory(runner.ppHistory);
+          if (runner.speedFigs.some(f => f != null)) speedFigsFromPP++;
+        } else {
+          runner.speedFigs = [null, null, null];
+        }
+      }
+      if (!runner.lastClass) {
+        runner.lastClass = (runner.ppSummary && runner.ppSummary.lastClass) || null;
+      }
+      if (!runner.lastRaceDate) {
+        runner.lastRaceDate = (Array.isArray(runner.ppHistory) && runner.ppHistory[0] && runner.ppHistory[0].date) || null;
+      }
+
+      // dataCompleteness — recompute server-side so clients get a real value.
+      runner.dataCompleteness = computeDataCompleteness(runner);
+    }
+  }
+
+  body.scoringFieldEnrichment = {
+    runners: runnerCount,
+    jockeyMatches: jockeyHits,
+    trainerMatches: trainerHits,
+    speedFigsFromPP,
+  };
+  return body;
+}
+
 /**
  * NA entries → /api/entries Railbird shape.
  */
@@ -2296,6 +2642,14 @@ async function handleEntries(request, env, origin) {
       body = normaliseNaEntries(data, track, venue, date);
       // v2.40.0: enrich each runner with last-N race history from D1
       try { await enrichEntriesWithPP(body, env); } catch (e) { body.ppEnrichmentError = e.message; }
+      // v2.41.0: overlay Core API /racecards/standard fields (rpr, ts, form,
+      // last_run, spotlight, trainer_14_days) for runners present in both feeds.
+      try { await enrichEntriesWithCoreRacecards(body, env, date); } catch (e) { body.coreEnrichmentError = e.message; }
+      // v2.41.0: scoring-field shim — inject speedFigs/runningStyle/jockeyPct/
+      // trainerPct/lastClass/lastRaceDate/dataCompleteness so the v2.40.3 client
+      // scoring engine has the same inputs the legacy static JSON provided.
+      // Runs AFTER PP enrichment so it can use ppHistory/ppSummary when present.
+      try { enrichEntriesWithScoringFields(body); } catch (e) { body.scoringFieldEnrichmentError = e.message; }
     } else {
       // ── Free / GitHub Pages path ──────────────────────────────────────────
       body = await fetchFreeEntries(track, date, venue);

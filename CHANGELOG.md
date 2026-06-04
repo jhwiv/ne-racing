@@ -1,5 +1,51 @@
 # NE Racing — Changelog
 
+## v2.41.0 — Worker-side scoring-field enrichment shim (2026-06-04)
+
+Fixes the "uniform low confidence" UX problem caused by Racing API's NA entries
+endpoint omitting the seven scoring fields the v2.40.3 client engine expects.
+The shim runs inside the worker after `enrichEntriesWithCoreRacecards` and
+before the response is returned to the client, so the client engine is
+unchanged.
+
+**Fields synthesised per runner (best-effort, never throws):**
+
+- `name` — passthrough of `horseName` so `transformWorkerEntries` keeps working
+- `runningStyle` — heuristic from pp form letters (E / E/P / P / S)
+- `jockeyPct` — fuzzy match against embedded NYRA top-50 jockey win-pct table
+- `trainerPct` — fuzzy match against embedded NYRA top-50 trainer win-pct table
+- `lastClass` — most recent `race_class` from ppHistory
+- `lastRaceDate` — most recent `race_date` from ppHistory
+- `speedFigs` — derived from rpr / tsr / official_rating in ppHistory when present
+- `dataCompleteness` — recomputed sum/7 so the client doesn't have to
+
+**Name tokenizer:** Racing API NA uses "Last F M" (e.g. `Velazquez J R`).
+Embedded stats use "First M Last" (e.g. `John Velazquez`). Tokenizer infers
+format: if first token ≥4 chars AND remaining tokens are 1–2 chars, treat as
+"Last F M" and rebuild as "F Last" for lookup. Saratoga match rate 91% jockeys
+/ 42% trainers. Tracks outside the NYRA circuit fall back to a 10% win pct
+(non-zero so dataCompleteness counts the field).
+
+**Also fixed in this deploy:**
+
+- `/racecards/standard` was being called with `date=YYYY-MM-DD`, which Core
+  rejects with 422. Now sends `day=today` or `day=tomorrow` based on the
+  requested date in America/New_York, and short-circuits to a passthrough
+  for any other date (Core doesn't archive racecards through this endpoint).
+
+**Coverage on Saratoga (2026-06-04 fresh probe, 11 races / 118 runners):**
+
+- coreEnrichment: 30/118 (25.4%) with RPR / form / spotlight / trainer14d
+- ppEnrichment: 82/118 (69.5%) with ppHistory
+- scoringFieldEnrichment: 118/118 runners touched
+- dataCompleteness: mean 0.518, range 0.43–0.57 (was uniform 0.0)
+- RPR overlay values: 114–133, mean 125
+
+The client v2.40.3 confidence engine is unchanged; this only fixes the input
+shape. The v2.40.3 absolute-threshold gate still softens most cards toward
+low confidence — that's the v2.42.0 work (relative confidence + Lean/Medium/
+High labels + bet-size hints, queued).
+
 ## v2.39.4 — Remove duplicate Jim's Way label (2026-06-03)
 
 The ticket-card variant rendered "🤷 Jim's Way" twice — once in the
