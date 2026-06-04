@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260604-v2.40.0';
+var NE_APP_VERSION = '20260604-v2.40.1';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -15335,8 +15335,13 @@ function runAdviceEngine() {
 
     let html = buildConfidenceBar(confidence);
 
-    // PASS auto-recommendation (Task 3d)
-    const isAutoPass = confidence === 'low' && topScore < 60;
+    // v2.40.1: PASS reverted to pre-v2.0 behavior — only auto-PASS in
+    // genuinely degenerate cases (no clear leader on a near-empty field).
+    // The completeness-based gate was strangling every race when Racing
+    // API Standard returned no rpr/tsr, causing the all-PASS card.
+    // Confidence ('low'/'medium'/'high') still surfaces as a label so the
+    // user sees how strong the pick is without us hiding it.
+    const isAutoPass = fieldSize < 4 && gap < 2;
 
     scored.forEach((s, i) => {
       const grade = scoreToGrade(s.score);
@@ -15396,8 +15401,8 @@ function runAdviceEngine() {
 
     // PASS recommendation
     if (isAutoPass) {
-      html += `<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(193,18,31,0.08);border-radius:6px;font-size:0.8rem;color:var(--color-negative)"><strong>PASS</strong> — Low confidence and low scores. No clear edge in this race.</div>`;
-      // v2.39.2: Jim fallback for users who refuse to skip
+      html += `<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(193,18,31,0.08);border-radius:6px;font-size:0.8rem;color:var(--color-negative)"><strong>PASS</strong> — Field too small for a meaningful read.</div>`;
+      // Jim's Way fallback for users who refuse to skip
       try { html += renderJimFallbackBet(buildJimFallbackBet(race, scored), true); } catch (_) {}
     }
 
@@ -15716,28 +15721,41 @@ function updateTopPicksCard(allScores) {
     (s.overlay || 0) > 0.08 && s.score >= 55 && s.race.id !== bestBetRaceId
   ).slice(0, 2);
 
-  // Action Bets: gap >= 5 AND not best bet AND not value play race AND not pass
+  // v2.40.1: Action Bets — any race with a meaningful gap that isn't the
+  // Best Bet or a Value Play. Completeness gate removed so action bets
+  // surface even when the API doesn't carry past-performance figures.
   const valueRaceIds = new Set(valuePlays.map(v => v.race.id));
   const actionBets = [];
   Object.entries(raceMap).forEach(([raceId, group]) => {
-    const { gap, confidence, topCompleteness } = raceInfo[raceId];
+    const { gap, confidence } = raceInfo[raceId];
     if (raceId === bestBetRaceId || valueRaceIds.has(raceId)) return;
-    if (gap >= 5 && !(confidence === 'low' && group[0].score < 60) && topCompleteness >= 0.50) {
+    if (gap >= 3) {
       actionBets.push({ entry: group[0], gap, confidence });
     }
   });
-  // Limit to 1 action bet
+  // v2.40.1: was capped at 1 — lift to a handful so the ticket actually
+  // reflects a normal handicapping day on a thin-data API. We still cap
+  // to keep the headline focused; the per-race advice panel carries the
+  // full picture for the user.
   actionBets.sort((a, b) => b.entry.score - a.entry.score);
-  const topAction = actionBets.length ? actionBets[0] : null;
+  const topActionBets = actionBets.slice(0, 3);
+  const topAction = topActionBets[0] || null;
+  const actionRaceIds = new Set(topActionBets.map(a => a.entry.race.id));
 
-  // Pass Races: gap < 5 OR (low confidence AND top score < 60) OR data completeness < 60%
+  // v2.40.1: Pass Races — only races we couldn't categorize. Previous
+  // logic also passed for gap<5 OR low confidence OR low completeness,
+  // which (combined with the completeness floor on Best Bet / Action Bet)
+  // pushed the entire card into PASS when the API was thin. Now: any race
+  // that didn't pick up a Best Bet / Value Play / Action Bet slot — i.e.
+  // genuinely no edge to call out — lands here.
   const passRaceNums = [];
   Object.entries(raceMap).forEach(([raceId, group]) => {
-    const { gap, confidence, topCompleteness } = raceInfo[raceId];
+    const { gap } = raceInfo[raceId];
     if (raceId === bestBetRaceId) return;
     if (valueRaceIds.has(raceId)) return;
-    if (topAction && raceId === topAction.entry.race.id) return;
-    if (gap < 5 || (confidence === 'low' && group[0].score < 60) || topCompleteness < 0.60) {
+    if (actionRaceIds.has(raceId)) return;
+    // Only PASS when gap is tiny — truly nothing to recommend.
+    if (gap < 3) {
       passRaceNums.push(group[0].race.num);
     }
   });
@@ -15808,31 +15826,31 @@ function updateTopPicksCard(allScores) {
     ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}${overlayStr}) — $2 EX Box with ${exPartner || '#2'}${vpPayout ? ' (' + vpPayout + ')' : ''}`);
   });
 
-  // ── Action Bet ──
-  if (topAction) {
+  // ── Action Bets (v2.40.1: up to 3) ──
+  topActionBets.forEach(ab => {
     const actionAmt = Math.round(bankroll * 0.02);
     totalBetCost += actionAmt;
-    let reason = buildTicketReason(topAction.entry, topAction.entry.race);
-    const expertNames = getExpertNames(topAction.entry.race, topAction.entry.horse);
+    let reason = buildTicketReason(ab.entry, ab.entry.race);
+    const expertNames = getExpertNames(ab.entry.race, ab.entry.horse);
     if (expertNames.length >= 2) reason = 'Expert consensus pick, ' + reason;
     else if (expertNames.length === 1) reason += '; ' + expertNames[0] + ' pick';
-    const actConf = topAction.confidence || 'medium';
-    const actMlOdds = parseOddsToNum(topAction.entry.horse.ml);
+    const actConf = ab.confidence || 'medium';
+    const actMlOdds = parseOddsToNum(ab.entry.horse.ml);
     const actPayout = estimatePayoutRange(actMlOdds, actionAmt);
-    var actDetailId = storeTicketDetail(topAction.entry, topAction.entry.race, 'action');
+    var actDetailId = storeTicketDetail(ab.entry, ab.entry.race, 'action');
     html += `<div class="rec-bet-item card-action" data-detail-id="${actDetailId}">
       <span class="rec-bet-expand-hint">&#9660;</span>
       <div class="rec-bet-tag rec-tag-action">&#127919; Action Bet</div>${buildStrengthStars(actConf)}
       <div class="card-explainer">Smaller-stake fun play \u2014 decent edge but not as strong as the Best Bet</div>
-      <div class="rec-bet-detail">Race ${topAction.entry.race.num}: <strong>#${topAction.entry.horse.pp} ${escHtml(topAction.entry.horse.name).toUpperCase()}</strong> to WIN</div>
+      <div class="rec-bet-detail">Race ${ab.entry.race.num}: <strong>#${ab.entry.horse.pp} ${escHtml(ab.entry.horse.name).toUpperCase()}</strong> to WIN</div>
       <div class="rec-bet-amount">$${actionAmt} to Win</div>
       ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
-      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${topAction.entry.race.num}, '${escHtml(topAction.entry.horse.name).replace(/'/g,"\\'")}', ${topAction.entry.horse.pp}, 'Win', 'action')">${_betBtnLabel}</button>
+      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${ab.entry.race.num}, '${escHtml(ab.entry.horse.name).replace(/'/g,"\\'")}', ${ab.entry.horse.pp}, 'Win', 'action')">${_betBtnLabel}</button>
     </div>`;
-    ticketLines.push(`ACTION — Race ${topAction.entry.race.num}: #${topAction.entry.horse.pp} ${topAction.entry.horse.name} to WIN — $${actionAmt}${actPayout ? ' (' + actPayout + ')' : ''}`);
-  }
+    ticketLines.push(`ACTION — Race ${ab.entry.race.num}: #${ab.entry.horse.pp} ${ab.entry.horse.name} to WIN — $${actionAmt}${actPayout ? ' (' + actPayout + ')' : ''}`);
+  });
 
   // ── Pass Races ──
   if (passRaceNums.length) {
@@ -16521,7 +16539,8 @@ function renderAdviceEnginePanel() {
     else if (gap > 6 && topCompleteness >= 0.50) confidence = 'medium';
     else confidence = 'low';
     html += buildConfidenceBar(confidence);
-    const isAutoPassEarly = confidence === 'low' && scored[0].score < 60;
+    // v2.40.1: same as Today tab — only auto-PASS on degenerate races.
+    const isAutoPassEarly = fieldSize < 4 && gap < 2;
 
     scored.forEach((s,i) => {
       const grade = scoreToGrade(s.score);
@@ -16580,11 +16599,12 @@ function renderAdviceEnginePanel() {
       </div>`;
     }
 
-    // PASS recommendation
-    const isAutoPass = confidence === 'low' && scored[0].score < 60;
+    // v2.40.1: PASS only on degenerate races. Confidence label still
+    // shows below so the user sees how strong the recommendation is.
+    const isAutoPass = fieldSize < 4 && gap < 2;
     if (isAutoPass) {
-      html += `<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(193,18,31,0.08);border-radius:6px;font-size:0.8rem;color:var(--color-negative)"><strong>PASS</strong> — Low confidence and low scores. No clear edge in this race.</div>`;
-      // v2.39.2: Jim fallback for users who refuse to skip
+      html += `<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(193,18,31,0.08);border-radius:6px;font-size:0.8rem;color:var(--color-negative)"><strong>PASS</strong> — Field too small for a meaningful read.</div>`;
+      // Jim's Way fallback for users who refuse to skip
       try { html += renderJimFallbackBet(buildJimFallbackBet(race, scored), true); } catch (_) {}
     }
 
