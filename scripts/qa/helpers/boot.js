@@ -30,6 +30,9 @@ async function newSession(browser, { version, baseUrl }) {
       localStorage.setItem('ne-racing-tour-dismissed', '1');
       localStorage.setItem('ne-racing-tour-seen', '1');
       localStorage.setItem('ne-racing-onboard-done', '1');
+      // v2.40.0: pre-dismiss the beta data-preview banner so it never
+      // intercepts pointer events during interaction tests.
+      localStorage.setItem('railbird-beta-banner-dismissed-v1', '1');
     } catch (e) {}
   }, version);
 

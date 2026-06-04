@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260603-v2.39.4';
+var NE_APP_VERSION = '20260604-v2.40.0';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -1560,6 +1560,40 @@ function neForceUpdate(newVersion) {
       .catch(function() {});
   }
 })();
+
+// ═══════════════════════════════════════════════════
+// v2.40.0: BETA DATA-PREVIEW BANNER
+// Surfaces an honest expectation-setter for Belmont-at-Saratoga beta
+// testers: the app is running on entries + live odds only; full
+// past-performance data integration is still in development.
+// Dismissable per device via localStorage. Once dismissed it stays
+// dismissed across reloads, but a version bump of the key string would
+// resurface it (intentional: change `-v1` to `-v2` to force re-show).
+// ═══════════════════════════════════════════════════
+(function() {
+  var DISMISS_KEY = 'railbird-beta-banner-dismissed-v1';
+  function init() {
+    var el = document.getElementById('beta-preview-banner');
+    if (!el) return;
+    var dismissed = false;
+    try { dismissed = localStorage.getItem(DISMISS_KEY) === '1'; } catch(e) {}
+    if (dismissed) return;
+    el.classList.add('visible');
+    try { document.body.classList.add('bpb-active'); } catch(e) {}
+  }
+  window.dismissBetaPreviewBanner = function() {
+    var el = document.getElementById('beta-preview-banner');
+    if (el) el.classList.remove('visible');
+    try { document.body.classList.remove('bpb-active'); } catch(e) {}
+    try { localStorage.setItem(DISMISS_KEY, '1'); } catch(e) {}
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
 // ═══════════════════════════════════════════════════
 // UNIFIED EXOTIC BET BUILDER — wizard overlay
 // Uses race card data (getTrackData), NOT the advice engine.
@@ -5964,6 +5998,108 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   padding: 0.55rem 0.65rem;
   margin: 0 -0.25rem 8px;
 }
+
+/* v2.40.0: Jim's Way — collapsed-by-default reveal, only rendered under PASS */
+.jim-reveal {
+  margin-top: 0.5rem;
+  border-left: 3px solid #c1962b;
+  background: rgba(212,165,116,0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.jim-reveal > summary {
+  cursor: pointer;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #c1962b;
+  list-style: none;
+  user-select: none;
+  -webkit-tap-highlight-color: rgba(212,165,116,0.18);
+  transition: background 0.15s ease;
+}
+.jim-reveal > summary::-webkit-details-marker { display: none; }
+.jim-reveal > summary::after {
+  content: ' \25BC';
+  font-size: 0.65rem;
+  opacity: 0.65;
+  margin-left: 0.3rem;
+}
+.jim-reveal[open] > summary::after { content: ' \25B2'; }
+.jim-reveal[open] > summary { background: rgba(212,165,116,0.14); }
+.jim-reveal > .jim-reveal-body {
+  padding: 0.5rem 0.65rem 0.6rem;
+  font-size: 0.82rem;
+  color: var(--color-text);
+  border-top: 1px solid rgba(212,165,116,0.18);
+}
+.jim-reveal.jim-reveal-card {
+  margin: 0 -0.25rem 8px;
+  border: 1px solid rgba(193,150,43,0.30);
+  border-left: 3px solid #c1962b;
+}
+
+/* v2.40.0: Beta data-preview banner. Pinned to top of viewport, slim,
+   dismissable per device. Sets expectations during Belmont at Saratoga. */
+#beta-preview-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9600;
+  display: none;
+  align-items: center;
+  gap: 0.55rem;
+  padding: calc(env(safe-area-inset-top, 0px) + 0.45rem) 0.75rem 0.45rem 0.85rem;
+  background: linear-gradient(180deg, #2A1E10 0%, #1E1810 100%);
+  color: #F8F4EA;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  border-bottom: 1px solid rgba(217,176,87,0.32);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+  -webkit-tap-highlight-color: transparent;
+}
+#beta-preview-banner.visible { display: flex; }
+#beta-preview-banner .bpb-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #D9B057;
+  box-shadow: 0 0 0 0 rgba(217,176,87,0.55);
+  animation: bpbPulse 2s ease-out infinite;
+  flex-shrink: 0;
+}
+#beta-preview-banner .bpb-text {
+  flex: 1;
+  letter-spacing: 0.01em;
+}
+#beta-preview-banner .bpb-text strong {
+  color: #D9B057;
+  font-weight: 700;
+  margin-right: 0.25rem;
+}
+#beta-preview-banner .bpb-close {
+  background: transparent;
+  border: none;
+  color: #F8F4EA;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.15rem 0.4rem;
+  cursor: pointer;
+  opacity: 0.7;
+  flex-shrink: 0;
+  border-radius: 4px;
+  -webkit-tap-highlight-color: rgba(255,255,255,0.12);
+}
+#beta-preview-banner .bpb-close:active { opacity: 1; background: rgba(255,255,255,0.08); }
+/* Push main content down when banner visible (banner height ~32px + safe area) */
+body.bpb-active {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 36px);
+}
+@keyframes bpbPulse {
+  0% { box-shadow: 0 0 0 0 rgba(217,176,87,0.55); }
+  70% { box-shadow: 0 0 0 7px rgba(217,176,87,0); }
+  100% { box-shadow: 0 0 0 0 rgba(217,176,87,0); }
+}
+
 .ticket-exotic.card-exotic {
   background: linear-gradient(145deg, rgba(212,168,73,0.1), rgba(212,168,73,0.03));
   border: 1.5px dashed rgba(212,168,73,0.35);
@@ -8930,6 +9066,15 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
   <span class="ub-dot" aria-hidden="true"></span>
   <span class="ub-text">Update available</span>
   <span class="ub-cta">Tap to refresh</span>
+</div>
+
+<!-- v2.40.0: Beta data-preview banner. Sets expectations during Belmont at
+     Saratoga: app runs on entries + odds only; full past-performance data
+     integration is in development. Dismissable for this session. -->
+<div id="beta-preview-banner" role="note" aria-live="polite">
+  <span class="bpb-dot" aria-hidden="true"></span>
+  <span class="bpb-text"><strong>Beta &mdash; Data Preview Mode.</strong> Running on entries &amp; live odds only. Full PP integration coming.</span>
+  <button type="button" class="bpb-close" aria-label="Dismiss" onclick="dismissBetaPreviewBanner()">&times;</button>
 </div>
 
 <!-- =============================================
@@ -15440,31 +15585,37 @@ function buildJimFallbackBet(race, scored, opts) {
   return { horse: pick.horse, race: race, mode: mode, amount: stake, payout: payout, reasonShort: reasonShort };
 }
 
-// v2.39.2: Render the Jim fallback bet as a small HTML block.
-// `compact` true = used in race-card detail panels (one-liner + reason)
-// `compact` false = used in daily ticket (its own card)
+// v2.39.2 → v2.40.0: Render the Jim fallback bet as a *click-to-reveal* block.
+// `compact` true  = race-card detail panels (one-liner + reason, collapsed by default)
+// `compact` false = daily ticket (its own card, collapsed by default)
+// Only ever called from PASS branches — the gating lives at each call site.
 function renderJimFallbackBet(fb, compact) {
   if (!fb) return '';
   const horseName = escHtml(fb.horse.name);
   const pp = fb.horse.pp || '';
   const modeLbl = fb.mode === 'win' ? 'to WIN' : 'to PLACE';
-  const label = '\uD83E\uDD37 Jim\u2019s Way';
+  const summaryLbl = '\uD83E\uDD37 Jim\u2019s Way \u2014 tap if you have to bet this race';
   if (compact) {
-    return `<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(212,165,116,0.10);border-left:3px solid #c1962b;border-radius:6px;font-size:0.78rem;color:var(--color-text)">
-      <div style="font-weight:600;font-size:0.72rem;color:#7a5a16;margin-bottom:0.25rem;line-height:1.25">${label}</div>
-      <div><strong>#${pp} ${horseName}</strong> ${modeLbl} \u2014 $${fb.amount}${fb.horse.ml ? ' <span class="mono text-xs text-muted">(ML: ' + fb.horse.ml + ')</span>' : ''}</div>
-      <div class="text-xs text-muted" style="margin-top:0.15rem">${escHtml(fb.reasonShort)}${fb.payout ? ' \u2014 ' + fb.payout : ''}</div>
-    </div>`;
+    return `<details class="jim-reveal jim-reveal-compact">
+      <summary>${summaryLbl}</summary>
+      <div class="jim-reveal-body">
+        <div><strong>#${pp} ${horseName}</strong> ${modeLbl} \u2014 $${fb.amount}${fb.horse.ml ? ' <span class="mono text-xs text-muted">(ML: ' + fb.horse.ml + ')</span>' : ''}</div>
+        <div class="text-xs text-muted" style="margin-top:0.15rem">${escHtml(fb.reasonShort)}${fb.payout ? ' \u2014 ' + fb.payout : ''}</div>
+      </div>
+    </details>`;
   }
-  // Ticket-card variant
-  return `<div class="rec-bet-item card-jim" style="border-left:3px solid #c1962b;background:rgba(212,165,116,0.08)">
-    <div class="rec-bet-tag" style="background:#c1962b;color:#fff">\uD83E\uDD37 Jim\u2019s Way</div>
-    <div class="rec-bet-detail">Race ${fb.race.num}: <strong>#${pp} ${horseName.toUpperCase()}</strong> ${modeLbl}</div>
-    <div class="rec-bet-amount">$${fb.amount} ${fb.mode === 'win' ? 'to Win' : 'to Place'}</div>
-    ${fb.payout ? '<div class="ticket-payout">' + fb.payout + '</div>' : ''}
-    <div class="rec-bet-reason">"${escHtml(fb.reasonShort)}"</div>
-    <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${fb.race.num}, '${horseName.replace(/'/g,"\\'")}', ${pp}, '${fb.mode === 'win' ? 'Win' : 'Place'}', 'jim')">+ Bet Slip</button>
-  </div>`;
+  // Ticket-card variant (also click-to-reveal)
+  return `<details class="jim-reveal jim-reveal-card rec-bet-item card-jim">
+    <summary>${summaryLbl}</summary>
+    <div class="jim-reveal-body">
+      <div class="rec-bet-tag" style="background:#c1962b;color:#fff">\uD83E\uDD37 Jim\u2019s Way</div>
+      <div class="rec-bet-detail">Race ${fb.race.num}: <strong>#${pp} ${horseName.toUpperCase()}</strong> ${modeLbl}</div>
+      <div class="rec-bet-amount">$${fb.amount} ${fb.mode === 'win' ? 'to Win' : 'to Place'}</div>
+      ${fb.payout ? '<div class="ticket-payout">' + fb.payout + '</div>' : ''}
+      <div class="rec-bet-reason">"${escHtml(fb.reasonShort)}"</div>
+      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${fb.race.num}, '${horseName.replace(/'/g,"\\'")}', ${pp}, '${fb.mode === 'win' ? 'Win' : 'Place'}', 'jim')">+ Bet Slip</button>
+    </div>
+  </details>`;
 }
 
 function buildStrengthStars(confidence) {

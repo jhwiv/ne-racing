@@ -118,6 +118,483 @@ const CACHE_TTL = {
 // ─── Upstream base URL (The Racing API) ─────────────────────────────────────
 const THERACINGAPI_BASE = "https://api.theracingapi.com/v1";
 
+// ─── v2.40.0: PP enrichment from D1 ─────────────────────────────────────────
+// How many recent races to attach per horse
+const PP_HISTORY_LIMIT = 5;
+
+/**
+ * Normalize a horse name for matching across feeds.
+ * NA entries call it "Jimmy P"; /results calls it "Jimmy P (USA)".
+ * Strip country suffixes, lowercase, collapse whitespace, drop punctuation.
+ */
+function normHorseKey(name) {
+  if (!name) return "";
+  return String(name)
+    .replace(/\([A-Z]{2,3}\)/g, "")  // strip (USA), (GB), (IRE), (FR)
+    .replace(/[^a-z0-9]+/gi, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Fetch last N race results per horse from D1, keyed by normalized horse name.
+ * @param {D1Database} db
+ * @param {Array<{horseName: string, sire?: string, dam?: string}>} horses
+ * @returns {Promise<Map<string, Array<object>>>}  norm-key → array of past races (most recent first)
+ */
+async function fetchHorseHistoryByName(db, horses, limit) {
+  if (!db) return new Map();
+  if (!horses || !horses.length) return new Map();
+  const lim = Math.max(1, Math.min(limit || PP_HISTORY_LIMIT, 10));
+
+  // Build the IN-list using lowercase horse_name LIKE-style match.
+  // We store horse_name in D1 as-is from the upstream feed and match by
+  // normalized key computed at read time (cheap on a few hundred rows).
+  const names = Array.from(new Set(horses.map((h) => normHorseKey(h.horseName)).filter(Boolean)));
+  if (!names.length) return new Map();
+
+  // SQLite has no array params; build a placeholder string.
+  // Pull all matching rows in one shot (max ~10 horses × ~50 past races = 500 rows).
+  // We filter and group in JS to keep the SQL trivial.
+  const placeholders = names.map(() => "?").join(", ");
+  const sql = `
+    SELECT horse_id, horse_name, race_id, race_date, course, distance, distance_f,
+           surface, going, race_class, race_type, field_size,
+           position, position_num, btn, ovr_btn, weight_lbs, headgear,
+           time_str, or_rating, rpr, tsr, sp, sp_dec, jockey, trainer, comment
+    FROM tra_horse_results
+    WHERE LOWER(
+      REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(horse_name,'(USA)',''),'(GB)',''),'(IRE)',''),'(FR)',''),'(CAN)',''),'(ARG)','')
+    ) LIKE '%' || ? || '%'`;
+  // We loop per-name (each query is bounded and indexes on horse_name aren't present;
+  // there are only ~10 horses per request, so 10 small reads is fine).
+  const out = new Map();
+  for (const key of names) {
+    try {
+      const rs = await db.prepare(sql).bind(key).all();
+      const rows = (rs && rs.results) || [];
+      // Sort by race_date DESC and keep top N
+      rows.sort((a, b) => (b.race_date || "").localeCompare(a.race_date || ""));
+      const trimmed = rows.slice(0, lim);
+      if (trimmed.length) out.set(key, trimmed);
+    } catch (e) {
+      // ignore individual lookup errors so one bad horse doesn't kill the merge
+    }
+  }
+  return out;
+}
+
+/**
+ * Compute summary PP fields from an array of past races.
+ */
+function summarizePastRaces(rows) {
+  if (!rows || !rows.length) return null;
+  const valid = rows.filter((r) => r);
+  if (!valid.length) return null;
+  const finishes = valid.map((r) => (r.position_num != null ? r.position_num : parseInt(r.position, 10))).filter((n) => Number.isFinite(n));
+  const wins = finishes.filter((n) => n === 1).length;
+  const itm  = finishes.filter((n) => n >= 1 && n <= 3).length;
+  const rprValues = valid.map((r) => r.rpr).filter((n) => Number.isFinite(n) && n > 0);
+  const tsrValues = valid.map((r) => r.tsr).filter((n) => Number.isFinite(n) && n > 0);
+  const orValues  = valid.map((r) => r.or_rating).filter((n) => Number.isFinite(n) && n > 0);
+  const lastRace = valid[0];
+  const lastDate = lastRace && lastRace.race_date;
+  let daysSinceLast = null;
+  if (lastDate) {
+    const ms = Date.now() - new Date(lastDate + "T12:00:00Z").getTime();
+    if (Number.isFinite(ms) && ms > 0) daysSinceLast = Math.round(ms / 86400000);
+  }
+  return {
+    starts: finishes.length,
+    wins,
+    itm,
+    winPct: finishes.length ? +(wins / finishes.length).toFixed(3) : 0,
+    itmPct: finishes.length ? +(itm  / finishes.length).toFixed(3) : 0,
+    bestRpr: rprValues.length ? Math.max(...rprValues) : null,
+    avgRpr:  rprValues.length ? Math.round(rprValues.reduce((a,b)=>a+b,0) / rprValues.length) : null,
+    bestTsr: tsrValues.length ? Math.max(...tsrValues) : null,
+    avgTsr:  tsrValues.length ? Math.round(tsrValues.reduce((a,b)=>a+b,0) / tsrValues.length) : null,
+    lastOr:  lastRace && Number.isFinite(lastRace.or_rating) && lastRace.or_rating > 0 ? lastRace.or_rating : null,
+    bestOr:  orValues.length ? Math.max(...orValues) : null,
+    daysSinceLast,
+    lastFinish: lastRace && (lastRace.position_num != null ? lastRace.position_num : lastRace.position) || null,
+    lastSurface: lastRace && lastRace.surface || null,
+    lastDistance: lastRace && lastRace.distance || null,
+    lastClass: lastRace && lastRace.race_class || null,
+  };
+}
+
+/**
+ * Attach `pp` history and a `ppSummary` object onto each runner of an entries body.
+ * Mutates `body.races[i].entries[j]`. Safe to call when env.RAILBIRD_DB is missing.
+ */
+async function enrichEntriesWithPP(body, env) {
+  if (!env.RAILBIRD_DB) {
+    body.ppEnrichment = { enabled: false, reason: "D1 not bound" };
+    return body;
+  }
+  if (!body || !Array.isArray(body.races)) return body;
+  // Collect all runners
+  const allRunners = [];
+  for (const race of body.races) {
+    for (const e of (race.entries || [])) allRunners.push(e);
+  }
+  if (!allRunners.length) return body;
+
+  const historyMap = await fetchHorseHistoryByName(env.RAILBIRD_DB, allRunners, PP_HISTORY_LIMIT);
+
+  let enrichedCount = 0;
+  for (const e of allRunners) {
+    const key = normHorseKey(e.horseName);
+    const rows = historyMap.get(key);
+    if (rows && rows.length) {
+      e.ppHistory = rows.map((r) => ({
+        date: r.race_date,
+        course: r.course,
+        distance: r.distance,
+        surface: r.surface,
+        raceClass: r.race_class,
+        position: r.position_num != null ? r.position_num : r.position,
+        beaten: r.btn,
+        rpr: r.rpr,
+        tsr: r.tsr,
+        or: r.or_rating,
+        sp: r.sp,
+        time: r.time_str,
+      }));
+      e.ppSummary = summarizePastRaces(rows);
+      enrichedCount++;
+    }
+  }
+  body.ppEnrichment = {
+    enabled: true,
+    totalRunners: allRunners.length,
+    enrichedRunners: enrichedCount,
+    coverage: allRunners.length ? +(enrichedCount / allRunners.length).toFixed(3) : 0,
+  };
+  return body;
+}
+
+/**
+ * v2.40.0: Backfill US race results from The Racing API into D1.
+ * Admin-token gated. Walks day-by-day from start_date → end_date and writes
+ * each runner as a row in tra_horse_results.
+ *
+ *   POST /api/_admin/backfill
+ *   Header: X-Admin-Token: <FEEDBACK_ADMIN_TOKEN>
+ *   Body: { start: "YYYY-MM-DD", end: "YYYY-MM-DD", region: "usa" }
+ *
+ * Each day calls /v1/results?start_date=D&end_date=D&region=usa,
+ * paginating until total reached.
+ */
+async function handleBackfill(request, env, origin) {
+  const token = (request.headers.get("X-Admin-Token") || "").trim();
+  const expected = (env.FEEDBACK_ADMIN_TOKEN || "").trim();
+  if (!expected || !token || token.toLowerCase() !== expected.toLowerCase()) {
+    return jsonError("unauthorized", 401, origin);
+  }
+  if (!env.RAILBIRD_DB) return jsonError("D1 not bound", 500, origin);
+  if (!env.API_USER || !env.API_KEY) return jsonError("API creds missing", 500, origin);
+
+  let payload;
+  try { payload = await request.json(); } catch (_) { return jsonError("invalid JSON", 400, origin); }
+  const start = String(payload.start || "").trim();
+  const end   = String(payload.end || start).trim();
+  const region = String(payload.region || "usa").toLowerCase();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+    return jsonError("start/end must be YYYY-MM-DD", 400, origin);
+  }
+
+  // Iterate day by day
+  const startMs = new Date(start + "T12:00:00Z").getTime();
+  const endMs   = new Date(end   + "T12:00:00Z").getTime();
+  if (endMs < startMs) return jsonError("end < start", 400, origin);
+
+  const summary = [];
+  let dayCount = 0;
+  for (let t = startMs; t <= endMs; t += 86400000) {
+    if (dayCount++ > 60) break; // hard cap per call (worker CPU + subrequest limits)
+    const date = new Date(t).toISOString().slice(0, 10);
+    try {
+      const dayResult = await backfillDay(env, date, region);
+      summary.push({ date, ...dayResult });
+      // Log
+      await env.RAILBIRD_DB.prepare(
+        "INSERT OR REPLACE INTO tra_backfill_log (date, region, races_ingested, runners_ingested, status, ran_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+      ).bind(date, region, dayResult.races, dayResult.runners, dayResult.status || "ok").run();
+    } catch (e) {
+      summary.push({ date, error: e.message });
+    }
+  }
+
+  return jsonOk({ ok: true, region, days: summary }, origin);
+}
+
+/**
+ * Backfill one day of US results. Paginates /results with skip+limit.
+ */
+async function backfillDay(env, date, region) {
+  const basic = btoa(`${env.API_USER}:${env.API_KEY}`);
+  let skip = 0;
+  const limit = 50;
+  let totalRaces = 0;
+  let totalRunners = 0;
+  let safety = 0;
+  while (safety++ < 20) {
+    const url = `${THERACINGAPI_BASE}/results?start_date=${date}&end_date=${date}&region=${region}&limit=${limit}&skip=${skip}`;
+    const res = await fetch(url, { headers: { Authorization: `Basic ${basic}`, Accept: "application/json" } });
+    if (!res.ok) throw new Error(`results fetch ${res.status} for ${date} skip=${skip}`);
+    const body = await res.json();
+    const races = (body && body.results) || [];
+    if (!races.length) break;
+    for (const race of races) {
+      const ins = await insertRaceRunners(env.RAILBIRD_DB, race, date);
+      totalRunners += ins;
+    }
+    totalRaces += races.length;
+    skip += races.length;
+    const total = (body && body.total) || 0;
+    if (skip >= total) break;
+  }
+  return { races: totalRaces, runners: totalRunners, status: "ok" };
+}
+
+async function insertRaceRunners(db, race, raceDate) {
+  const runners = (race && race.runners) || [];
+  if (!runners.length) return 0;
+  const stmts = runners.map((r) => {
+    const posNum = parseInt(r.position, 10);
+    return db.prepare(`INSERT OR REPLACE INTO tra_horse_results (
+      horse_id, race_id, race_date, course, course_id, region, off_dt, race_name,
+      race_type, race_class, surface, distance, distance_f, going, field_size,
+      horse_name, number, position, position_num, draw, btn, ovr_btn, age, sex,
+      weight_lbs, headgear, time_str, or_rating, rpr, tsr, sp, sp_dec, prize,
+      jockey, jockey_id, trainer, trainer_id, comment
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+      r.horse_id || "",
+      race.race_id || "",
+      race.date || raceDate,
+      race.course || "",
+      race.course_id || "",
+      race.region || "",
+      race.off_dt || race.off || "",
+      race.race_name || "",
+      race.type || "",
+      race.class || race.race_class || "",
+      race.surface || "",
+      race.dist || race.distance || "",
+      race.dist_f != null ? parseFloat(race.dist_f) : null,
+      race.going || "",
+      runners.length,
+      r.horse || "",
+      r.number || "",
+      r.position || "",
+      Number.isFinite(posNum) ? posNum : null,
+      r.draw || "",
+      r.btn || "",
+      r.ovr_btn || "",
+      r.age || "",
+      r.sex || "",
+      r.weight_lbs ? parseInt(r.weight_lbs, 10) : null,
+      r.headgear || "",
+      r.time || "",
+      parseRatingInt(r.or),
+      parseRatingInt(r.rpr),
+      parseRatingInt(r.tsr),
+      r.sp || "",
+      r.sp_dec ? parseFloat(r.sp_dec) : null,
+      r.prize || "",
+      r.jockey || "",
+      r.jockey_id || "",
+      r.trainer || "",
+      r.trainer_id || "",
+      r.comment || ""
+    );
+  });
+  // Batch insert
+  try { await db.batch(stmts); } catch (e) { /* per-row failures shouldn't abort entire day */ }
+  return runners.length;
+}
+
+function parseRatingInt(v) {
+  if (v == null) return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * ─── NA per-meet results backfill ────────────────────────────────────────
+ *
+ * Walks /v1/north-america/meets day-by-day, then per-meet pulls
+ * /v1/north-america/meets/{meet_id}/results and inserts every runner
+ * (top-3 finishers + also_ran) into tra_horse_results.
+ *
+ * Unlike global /results (US stakes only), this carries ALL US races —
+ * claiming, allowance, maiden, stakes — across all NA tracks.
+ *
+ *   POST /api/_admin/backfill-na
+ *   Header: X-Admin-Token: <FEEDBACK_ADMIN_TOKEN>
+ *   Body: { start: "YYYY-MM-DD", end: "YYYY-MM-DD", countries?: ["USA"] }
+ */
+async function handleBackfillNA(request, env, origin) {
+  const token = (request.headers.get("X-Admin-Token") || "").trim();
+  const expected = (env.FEEDBACK_ADMIN_TOKEN || "").trim();
+  if (!expected || !token || token.toLowerCase() !== expected.toLowerCase()) {
+    return jsonError("unauthorized", 401, origin);
+  }
+  if (!env.RAILBIRD_DB) return jsonError("D1 not bound", 500, origin);
+  if (!env.API_USER || !env.API_KEY) return jsonError("API creds missing", 500, origin);
+
+  let payload; try { payload = await request.json(); } catch (_) { return jsonError("invalid JSON", 400, origin); }
+  const start = String(payload.start || "").trim();
+  const end   = String(payload.end || start).trim();
+  const countries = Array.isArray(payload.countries) && payload.countries.length
+    ? payload.countries.map(c => String(c).toUpperCase())
+    : ["USA"];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+    return jsonError("start/end must be YYYY-MM-DD", 400, origin);
+  }
+  const startMs = new Date(start + "T12:00:00Z").getTime();
+  const endMs   = new Date(end   + "T12:00:00Z").getTime();
+  if (endMs < startMs) return jsonError("end < start", 400, origin);
+
+  const summary = [];
+  for (let t = startMs; t <= endMs; t += 86400000) {
+    const d = new Date(t).toISOString().slice(0,10);
+    try {
+      const dayResult = await backfillNADay(env, d, countries);
+      summary.push({ date: d, ...dayResult });
+      // Log day to tra_backfill_log if table present
+      try {
+        await env.RAILBIRD_DB.prepare(`INSERT OR REPLACE INTO tra_backfill_log (date, races, runners, status, completed_at) VALUES (?, ?, ?, ?, ?)`).bind(
+          d, dayResult.races, dayResult.runners, "ok-na", new Date().toISOString()
+        ).run();
+      } catch (_) { /* table may not have these columns; non-fatal */ }
+    } catch (e) {
+      summary.push({ date: d, error: e.message });
+    }
+  }
+  return jsonOk({ days: summary }, origin);
+}
+
+async function backfillNADay(env, date, countries) {
+  const basic = btoa(`${env.API_USER}:${env.API_KEY}`);
+  // 1. List meets for this date
+  const meetsUrl = `${THERACINGAPI_BASE}/north-america/meets?start_date=${date}&end_date=${date}`;
+  const meetsRes = await fetch(meetsUrl, { headers: { Authorization: `Basic ${basic}`, Accept: "application/json" } });
+  if (!meetsRes.ok) throw new Error(`NA meets fetch ${meetsRes.status} for ${date}`);
+  const meetsBody = await meetsRes.json();
+  const allMeets = (meetsBody && meetsBody.meets) || [];
+  const meets = allMeets.filter(m => countries.includes((m.country || "").toUpperCase()));
+  let totalRaces = 0;
+  let totalRunners = 0;
+  const meetSummaries = [];
+  for (const meet of meets) {
+    try {
+      const rRes = await fetch(`${THERACINGAPI_BASE}/north-america/meets/${meet.meet_id}/results`,
+        { headers: { Authorization: `Basic ${basic}`, Accept: "application/json" } });
+      if (!rRes.ok) { meetSummaries.push({ meet_id: meet.meet_id, error: rRes.status }); continue; }
+      const rBody = await rRes.json();
+      const races = (rBody && rBody.races) || [];
+      let mRunners = 0;
+      for (const race of races) {
+        const ins = await insertNARaceRunners(env.RAILBIRD_DB, meet, race, date);
+        mRunners += ins;
+      }
+      totalRaces += races.length;
+      totalRunners += mRunners;
+      meetSummaries.push({ meet_id: meet.meet_id, track: meet.track_id, races: races.length, runners: mRunners });
+    } catch (e) {
+      meetSummaries.push({ meet_id: meet.meet_id, error: e.message });
+    }
+  }
+  return { meets: meets.length, races: totalRaces, runners: totalRunners, details: meetSummaries };
+}
+
+async function insertNARaceRunners(db, meet, race, raceDate) {
+  const finishers = (race && race.runners) || [];
+  const alsoRan = (race && race.also_ran) || [];
+  const fieldSize = finishers.length + alsoRan.length;
+  if (!fieldSize) return 0;
+
+  const raceNum = (race.race_key && race.race_key.race_number) || "";
+  const raceId = `${meet.meet_id}_R${raceNum}`;
+  const courseName = meet.track_name || "";
+  const courseId = meet.track_id || "";
+  const region = (meet.country || "").toUpperCase();
+  const offDt = race.post_time_long || race.post_time || "";
+  const raceName = race.race_name || "";
+  const raceType = race.race_type_description || race.race_type || "";
+  const raceClass = race.race_class || "";
+  const surface = race.surface_description || race.surface || "";
+  const distance = race.distance_description || "";
+  const distanceF = race.distance_unit === "furlongs" && race.distance_value ? parseFloat(race.distance_value) : null;
+  const going = race.track_condition_description || "";
+  const fraction = race.fraction || {};
+  const timeStr = fraction.winning_time && fraction.winning_time.time_in_hundredths
+    ? String(fraction.winning_time.time_in_hundredths) : "";
+  const totalPurse = race.total_purse != null ? String(race.total_purse) : "";
+
+  const stmts = [];
+
+  // Top finishers (position 1..N from order)
+  finishers.forEach((r, idx) => {
+    const horseName = String(r.horse_name || "").trim();
+    if (!horseName) return;
+    const horseId = `na_${normHorseKey(horseName)}`;
+    const jockey = [r.jockey_first_name, r.jockey_last_name].filter(Boolean).join(" ").trim();
+    const trainer = [r.trainer_first_name, r.trainer_last_name].filter(Boolean).join(" ").trim();
+    const pos = idx + 1;
+    const weight = r.weight_carried ? parseInt(r.weight_carried, 10) : null;
+    // Same race time for everyone in top-3; only winner has the official time, but we keep it as race time anchor
+    const sp = r.win_payoff && r.win_payoff > 0 ? `$${r.win_payoff}` : "";
+    const spDec = r.win_payoff && r.win_payoff > 0 ? (parseFloat(r.win_payoff) / 2.0) : null; // $2 base → decimal odds approx
+    stmts.push(db.prepare(`INSERT OR REPLACE INTO tra_horse_results (
+      horse_id, race_id, race_date, course, course_id, region, off_dt, race_name,
+      race_type, race_class, surface, distance, distance_f, going, field_size,
+      horse_name, number, position, position_num, draw, btn, ovr_btn, age, sex,
+      weight_lbs, headgear, time_str, or_rating, rpr, tsr, sp, sp_dec, prize,
+      jockey, jockey_id, trainer, trainer_id, comment
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+      horseId, raceId, raceDate, courseName, courseId, region, offDt, raceName,
+      raceType, raceClass, surface, distance, distanceF, going, fieldSize,
+      horseName, String(r.program_number || ""), String(pos), pos,
+      "", "", "", "", "",
+      weight, "", pos === 1 ? timeStr : "", null, null, null, sp, spDec, totalPurse,
+      jockey, "", trainer, "", ""
+    ));
+  });
+
+  // Also-rans: name-only, position_num=99 sentinel ("finished out of money")
+  alsoRan.forEach((nameRaw) => {
+    const horseName = String(nameRaw || "").trim();
+    if (!horseName) return;
+    const horseId = `na_${normHorseKey(horseName)}`;
+    stmts.push(db.prepare(`INSERT OR REPLACE INTO tra_horse_results (
+      horse_id, race_id, race_date, course, course_id, region, off_dt, race_name,
+      race_type, race_class, surface, distance, distance_f, going, field_size,
+      horse_name, number, position, position_num, draw, btn, ovr_btn, age, sex,
+      weight_lbs, headgear, time_str, or_rating, rpr, tsr, sp, sp_dec, prize,
+      jockey, jockey_id, trainer, trainer_id, comment
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+      horseId, raceId, raceDate, courseName, courseId, region, offDt, raceName,
+      raceType, raceClass, surface, distance, distanceF, going, fieldSize,
+      horseName, "", "AR", 99,
+      "", "", "", "", "",
+      null, "", "", null, null, null, "", null, totalPurse,
+      "", "", "", "", "also_ran"
+    ));
+  });
+
+  // Batch insert in chunks (D1 batch has a soft limit; chunk at 20)
+  for (let i = 0; i < stmts.length; i += 20) {
+    try { await db.batch(stmts.slice(i, i + 20)); }
+    catch (e) { /* swallow */ }
+  }
+  return stmts.length;
+}
+
 // ─── Static entries base URL (GitHub Pages) ─────────────────────────────────
 // File name pattern: entries-{TRACK}-{DATE}.json
 // e.g. entries-AQU-2026-04-16.json
@@ -1817,6 +2294,8 @@ async function handleEntries(request, env, origin) {
         env.API_USER, env.API_KEY
       );
       body = normaliseNaEntries(data, track, venue, date);
+      // v2.40.0: enrich each runner with last-N race history from D1
+      try { await enrichEntriesWithPP(body, env); } catch (e) { body.ppEnrichmentError = e.message; }
     } else {
       // ── Free / GitHub Pages path ──────────────────────────────────────────
       body = await fetchFreeEntries(track, date, venue);
@@ -3380,7 +3859,7 @@ export default {
     // v2.35.3: POST is now also accepted on /api/picks/log + /api/picks/settle
     // (engine-accuracy logging). All other paths reject POST at the guard.
     if (request.method === "POST") {
-      const postPaths = new Set(["/api/feedback", "/api/picks/log", "/api/picks/settle", "/api/beta-ping", "/api/beta-request"]);
+      const postPaths = new Set(["/api/feedback", "/api/picks/log", "/api/picks/settle", "/api/beta-ping", "/api/beta-request", "/api/_admin/backfill", "/api/_admin/backfill-na"]);
       if (!postPaths.has(url.pathname)) {
         return jsonError("POST not allowed on this endpoint.", 405, origin);
       }
@@ -3418,6 +3897,13 @@ export default {
     }
 
     switch (pathname) {
+      // v2.40.0: PP backfill (admin-token gated)
+      case "/api/_admin/backfill-na":
+        if (request.method !== "POST") return jsonError("method not allowed", 405, origin);
+        return handleBackfillNA(request, env, origin);
+      case "/api/_admin/backfill":
+        return handleBackfill(request, env, origin);
+
       case "/api/entries":
         return handleEntries(request, env, origin);
 
