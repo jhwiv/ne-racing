@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260604-v2.40.2';
+var NE_APP_VERSION = '20260604-v2.40.3';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -620,8 +620,13 @@ function confidenceFor(scored) {
   const gap = scored.length > 1 ? scored[0].score - scored[1].score : 0;
   const topCompleteness = top.completeness || 0;
   const fieldSize = scored.length;
-  if (gap > 12 && topCompleteness >= 0.70 && fieldSize >= 5) return 'high';
-  if (gap > 6  && topCompleteness >= 0.50) return 'medium';
+  // v2.40.3: completeness gate softened. On Racing API Standard, topCompleteness
+  // is ~0 for US races (no rpr/tsr), which made every race "low" regardless of
+  // gap. Now: gap drives confidence; completeness only DOWNGRADES if it's nonzero
+  // but weak. If completeness data isn't available at all (~0), trust the gap.
+  const hasCompletenessData = topCompleteness > 0.05;
+  if (gap > 12 && fieldSize >= 5 && (!hasCompletenessData || topCompleteness >= 0.70)) return 'high';
+  if (gap > 6 && (!hasCompletenessData || topCompleteness >= 0.50)) return 'medium';
   return 'low';
 }
   global.RailbirdScoring = {
@@ -15327,10 +15332,12 @@ function runAdviceEngine() {
     const topCompleteness = scored[0].completeness;
     const fieldSize = scored.length;
 
-    // Improved confidence calibration (Task 3d)
+    // v2.40.3: confidence driven by gap when completeness data is unavailable
+    // (Racing API Standard returns no rpr/tsr for US -> topCompleteness ~ 0).
     let confidence;
-    if (gap > 12 && topCompleteness >= 0.70 && fieldSize >= 5) confidence = 'high';
-    else if (gap > 6 && topCompleteness >= 0.50) confidence = 'medium';
+    const _hasComp = topCompleteness > 0.05;
+    if (gap > 12 && fieldSize >= 5 && (!_hasComp || topCompleteness >= 0.70)) confidence = 'high';
+    else if (gap > 6 && (!_hasComp || topCompleteness >= 0.50)) confidence = 'medium';
     else confidence = 'low';
 
     let html = buildConfidenceBar(confidence);
@@ -15694,9 +15701,11 @@ function updateTopPicksCard(allScores) {
     const gap = group.length >= 2 ? group[0].score - group[1].score : 0;
     const topCompleteness = group[0].completeness || 0;
     const fieldSize = group.length;
+    // v2.40.3: same softening as confidenceFor() above
     let confidence;
-    if (gap > 12 && topCompleteness >= 0.70 && fieldSize >= 5) confidence = 'high';
-    else if (gap > 6 && topCompleteness >= 0.50) confidence = 'medium';
+    const _hasComp = topCompleteness > 0.05;
+    if (gap > 12 && fieldSize >= 5 && (!_hasComp || topCompleteness >= 0.70)) confidence = 'high';
+    else if (gap > 6 && (!_hasComp || topCompleteness >= 0.50)) confidence = 'medium';
     else confidence = 'low';
     raceInfo[raceId] = { gap, confidence, topCompleteness };
   });
@@ -16530,9 +16539,11 @@ function renderAdviceEnginePanel() {
     const gap = scored.length > 1 ? scored[0].score - scored[1].score : 0;
     const topCompleteness = scored[0].completeness;
     const fieldSize = scored.length;
+    // v2.40.3: gap-driven confidence when completeness data is unavailable
     let confidence;
-    if (gap > 12 && topCompleteness >= 0.70 && fieldSize >= 5) confidence = 'high';
-    else if (gap > 6 && topCompleteness >= 0.50) confidence = 'medium';
+    const _hasComp = topCompleteness > 0.05;
+    if (gap > 12 && fieldSize >= 5 && (!_hasComp || topCompleteness >= 0.70)) confidence = 'high';
+    else if (gap > 6 && (!_hasComp || topCompleteness >= 0.50)) confidence = 'medium';
     else confidence = 'low';
     html += buildConfidenceBar(confidence);
     // v2.40.1: same as Today tab — only auto-PASS on degenerate races.
