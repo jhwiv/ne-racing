@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260604-v2.40.1';
+var NE_APP_VERSION = '20260604-v2.40.2';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -15721,15 +15721,17 @@ function updateTopPicksCard(allScores) {
     (s.overlay || 0) > 0.08 && s.score >= 55 && s.race.id !== bestBetRaceId
   ).slice(0, 2);
 
-  // v2.40.1: Action Bets — any race with a meaningful gap that isn't the
-  // Best Bet or a Value Play. Completeness gate removed so action bets
-  // surface even when the API doesn't carry past-performance figures.
+  // v2.40.2: Action Bets — any race with even a modest gap that isn't the
+  // Best Bet or a Value Play. Lowered threshold from gap>=3 to gap>=1.5 because
+  // on the Racing API Standard plan (no rpr/tsr for US) scores are compressed,
+  // so a real edge often only shows as a 2-point gap. This keeps the ticket
+  // filled with calls instead of cascading into PASS.
   const valueRaceIds = new Set(valuePlays.map(v => v.race.id));
   const actionBets = [];
   Object.entries(raceMap).forEach(([raceId, group]) => {
     const { gap, confidence } = raceInfo[raceId];
     if (raceId === bestBetRaceId || valueRaceIds.has(raceId)) return;
-    if (gap >= 3) {
+    if (gap >= 1.5) {
       actionBets.push({ entry: group[0], gap, confidence });
     }
   });
@@ -15738,7 +15740,9 @@ function updateTopPicksCard(allScores) {
   // to keep the headline focused; the per-race advice panel carries the
   // full picture for the user.
   actionBets.sort((a, b) => b.entry.score - a.entry.score);
-  const topActionBets = actionBets.slice(0, 3);
+  // v2.40.2: cap raised from 3 to 5 so a thin-data card with many modest-gap
+  // races still produces a meaningful ticket instead of cascading to PASS.
+  const topActionBets = actionBets.slice(0, 5);
   const topAction = topActionBets[0] || null;
   const actionRaceIds = new Set(topActionBets.map(a => a.entry.race.id));
 
@@ -15755,7 +15759,8 @@ function updateTopPicksCard(allScores) {
     if (valueRaceIds.has(raceId)) return;
     if (actionRaceIds.has(raceId)) return;
     // Only PASS when gap is tiny — truly nothing to recommend.
-    if (gap < 3) {
+    // v2.40.2: lowered from gap<3 to gap<1.5 to match the Action Bet threshold.
+    if (gap < 1.5) {
       passRaceNums.push(group[0].race.num);
     }
   });
@@ -15862,18 +15867,9 @@ function updateTopPicksCard(allScores) {
     </div>`;
     ticketLines.push(`PASS — Races ${passRaceNums.join(', ')}`);
 
-    // v2.39.2: Jim fallback bet for each PASS race — for users who refuse to skip
-    passRaceNums.forEach(rNum => {
-      try {
-        const passEntry = Object.values(raceMap).find(group => group[0] && group[0].race && group[0].race.num === rNum);
-        if (!passEntry || !passEntry.length) return;
-        const passRace = passEntry[0].race;
-        const fb = buildJimFallbackBet(passRace, passEntry);
-        if (!fb) return;
-        html += renderJimFallbackBet(fb, false);
-        ticketLines.push(`JIM’S WAY — Race ${rNum}: #${fb.horse.pp} ${fb.horse.name} ${fb.mode === 'win' ? 'to WIN' : 'to PLACE'} — $${fb.amount}`);
-      } catch (_) {}
-    });
+    // v2.40.2: Jim's Way fallback per-PASS-race loop REMOVED from Today's Ticket.
+    // Stacking 10 Jim's Way tiles overwhelmed the ticket on thin-data days.
+    // Jim's Way still surfaces via click-to-reveal on individual race advice panels.
   }
 
   // ── Exotic of the Day: best exacta box across all races ──
