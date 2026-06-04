@@ -1,5 +1,68 @@
 # NE Racing — Changelog
 
+## v2.42.0 — Relative confidence + bet-size hints + true PASS (2026-06-04)
+
+Fixes the "every race is low confidence" UX problem at the **client** layer
+(v2.41.0 fixed the worker shape). The v2.40.3 confidence engine used an
+absolute-gap gate (`gap > 12 -> high; gap > 6 -> medium`) that was tuned for
+a world where every US horse had `rpr` / `tsr` figs. On the current Racing
+API NA feed those figs are null, scores compress into the 50s, and gap
+rarely clears 6 — so the card collapsed to uniform Low Confidence and the
+ticket cascaded into PASS even on races with a clear top pick.
+
+**New scoring helpers** (top-level, not inside the inline scoring IIFE):
+
+- `relativeConfidence(scored, fieldSize)` — computes the top runner's
+  z-score against the field mean and the normalized gap to #2. Maps to
+  High / Medium / Lean. Lean replaces "Low" everywhere except True PASS.
+  Calibrated so a typical 10-horse Saratoga card surfaces 1–2 High, 3–4
+  Medium, the rest Lean.
+- `isTruePass(race, scored)` — the only path that returns the hard "Pass"
+  label. Triggers when **≤3 live runners**, **>50% scratches**, OR
+  **zero runners with ML odds**. Matches the spec the user signed off on.
+- `betSizeHint(confidence, bankroll, isPass)` — stake recommendation per
+  race: High = 5% of bankroll, Medium = 2%, Lean = 1%, Pass = $0.
+- `buildBetSizeHint(hint)` — renders the hint as a pill (`hint-high` /
+  `hint-medium` / `hint-lean`) directly underneath the confidence bar.
+
+**Call sites updated** (the 5 places that previously inlined the absolute-
+gap gate):
+
+- `confidenceFor(scored)` in the scoring IIFE (line 617). Now delegates to
+  `window.relativeConfidence`, with a fallback to the legacy gate for test
+  harnesses that strip the helper.
+- Today-tab race-panel render (was 5 inline lines, now 3).
+- Today-tab ticket builder (`updateTopPicksCard`).
+- Handicap-mode advice render.
+- Best-Bet selection: 3-pass priority — High first, then Medium, then any
+  non-PASS race with the biggest gap. Best Bet is now **always populated**
+  unless every race on the card is True PASS.
+- Action Bets: every non-Best-Bet, non-Value-Play, non-True-PASS race now
+  qualifies (no more absolute-gap gate).
+- Pass Races row: only populated by True PASS.
+
+**UX additions:**
+
+- New "Lean" label (orange) appears on race panels that previously read
+  "Low Confidence." Visually: 3 filled bars (vs 2 for the old Low).
+- Bet-size hint pill ("Suggested stake: $X (Y% of bankroll)") shown under
+  every confidence bar on every non-PASS race — both in the Today tab and
+  in handicap mode.
+- New `.bet-size-hint`, `.hint-high`, `.hint-medium`, `.hint-lean` CSS
+  classes; new `.conf-seg.orange` for Lean.
+
+**Bankroll cache:** `window._bankrollCache` is populated at the top of
+`runAdviceEngine()` from `getStore().settings.startingBankroll`. Defaults
+to $1000 if the store isn't loaded yet. The hint helpers read from this
+cache so they don't have to re-read the store on every render.
+
+**Not in this release** (deferred per user):
+
+- New scoring weights (form 25 / btn 20 / etc.). With NA data still lacking
+  real form/btn fields, reweighting would shake the engine without improving
+  signal. Revisit once Brisnet integration lands.
+- Per-card scoring data purchase (Brisnet) — user explicitly deferred.
+
 ## v2.41.0 — Worker-side scoring-field enrichment shim (2026-06-04)
 
 Fixes the "uniform low confidence" UX problem caused by Racing API's NA entries

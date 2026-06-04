@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260604-v2.40.3';
+var NE_APP_VERSION = '20260604-v2.42.0';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -615,19 +615,23 @@ function scoreToGrade(score) {
 }
 
 function confidenceFor(scored) {
-  if (!scored.length) return 'low';
-  const top = scored[0];
+  // v2.42.0: delegate to the relative-confidence engine. Kept as a thin
+  // wrapper so existing callers (incl. window.RailbirdScoring.confidenceFor)
+  // keep working without code changes. The engine maps to High/Medium/Lean;
+  // legacy callers that switch on 'low' still treat 'lean' as "soft call."
+  // (We reach for `global.relativeConfidence` because the engine helper
+  // lives outside this IIFE — it's a top-level function in index.html. The
+  // fallback `gap > 12 -> high; gap > 6 -> medium` is only ever used if the
+  // page is loaded mid-parse or the helper file is stripped from a test
+  // harness; in normal app runtime the relative engine always wins.)
+  if (!scored || !scored.length) return 'low';
+  if (typeof global.relativeConfidence === 'function') {
+    return global.relativeConfidence(scored, scored.length);
+  }
   const gap = scored.length > 1 ? scored[0].score - scored[1].score : 0;
-  const topCompleteness = top.completeness || 0;
-  const fieldSize = scored.length;
-  // v2.40.3: completeness gate softened. On Racing API Standard, topCompleteness
-  // is ~0 for US races (no rpr/tsr), which made every race "low" regardless of
-  // gap. Now: gap drives confidence; completeness only DOWNGRADES if it's nonzero
-  // but weak. If completeness data isn't available at all (~0), trust the gap.
-  const hasCompletenessData = topCompleteness > 0.05;
-  if (gap > 12 && fieldSize >= 5 && (!hasCompletenessData || topCompleteness >= 0.70)) return 'high';
-  if (gap > 6 && (!hasCompletenessData || topCompleteness >= 0.50)) return 'medium';
-  return 'low';
+  if (gap > 12 && scored.length >= 5) return 'high';
+  if (gap > 6) return 'medium';
+  return 'lean';
 }
   global.RailbirdScoring = {
     scoreRace: scoreRace,
@@ -3819,7 +3823,14 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .conf-seg { height: 5px; flex: 1; border-radius: 2px; background: #e8e8e8; }
 .conf-seg.green { background: var(--color-positive); }
 .conf-seg.yellow { background: var(--color-gold); }
+.conf-seg.orange { background: #d97706; }
 .conf-seg.red { background: var(--color-negative); }
+/* v2.42.0: bet-size hint pill shown under the confidence bar on every race row. */
+.bet-size-hint { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; margin: 0.15rem 0 0.55rem 0; letter-spacing: 0.01em; border: 1px solid transparent; }
+.bet-size-hint.hint-high   { background: rgba(34,139,34,0.10); border-color: rgba(34,139,34,0.30); color: var(--color-positive); }
+.bet-size-hint.hint-medium { background: rgba(193,150,43,0.12); border-color: rgba(193,150,43,0.35); color: #8a6b1f; }
+.bet-size-hint.hint-lean   { background: rgba(217,119,6,0.10);  border-color: rgba(217,119,6,0.32);  color: #8c4e07; }
+.bet-size-hint .text-xs { font-weight: 500; opacity: 0.78; margin-left: 0.25rem; }
 .suggested-bet-chip {
   display: inline-flex; align-items: center; gap: 4px;
   background: var(--color-gold-light); border: 1px solid rgba(201,168,76,0.4);
@@ -8967,6 +8978,7 @@ tr:has(> td > .detail-stat-row),
 .conf-seg { background: rgba(30,42,54,0.08) !important; }
 .conf-seg.green { background: var(--msp-turf) !important; }
 .conf-seg.yellow { background: var(--msp-brass) !important; }
+.conf-seg.orange { background: var(--msp-brass) !important; }
 .conf-seg.red { background: var(--msp-red) !important; }
 
 /* Settings modal h2/h3 — dark ink on paper */
@@ -15140,6 +15152,12 @@ function runAdviceEngine() {
   if (!data || !data.races) return;
   const races = data.races;
   _adviceByRaceId = {}; // reset cache
+  // v2.42.0: cache bankroll on window so the relative-confidence bet-size hint
+  // can format dollar amounts without re-reading getStore() on every render.
+  try {
+    const _s = (typeof getStore === 'function') ? getStore() : null;
+    window._bankrollCache = (_s && _s.settings && _s.settings.startingBankroll) || 1000;
+  } catch (_) { window._bankrollCache = 1000; }
   const today = getTodayStr();
   const code = getActiveTrack();
   const biasLogEntry = (data.bias || []).find(b => b.date === today);
@@ -15332,23 +15350,16 @@ function runAdviceEngine() {
     const topCompleteness = scored[0].completeness;
     const fieldSize = scored.length;
 
-    // v2.40.3: confidence driven by gap when completeness data is unavailable
-    // (Racing API Standard returns no rpr/tsr for US -> topCompleteness ~ 0).
-    let confidence;
-    const _hasComp = topCompleteness > 0.05;
-    if (gap > 12 && fieldSize >= 5 && (!_hasComp || topCompleteness >= 0.70)) confidence = 'high';
-    else if (gap > 6 && (!_hasComp || topCompleteness >= 0.50)) confidence = 'medium';
-    else confidence = 'low';
+    // v2.42.0: relative-confidence engine. Replaces the old absolute-gap gate
+    // ("gap > 12 -> high") which collapsed almost every race to "low" on the
+    // current Racing API NA feed. Now ranks each race's top runner against the
+    // FIELD MEAN; emits High / Medium / Lean. True PASS is now a separate
+    // narrow gate (<=3 live runners, >50% scratches, or no odds).
+    const isAutoPass = isTruePass(race, scored);
+    const confidence = isAutoPass ? 'low' : relativeConfidence(scored, fieldSize);
+    const _hint = betSizeHint(confidence, (window._bankrollCache || null), isAutoPass);
 
-    let html = buildConfidenceBar(confidence);
-
-    // v2.40.1: PASS reverted to pre-v2.0 behavior — only auto-PASS in
-    // genuinely degenerate cases (no clear leader on a near-empty field).
-    // The completeness-based gate was strangling every race when Racing
-    // API Standard returned no rpr/tsr, causing the all-PASS card.
-    // Confidence ('low'/'medium'/'high') still surfaces as a label so the
-    // user sees how strong the pick is without us hiding it.
-    const isAutoPass = fieldSize < 4 && gap < 2;
+    let html = buildConfidenceBar(confidence) + (isAutoPass ? '' : buildBetSizeHint(_hint));
 
     scored.forEach((s, i) => {
       const grade = scoreToGrade(s.score);
@@ -15470,17 +15481,93 @@ function getExpertNames(race, horse) {
   return out;
 }
 
+// v2.42.0: Relative confidence helper. Replaces the per-race absolute-gap gate
+// that lived inline at five separate call sites. The old gate ("gap > 12 ->
+// high; gap > 6 -> medium") was data-source-tuned for a world where rpr/tsr
+// existed for US horses, and on the current Racing API NA feed it collapsed
+// almost every race into "low" even when the engine had a clear top pick.
+//
+// New logic: score the top runner's separation from the FIELD MEAN (not just
+// the runner-up), normalize by field standard deviation, and map the z-score
+// to High / Medium / Lean. Lean is the new soft floor; we never return "low"
+// unless the race meets isTruePass().
+//
+// Calibration: thresholds chosen so that on a typical 10-horse Saratoga card,
+// roughly 1-2 races land High, 3-4 Medium, the rest Lean. PASS only fires on
+// genuinely degenerate races (handled separately by isTruePass).
+function relativeConfidence(scored, fieldSize) {
+  if (!scored || !scored.length) return 'lean';
+  if (fieldSize == null) fieldSize = scored.length;
+  if (fieldSize < 4) return 'lean'; // too thin to claim separation
+  const scores = scored.map(s => s.score || 0);
+  const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+  let variance = scores.reduce((a, b) => a + (b - mean) * (b - mean), 0) / scores.length;
+  const std = Math.sqrt(Math.max(variance, 0.0001));
+  const topZ = (scores[0] - mean) / std;
+  // Secondary signal: gap-to-#2 normalized by field std (catches the "clear
+  // top horse over a tightly bunched pack" case that z alone can miss).
+  const gap2 = scores.length > 1 ? (scores[0] - scores[1]) / std : topZ;
+  // High: top runner is well above the field AND there is meaningful separation
+  //       from the runner-up. Both must be true, otherwise it's just a flat card.
+  if (topZ >= 1.35 && gap2 >= 0.55 && fieldSize >= 5) return 'high';
+  // Medium: still clearly above the field, even if #2 is close behind.
+  if (topZ >= 0.85 && fieldSize >= 4) return 'medium';
+  // Anything else is a Lean — a soft call, not a Pass.
+  return 'lean';
+}
+
+// v2.42.0: True PASS — only when the race is genuinely unbettable. Per user
+// spec: <=3 unscratched runners, OR >50% scratches, OR no morning-line odds.
+function isTruePass(race, scored) {
+  if (!scored || !scored.length) return true;
+  const all = scored.length;
+  const scratched = scored.filter(s => s.horse && s.horse.scratched).length;
+  const live = all - scratched;
+  if (live <= 3) return true;
+  if (all > 0 && (scratched / all) > 0.50) return true;
+  // Odds check: a race with literally zero ML odds anywhere is degenerate.
+  const withOdds = scored.filter(s => {
+    const ml = s.horse && s.horse.ml;
+    return ml && parseOddsToNum(ml) > 0;
+  }).length;
+  if (withOdds === 0) return true;
+  return false;
+}
+
+// v2.42.0: Stake-size hint per race. Tied to bankroll and confidence label so
+// the user sees a concrete dollar amount on every race row, not just on the
+// daily ticket. Lean still gets a non-zero (1%) suggestion — the user pushed
+// back hard on "too much low confidence," so we honor the call but small.
+function betSizeHint(confidence, bankroll, isPass) {
+  if (isPass) return { label: 'Pass', pct: 0, dollars: 0 };
+  const bk = (typeof bankroll === 'number' && bankroll > 0) ? bankroll : 1000;
+  if (confidence === 'high')   return { label: 'High',   pct: 5, dollars: Math.max(2, Math.round(bk * 0.05)) };
+  if (confidence === 'medium') return { label: 'Medium', pct: 2, dollars: Math.max(2, Math.round(bk * 0.02)) };
+  return { label: 'Lean', pct: 1, dollars: Math.max(2, Math.round(bk * 0.01)) };
+}
+
 function buildConfidenceBar(level) {
   const segs = 10;
-  const filled = level === 'high' ? 8 : level === 'medium' ? 5 : 2;
-  const cls = level === 'high' ? 'green' : level === 'medium' ? 'yellow' : 'red';
-  const label = level === 'high' ? 'High Confidence' : level === 'medium' ? 'Medium Confidence' : 'Low Confidence';
+  // v2.42.0: "low" renamed to "lean" (soft call, not a skip). "low" still
+  // accepted as an alias from legacy call sites until the next sweep.
+  const norm = (level === 'low') ? 'lean' : level;
+  const filled = norm === 'high' ? 8 : norm === 'medium' ? 5 : norm === 'lean' ? 3 : 2;
+  const cls = norm === 'high' ? 'green' : norm === 'medium' ? 'yellow' : norm === 'lean' ? 'orange' : 'red';
+  const label = norm === 'high' ? 'High Confidence' : norm === 'medium' ? 'Medium Confidence' : norm === 'lean' ? 'Lean' : 'Low Confidence';
   let bars = '';
   for (let i = 0; i < segs; i++) bars += `<div class="conf-seg ${i < filled ? cls : ''}"></div>`;
   return `<div style="margin-bottom:0.6rem">
     <div class="text-xs text-muted" style="margin-bottom:3px">${label}</div>
     <div class="confidence-bar">${bars}</div>
   </div>`;
+}
+
+// v2.42.0: Render the bet-size hint pill underneath the confidence bar. Always
+// shown when we have a non-pass confidence; on Pass races the caller suppresses.
+function buildBetSizeHint(hint) {
+  if (!hint || !hint.dollars) return '';
+  const cls = hint.label === 'High' ? 'hint-high' : hint.label === 'Medium' ? 'hint-medium' : 'hint-lean';
+  return `<div class="bet-size-hint ${cls}" title="Suggested stake at your current bankroll (${hint.pct}% of $${(window._bankrollCache||1000).toLocaleString()})">Suggested stake: $${hint.dollars} <span class="text-xs text-muted">(${hint.pct}% of bankroll)</span></div>`;
 }
 
 function scoreToGrade(score) {
@@ -15695,32 +15782,50 @@ function updateTopPicksCard(allScores) {
     raceMap[s.race.id].push(s);
   });
 
-  // Compute per-race confidence and gap
+  // Compute per-race confidence and gap.
+  // v2.42.0: switched from absolute-gap gate to the new relativeConfidence()
+  // helper so the ticket honors the same High/Medium/Lean labels the race
+  // panels show. True PASS is still flagged separately via isTruePass().
   const raceInfo = {};
   Object.entries(raceMap).forEach(([raceId, group]) => {
     const gap = group.length >= 2 ? group[0].score - group[1].score : 0;
     const topCompleteness = group[0].completeness || 0;
     const fieldSize = group.length;
-    // v2.40.3: same softening as confidenceFor() above
-    let confidence;
-    const _hasComp = topCompleteness > 0.05;
-    if (gap > 12 && fieldSize >= 5 && (!_hasComp || topCompleteness >= 0.70)) confidence = 'high';
-    else if (gap > 6 && (!_hasComp || topCompleteness >= 0.50)) confidence = 'medium';
-    else confidence = 'low';
-    raceInfo[raceId] = { gap, confidence, topCompleteness };
+    const raceObj = group[0] && group[0].race ? group[0].race : { id: raceId };
+    const truePass = isTruePass(raceObj, group);
+    const confidence = truePass ? 'low' : relativeConfidence(group, fieldSize);
+    raceInfo[raceId] = { gap, confidence, topCompleteness, truePass };
   });
 
-  // Best Bet: highest composite score with best confidence
+  // v2.42.0: Best Bet selection.
+  // Priority order:
+  //   1. Any High-confidence race — pick the one with the biggest gap.
+  //   2. If no High exists, any Medium — pick the one with the biggest gap.
+  //   3. If no Medium exists, any non-PASS race — pick the one with the
+  //      biggest gap (this is the "always populate Best Bet" behavior).
+  // Only when the entire card is True PASS do we leave bestBetEntry null.
   let bestBetEntry = null;
   let bestGap = -1;
+  // Pass 1: High only.
   Object.entries(raceMap).forEach(([raceId, group]) => {
-    const { gap, confidence } = raceInfo[raceId];
-    if (gap > 12 && gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
+    const info = raceInfo[raceId];
+    if (info.truePass) return;
+    if (info.confidence === 'high' && info.gap > bestGap) { bestGap = info.gap; bestBetEntry = group[0]; }
   });
+  // Pass 2: Medium fallback.
   if (!bestBetEntry) {
     Object.entries(raceMap).forEach(([raceId, group]) => {
-      const { gap } = raceInfo[raceId];
-      if (gap > bestGap) { bestGap = gap; bestBetEntry = group[0]; }
+      const info = raceInfo[raceId];
+      if (info.truePass) return;
+      if (info.confidence === 'medium' && info.gap > bestGap) { bestGap = info.gap; bestBetEntry = group[0]; }
+    });
+  }
+  // Pass 3: any non-pass race.
+  if (!bestBetEntry) {
+    Object.entries(raceMap).forEach(([raceId, group]) => {
+      const info = raceInfo[raceId];
+      if (info.truePass) return;
+      if (info.gap > bestGap) { bestGap = info.gap; bestBetEntry = group[0]; }
     });
   }
 
@@ -15730,19 +15835,17 @@ function updateTopPicksCard(allScores) {
     (s.overlay || 0) > 0.08 && s.score >= 55 && s.race.id !== bestBetRaceId
   ).slice(0, 2);
 
-  // v2.40.2: Action Bets — any race with even a modest gap that isn't the
-  // Best Bet or a Value Play. Lowered threshold from gap>=3 to gap>=1.5 because
-  // on the Racing API Standard plan (no rpr/tsr for US) scores are compressed,
-  // so a real edge often only shows as a 2-point gap. This keeps the ticket
-  // filled with calls instead of cascading into PASS.
+  // v2.42.0: Action Bets — every non-PASS race that didn't claim the Best Bet
+  // or a Value Play slot. With relative confidence, even a Lean has *some*
+  // edge worth a small ticket line, so we no longer gate on absolute gap.
+  // True-PASS races are excluded explicitly.
   const valueRaceIds = new Set(valuePlays.map(v => v.race.id));
   const actionBets = [];
   Object.entries(raceMap).forEach(([raceId, group]) => {
-    const { gap, confidence } = raceInfo[raceId];
+    const info = raceInfo[raceId];
     if (raceId === bestBetRaceId || valueRaceIds.has(raceId)) return;
-    if (gap >= 1.5) {
-      actionBets.push({ entry: group[0], gap, confidence });
-    }
+    if (info.truePass) return;
+    actionBets.push({ entry: group[0], gap: info.gap, confidence: info.confidence });
   });
   // v2.40.1: was capped at 1 — lift to a handful so the ticket actually
   // reflects a normal handicapping day on a thin-data API. We still cap
@@ -15755,21 +15858,16 @@ function updateTopPicksCard(allScores) {
   const topAction = topActionBets[0] || null;
   const actionRaceIds = new Set(topActionBets.map(a => a.entry.race.id));
 
-  // v2.40.1: Pass Races — only races we couldn't categorize. Previous
-  // logic also passed for gap<5 OR low confidence OR low completeness,
-  // which (combined with the completeness floor on Best Bet / Action Bet)
-  // pushed the entire card into PASS when the API was thin. Now: any race
-  // that didn't pick up a Best Bet / Value Play / Action Bet slot — i.e.
-  // genuinely no edge to call out — lands here.
+  // v2.42.0: True PASS only — a race lands in the Pass row only when
+  // isTruePass() flagged it (<=3 live runners, >50% scratches, or no odds).
+  // Everything else is a Lean at minimum, surfaced as an Action Bet or
+  // Value Play. This is the "never PASS the whole card" promise.
   const passRaceNums = [];
   Object.entries(raceMap).forEach(([raceId, group]) => {
-    const { gap } = raceInfo[raceId];
     if (raceId === bestBetRaceId) return;
     if (valueRaceIds.has(raceId)) return;
     if (actionRaceIds.has(raceId)) return;
-    // Only PASS when gap is tiny — truly nothing to recommend.
-    // v2.40.2: lowered from gap<3 to gap<1.5 to match the Action Bet threshold.
-    if (gap < 1.5) {
+    if (raceInfo[raceId].truePass) {
       passRaceNums.push(group[0].race.num);
     }
   });
@@ -16539,15 +16637,12 @@ function renderAdviceEnginePanel() {
     const gap = scored.length > 1 ? scored[0].score - scored[1].score : 0;
     const topCompleteness = scored[0].completeness;
     const fieldSize = scored.length;
-    // v2.40.3: gap-driven confidence when completeness data is unavailable
-    let confidence;
-    const _hasComp = topCompleteness > 0.05;
-    if (gap > 12 && fieldSize >= 5 && (!_hasComp || topCompleteness >= 0.70)) confidence = 'high';
-    else if (gap > 6 && (!_hasComp || topCompleteness >= 0.50)) confidence = 'medium';
-    else confidence = 'low';
+    // v2.42.0: relative-confidence engine + true-PASS gate (matches Today tab).
+    const isAutoPassEarly = isTruePass(race, scored);
+    const confidence = isAutoPassEarly ? 'low' : relativeConfidence(scored, fieldSize);
+    const _hintEarly = betSizeHint(confidence, (window._bankrollCache || null), isAutoPassEarly);
     html += buildConfidenceBar(confidence);
-    // v2.40.1: same as Today tab — only auto-PASS on degenerate races.
-    const isAutoPassEarly = fieldSize < 4 && gap < 2;
+    if (!isAutoPassEarly) html += buildBetSizeHint(_hintEarly);
 
     scored.forEach((s,i) => {
       const grade = scoreToGrade(s.score);
