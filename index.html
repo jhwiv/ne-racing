@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260604-v2.42.0';
+var NE_APP_VERSION = '20260604-v2.42.1';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -15394,6 +15394,12 @@ function runAdviceEngine() {
       }
 
       let rationale = buildRationale(s, race, confidence, i);
+      // v2.42.1: skip the rationale row entirely when buildRationale returns ''
+      // (no positive talking points for this runner). Previously the fallback
+      // string "Limited data — add speed figs and connections..." was rendered,
+      // which on the current Racing API NA feed appeared under almost every
+      // horse and was pure noise.
+      const rationaleHtml = rationale ? `<div class="advice-rationale">${rationale}</div>` : '';
 
       const betPill = i === 0 && !isAutoPass ? (getBettingMode() === 'real'
         ? ` <a class="advice-bet-pill" href="${buildBetUrl(race.num)}" target="_blank" rel="noopener">Bet &#8594;</a>`
@@ -15402,7 +15408,7 @@ function runAdviceEngine() {
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
           <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${oddsDisplay}${overlayPct} ${valueFlag}${convictionBadge}${equipBadge}${betPill}</div>
-          <div class="advice-rationale">${rationale}</div>
+          ${rationaleHtml}
         </div>
         <div class="advice-score">${s.score.toFixed(0)}</div>
       </div>`;
@@ -15617,7 +15623,14 @@ function buildRationale(s, race, confidence, rank) {
     if (daysSince > 60) parts.push('long layoff (' + daysSince + 'd)');
     else if (daysSince >= 14 && daysSince <= 28) parts.push('fresh (' + daysSince + 'd)');
   }
-  if (!parts.length) parts.push('Limited data — add speed figs and connections for better analysis');
+  // v2.42.1: When no positive talking points hit, return empty string instead
+  // of the old "Limited data — add speed figs and connections" nag. On the
+  // current Racing API NA feed that fallback fired on most rows (because
+  // jockeyPct/trainerPct thresholds at 18% only catch the truly top
+  // connections, and figs are usually empty), turning into pure noise.
+  // Callers should treat an empty rationale as "nothing notable to say"
+  // rather than render the placeholder.
+  if (!parts.length) return '';
   return parts.join(' · ');
 }
 
@@ -16659,6 +16672,8 @@ function renderAdviceEnginePanel() {
       else if (i === 0 && s.expertMatchCount >= 2) convictionBadge = ' <span class="badge-conviction">HIGH CONVICTION</span>';
 
       const rationale = buildRationale(s, race, confidence, i);
+      // v2.42.1: skip empty rationale row (see Today-tab comment for context)
+      const rationaleHtmlHC = rationale ? `<div class="advice-rationale">${rationale}</div>` : '';
 
       // Live odds display
       const liveOdds = s.horse.liveOdds;
@@ -16684,7 +16699,7 @@ function renderAdviceEnginePanel() {
         <div style="flex:1;min-width:0">
           <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">ML: '+ml+'</span>' : ''}${liveOddsHtml}${overlayPct} ${valueFlag}${convictionBadge}${hcBetPill}</div>
           ${buildAngleBadges(s.horse, race)}
-          <div class="advice-rationale">${rationale}</div>
+          ${rationaleHtmlHC}
           ${i === 0 ? buildWhyThisPick(s, race) : ''}
           ${showBreakdown ? buildScoreBreakdownHtml(s) : ''}
         </div>

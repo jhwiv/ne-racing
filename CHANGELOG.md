@@ -1,5 +1,20 @@
 # NE Racing — Changelog
 
+## v2.42.1 — Suppress empty-rationale nag line (2026-06-04)
+
+`buildRationale()` used to fall back to the string
+`"Limited data — add speed figs and connections for better analysis"`
+whenever no positive talking point fired for a horse (top-rated, hot
+connections at >18% J or T, class drop, lone speed, expert pick,
+bullet workout, freshness, etc.). On the current Racing API NA feed
+those thresholds rarely trip, so the fallback was rendering under
+almost every runner — pure noise, no signal.
+
+- `buildRationale()` now returns `''` instead of the nag string.
+- Both render sites (Today-tab race panel, Handicap-mode advice panel)
+  check for empty rationale and omit the `<div class="advice-rationale">`
+  entirely so we don't leave an empty padded block under the horse name.
+
 ## v2.42.0 — Relative confidence + bet-size hints + true PASS (2026-06-04)
 
 Fixes the "every race is low confidence" UX problem at the **client** layer
