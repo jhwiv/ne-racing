@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.47.1-brisnet';
+var NE_APP_VERSION = '20260605-v2.47.2-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -14926,9 +14926,13 @@ function buildRaceCardHTML(race) {
   const hasLiveOdds = horses.some(h => h.liveOdds);
   const liveIndicator = hasLiveOdds ? ' <span style="font-size:0.6rem;color:var(--color-positive);font-weight:700;letter-spacing:0.5px">LIVE</span>' : '';
   // Race status badge (NEXT / LIVE NOW / OFFICIAL)
+  // v2.47.2: also treat presence of normalized result data as "official"
+  // so a race that has gone final but lacks the _official flag (e.g. set
+  // only by fetchLiveResults) still flips the badge correctly.
   let statusBadge = '';
   (function() {
-    if (race._result === 'official' || race._official) {
+    const hasResults = race._resultData && Array.isArray(race._resultData.results) && race._resultData.results.length;
+    if (race._result === 'official' || race._official || hasResults) {
       statusBadge = '<span class="race-status-badge badge-complete">OFFICIAL</span>';
     } else if (race.postTime && race.postTime !== 'TBD') {
       const isToday = !loadedRaceDate || loadedRaceDate === getTodayStr();
@@ -15214,6 +15218,17 @@ function getCurrentRaceIndex(races) {
 
 /** Get race status relative to current time: 'upcoming', 'live', 'complete' */
 function getRaceStatus(race, raceIndex, activeIndex, races) {
+  // v2.47.2: Single source of truth — if we have official results for this
+  // race, it's COMPLETE regardless of clock. Previously the badge logic
+  // relied on a time window (`nowMin <= pt + 30 → 'live'`) which left the
+  // LIVE pill on a race that had already gone official and was rendering
+  // its FINAL strip with payouts in the same card. Race results are
+  // authoritative; only fall back to the clock heuristic when results
+  // haven't arrived yet.
+  if (race && (race._official === true || race._result === 'official' ||
+               (race._resultData && Array.isArray(race._resultData.results) && race._resultData.results.length))) {
+    return 'complete';
+  }
   if (loadedRaceDate && loadedRaceDate !== getTodayStr()) return 'upcoming';
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -19099,6 +19114,14 @@ async function fetchLiveOdds() {
   }
 
   if (anyUpdated) {
+    // v2.47.2: stamp every race that got odds with the current time so the
+    // "Updated H:MM" line in the card meta actually reflects live-data
+    // freshness, not the time the user last hand-edited the card. The
+    // previous behavior only set race.updated when a horse was added
+    // through the manual form, which made the stamp permanently stale
+    // during live racing.
+    const _now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    races.forEach(function(r) { r.updated = _now; });
     saveTrackData(data);
     renderTodayTab();
     // Re-run advice engine to update overlay calculations with live odds
@@ -19690,6 +19713,10 @@ async function fetchLiveScratches() {
     if (newScratches) {
       unviewedScratches += newScratches;
       updateScratchBadge();
+      // v2.47.2: stamp affected races so the Updated meta line reflects
+      // when scratch data last refreshed.
+      const _now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      (data.races || []).forEach(function(r) { r.updated = _now; });
       saveTrackData(data);
       renderTodayTab();
     }
@@ -20003,12 +20030,16 @@ async function fetchLiveResults() {
 
     // Store results on race objects for Today tab inline display
     var data = getTrackData();
+    // v2.47.2: stamp races touched by the results merge so the Updated
+    // meta line reflects when results last refreshed.
+    var _now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     allRaces.forEach(function(rr) {
       var race = (data.races || []).find(function(r) { return r.num === rr.raceNumber; });
       if (race) {
         race._resultData = rr;
         race._result = 'official';
         race._official = true;
+        race.updated = _now;
       }
     });
 

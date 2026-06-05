@@ -1,5 +1,13 @@
 # NE Racing — Changelog
 
+## v2.47.2-brisnet — Live status badge + Updated stamp freshness (2026-06-05)
+
+User screenshot at 3:46 PM ET showed R7 (post 3:16) with the FINAL strip + payouts rendered inside the card but a LIVE pill on the header, and the meta line stamped "Updated 1:40 PM" — two hours stale. Two real bugs:
+
+**Bug A — Time-window heuristic wins over actual results.** `getRaceStatus()` returned `'live'` whenever `nowMin <= postMin + 30`, regardless of whether results were already in. R7 at +30 min was still labeled LIVE despite the FINAL strip rendering directly below it. Fix: treat presence of `race._official` / `race._result === 'official'` / a populated `race._resultData.results` as authoritative — those force `'complete'` and skip the clock heuristic. Same logic applied to the in-card statusBadge (line 14931) so both pills agree.
+
+**Bug B — `race.updated` was only set on manual horse-add.** Live odds polling, scratches polling, and results polling never touched the field, so the meta line froze at whatever time the user last hand-edited the card. Fix: stamp `race.updated = HH:MM` on every successful live-data merge in `fetchLiveOdds`, `fetchLiveScratches`, and the results write inside `fetchLiveResults`. The stamp now genuinely reflects when each race's data last refreshed from the worker.
+
 ## v2.47.1-brisnet — Bet auto-grading fixes (2026-06-05)
 
 User reported bets were sitting unresolved after races went official. Three real bugs identified and fixed:
