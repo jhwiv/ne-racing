@@ -1,5 +1,53 @@
 # NE Racing — Changelog
 
+## v2.46.2-brisnet — Brisnet PP actually wired into scoring (2026-06-05)
+
+**Root cause of "11 lean".** v2.46.0 + v2.46.1 shipped the Brisnet PP
+overlay end-to-end on the worker side — `mergeBrisnetIntoEntries()`
+attached `primePower`, `quirinSpeed`, `brisSpeedPar`, `daysOff`,
+`dataCompleteness`, and `tjCombo365` to 130 of 146 SAR runners. But two
+client-side bugs ate the overlay before it could influence the score:
+
+1. **`transformWorkerEntries()` was dropping Brisnet fields** when it
+   normalised the worker payload into the app's internal horse format.
+   `primePower`, `quirinSpeed`, `brisSpeedPar`, `daysOff`,
+   `dataCompleteness`, `tjCombo365`, `speedFigsExtended`, `lastClassRaw`,
+   `ppHistory`, and `ppSummary` were never copied onto `race.horses[i]`.
+   The scoring engine's `compositeForHorse()` reads `horse.primePower`
+   at line 260, but it was always seeing `undefined`.
+2. **The default scoring engine was still v1.** v1 is the legacy inline
+   composite (Speed 35 / Class 20 / Pace 15 / T/J 15 / Bias 10 / Fresh
+   5) that does not look at `primePower` at all. v2
+   (`RailbirdScoring.scoreRace`) does. With v1 active, even if the
+   transform passed PP through, scoring would still ignore it.
+
+**The fix.**
+
+- `transformWorkerEntries()` now passes the full Brisnet overlay field
+  set through to each horse object.
+- `RailbirdEngine`'s `DEFAULT_ENGINE` flipped from `'v1'` to `'v2'`. Users
+  who haven't explicitly pinned an engine via URL or localStorage now run
+  v2, where Prime Power feeds the speed sub-score.
+
+**Live simulation (worker payload + v2 engine, v2.46.1 thresholds):**
+
+- Distribution: **8 High / 6 Medium / 0 Lean** for today's Saratoga card.
+- R1, R4, R5, R7, R9, R10, R12, R14 trip High.
+- R9 Pashmina remains the standout Best Bet target.
+
+This explains the user's "11 lean" report on v2.46.1: with v1 active and
+PP dropped on the transform, completeness penalties were firing across
+most of the card and the composite spread had collapsed inside the new
+lowered z-thresholds. Both root causes are now closed.
+
+**Cache bust.** `NE_APP_VERSION` and `version.json` bumped to
+`20260605-v2.46.2-brisnet`. The boot-time version-poll force-refresh
+will kick in on next page load.
+
+**No worker changes.** Still deploy `1726ca613a814f8b8620df4d6c797554`.
+
+---
+
 ## v2.46.1-brisnet — Confidence threshold recalibration + cache-bust (2026-06-05)
 
 Two small but important post-launch fixes after the v2.46.0 ship.

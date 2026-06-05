@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.46.1-brisnet';
+var NE_APP_VERSION = '20260605-v2.46.2-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -49,7 +49,12 @@ var RAILBIRD_VERSION = 'v2.38.15-jockey-trainer-search';
 (function(global) {
   "use strict";
   var ALLOWED = { v1: true, v2: true };
-  var DEFAULT_ENGINE = 'v1';
+  // v2.46.2: default engine flipped from v1 -> v2. v2 (RailbirdScoring.scoreRace)
+  // reads horse.primePower / quirinSpeed / brisSpeedPar and blends Prime Power
+  // into the speed sub-score. v1 (the legacy inline path further down in this
+  // file) ignores those fields, which is why Brisnet's overlay produced no
+  // visible scoring change pre-v2.46.2 even after mergeBrisnetIntoEntries() ran.
+  var DEFAULT_ENGINE = 'v2';
   var LS_ENGINE = 'railbird.engine';
   var LS_DEVICE = 'railbird.deviceId';
 
@@ -18869,6 +18874,20 @@ function transformWorkerEntries(json) {
       equipment: e.equipment || '',
       medication: e.medication || '',
       claimingPrice: e.claimingPrice || null,
+      // v2.46.2: pass through Brisnet PP overlay fields so the scoring engine
+      // and dataCompleteness() actually see them. Without this the worker's
+      // mergeBrisnetIntoEntries() overlay was being silently dropped on the
+      // client transform step, leaving composite scores blind to Prime Power.
+      primePower: (e.primePower != null && isFinite(e.primePower)) ? e.primePower : null,
+      quirinSpeed: (e.quirinSpeed != null) ? e.quirinSpeed : null,
+      brisSpeedPar: (e.brisSpeedPar != null) ? e.brisSpeedPar : null,
+      daysOff: (e.daysOff != null) ? e.daysOff : null,
+      speedFigsExtended: Array.isArray(e.speedFigsExtended) ? e.speedFigsExtended : null,
+      lastClassRaw: e.lastClassRaw || null,
+      tjCombo365: e.tjCombo365 || null,
+      dataCompleteness: (typeof e.dataCompleteness === 'number') ? e.dataCompleteness : null,
+      ppHistory: Array.isArray(e.ppHistory) ? e.ppHistory : null,
+      ppSummary: e.ppSummary || null,
       notes: '',
       wps: []
     })),
