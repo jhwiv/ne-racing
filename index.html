@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.46.5-brisnet';
+var NE_APP_VERSION = '20260605-v2.46.6-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -9485,6 +9485,13 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
   var BETA_HASH = 'c5e6c12d42ceae0ccc49585c2ca2a59c43ffb108a4136ba8bf728017acfeb8b3'; // sha256("SARATOGA2026")
   var FLAG_KEY  = 'railbird-beta-unlocked-v1';
   var COOKIE_KEY = 'rb_unlock';
+  // v2.46.6: PWA start_url token. iOS sandboxes Home Screen PWAs from the
+  // originating browser, so cookies/localStorage do NOT carry over. The fix
+  // is to bake a static unlock token into the manifest start_url so the PWA
+  // boot URL itself proves the user already unlocked. Token validates via
+  // SHA-256 (offline, no worker round-trip).
+  var PWA_TOKEN      = 'RB-PWA-SAR2026-ae48bf762b56809a';
+  var PWA_TOKEN_HASH = '8f5d34462b88606bc190a4bd46a0814d17c25ae4e9efb34dec00910c9f8db81e';
 
   // v2.46.4: harden unlock against iOS PWA storage partitioning.
   // When you "Add to Home Screen" from iOS Chrome the resulting icon launches
@@ -9512,6 +9519,33 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       var secure = (location.protocol === 'https:') ? '; Secure' : '';
       document.cookie = COOKIE_KEY + '=1; Max-Age=' + maxAge + '; Path=/; SameSite=Lax' + secure;
     } catch(_){}
+    // v2.46.6: swap to a tokenized manifest so the next "Add to Home Screen"
+    // captures a start_url that auto-unlocks the sandboxed PWA instance.
+    try { rbInstallTokenizedManifest(); } catch(_){}
+  }
+
+  // v2.46.6: Generate an in-memory manifest with start_url=/?u=<PWA_TOKEN>
+  // and swap <link rel="manifest"> to point at the Blob URL. iOS captures
+  // start_url at "Add to Home Screen" time, so any future PWA launch carries
+  // the token in its boot URL. We then redeem it into PWA-local storage.
+  var _rbManifestBlobUrl = null;
+  function rbInstallTokenizedManifest() {
+    var link = document.querySelector('link[rel="manifest"]');
+    if (!link) return;
+    // If already swapped this session, skip.
+    if (link.getAttribute('data-rb-tokenized') === '1') return;
+    // Fetch the static manifest, clone it, override start_url, install as Blob.
+    var orig = link.getAttribute('href') || 'manifest.json';
+    fetch(orig, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(m){
+      try {
+        m.start_url = './?u=' + encodeURIComponent(PWA_TOKEN);
+        var blob = new Blob([JSON.stringify(m)], { type: 'application/manifest+json' });
+        if (_rbManifestBlobUrl) { try { URL.revokeObjectURL(_rbManifestBlobUrl); } catch(_){} }
+        _rbManifestBlobUrl = URL.createObjectURL(blob);
+        link.setAttribute('href', _rbManifestBlobUrl);
+        link.setAttribute('data-rb-tokenized', '1');
+      } catch(_){}
+    }).catch(function(){});
   }
 
   // Worker base URL — mirror logic from the admin block (kept self-contained
@@ -9536,6 +9570,42 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 
   var invite   = (sp.get('invite')   || '').trim();
   var approved = (sp.get('approved') || '').trim();
+  // v2.46.6: PWA start_url token — instant offline unlock via SHA-256 check.
+  var pwaTok   = (sp.get('u')        || '').trim();
+  if (pwaTok) {
+    // Validate hash synchronously-ish; if it matches the baked hash, unlock.
+    (function(){
+      try {
+        if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+          var enc = new TextEncoder().encode(pwaTok);
+          window.crypto.subtle.digest('SHA-256', enc).then(function(buf){
+            var hex = Array.prototype.map.call(new Uint8Array(buf), function(b){
+              return ('0' + b.toString(16)).slice(-2);
+            }).join('');
+            if (hex === PWA_TOKEN_HASH) {
+              try { localStorage.setItem(FLAG_KEY, '1'); } catch(_){}
+              try { sessionStorage.setItem(FLAG_KEY, '1'); } catch(_){}
+              try {
+                var maxAge = 60 * 60 * 24 * 365;
+                var secure = (location.protocol === 'https:') ? '; Secure' : '';
+                document.cookie = COOKIE_KEY + '=1; Max-Age=' + maxAge + '; Path=/; SameSite=Lax' + secure;
+              } catch(_){}
+              // Clean the URL so the token isn't visible / shareable in history.
+              try {
+                var clean = window.location.pathname + (window.location.hash || '');
+                window.history.replaceState(null, '', clean);
+              } catch(_){}
+              // Hide gate immediately if it's already painted.
+              try {
+                var g = document.getElementById('beta-gate');
+                if (g) g.classList.add('hidden');
+              } catch(_){}
+            }
+          }).catch(function(){});
+        }
+      } catch(_){}
+    })();
+  }
   // v2.46.4: read across localStorage + sessionStorage + cookie so a PWA
   // launch that landed in a fresh WebKit storage partition still finds the
   // cookie and stays unlocked.

@@ -1,5 +1,45 @@
 # NE Racing — Changelog
 
+## v2.46.6-brisnet — PWA start_url token (real iOS Home Screen unlock) (2026-06-05)
+
+**Why this build exists.** v2.46.4 tried to fix "had to log in again after
+Add to Home Screen" by mirroring the unlock flag into a cookie alongside
+localStorage and sessionStorage. After deeper verification, that fix is
+unreliable on iOS: since iOS 14, Home Screen PWAs run in a sandboxed
+WebKit storage context that does NOT share cookies or storage with the
+originating browser (Safari or Chrome). The cookie mirror was a no-op
+for the actual install-to-home-screen scenario.
+
+**The real fix: bake the unlock proof into the manifest's `start_url`.**
+iOS captures `start_url` at the moment the user taps "Add to Home
+Screen." Whatever query string is in that URL rides forward into every
+future PWA launch — even though storage is partitioned, the boot URL
+itself is the channel. So we:
+
+1. Bake a static PWA unlock token (`RB-PWA-SAR2026-…`) and its SHA-256
+   hash into the gate code.
+2. The moment a user successfully unlocks in-browser (any path: code
+   entry, `?approved=` redemption, `?dev=1`), we generate an in-memory
+   manifest Blob whose `start_url` is `./?u=<PWA_TOKEN>` and swap the
+   `<link rel="manifest">` href to point at the Blob URL.
+3. When the user later does Share → Add to Home Screen, iOS captures
+   the tokenized `start_url`. Every PWA launch boots with `?u=<token>`
+   in the URL.
+4. On boot, if `?u=<token>` is present and `sha256(token) === baked
+   hash`, we write the unlock flag into the PWA's sandboxed storage and
+   strip the token from the URL with `history.replaceState`.
+
+Validation is fully client-side via Web Crypto SHA-256 — no worker
+round-trip, no network dependency, instant unlock even offline.
+
+**Security note.** The token is a single shared static value, no worse
+than the existing access code (`SARATOGA2026`). Anyone who can read the
+running page can derive it. That's an acceptable trade for v1; if we
+want per-device tokens later, we can extend `/api/beta-unlock` to mint
+device-bound HMACs and swap that in without changing the boot logic.
+
+---
+
 ## v2.46.5-brisnet — Don't auto-expand the next race (2026-06-05)
 
 UI change: race cards now render fully collapsed on every page load and
