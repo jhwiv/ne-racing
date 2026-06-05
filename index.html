@@ -39,7 +39,10 @@
   .badge::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: pulse 1.8s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   h1 { font-family: var(--font-serif); font-size: 1.55rem; font-weight: 700; color: var(--navy); margin: 14px 0 8px; line-height: 1.25; letter-spacing: -0.01em; }
-  .lede { font-size: 0.98rem; color: var(--ink); line-height: 1.55; margin: 0 0 10px; }
+  .lede { font-size: 0.98rem; color: var(--ink); line-height: 1.55; margin: 0 0 14px; }
+  .eta { display: flex; flex-direction: column; gap: 2px; margin: 0 0 14px; padding: 12px 14px; background: rgba(13,51,32,0.05); border-left: 3px solid var(--navy); border-radius: 6px; }
+  .eta-label { font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-deep); }
+  .eta-time { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: var(--navy); letter-spacing: 0.01em; }
   .sub { font-size: 0.88rem; color: var(--ink-soft); line-height: 1.55; margin: 0; }
 
   /* Card section divider */
@@ -84,7 +87,8 @@
     <span class="badge">Maintenance</span>
     <h1>We&rsquo;re temporarily down for repairs.</h1>
     <p class="lede">Railbird AI is offline while we wire in a new past-performance and speed-figure data feed. The handicapping engine will be back stronger when this work lands.</p>
-    <p class="sub">No ETA right now &mdash; come back later and the full app will be here. Thanks for your patience.</p>
+    <p class="eta"><span class="eta-label">Estimated restore</span><span class="eta-time">Today &middot; 10:00 AM ET</span></p>
+    <p class="sub">Thanks for your patience. Today&rsquo;s Saratoga post times are below for reference.</p>
   </section>
 
   <hr class="div">

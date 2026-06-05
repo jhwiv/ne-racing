@@ -1,5 +1,12 @@
 # NE Racing — Changelog
 
+## v2.45.1-maintenance — Add ETA to maintenance page (2026-06-05)
+
+Added an "Estimated restore" callout to the maintenance landing page:
+**Today · 10:00 AM ET**. Styled as a navy-rail card matching the
+existing paper theme. Tightened the sub-copy below the lede so the
+flow reads lede → ETA → post-time strip.
+
 ## v2.45.0-maintenance — Site offline for Brisnet integration (2026-06-05)
 
 Deliberate maintenance window, not an outage. The live app (formerly
