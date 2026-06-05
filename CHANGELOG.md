@@ -1,5 +1,38 @@
 # NE Racing — Changelog
 
+## v2.45.0-maintenance — Site offline for Brisnet integration (2026-06-05)
+
+Deliberate maintenance window, not an outage. The live app (formerly
+`index.html`) was renamed to `app.html` and `index.html` was replaced
+with a static maintenance landing page so any visitor hitting
+railbirdai.com sees a clear "temporarily down for repairs" message
+instead of a broken or partial experience while we wire in a Brisnet
+past-performance / speed-figure feed (per vendor support email
+2026-06-05 in `README.md` — The Racing API NA add-on does not carry
+speed figs, so Brisnet is the only path to fix the null FIGS columns
+that surfaced on races 13 and 14 today).
+
+**Behavior:**
+
+- Pure block, no admin bypass. `index.html` is fully static and does
+  not import the worker, the Racing API, the service worker, or any
+  scoring code. Returning users with cached service workers get them
+  unregistered on first page load via the existing self-destructing
+  `sw.js` (v5) plus an explicit `getRegistrations` sweep in the new
+  landing-page script.
+- Still informative. A read-only "Today at Saratoga" strip lists all
+  14 race numbers and post times for 2026-06-05, baked in at deploy
+  time as static JSON — no network calls needed to render. Highlights
+  the next upcoming race based on the visitor's clock vs. ET post time.
+- No selections, odds, advice, FIGS, or jockey/trainer data are
+  exposed. This is a marketing surface, not a thin handicapping app.
+
+**Restore:**
+
+- `git mv app.html index.html` (or copy back), bump version to
+  v2.46.x, push. The Brisnet-integrated build will land via that
+  restore commit.
+
 ## v2.44.0 — Confidence-coded race-card titles (2026-06-05)
 
 Until now every collapsed race-card title was painted the same racing green,
