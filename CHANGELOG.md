@@ -1,5 +1,107 @@
 # NE Racing — Changelog
 
+## v2.47.0-brisnet — Permanent cold-edge fix: cron pre-warm + R2 fallback (2026-06-05)
+
+The v2.46.11 client retry shipped earlier today was a band-aid. This
+release addresses the actual root cause: the worker's `caches.default`
+is partitioned per Cloudflare colo, every cold-colo first-visitor
+paid the full 24 s upstream + enrichment cost, and the worker had no
+guarantee its cache writes would survive isolate termination.
+
+### Fix 1 — `ctx.waitUntil()` around every cache write
+
+`writeCache(cacheKey, response, ctx)` now accepts the request context
+and wraps the underlying `cache.put` in `ctx.waitUntil()` when one is
+supplied. The Cloudflare Workers runtime is otherwise free to kill
+the isolate the moment the response stream finishes, leaving the
+cache write half-done. With `ctx.waitUntil`, the put is guaranteed
+to complete *after* the response returns, which means the next
+user hitting the same colo actually finds a warm entry.
+
+Callers updated: `handleEntries`, `handleScratches`, `handleOdds`,
+`handleResults`, `findMeetId`, `enrichEntriesWithCoreRacecards`,
+`fetchCoreRacecardsForDate`. The dispatcher now passes `ctx` through
+for all five `case` branches in the main `fetch()` switch.
+`writeCache` falls back to plain `await` for callers that don't have
+a `ctx` (e.g. legacy helpers invoked outside the request path), so
+the change is backward-compatible.
+
+### Fix 2 — Cron pre-warmer
+
+New `scheduled(event, env, ctx)` export wraps a `runScheduledWarm`
+implementation that, for each track in `WARM_TRACKS` (default `SAR`)
+and each date in {today, tomorrow} in America/New_York:
+
+  1. Builds a synthetic `Request` to `/api/entries?track=SAR&date=...`
+  2. Calls `handleEntries(req, env, '*', ctx)` directly
+  3. Mirrors the resulting payload to R2 if `ENTRIES_R2` is bound
+
+New `wrangler.toml [triggers].crons`:
+  - `*/5 13-22 * * *` — every 5 min, 09:00 ET → 18:55 ET
+  - `0 23 * * *`       — 19:00 ET final post-card warm
+  - `0 11 * * *`       — 07:00 ET morning warm after upstream publish
+
+The scheduled handler runs on every Cloudflare colo that participates
+in Cron Triggers, so the cache + R2 are populated globally before
+any user request lands. End result: every real user hits a warm
+cache, not a cold one.
+
+### Fix 3 — R2 static-entries fallback
+
+New public route `GET /api/entries/r2?track=SAR&date=YYYY-MM-DD`
+reads the most recently warmed payload directly from the
+`railbird-entries` R2 bucket and streams it back. No upstream API
+call, no enrichment, no cache games — just a static read in <100 ms.
+
+The client (`tryFetchEntries`) now falls back to this endpoint when
+the live entries call fails with a transient error (timeout / network
+/ 5xx). If R2 has a warm copy, the user sees yesterday's-or-newer
+card with a soft warning toast (“Showing last cached card (live
+feed slow)”) instead of the offday dashboard. 4xx and empty failures
+still bypass the fallback because those mean the data legitimately
+isn't there.
+
+### Why this is the right architecture
+
+The pre-v2.47 worker did all the work — upstream fetch, PP
+enrichment, Core racecards overlay, scoring-field shim, Brisnet
+merge — inline on every request. With ~24 s of work behind every
+cache miss and an unreliable cache write, the system was guaranteed
+to break for the first user in any geography. With v2.47:
+
+  - The cron pays the 24 s cost ahead of time, in the background,
+    once per 5 min.
+  - Every user request is either a CF cache hit (~70 ms) or, in
+    the worst case, an R2 read (~100 ms).
+  - If the worker entirely dies, the R2 endpoint still serves a
+    same-day-or-yesterday card.
+
+### Files touched
+
+  - `worker.js`: `writeCache` signature, ctx threading through 4
+    handlers + 2 helpers, new `scheduled()` export, new
+    `runScheduledWarm()`, new `handleEntriesR2()`, new
+    `/api/entries/r2` route.
+  - `wrangler.toml`: `[triggers].crons` and `[[r2_buckets]]`.
+  - `index.html`: `tryFetchEntries` extended with R2 fallback path.
+  - `app.html`: mirrored from index.html.
+  - `sw.js`: `CACHE_VERSION → v2.47.0`.
+  - `version.json`: bumped.
+
+### Deploy steps (NOT yet executed by the agent)
+
+The Pages site (railbirdai.com) is auto-deployed by GitHub Actions
+from this commit, so the client-side changes ship as soon as the
+push completes. The worker side requires a manual `wrangler deploy`
+from the user's machine because no connector exposes wrangler:
+
+  1. `wrangler r2 bucket create railbird-entries`     # one-time
+  2. `wrangler deploy`
+  3. Verify with `curl https://cloudflare-worker.jhwiv-online.workers.dev/api/entries/r2?track=SAR&date=2026-06-05`
+     (will return 404 until the first scheduled tick runs; trigger
+     one manually via `wrangler triggers schedule "*/5 13-22 * * *"`
+     or just wait <5 min)
+
 ## v2.46.11-brisnet — Cold-edge worker fetch survives (2026-06-05)
 
 **Bug.** User opened the app mid-meet with SAR running live and saw

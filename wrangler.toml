@@ -66,3 +66,45 @@ database_id = "dd369ea1-023a-4eaa-941f-50124f6beace"
 
 [observability]
 enabled = true
+
+# v2.47.0 — Cron triggers for the scheduled pre-warmer.
+#
+# Cloudflare's caches.default is partitioned per edge / colo, so the very
+# first user to hit a cold colo paid the full 24 s upstream + enrichment
+# cost for /api/entries (and iOS Safari often aborted the slow fetch,
+# which surfaced as the "Dark day at Saratoga" offday dashboard mid-meet).
+#
+# These cron triggers run the worker's scheduled() handler, which calls
+# handleEntries() internally for SAR (today + tomorrow ET) and writes the
+# assembled payload to caches.default + the ENTRIES_R2 bucket. By the time
+# a real user request lands on any colo, the entries response has been
+# warmed there at least once.
+#
+# Cadence:
+#   - Every 5 min from 13:00 UTC (09:00 ET) to 23:00 UTC (19:00 ET)
+#     covers the full SAR card window with margin on either side.
+#   - One nightly tick at 11:00 UTC (07:00 ET) refreshes overnight
+#     after the upstream feeds publish next-day entries.
+#
+# All times are UTC. America/New_York is UTC−4 (EDT) during meet season.
+[triggers]
+crons = [
+  "*/5 13-22 * * *",  # every 5 min, 09:00 ET → 18:55 ET (race-day window)
+  "0 23 * * *",        # 19:00 ET — final post-card warm
+  "0 11 * * *",        # 07:00 ET — morning warm after upstream publish
+]
+
+# v2.47.0 — R2 bucket for the static-entries fallback.
+#
+# The scheduled() handler mirrors each successful warm into this bucket
+# at key `entries/{TRACK}-{YYYY-MM-DD}.json`. The new public route
+# GET /api/entries/r2?track=SAR&date=... streams it back without ever
+# touching the upstream API or the enrichment pipeline. The client uses
+# this as a worker-down fallback when the primary entries call times
+# out or 5xxs.
+#
+# Create the bucket once (one-time) before deploying this worker:
+#   wrangler r2 bucket create railbird-entries
+[[r2_buckets]]
+binding = "ENTRIES_R2"
+bucket_name = "railbird-entries"

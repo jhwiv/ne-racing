@@ -297,7 +297,7 @@ async function enrichEntriesWithPP(body, env) {
 //
 // Cached per-date in CF cache (10 min) so multiple /api/entries hits for
 // different US tracks on the same date share one upstream fetch.
-async function fetchCoreRacecardsForDate(env, date) {
+async function fetchCoreRacecardsForDate(env, date, ctx) {
   if (!env.API_USER || !env.API_KEY) return null;
   const cacheKey = new Request(`https://ne-racing-cache/core-racecards/${date}`);
   const cached = await readCache(cacheKey);
@@ -335,7 +335,7 @@ async function fetchCoreRacecardsForDate(env, date) {
   const naCards = racecards.filter(r => r && (r.region === "USA" || r.region === "CAN"));
   const payload = { date, count: naCards.length, racecards: naCards };
   const resp = jsonOk(payload, "*", 600); // 10 min CF cache
-  await writeCache(cacheKey, resp);
+  await writeCache(cacheKey, resp, ctx);
   return payload;
 }
 
@@ -765,10 +765,23 @@ async function readCache(cacheKey) {
 /**
  * Stores a cloned copy of `response` in Cloudflare's default cache.
  * We clone because a Response body can only be consumed once.
+ *
+ * v2.47.0: when a `ctx` is supplied, the put is wrapped in
+ * ctx.waitUntil() so the worker invocation isn't terminated before
+ * the cache write completes. Without ctx.waitUntil the runtime is
+ * free to kill the isolate the moment the response stream finishes,
+ * which is why subsequent users on the same colo were re-paying the
+ * 24 s cold-fetch tax. Falls back to plain await for callers that
+ * don't have a ctx (e.g. helpers invoked outside the request path).
  */
-async function writeCache(cacheKey, response) {
+async function writeCache(cacheKey, response, ctx) {
   const cache = caches.default;
-  await cache.put(cacheKey, response.clone());
+  const putPromise = cache.put(cacheKey, response.clone());
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(putPromise);
+    return;
+  }
+  await putPromise;
 }
 
 // ─── Upstream fetch helper (The Racing API NA — HTTP Basic auth) ─────────────
@@ -838,7 +851,7 @@ async function findMeetId(trackCode, date, user, pass) {
       status: 200,
       headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
     });
-    await writeCache(meetsCacheKey, resp);
+    await writeCache(meetsCacheKey, resp, ctx);
   }
 
   const meet = meetsList.find((m) => (m.track_id || "").toUpperCase() === trackCode.toUpperCase());
@@ -2708,7 +2721,7 @@ function usePaidSource(env) {
  *
  * The response shape is identical in both modes.
  */
-async function handleEntries(request, env, origin) {
+async function handleEntries(request, env, origin, ctx) {
   const { searchParams } = new URL(request.url);
   const track = (searchParams.get("track") || env.DEFAULT_TRACK || "AQU").toUpperCase();
   const date  = searchParams.get("date") || new Date().toISOString().slice(0, 10);
@@ -2731,7 +2744,7 @@ async function handleEntries(request, env, origin) {
 
     if (usePaidSource(env)) {
       // ── The Racing API path ───────────────────────────────────────────────
-      const meet = await findMeetId(track, date, env.API_USER, env.API_KEY);
+      const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
       if (!meet) {
         throw new NotFoundError(`No NA meet for ${track} on ${date}`);
       }
@@ -2744,7 +2757,7 @@ async function handleEntries(request, env, origin) {
       try { await enrichEntriesWithPP(body, env); } catch (e) { body.ppEnrichmentError = e.message; }
       // v2.41.0: overlay Core API /racecards/standard fields (rpr, ts, form,
       // last_run, spotlight, trainer_14_days) for runners present in both feeds.
-      try { await enrichEntriesWithCoreRacecards(body, env, date); } catch (e) { body.coreEnrichmentError = e.message; }
+      try { await enrichEntriesWithCoreRacecards(body, env, date, ctx); } catch (e) { body.coreEnrichmentError = e.message; }
       // v2.41.0: scoring-field shim — inject speedFigs/runningStyle/jockeyPct/
       // trainerPct/lastClass/lastRaceDate/dataCompleteness so the v2.40.3 client
       // scoring engine has the same inputs the legacy static JSON provided.
@@ -2759,7 +2772,7 @@ async function handleEntries(request, env, origin) {
     }
 
     const response = jsonOk(body, origin, CACHE_TTL.entries);
-    await writeCache(cacheKey, response);
+    await writeCache(cacheKey, response, ctx);
     return response;
 
   } catch (err) {
@@ -2783,7 +2796,7 @@ async function handleEntries(request, env, origin) {
  * Requesting scratches for a past date in free mode will likely return an
  * empty list (the feed has rolled over to the current day).
  */
-async function handleScratches(request, env, origin) {
+async function handleScratches(request, env, origin, ctx) {
   const { searchParams } = new URL(request.url);
   const track = (searchParams.get("track") || env.DEFAULT_TRACK || "AQU").toUpperCase();
   const date  = searchParams.get("date") || new Date().toISOString().slice(0, 10);
@@ -2803,7 +2816,7 @@ async function handleScratches(request, env, origin) {
 
     if (usePaidSource(env)) {
       // ── The Racing API path ───────────────────────────────────────────────
-      const meet = await findMeetId(track, date, env.API_USER, env.API_KEY);
+      const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
       if (!meet) {
         body = {
           track, date, venue,
@@ -2833,7 +2846,7 @@ async function handleScratches(request, env, origin) {
     }
 
     const response = jsonOk(body, origin, CACHE_TTL.scratches);
-    await writeCache(cacheKey, response);
+    await writeCache(cacheKey, response, ctx);
     return response;
 
   } catch (err) {
@@ -2850,7 +2863,7 @@ async function handleScratches(request, env, origin) {
  *
  * The `race` parameter is 1-based (race 1, race 2, …).
  */
-async function handleOdds(request, env, origin) {
+async function handleOdds(request, env, origin, ctx) {
   const { searchParams } = new URL(request.url);
   const track      = (searchParams.get("track") || env.DEFAULT_TRACK || "AQU").toUpperCase();
   const date       = searchParams.get("date") || new Date().toISOString().slice(0, 10);
@@ -2884,7 +2897,7 @@ async function handleOdds(request, env, origin) {
   if (cached) return cached;
 
   try {
-    const meet = await findMeetId(track, date, env.API_USER, env.API_KEY);
+    const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
     if (!meet) {
       return jsonOk({
         track, date, venue, raceNumber,
@@ -2900,7 +2913,7 @@ async function handleOdds(request, env, origin) {
     );
     const body = normaliseNaOdds(data, track, venue, date, raceNumber);
     const response = jsonOk(body, origin, CACHE_TTL.odds);
-    await writeCache(cacheKey, response);
+    await writeCache(cacheKey, response, ctx);
     return response;
 
   } catch (err) {
@@ -2915,7 +2928,7 @@ async function handleOdds(request, env, origin) {
  * Free mode:  Returns a graceful "unavailable" response.
  * Paid mode:  Fetches results from The Racing API /results endpoint.
  */
-async function handleResults(request, env, origin) {
+async function handleResults(request, env, origin, ctx) {
   const { searchParams } = new URL(request.url);
   const track = (searchParams.get("track") || env.DEFAULT_TRACK || "AQU").toUpperCase();
   const date  = searchParams.get("date") || new Date().toISOString().slice(0, 10);
@@ -2944,7 +2957,7 @@ async function handleResults(request, env, origin) {
   if (cached) return cached;
 
   try {
-    const meet = await findMeetId(track, date, env.API_USER, env.API_KEY);
+    const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
     if (!meet) {
       return jsonOk({
         track, date, venue,
@@ -2977,7 +2990,7 @@ async function handleResults(request, env, origin) {
     }
     const body = normaliseNaResults(data, track, venue, date);
     const response = jsonOk(body, origin, CACHE_TTL.results);
-    await writeCache(cacheKey, response);
+    await writeCache(cacheKey, response, ctx);
 
     // ── PR #2: Persist finished race cards to RACE_HISTORY KV (durable archive).
     // Only writes when at least one race is `official: true` so we don't archive
@@ -4361,17 +4374,24 @@ export default {
       case "/api/_admin/backfill":
         return handleBackfill(request, env, origin);
 
+      // v2.47.0: R2-backed static fallback. Reads the last successful
+      // scheduled-warm payload directly from R2. Public, fast, and never
+      // touches the upstream API — the client falls back here when the
+      // live entries handler times out.
+      case "/api/entries/r2":
+        return handleEntriesR2(request, env, origin);
+
       case "/api/entries":
-        return handleEntries(request, env, origin);
+        return handleEntries(request, env, origin, ctx);
 
       case "/api/scratches":
-        return handleScratches(request, env, origin);
+        return handleScratches(request, env, origin, ctx);
 
       case "/api/odds":
-        return handleOdds(request, env, origin);
+        return handleOdds(request, env, origin, ctx);
 
       case "/api/results":
-        return handleResults(request, env, origin);
+        return handleResults(request, env, origin, ctx);
 
       case "/api/expert-picks":
         return handleExpertPicks(request, env, origin);
@@ -4474,4 +4494,107 @@ export default {
         return jsonError(`Unknown route: ${pathname}`, 404, origin);
     }
   },
+
+  /**
+   * v2.47.0 — Scheduled pre-warmer.
+   *
+   * Cloudflare Cron Trigger. Runs on the schedule defined in
+   * wrangler.toml [triggers]. Each invocation:
+   *
+   *   1. Builds a synthetic request to /api/entries?track=SAR&date=<today_ET>
+   *      (and tomorrow_ET) and calls handleEntries() with the real `ctx`,
+   *      which executes the full upstream + enrichment pipeline once and
+   *      stores the result in caches.default. Subsequent user requests in
+   *      the same colo hit the warm cache (~70 ms response).
+   *
+   *   2. If an R2 bucket is bound as ENTRIES_R2, the assembled payload is
+   *      mirrored there at key `entries/SAR-YYYY-MM-DD.json`. The client
+   *      uses this as a worker-down fallback (see fallbackEntriesUrl in
+   *      index.html v2.47.0).
+   *
+   * Without this scheduler the very first user to hit a cold colo paid
+   * the full 24 s upstream + enrichment cost, and iOS Safari aborted
+   * before completion. With it, every user request lands on a warm
+   * cache regardless of which colo they reach.
+   *
+   * Failures here are logged but never thrown — a missed warm tick is
+   * fine, the next one will catch it.
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runScheduledWarm(event, env, ctx));
+  },
 };
+
+// ─── Scheduled-warm implementation ──────────────────────────────────────────
+async function runScheduledWarm(event, env, ctx) {
+  const tracks = ((env.WARM_TRACKS || env.DEFAULT_TRACK || 'SAR') + '')
+    .split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  const todayET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  const tomorrowMs = new Date(todayET + 'T12:00:00').getTime() + 86400000;
+  const tomorrowET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(tomorrowMs));
+  const dates = [todayET, tomorrowET];
+  const log = [];
+  for (const track of tracks) {
+    for (const date of dates) {
+      const url = `https://internal.warm/api/entries?track=${track}&date=${date}`;
+      const req = new Request(url, { method: 'GET' });
+      const t0 = Date.now();
+      try {
+        const resp = await handleEntries(req, env, '*', ctx);
+        const ms = Date.now() - t0;
+        log.push(`warm ${track}/${date}: ${resp.status} in ${ms}ms`);
+        // Mirror to R2 when the bucket is bound. Only mirror successful
+        // 200s with at least one race so we don't poison the fallback.
+        if (resp.status === 200 && env.ENTRIES_R2) {
+          try {
+            const cloned = resp.clone();
+            const body = await cloned.json();
+            if (body && Array.isArray(body.races) && body.races.length > 0) {
+              const r2Key = `entries/${track}-${date}.json`;
+              await env.ENTRIES_R2.put(r2Key, JSON.stringify(body), {
+                httpMetadata: { contentType: 'application/json' },
+                customMetadata: {
+                  track: track,
+                  date: date,
+                  warmedAt: new Date().toISOString(),
+                  raceCount: String(body.races.length),
+                },
+              });
+              log.push(`r2 ${track}/${date}: ${body.races.length} races`);
+            }
+          } catch (e) {
+            log.push(`r2 ${track}/${date} FAIL: ${e.message}`);
+          }
+        }
+      } catch (e) {
+        log.push(`warm ${track}/${date} FAIL: ${e.message}`);
+      }
+    }
+  }
+  console.log('[scheduled-warm]', log.join(' | '));
+}
+
+// ─── R2 fallback: GET /api/entries/r2?track=SAR&date=YYYY-MM-DD ─────────────
+// Public endpoint that streams the most recently warmed entries payload
+// from R2. Used by the client when the live worker path times out or
+// errors. Bypasses ALL upstream + enrichment work — just a static read
+// of whatever the last successful scheduled warm produced. Returns 404
+// when R2 isn't bound or the key doesn't exist.
+async function handleEntriesR2(request, env, origin) {
+  if (!env.ENTRIES_R2) return jsonError('R2 fallback not configured.', 503, origin);
+  const { searchParams } = new URL(request.url);
+  const track = (searchParams.get('track') || env.DEFAULT_TRACK || 'SAR').toUpperCase();
+  const date  = searchParams.get('date') || new Date().toISOString().slice(0, 10);
+  const r2Key = `entries/${track}-${date}.json`;
+  try {
+    const obj = await env.ENTRIES_R2.get(r2Key);
+    if (!obj) return jsonError(`No R2 fallback for ${track}/${date}.`, 404, origin);
+    const body = await obj.text();
+    return new Response(body, {
+      status: 200,
+      headers: corsHeaders(origin, 60),
+    });
+  } catch (e) {
+    return jsonError(`R2 read failed: ${e.message}`, 503, origin);
+  }
+}
