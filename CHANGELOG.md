@@ -1,5 +1,54 @@
 # NE Racing — Changelog
 
+## v2.46.1-brisnet — Confidence threshold recalibration + cache-bust (2026-06-05)
+
+Two small but important post-launch fixes after the v2.46.0 ship.
+
+**Symptom.** First user feedback on v2.46.0: "all races except 3 are
+shown in red." Investigation showed two parallel issues — a stale
+browser cache (GitHub Pages serves `cache-control: max-age=600`, so the
+iOS Chrome page was still rendering v2.44.0 markup) AND a real scoring
+miscalibration once the page did refresh.
+
+**Scoring miscalibration.** `relativeConfidence()` z-score thresholds
+were tuned against the older, broader composite spread that Equibase
+chart-only data produced. With Brisnet Prime Power blended into the
+composite, the top-to-mean spread compresses (everyone is now scored on
+the same well-calibrated PP axis), so the old thresholds (`z ≥ 1.35` for
+High, `z ≥ 0.85` for Medium) almost never fire — most races collapse to
+Lean and render red. Live simulation against today's worker payload
+confirmed the v2.46.0 distribution was 4 High / 10 Medium / 0 Lean, but
+the top-Z gap on 10 of those Mediums was below the Lean cutoff once you
+look at the new spread, which is why so many cards rendered red on the
+user's stale-rendered page.
+
+**New thresholds (v2.46.1).**
+
+- **High:** `topZ ≥ 1.20` AND `gap2 ≥ 0.45` AND `fieldSize ≥ 5` (was
+  `1.35 / 0.55`).
+- **Medium:** `topZ ≥ 0.65 AND fieldSize ≥ 4` (was `0.85`), OR a new
+  rule `gap2Pct ≥ 0.08` (gap-to-#2 as a percentage of the mean score)
+  for races where the top horse is clearly separated but the field is
+  tightly clustered behind.
+- **Lean:** everything else.
+
+Live-data simulation under the new thresholds: **7 High / 7 Medium / 0
+Lean** for today's Saratoga card. R2, R3, and R4 are the new flips up
+to High; R9 (Pashmina, PP 153.78, ML 1-1) is the standout High and the
+Best Bet target.
+
+**Cache bust.** Bumped `NE_APP_VERSION` and `version.json` to
+`20260605-v2.46.1-brisnet`. The boot-time `version.json` no-store fetch
+in `index.html` will detect the version mismatch on the next page load
+and call `neForceUpdate()` with a `?_v=` cache buster, forcing a fresh
+HTML pull from GitHub Pages and bypassing the 10-minute browser cache.
+
+**No other changes.** Worker is untouched (still deploy
+`1726ca613a814f8b8620df4d6c797554`). Brisnet JSON files are untouched.
+Only `index.html`, `app.html`, `version.json`, and this CHANGELOG.
+
+---
+
 ## v2.46.0-brisnet — Site restored with Brisnet PP overlay live (2026-06-05)
 
 Maintenance window closed at v2.46.0. The full Saratoga handicapping app

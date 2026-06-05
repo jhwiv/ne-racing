@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.46.0-brisnet';
+var NE_APP_VERSION = '20260605-v2.46.1-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -15676,11 +15676,19 @@ function relativeConfidence(scored, fieldSize) {
   // Secondary signal: gap-to-#2 normalized by field std (catches the "clear
   // top horse over a tightly bunched pack" case that z alone can miss).
   const gap2 = scores.length > 1 ? (scores[0] - scores[1]) / std : topZ;
-  // High: top runner is well above the field AND there is meaningful separation
-  //       from the runner-up. Both must be true, otherwise it's just a flat card.
-  if (topZ >= 1.35 && gap2 >= 0.55 && fieldSize >= 5) return 'high';
-  // Medium: still clearly above the field, even if #2 is close behind.
-  if (topZ >= 0.85 && fieldSize >= 4) return 'medium';
+  // v2.46.1: secondary OR-rule using gap-to-#2 as a percentage of field mean.
+  // Catches "one Prime Power leader stands clear above an evenly-matched pack":
+  // composites are bunched so z-score is modest, but the #1 is still a real
+  // standout. Trips Medium even when the z-test would have said Lean.
+  const gap2Pct = (mean > 0 && scores.length > 1) ? (scores[0] - scores[1]) / mean : 0;
+
+  // v2.46.1: thresholds re-calibrated for Brisnet-compressed composite spreads.
+  // High: top runner meaningfully above field AND clear gap to #2.
+  if (topZ >= 1.20 && gap2 >= 0.45 && fieldSize >= 5) return 'high';
+  // Medium: clearly above field (z>=0.65 down from 0.85), OR a flat card with
+  //         a single Prime Power leader 8%+ above #2.
+  if (topZ >= 0.65 && fieldSize >= 4) return 'medium';
+  if (gap2Pct >= 0.08 && fieldSize >= 4) return 'medium';
   // Anything else is a Lean — a soft call, not a Pass.
   return 'lean';
 }
