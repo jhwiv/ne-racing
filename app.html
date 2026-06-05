@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.46.7-brisnet';
+var NE_APP_VERSION = '20260605-v2.46.8-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -12996,8 +12996,11 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     checkBankrollOverrun();
   }
 
-  // Start results auto-polling when a bet is placed
-  if (typeof startResultsPolling === 'function') startResultsPolling();
+  // Start results auto-polling when a bet is placed.
+  // v2.46.7: when quickPickAll() is batching, suppress per-bet polling —
+  // it triggers it once at the end so we don't fire N concurrent
+  // /api/results fetches and get 503s back from the worker.
+  if (!window._rbSuppressResultsPoll && typeof startResultsPolling === 'function') startResultsPolling();
 }
 
 /* ── Bet Amount Picker (Bug 2 fix) ── */
@@ -19913,7 +19916,17 @@ async function fetchLiveResults() {
       showToast(updated + ' bet(s) auto-resolved from ' + racesResolved + ' race result(s)' + (pending > 0 ? ' \u2014 ' + pending + ' still pending' : ''), 'success', 4000);
     }
   } catch(e) {
-    showToast('Error fetching results: ' + e.message, 'danger', 4000);
+    // v2.46.7: be quiet about transient worker errors (503/timeout). The
+    // poller will retry on its 2.5-minute cadence; we don't want a toast
+    // popping up every time the user adds bets pre-post when the worker
+    // has no results yet, or under brief load from a bulk Quick Pick.
+    var msg = e && e.message || '';
+    var isTransient = /HTTP 5\d\d|NetworkError|Failed to fetch|timeout/i.test(msg);
+    if (isTransient) {
+      console.warn('[fetchLiveResults] transient error — will retry on next poll:', msg);
+    } else {
+      showToast('Error fetching results: ' + msg, 'danger', 4000);
+    }
   }
 }
 
@@ -19928,13 +19941,22 @@ function hasUnresolvedBets() {
   return bets.some(function(b) { return !b.result && (!b.date || b.date === today); });
 }
 
+// v2.46.7: debounce so rapid bet additions don't fire N concurrent fetches.
+var _lastResultsFetchAt = 0;
+var RESULTS_FETCH_MIN_GAP_MS = 3000;
 function startResultsPolling() {
   stopResultsPolling();
   if (!hasUnresolvedBets()) return;
-  // Fetch immediately on start, then poll
-  fetchLiveResults();
+  // Fetch immediately on start, then poll — but only if we haven't
+  // already fetched within the last few seconds (debounce).
+  var now = Date.now();
+  if (now - _lastResultsFetchAt > RESULTS_FETCH_MIN_GAP_MS) {
+    _lastResultsFetchAt = now;
+    fetchLiveResults();
+  }
   _resultsPollingTimer = setInterval(function() {
     if (!document.hidden && hasUnresolvedBets()) {
+      _lastResultsFetchAt = Date.now();
       fetchLiveResults();
     } else if (!hasUnresolvedBets()) {
       stopResultsPolling();
@@ -20165,6 +20187,11 @@ function quickPickAll() {
   // a Best Bet horse doesn't fire twice in one sweep.
   var seen = Object.create(null);
   var count = 0, skipped = 0;
+  // v2.46.7: suppress per-bet results polling during the batch so we don't
+  // fire N concurrent /api/results requests (each handleTicketBetClick
+  // normally calls startResultsPolling → fetchLiveResults). We trigger it
+  // once at the end below.
+  window._rbSuppressResultsPoll = true;
   for (var i = 0; i < betBtns.length; i++) {
     var btn = betBtns[i];
     if (btn.disabled) { skipped++; continue; }
@@ -20183,6 +20210,11 @@ function quickPickAll() {
       console.warn('[quickPickAll] failed for', p, err);
       skipped++;
     }
+  }
+  // Release the poll-suppression flag and trigger polling ONCE.
+  window._rbSuppressResultsPoll = false;
+  if (count > 0 && typeof startResultsPolling === 'function') {
+    try { startResultsPolling(); } catch(_){}
   }
 
   if (count > 0) {

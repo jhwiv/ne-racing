@@ -1,5 +1,27 @@
 # NE Racing — Changelog
 
+## v2.46.8-brisnet — Follow All: no more 503 toast spam (2026-06-05)
+
+**Bug.** With v2.46.7 the bulk Quick Pick correctly entered every bet,
+but threw an "Error fetching results: HTTP 503" toast immediately after.
+Root cause: `handleTicketBetClick()` ends by calling `startResultsPolling()`
+which immediately fires `fetchLiveResults()`. Adding 5+ bets in a tight
+loop fired 5+ concurrent `/api/results` requests at the worker, one of
+which the worker rejected with 503 — surfaced as a danger toast.
+
+**Fix.** Three layers of defense:
+1. `quickPickAll()` sets `window._rbSuppressResultsPoll = true` before the
+   loop and clears it after; `handleTicketBetClick()` checks the flag
+   before triggering polling. The bulk handler kicks polling once at the
+   end instead.
+2. `startResultsPolling()` is now debounced — won't fire `fetchLiveResults`
+   more than once per 3 seconds even if called repeatedly.
+3. `fetchLiveResults()` silently logs transient 5xx / network errors to
+   the console instead of surfacing a danger toast. The 2.5-minute
+   poller will retry on its own.
+
+---
+
 ## v2.46.7-brisnet — Follow All Expert Picks actually enters all bets (2026-06-05)
 
 **Bug.** "Follow All Expert Picks" added at most one bet to the slip
