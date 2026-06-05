@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.47.2-brisnet';
+var NE_APP_VERSION = '20260605-v2.47.3-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -19113,17 +19113,17 @@ async function fetchLiveOdds() {
     }
   }
 
+  // v2.47.3: stamp the Updated line on EVERY successful poll, not only
+  // when odds actually changed. The Racing API often returns null liveOdds
+  // until ~5 MTP (R8 at 3:52 post showed all-null odds at 3:50), so the
+  // v2.47.2 "only stamp when anyUpdated" left the stamp frozen even though
+  // the worker WAS being polled successfully every 60s. Honest freshness
+  // means "we asked, and this is what the feed said as of now."
+  const _now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  races.forEach(function(r) { r.updated = _now; });
+  saveTrackData(data);
+  renderTodayTab();
   if (anyUpdated) {
-    // v2.47.2: stamp every race that got odds with the current time so the
-    // "Updated H:MM" line in the card meta actually reflects live-data
-    // freshness, not the time the user last hand-edited the card. The
-    // previous behavior only set race.updated when a horse was added
-    // through the manual form, which made the stamp permanently stale
-    // during live racing.
-    const _now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    races.forEach(function(r) { r.updated = _now; });
-    saveTrackData(data);
-    renderTodayTab();
     // Re-run advice engine to update overlay calculations with live odds
     runAdviceEngine();
   }
@@ -19710,16 +19710,18 @@ async function fetchLiveScratches() {
         }
       }
     });
+    // v2.47.3: stamp on EVERY successful scratches poll (we got a response),
+    // not only when new scratches were discovered. The user needs to see
+    // "yes, we just asked the worker and this is current" even when nothing
+    // changed since the last tick.
+    const _now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    (data.races || []).forEach(function(r) { r.updated = _now; });
     if (newScratches) {
       unviewedScratches += newScratches;
       updateScratchBadge();
-      // v2.47.2: stamp affected races so the Updated meta line reflects
-      // when scratch data last refreshed.
-      const _now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      (data.races || []).forEach(function(r) { r.updated = _now; });
-      saveTrackData(data);
-      renderTodayTab();
     }
+    saveTrackData(data);
+    renderTodayTab();
     // On initial load, show a single summary toast instead of spamming one per horse
     if (!_scratchInitialLoadDone && scratchNames.length) {
       showToast('\u26A0\uFE0F ' + scratchNames.length + ' horse' + (scratchNames.length > 1 ? 's' : '') + ' scratched today \u2014 tap any race to see details', 'scratch', 5000);

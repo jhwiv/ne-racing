@@ -1,5 +1,11 @@
 # NE Racing — Changelog
 
+## v2.47.3-brisnet — Stamp Updated on EVERY successful poll (2026-06-05)
+
+v2.47.2 only stamped `race.updated` when something actually changed in the poll response (`anyUpdated` for odds, `newScratches > 0` for scratches). But the Racing API returns `null` for tote odds until ~5 MTP, and scratch lists rarely change minute-to-minute. So a card like R8 (post 3:52) at 3:50 PM was being successfully polled every 60s, but the odds came back all-null, so v2.47.2 left the stamp frozen at "1:40 PM" — making it look broken.
+
+Fix: stamp on every successful poll regardless of whether the payload contained new information. Honest freshness signal means "we asked the feed, this is what it said as of HH:MM" — not "the data we display happens to have changed since last time."
+
 ## v2.47.2-brisnet — Live status badge + Updated stamp freshness (2026-06-05)
 
 User screenshot at 3:46 PM ET showed R7 (post 3:16) with the FINAL strip + payouts rendered inside the card but a LIVE pill on the header, and the meta line stamped "Updated 1:40 PM" — two hours stale. Two real bugs:
