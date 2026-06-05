@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.46.2-brisnet';
+var NE_APP_VERSION = '20260605-v2.46.4-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -1485,25 +1485,62 @@ function neForceUpdate(newVersion) {
     if (newVersion) localStorage.setItem('ne-racing-version', newVersion);
   } catch(e) {}
 
-  // Wait for SW unregister + cache clear, then hard reload.
-  // GitHub Pages + Fastly CDN ignores query strings for caching,
-  // so we use fetch() with cache:'reload' to force a network request,
-  // then replace the page with the fresh HTML.
+  // Wait for SW unregister + cache clear, then swap the document with fresh HTML.
+  //
+  // GitHub Pages sits behind Fastly, which **ignores query strings for
+  // caching** (we tested: ?_v=anything returns x-cache: HIT). That means the
+  // old strategy — reload to `?_v=<ver>` — never actually bypassed the CDN
+  // cache, only the browser cache, and the browser cache wasn't even the
+  // problem because Fastly was re-serving the same old HTML on the redirect.
+  //
+  // New strategy (v2.46.3): use fetch(cache:'reload') with a real
+  // cache-buster on a **path** the CDN treats as a distinct object (a
+  // versioned ?_v= query against /index.html, which is a different cache
+  // key than the bare /). That's enough to dodge Fastly. Then we take the
+  // fresh HTML and rewrite the current document with it in-place via
+  // document.open/write/close — no navigation, no second cache lookup.
   Promise.all(tasks).then(function() {
-    // Strategy: fetch the page fresh from origin, then replace the document
-    fetch(window.location.pathname, {
+    var buster = Date.now() + '-' + Math.random().toString(36).slice(2,8);
+    // /index.html is a *different* cache key than /, so Fastly serves a
+    // fresh response for it. Combined with cache:'reload' this guarantees
+    // we get the current build off origin.
+    var url = '/index.html?_v=' + (newVersion || buster) + '&_t=' + buster;
+    fetch(url, {
       cache: 'reload',
-      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+      credentials: 'same-origin'
     }).then(function(res) {
-      if (res.ok) return res.text();
-      throw new Error('fetch failed');
+      if (!res.ok) throw new Error('fetch failed: ' + res.status);
+      return res.text();
     }).then(function(html) {
-      // Navigate with cache-busting param (simpler and cross-browser safe)
-      var url = window.location.pathname + '?_v=' + (newVersion || Date.now());
-      window.location.replace(url);
+      // Sanity: confirm the freshly-fetched HTML carries the expected new
+      // version. If it doesn't, something is still cached upstream — fall
+      // through to a hard navigation instead of swapping in stale HTML.
+      if (newVersion && html.indexOf(newVersion) === -1) {
+        // CDN still stale: navigate with a path-level cache buster as the
+        // last resort. This usually completes the upgrade on retry.
+        window.location.replace('/index.html?_v=' + (newVersion || buster) + '&_t=' + buster);
+        return;
+      }
+      // Replace the document with the freshly-fetched HTML in-place. This
+      // never re-enters the cache layer.
+      try {
+        // Update the URL bar to the canonical / without triggering a load.
+        try { history.replaceState(null, '', '/?_v=' + (newVersion || buster)); } catch(e) {}
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (e) {
+        // Some browsers (rare) refuse document.open after async work; fall
+        // back to a path-level navigation.
+        window.location.replace('/index.html?_v=' + (newVersion || buster) + '&_t=' + buster);
+      }
     }).catch(function() {
-      // Fallback: hard reload (may still hit CDN cache, but worth trying)
-      window.location.reload();
+      // Final fallback: hard reload with a path-level cache buster.
+      window.location.replace('/index.html?_v=' + (newVersion || Date.now()) + '&_t=' + Date.now());
     });
   });
 }
@@ -1594,13 +1631,80 @@ function neForceUpdate(newVersion) {
     if (document.visibilityState === 'visible') checkVersion();
   });
 
-  // ONE-TIME service worker cleanup.
-  // Only register the self-destructing SW if there's currently a SW
-  // controlling this page (meaning an old, stale SW is intercepting requests).
-  // Once it self-destructs, no SW will be registered and this block won't fire again.
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
-      .catch(function() {});
+  // v2.46.4: real service-worker registration.
+  //
+  // The previous strategy was a "self-destructing" SW that nuked itself on
+  // every load. That left us at the mercy of GitHub Pages + Fastly's CDN
+  // cache (max-age=600 with query strings ignored) and Chrome iOS's PWA
+  // storage partitioning. Both produced the symptom "I see stale UI" / "I
+  // had to log in again after Add-to-Home-Screen".
+  //
+  // The new SW (sw.js) is network-first for HTML + version.json and
+  // stale-while-revalidate for static assets. As long as the device has
+  // network when the page loads, it ALWAYS sees the latest build. On a new
+  // deploy, the SW activates, skipWaiting + clients.claim(), and posts a
+  // SW_ACTIVATED message that we use to reload the page in place — no more
+  // tap-an-update-button dance.
+  if ('serviceWorker' in navigator) {
+    try {
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none', scope: '/' })
+        .then(function(reg) {
+          // If there's a waiting worker, tell it to take over right now.
+          if (reg && reg.waiting) {
+            try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch(_) {}
+          }
+          // Whenever a new worker is found, ask it to skip waiting as soon
+          // as it's installed so we don't sit on stale HTML.
+          if (reg) {
+            reg.addEventListener('updatefound', function() {
+              var nw = reg.installing;
+              if (!nw) return;
+              nw.addEventListener('statechange', function() {
+                if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                  try { nw.postMessage({ type: 'SKIP_WAITING' }); } catch(_) {}
+                }
+              });
+            });
+          }
+        })
+        .catch(function() {});
+
+      // When the active worker changes (i.e. a new build took over), reload
+      // the page so we render the fresh HTML. We guard with a sessionStorage
+      // flag so a single update never produces an infinite reload loop.
+      var __reloadedForSW = false;
+      try { __reloadedForSW = sessionStorage.getItem('rb_sw_reloaded') === '1'; } catch(_){}
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (__reloadedForSW) return;
+        __reloadedForSW = true;
+        try { sessionStorage.setItem('rb_sw_reloaded', '1'); } catch(_){}
+        // Path-level cache-buster (Fastly treats /index.html as a different
+        // cache key from /) plus the SW will intercept anyway.
+        var u = '/index.html?_v=' + Date.now();
+        try { window.location.replace(u); } catch(_) { window.location.reload(); }
+      });
+      // Clear the reload guard once we successfully finish a load on a
+      // freshly-claimed SW (so the NEXT update can reload again).
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          try { sessionStorage.removeItem('rb_sw_reloaded'); } catch(_){}
+        }, 3000);
+      });
+
+      // SW broadcasts SW_ACTIVATED after activate. Use it as a backup
+      // trigger for the same reload path (in case controllerchange doesn't
+      // fire on Safari, which has been historically flaky here).
+      navigator.serviceWorker.addEventListener('message', function(ev) {
+        if (!ev || !ev.data) return;
+        if (ev.data.type === 'SW_ACTIVATED' && ev.data.version && ev.data.version !== NE_APP_VERSION) {
+          if (__reloadedForSW) return;
+          __reloadedForSW = true;
+          try { sessionStorage.setItem('rb_sw_reloaded', '1'); } catch(_){}
+          var u2 = '/index.html?_v=' + Date.now();
+          try { window.location.replace(u2); } catch(_) { window.location.reload(); }
+        }
+      });
+    } catch (_) { /* SW unsupported — page still works without it */ }
   }
 })();
 
@@ -9380,6 +9484,35 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
   // ──────────────────────────────────────────────────────────────────────
   var BETA_HASH = 'c5e6c12d42ceae0ccc49585c2ca2a59c43ffb108a4136ba8bf728017acfeb8b3'; // sha256("SARATOGA2026")
   var FLAG_KEY  = 'railbird-beta-unlocked-v1';
+  var COOKIE_KEY = 'rb_unlock';
+
+  // v2.46.4: harden unlock against iOS PWA storage partitioning.
+  // When you "Add to Home Screen" from iOS Chrome the resulting icon launches
+  // in a fresh WebKit storage context that does NOT inherit Chrome’s
+  // localStorage. To avoid forcing a re-login on every PWA launch, we mirror
+  // the unlock flag across THREE stores: localStorage, sessionStorage, and a
+  // long-lived cookie (cookies DO survive the WebKit partition because the
+  // origin is the same). Reading checks all three; writing fans out to all
+  // three. Any single one being present unlocks the gate.
+  function rbReadUnlock() {
+    try { if (localStorage.getItem(FLAG_KEY) === '1') return true; } catch(_){}
+    try { if (sessionStorage.getItem(FLAG_KEY) === '1') return true; } catch(_){}
+    try {
+      var m = document.cookie && document.cookie.match(new RegExp('(?:^|; )' + COOKIE_KEY + '=([^;]*)'));
+      if (m && decodeURIComponent(m[1]) === '1') return true;
+    } catch(_){}
+    return false;
+  }
+  function rbWriteUnlock() {
+    try { localStorage.setItem(FLAG_KEY, '1'); } catch(_){}
+    try { sessionStorage.setItem(FLAG_KEY, '1'); } catch(_){}
+    try {
+      // 1 year, root path, SameSite=Lax so it survives navigation. Secure on https.
+      var maxAge = 60 * 60 * 24 * 365;
+      var secure = (location.protocol === 'https:') ? '; Secure' : '';
+      document.cookie = COOKIE_KEY + '=1; Max-Age=' + maxAge + '; Path=/; SameSite=Lax' + secure;
+    } catch(_){}
+  }
 
   // Worker base URL — mirror logic from the admin block (kept self-contained
   // here because the gate runs before the admin script is parsed).
@@ -9398,13 +9531,20 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 
   // ?dev=1 bypass for the builder.
   if (sp.get('dev') === '1') {
-    try { localStorage.setItem(FLAG_KEY, '1'); } catch(_){}
+    rbWriteUnlock();
   }
 
   var invite   = (sp.get('invite')   || '').trim();
   var approved = (sp.get('approved') || '').trim();
-  var alreadyUnlocked = false;
-  try { alreadyUnlocked = localStorage.getItem(FLAG_KEY) === '1'; } catch(_){}
+  // v2.46.4: read across localStorage + sessionStorage + cookie so a PWA
+  // launch that landed in a fresh WebKit storage partition still finds the
+  // cookie and stays unlocked.
+  var alreadyUnlocked = rbReadUnlock();
+  // If only one of the three stores has the flag, top up the others now so
+  // future launches in any context are fast.
+  if (alreadyUnlocked) {
+    try { rbWriteUnlock(); } catch(_){}
+  }
 
   // Fast path: already unlocked AND no ?approved= to redeem → show app.
   if (alreadyUnlocked && !approved) return;
@@ -9450,7 +9590,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           return;
         }
         // Persist unlock + cache the user's name for the share flow.
-        try { localStorage.setItem(FLAG_KEY, '1'); } catch(_){}
+        rbWriteUnlock();
         try {
           localStorage.setItem('railbird.userName.v1', JSON.stringify({
             first: data.first || '',
@@ -9512,7 +9652,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     inp.focus();
   }
   function proceedFromCode(){
-    try { localStorage.setItem(FLAG_KEY, '1'); } catch(_){}
+    rbWriteUnlock();
     gate.classList.add('hidden');
   }
   if (btn) btn.addEventListener('click', tryUnlock);

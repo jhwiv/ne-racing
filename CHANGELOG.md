@@ -1,5 +1,86 @@
 # NE Racing — Changelog
 
+## v2.46.4-brisnet — Real service worker + unlock survives PWA install (2026-06-05)
+
+**Why this build exists.** Two related complaints from the user after the
+v2.46.2 ship:
+1. "Cache clear isn't working when I click update button."
+2. "Had to login again after saved to home screen."
+
+Both come from the same underlying problem: GitHub Pages + Fastly serves
+HTML with `cache-control: max-age=600` AND ignores query strings as
+cache keys (we tested: `?_v=anything` returns `x-cache: HIT`). And iOS
+Chrome's "Add to Home Screen" launches the resulting PWA through WebKit
+with a fresh storage partition that doesn't inherit Chrome's
+`localStorage`. The old SW was a self-destructing one that gave up
+control on every load, so the browser was on its own.
+
+**The fix is to act like a real PWA.**
+
+### 1. Network-first service worker (`sw.js`)
+
+Replaces the self-destructing SW with a proper one:
+
+- **HTML / navigations:** network-first with `cache: 'reload'`. As long
+  as the device has network, the page is always the freshest build off
+  origin. Falls back to cache if offline; final fallback is
+  `offline.html`.
+- **`/version.json`:** network-only, no-store. The in-page version
+  poller can never be fooled by a cached response.
+- **`/api/*` and `cloudflare-worker.jhwiv-online.workers.dev`:**
+  network-only. Live data stays live.
+- **`/data/brisnet-*.json`:** stale-while-revalidate. Fast first paint;
+  background refresh keeps the next render up to date.
+- **All other same-origin assets** (CSS, JS, fonts, icons, manifest):
+  stale-while-revalidate.
+
+On `install` the SW `skipWaiting()`s. On `activate` it deletes every
+prior cache (`railbird-v*`), `clients.claim()`s, and broadcasts a
+`SW_ACTIVATED` message. The page listens for `controllerchange` AND for
+that broadcast — either one triggers an in-place reload with a
+path-level cache buster (`/index.html?_v=<ts>`, which Fastly treats as a
+distinct cache key from `/`). A sessionStorage guard prevents infinite
+reload loops.
+
+Net effect: new deploys propagate to open tabs and home-screen PWAs
+automatically. No more "tap the update button" dance.
+
+### 2. Unlock flag mirrored across THREE stores (`localStorage`,
+`sessionStorage`, cookie)
+
+iOS Chrome PWAs launched from a home-screen shortcut run through WebKit
+with a fresh storage partition that does NOT inherit Chrome's
+`localStorage`. The gate's `railbird-beta-unlocked-v1` flag was
+localStorage-only, so the PWA opened to the access-code screen every
+time.
+
+Fix: `rbReadUnlock()` checks `localStorage`, `sessionStorage`, AND a
+dedicated `rb_unlock=1` cookie (Path=/, Max-Age=1yr, SameSite=Lax,
+Secure). `rbWriteUnlock()` fans out to all three. Cookies DO survive
+the WebKit partition because they're keyed only by origin, so the PWA
+launch finds the cookie and skips the gate. Every successful unlock
+(code, approved-token, dev bypass) now writes all three.
+
+### 3. Other v2.46.3 fixes rolled in
+
+- `neForceUpdate()` now fetches `/index.html?_v=<ts>` (path-level cache
+  buster) instead of `/?_v=<ts>` (which Fastly was caching). With the SW
+  in place this is now mostly a backup path — the SW handles the common
+  case — but the tap-the-banner flow works correctly even on SW-less
+  browsers.
+- Sanity-check that fetched HTML actually contains the new version
+  before swapping the document; if it doesn't, fall through to a hard
+  navigation rather than render stale HTML.
+
+**Cache bust.** `NE_APP_VERSION` and `version.json` bumped to
+`20260605-v2.46.4-brisnet`. The SW's `CACHE_VERSION` is `v2.46.4` so it
+activates fresh and tears down v2.46.2's caches.
+
+**No worker changes.** Worker still deploy
+`1726ca613a814f8b8620df4d6c797554`.
+
+---
+
 ## v2.46.2-brisnet — Brisnet PP actually wired into scoring (2026-06-05)
 
 **Root cause of "11 lean".** v2.46.0 + v2.46.1 shipped the Brisnet PP
