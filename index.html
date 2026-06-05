@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.46.8-brisnet';
+var NE_APP_VERSION = '20260605-v2.46.9-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -12912,6 +12912,10 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
 
   // Map bet type to WPS code and sync to horse.wps so BETS tab sees it
   var wpsCode = betType === 'Win' ? 'W' : betType === 'Place' ? 'P' : betType === 'Show' ? 'S' : null;
+  // v2.46.9: detect exotic bet types so we mark the bet object correctly
+  // (isExotic + formula + cost + combos) and the exotic slip renders them.
+  // Anything not Win/Place/Show is treated as exotic.
+  var isExoticBet = !wpsCode;
   var data = getTrackData();
 
   if (wpsCode) {
@@ -12931,20 +12935,49 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     }
   }
 
+  // v2.46.9: build exotic bet metadata when applicable. horsePp and
+  // horseName for exotics arrive slash-joined: '3/5' + 'NameA/NameB'.
+  // Exacta Box = each pair * $amount; with 2 horses that's 2 combos.
+  var exoticMeta = null;
+  if (isExoticBet) {
+    var names = String(horseName).split('/').map(function(s){ return s.trim(); }).filter(Boolean);
+    var pps   = String(horsePp).split('/').map(function(s){ return s.trim(); }).filter(Boolean);
+    var nLegs = Math.max(names.length, 1);
+    // Combo count for common single-race box bets
+    var combos = 1;
+    var tUpper = String(betType).toUpperCase();
+    if (tUpper.indexOf('EXACTA') >= 0) combos = nLegs * (nLegs - 1);
+    else if (tUpper.indexOf('TRIFECTA') >= 0) combos = nLegs * (nLegs - 1) * (nLegs - 2);
+    else if (tUpper.indexOf('SUPER') >= 0) combos = nLegs * (nLegs - 1) * (nLegs - 2) * (nLegs - 3);
+    if (!isFinite(combos) || combos < 1) combos = 1;
+    var cost = combos * (parseFloat(amount) || 2);
+    var ppDisplay = pps.length ? pps.map(function(p){ return '#' + p; }).join(' / ') : '';
+    var formula = '$' + amount + ' ' + betType + ' — R' + raceNum + ' ' + ppDisplay +
+                  ' ' + names.join(' / ') + ' = ' + combos + ' combo' + (combos === 1 ? '' : 's') +
+                  ', $' + cost.toFixed(2);
+    exoticMeta = { isExotic: true, cost: cost, combos: combos, formula: formula, names: names };
+  }
+
   // Check for existing duplicate bet (same race, horse/selections, and bet type)
   data.bets = data.bets || [];
   var existingBet = data.bets.find(function(b) {
     return String(b.raceNum) === String(raceNum) && b.type === betType &&
-      JSON.stringify(b.selections) === JSON.stringify([horseName]);
+      JSON.stringify(b.selections) === JSON.stringify(exoticMeta ? exoticMeta.names : [horseName]);
   });
 
   if (existingBet) {
     // Update amount on the existing bet instead of creating a duplicate
     existingBet.amount = amount;
+    if (exoticMeta) {
+      existingBet.cost = exoticMeta.cost;
+      existingBet.combos = exoticMeta.combos;
+      existingBet.formula = exoticMeta.formula;
+    }
     saveTrackData(data);
-    showToast('Updated bet: $' + amount + ' ' + betType + ' #' + horsePp + ' ' + horseName + ' R' + raceNum, 'success', 3000);
+    showToast('Updated bet: $' + amount + ' ' + betType + ' — ' + horseName + ' R' + raceNum, 'success', 3000);
     updateBankrollBanner();
     renderStraightBets();
+    if (exoticMeta && typeof renderLockedExotics === 'function') renderLockedExotics();
     checkBankrollOverrun();
   } else if (mode === 'simulate') {
     // Add bet to internal bet slip
@@ -12953,7 +12986,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
       date: getTodayStr(),
       raceNum: raceNum,
       type: betType,
-      selections: [horseName],
+      selections: exoticMeta ? exoticMeta.names : [horseName],
       pp: [horsePp],
       amount: amount,
       result: null,
@@ -12963,11 +12996,19 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
       track: getActiveTrack(),
       bettingMode: 'simulate'
     };
+    if (exoticMeta) {
+      bet.isExotic = true;
+      bet.cost = exoticMeta.cost;
+      bet.combos = exoticMeta.combos;
+      bet.formula = exoticMeta.formula;
+      bet.locked = false;
+    }
     data.bets.push(bet);
     saveTrackData(data);
-    showToast('Added to bet slip: $' + amount + ' ' + betType + ' #' + horsePp + ' ' + horseName + ' R' + raceNum, 'success', 3000);
+    showToast('Added: $' + amount + ' ' + betType + ' — ' + horseName + ' R' + raceNum, 'success', 3000);
     updateBankrollBanner();
     renderStraightBets();
+    if (exoticMeta && typeof renderLockedExotics === 'function') renderLockedExotics();
     checkBankrollOverrun();
   } else {
     // Real mode: open external platform + also track internally
@@ -12976,7 +13017,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
       date: getTodayStr(),
       raceNum: raceNum,
       type: betType,
-      selections: [horseName],
+      selections: exoticMeta ? exoticMeta.names : [horseName],
       pp: [horsePp],
       amount: amount,
       result: null,
@@ -12986,6 +13027,13 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
       track: getActiveTrack(),
       bettingMode: 'real'
     };
+    if (exoticMeta) {
+      bet.isExotic = true;
+      bet.cost = exoticMeta.cost;
+      bet.combos = exoticMeta.combos;
+      bet.formula = exoticMeta.formula;
+      bet.locked = false;
+    }
     data.bets.push(bet);
     saveTrackData(data);
     var platform = getBettingPlatform();
@@ -12993,6 +13041,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     window.open(buildBetUrl(raceNum), '_blank', 'noopener');
     showToast('Opened ' + platformName + ' — don\'t forget to log your result', 'success', 3000);
     renderStraightBets();
+    if (exoticMeta && typeof renderLockedExotics === 'function') renderLockedExotics();
     checkBankrollOverrun();
   }
 

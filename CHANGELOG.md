@@ -1,5 +1,38 @@
 # NE Racing — Changelog
 
+## v2.46.9-brisnet — Follow All copies exotic bets exactly as recommended (2026-06-05)
+
+**Bug.** When the user tapped "Follow All Expert Picks" and the rec card
+included Value Plays (Exacta Box) or Exotics (Exacta Box A/B), only the
+Win/Place/Show bets showed up in the slip. The exacta recommendations
+silently vanished — user saw "all straight bets" even though the card
+clearly displayed exotic plays.
+
+**Root cause.** `handleTicketBetClick()` created bet objects from
+rec-card buttons without setting `isExotic: true`, `formula`, `cost`,
+or `combos`. The slip's straight-bet section reads only `horse.wps`
+(Win/Place/Show codes) and the exotic section filters on `isExotic`,
+so the malformed bets had no rendering path — they sat in `data.bets`
+invisibly.
+
+**Fix.** Any bet type that isn't Win/Place/Show is treated as exotic.
+`handleTicketBetClick()` now:
+- Splits slash-joined `horseName`/`horsePp` into name and PP arrays
+- Computes combo count by bet type (Exacta Box = n×(n-1), Trifecta =
+  n×(n-1)×(n-2), Super = n×(n-1)×(n-2)×(n-3))
+- Computes total cost = combos × amount
+- Builds a `formula` string for the exotic slip display
+- Sets `isExotic: true`, `cost`, `combos`, `formula`, `locked: false`
+- Calls `renderLockedExotics()` after save so the slip refreshes
+
+Now when you tap Follow All:
+- Best Bet → Win bet (shows in straight slip) ✓
+- Action Bet → Win bet (shows in straight slip) ✓
+- Value Plays → Exacta Box (shows in EXOTIC slip with formula) ✓
+- Exotic recommendation → 2-horse Exacta Box (shows in EXOTIC slip) ✓
+
+---
+
 ## v2.46.8-brisnet — Follow All: no more 503 toast spam (2026-06-05)
 
 **Bug.** With v2.46.7 the bulk Quick Pick correctly entered every bet,
