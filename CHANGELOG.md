@@ -1,5 +1,60 @@
 # NE Racing — Changelog
 
+## v2.46.10-brisnet — Quick-Follow chips on rec cards + tech-stack rewrite (2026-06-05)
+
+**Feature — Quick-Follow chips.** Every recommendation card on the
+Today tab (Best Bet, Value Play, Action Bet, Jim's Way ticket
+fallback, Exotic of the Day) now shows one-tap follow chips for the
+recommended **horse**, **jockey**, and **trainer** — and for the Exotic
+card, both members of the exacta pairing. Tapping a chip adds (or
+removes) that entity from the user's Virtual Barn instantly. Chip
+state flips between `+ Horse: NAME` (not followed, gold pill) and
+`✓ Horse: NAME` (followed, green pill) without a page reload — the
+Today tab re-renders so the chip reflects the new barn membership.
+
+User request:
+
+> One horse appears an expert or recommended bet, there should be an
+> option to add that Horse or jockey trainer or Barn to my Barn.
+
+**Implementation.**
+- New `buildBarnFollowChips(horse)` helper renders the chip row by
+  reading barn membership via `window.barnGet()` (newly exposed from
+  the barn IIFE alongside the existing `window.barnToggle`).
+- New `window.quickFollow(ev, kind, name)` onclick handler stops the
+  card-expand bubble, calls `barnToggle()`, and re-renders the Today
+  tab so chip state is fresh.
+- New `.barn-follow-row` / `.barn-follow-chip` CSS — gold pills for
+  not-followed, green for followed; `::before` pseudo-elements supply
+  the `+ ` / `✓ ` prefix so HTML escaping doesn't corrupt the glyph.
+- Chip rows injected before the `.btn-bet*` CTA in 5 card builders:
+  Best Bet, Value Play, Action Bet, Jim's Way ticket fallback, Exotic
+  (two rows — one per horse in the box).
+- The exotic-card injection honors the user's standing rule that
+  Follow-All-Expert-Picks must "copy over exactly" — both horses get
+  follow chips, never just the first.
+
+**Feature — Tech stack section rewrite.** The About modal's
+"Tech stack" section was outdated. Updated to reflect the current
+build:
+- Frontend bullet now mentions service worker + iOS-safe PWA install
+  (the v2.46.6 manifest-token start_url unlock).
+- Cloudflare Workers bullet now mentions live odds/results and the
+  Brisnet PP overlay.
+- R2 bullet credits Brisnet alongside Equibase as PDF source.
+- Combined Equibase + Brisnet line cites "89–97% daily coverage at
+  Saratoga."
+- New "Live odds & results API" bullet (vendor-agnostic phrasing).
+- New scoring-engine v2 bullet (Prime Power, Quirin, Brisnet speed
+  par, TJ combo, completeness, confidence-band).
+- Dev-loop credits updated: "Perplexity Computer + Claude + GitHub"
+  replaces the older "Cursor + Claude + Perplexity."
+
+**Files touched.** `index.html` (CSS @ ~3057, helper JS @ ~16206,
+five card-builder injections, About-modal copy @ ~11356), `app.html`
+(mirrored from index.html), `sw.js` (CACHE_VERSION → v2.46.10),
+`version.json`, `CHANGELOG.md`.
+
 ## v2.46.9-brisnet — Follow All copies exotic bets exactly as recommended (2026-06-05)
 
 **Bug.** When the user tapped "Follow All Expert Picks" and the rec card

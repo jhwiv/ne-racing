@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.46.9-brisnet';
+var NE_APP_VERSION = '20260605-v2.46.10-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -3053,6 +3053,38 @@ h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.4; }
 .rec-bet-item + .rec-bet-item { border-top: 1px solid rgba(201,168,76,0.20); }
 .rec-bet-item + .ticket-exotic { border-top: 2px dashed rgba(201,168,76,0.30); }
 .ticket-exotic { background: linear-gradient(135deg, rgba(27,67,50,0.03), rgba(201,168,76,0.06)); border-radius: var(--radius-md); padding: 1rem; margin-top: 0.5rem; }
+
+/* v2.46.10: Quick-Follow chips on rec cards — add horse / jockey / trainer
+   straight from a recommendation into the Virtual Barn with one tap. */
+.barn-follow-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin: 6px 0 8px 0;
+}
+.barn-follow-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(201, 168, 76, 0.10);
+  color: #1B2E4B;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  min-height: 28px;
+}
+.barn-follow-chip:hover { background: rgba(201, 168, 76, 0.18); border-color: rgba(201, 168, 76, 0.55); }
+.barn-follow-chip:active { transform: scale(0.97); }
+.barn-follow-chip.followed {
+  background: rgba(27, 67, 50, 0.10);
+  color: #1B4332;
+  border-color: rgba(27, 67, 50, 0.30);
+}
+.barn-follow-chip.followed::before { content: '✓ '; font-weight: 700; }
+.barn-follow-chip:not(.followed)::before { content: '+ '; font-weight: 700; }
 
 /* Follow All Expert Picks shimmer */
 .follow-picks-btn { position: relative; overflow: hidden; }
@@ -11357,31 +11389,33 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <p style="margin:0 0 8px 0;"><strong>Frontend</strong></p>
         <ul style="margin:0 0 10px 18px; padding:0;">
           <li>Vanilla HTML / CSS / JavaScript &mdash; single-file PWA, no framework runtime tax.</li>
-          <li>Service worker for offline-friendly caching and version pinning.</li>
+          <li>Real <strong>service worker</strong> &mdash; network-first HTML, network-only version + live data, stale-while-revalidate static assets, offline fallback.</li>
+          <li><strong>iOS-safe PWA install</strong> &mdash; tokenized <code>start_url</code> in a dynamic manifest so &ldquo;Add to Home Screen&rdquo; unlocks automatically across iOS&rsquo;s storage partition.</li>
           <li>Playfair Display + system sans for an editorial, print-magazine feel.</li>
           <li>Hosted on <strong>GitHub Pages</strong> at <a href="https://railbirdai.com" target="_blank" rel="noopener">railbirdai.com</a>.</li>
         </ul>
         <p style="margin:0 0 8px 0;"><strong>Backend &mdash; Cloudflare</strong></p>
         <ul style="margin:0 0 10px 18px; padding:0;">
-          <li><strong>Workers</strong> &mdash; edge API for race previews, horse lookups, feedback intake, and Equibase fallback search.</li>
+          <li><strong>Workers</strong> &mdash; edge API for race previews, horse lookups, live odds &amp; results, Brisnet PP overlay, feedback intake.</li>
           <li><strong>D1</strong> &mdash; SQLite-at-the-edge archive of past performances (horses, races, PP entries, workouts, surface splits).</li>
           <li><strong>KV</strong> &mdash; race-history cache, engine-accuracy log, anonymous feedback log.</li>
-          <li><strong>R2</strong> &mdash; reserved for raw Equibase XML mirroring.</li>
+          <li><strong>R2</strong> &mdash; reserved for raw Equibase / Brisnet XML mirroring.</li>
         </ul>
         <p style="margin:0 0 8px 0;"><strong>AI &amp; data</strong></p>
         <ul style="margin:0 0 10px 18px; padding:0;">
           <li><strong>Perplexity API</strong> &mdash; generates race previews and per-horse writeups from live web context.</li>
-          <li><strong>Equibase</strong> SIMD XML feeds &mdash; ingested via a TypeScript pipeline into D1 (parser handles charts, PPs, points-of-call, race summaries, workouts).</li>
-          <li><strong>Curated stubs</strong> &mdash; hand-picked horse and race metadata for editorial control of the daily card.</li>
+          <li><strong>Equibase + Brisnet</strong> feeds &mdash; Equibase SIMD XML for past performances, points-of-call, charts; <strong>Brisnet Prime Power</strong> overlays speed/pace ratings on top (89&ndash;97% daily coverage at Saratoga).</li>
+          <li><strong>Live odds &amp; results API</strong> &mdash; real-time entries, morning lines, late odds, and official results, routed through the worker.</li>
+          <li><strong>Scoring engine v2</strong> &mdash; composite model blending Prime Power, Quirin speed, Brisnet speed par, trainer-jockey 365-day combo, data-completeness weighting, and confidence-band calibration.</li>
         </ul>
         <p style="margin:0 0 8px 0;"><strong>Dev &amp; ops</strong></p>
         <ul style="margin:0 0 10px 18px; padding:0;">
           <li><strong>GitHub</strong> (<code>jhwiv/ne-racing</code>) &mdash; source of truth, Pages auto-deploys on push to master.</li>
           <li><strong>Wrangler</strong> &mdash; Worker / D1 / KV deployment.</li>
-          <li><strong>Cursor + Claude + Perplexity</strong> &mdash; AI-assisted development loop.</li>
+          <li><strong>Perplexity Computer + Claude + GitHub</strong> &mdash; AI-agent development loop: spec, build, QA, ship.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.46.0-brisnet</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.46.10-brisnet</strong>.</p>
       </div>
     </div>
   </div>
@@ -16164,10 +16198,51 @@ function renderJimFallbackBet(fb, compact) {
       <div class="rec-bet-amount">$${fb.amount} ${fb.mode === 'win' ? 'to Win' : 'to Place'}</div>
       ${fb.payout ? '<div class="ticket-payout">' + fb.payout + '</div>' : ''}
       <div class="rec-bet-reason">"${escHtml(fb.reasonShort)}"</div>
+      ${buildBarnFollowChips(fb.horse)}
       <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${fb.race.num}, '${horseName.replace(/'/g,"\\'")}', ${pp}, '${fb.mode === 'win' ? 'Win' : 'Place'}', 'jim')">+ Bet Slip</button>
     </div>
   </details>`;
 }
+
+// v2.46.10 — Quick-Follow chips on rec cards.
+// One-tap follow for the recommended horse, jockey, or trainer into the Virtual Barn.
+// Reads barn state via window.barnGet (exposed in the barn IIFE), writes via window.barnToggle.
+function buildBarnFollowChips(horse) {
+  if (!horse) return '';
+  var barn = (typeof window.barnGet === 'function') ? window.barnGet() : null;
+  if (!barn) return '';
+  function followed(kind, name) {
+    if (!name) return false;
+    var list = barn[kind] || [];
+    var n = String(name).trim().toLowerCase();
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].name || '').trim().toLowerCase() === n) return true;
+    }
+    return false;
+  }
+  var chips = [];
+  if (horse.name)    chips.push({ kind: 'horses',   name: horse.name,    label: 'Horse: '    + horse.name });
+  if (horse.jockey)  chips.push({ kind: 'jockeys',  name: horse.jockey,  label: 'Jockey: '   + horse.jockey });
+  if (horse.trainer) chips.push({ kind: 'trainers', name: horse.trainer, label: 'Trainer: '  + horse.trainer });
+  if (!chips.length) return '';
+  return '<div class="barn-follow-row">' + chips.map(function(c) {
+    var isFol = followed(c.kind, c.name);
+    var safeName = String(c.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    var pressed = isFol ? 'true' : 'false';
+    var aria = (isFol ? 'Unfollow ' : 'Follow ') + c.label;
+    return '<button type="button" class="barn-follow-chip' + (isFol ? ' followed' : '') + '" '
+      + 'aria-pressed="' + pressed + '" aria-label="' + escHtml(aria) + '" '
+      + 'onclick="quickFollow(event, \'' + c.kind + '\', \'' + safeName + '\')">'
+      + escHtml(c.label) + '</button>';
+  }).join('') + '</div>';
+}
+window.quickFollow = function(ev, kind, name) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  if (typeof window.barnToggle !== 'function') return;
+  window.barnToggle(kind, name);
+  // Re-render the Today tab so chip state (✓ / +) reflects the new barn membership.
+  try { if (typeof renderTodayTab === 'function') renderTodayTab(); } catch (e) {}
+};
 
 function buildStrengthStars(confidence) {
   var n = confidence === 'high' ? 3 : confidence === 'medium' ? 2 : 1;
@@ -16357,6 +16432,7 @@ function updateTopPicksCard(allScores) {
       ${bbPayout ? '<div class="ticket-payout">' + bbPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
+      ${buildBarnFollowChips(bestBetEntry.horse)}
       <button class="btn-bet" onclick="openBetAmountPicker(event, ${bestBetEntry.race.num}, '${escHtml(bestBetEntry.horse.name).replace(/'/g,"\\'")}', ${bestBetEntry.horse.pp}, 'Win', 'best')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`BEST BET — Race ${bestBetEntry.race.num}: #${bestBetEntry.horse.pp} ${bestBetEntry.horse.name} to WIN — $${suggestedAmt}${bbPayout ? ' (' + bbPayout + ')' : ''}`);
@@ -16385,6 +16461,7 @@ function updateTopPicksCard(allScores) {
       ${vpPayout ? '<div class="ticket-payout">' + vpPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
+      ${buildBarnFollowChips(v.horse)}
       <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}', ${v.horse.pp}, 'Exacta Box', 'value')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}${overlayStr}) — $2 EX Box with ${exPartner || '#2'}${vpPayout ? ' (' + vpPayout + ')' : ''}`);
@@ -16411,6 +16488,7 @@ function updateTopPicksCard(allScores) {
       ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
+      ${buildBarnFollowChips(ab.entry.horse)}
       <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${ab.entry.race.num}, '${escHtml(ab.entry.horse.name).replace(/'/g,"\\'")}', ${ab.entry.horse.pp}, 'Win', 'action')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`ACTION — Race ${ab.entry.race.num}: #${ab.entry.horse.pp} ${ab.entry.horse.name} to WIN — $${actionAmt}${actPayout ? ' (' + actPayout + ')' : ''}`);
@@ -16456,6 +16534,8 @@ function updateTopPicksCard(allScores) {
       <div class="card-explainer">A bonus exacta pairing where the model sees a clear top-two</div>
       <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} \u2014 $2</div>
       <div class="ticket-exotic-reason">"${exReason}"</div>
+      ${buildBarnFollowChips(ex1.horse)}
+      ${buildBarnFollowChips(ex2.horse)}
       <button class="btn-bet-outline" style="margin-top:0.4rem" onclick="openBetAmountPicker(event, ${exRaceNum}, '${escHtml(ex1.horse.name).replace(/'/g,"\\'")}/${escHtml(ex2.horse.name).replace(/'/g,"\\'")}', '${ex1.horse.pp}/${ex2.horse.pp}', 'Exacta Box', 'exotic')">${_betBtnLabel}</button>
     </div>`;
     exoticLine = `EXOTIC — EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} — $4 ($2 box) — ${exReason}`;
@@ -21584,6 +21664,7 @@ document.addEventListener('keydown', e => {
     return action;
   }
   window.barnToggle = toggleFollow; // onclick hook
+  window.barnGet = barnGet;          // v2.46.10: read access for quick-follow chips
 
   // --- Scan races in the currently-loaded track data for matches
   function barn_scanRaces() {
