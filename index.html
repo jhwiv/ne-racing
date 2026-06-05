@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260604-v2.42.1';
+var NE_APP_VERSION = '20260604-v2.43.0';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -3723,6 +3723,20 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .inline-result-winner { font-weight: 700; color: var(--color-racing-green); }
 .inline-result-place, .inline-result-show { color: var(--color-muted); font-size: 0.68rem; }
+/* v2.43.0: W/P/S result block under the FINAL badge. The three rows wrap
+   to a column on narrow screens and sit side-by-side when there's room. */
+.race-inline-result { align-items: flex-start; }
+.race-inline-result .wps-rows { display: flex; flex-wrap: wrap; gap: 4px 14px; row-gap: 2px; flex: 1; min-width: 0; }
+.race-inline-result .wps-userbets { width: 100%; margin-top: 2px; }
+.wps-line { display: inline-flex; align-items: baseline; gap: 4px; font-size: 0.72rem; white-space: nowrap; }
+.wps-label { font-weight: 700; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--color-muted); min-width: 32px; }
+.wps-win   .wps-label { color: var(--color-racing-green); }
+.wps-place .wps-label { color: #b45309; }
+.wps-show  .wps-label { color: #6b7280; }
+.wps-pp { font-family: var(--font-mono, monospace); font-weight: 700; color: var(--color-racing-green); font-size: 0.7rem; }
+.wps-horse { font-weight: 600; color: var(--color-ink, #1E2A36); }
+.wps-win .wps-horse { color: var(--color-racing-green); font-weight: 700; }
+.wps-payout { font-family: var(--font-mono, monospace); font-weight: 600; color: var(--color-positive); font-size: 0.72rem; }
 @keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
 .pulse-hint { position: relative; }
 .pulse-hint::after {
@@ -8523,6 +8537,12 @@ input::placeholder, textarea::placeholder { color: var(--msp-muted) !important; 
 .inline-result-badge { background: var(--msp-turf) !important; color: #fff !important; }
 .inline-result-winner { color: var(--msp-turf-deep) !important; }
 .inline-result-place, .inline-result-show { color: var(--msp-ink-2) !important; }
+/* v2.43.0 W/P/S triple — paper theme overrides */
+.wps-win   .wps-label, .wps-pp, .wps-win .wps-horse { color: var(--msp-turf-deep) !important; }
+.wps-place .wps-label { color: var(--msp-brass) !important; }
+.wps-show  .wps-label { color: var(--msp-ink-2) !important; }
+.wps-horse { color: var(--msp-ink) !important; }
+.wps-payout { color: var(--msp-turf-deep) !important; }
 
 /* Rec-bets / ticket on cream — keep dark ink (already existed, reinforce) */
 .rec-bets-card, .rec-bets-card * { color: inherit; }
@@ -14511,21 +14531,30 @@ function buildRaceCardHTML(race) {
   })();
   // NEXT badge: applied during applyRaceFocus, not here
   // ── Inline result strip for finished races ──
+  // v2.43.0: rewritten to render a true W / P / S triple with payouts
+  // formatted as `$X.XX` on each line. Wraps to multiple lines on narrow
+  // screens; on wide screens the three rows sit side-by-side via flex.
+  // Reads from the normalized `.results` array so it works with either
+  // the legacy shape or the new Racing API `finishOrder` shape.
   let inlineResultHtml = '';
   if (race._resultData && race._resultData.results && race._resultData.results.length) {
     const rd = race._resultData;
+    const fmt = function(v) { return (v == null || isNaN(v)) ? '' : ('$' + Number(v).toFixed(2)); };
     const winner = rd.results.find(r => r.position === 1);
     const second = rd.results.find(r => r.position === 2);
-    const third = rd.results.find(r => r.position === 3);
-    let winInfo = winner ? winner.horseName : '';
-    if (winner && winner.winPayout) winInfo += ' ($' + winner.winPayout.toFixed(2) + ')';
-    let placeInfo = '';
-    if (second) placeInfo = second.horseName;
-    if (second && second.placePayout) placeInfo += ' ($' + second.placePayout.toFixed(2) + ')';
-    let showInfo = '';
-    if (third) showInfo = third.horseName;
-    if (third && third.showPayout) showInfo += ' ($' + third.showPayout.toFixed(2) + ')';
-    // Check if user has bets on this race and show W/L indicators
+    const third  = rd.results.find(r => r.position === 3);
+    function _wpsLine(label, fin, payoutField) {
+      if (!fin) return '';
+      const pp = fin.pp || fin.programNumber || '';
+      const payout = fmt(fin[payoutField]);
+      return '<span class="wps-line wps-' + label.toLowerCase() + '">'
+           + '<span class="wps-label">' + label + '</span> '
+           + (pp ? '<span class="wps-pp">#' + pp + '</span> ' : '')
+           + '<span class="wps-horse">' + escHtml(fin.horseName || '') + '</span>'
+           + (payout ? ' <span class="wps-payout">' + payout + '</span>' : '')
+           + '</span>';
+    }
+    // User bet W/L badges (kept from previous version)
     const data = getTrackData();
     const raceBets = (data.bets || []).filter(b => parseInt(b.raceNum, 10) === race.num && b.date === getTodayStr());
     let userBetHtml = '';
@@ -14536,11 +14565,13 @@ function buildRaceCardHTML(race) {
       else if (b.result === 'scratch') userBetHtml += ' <span style="color:#92400e;font-weight:700;font-size:0.7rem">SCR ' + sel + '</span>';
     });
     inlineResultHtml = '<div class="race-inline-result">'
-      + '<span class="inline-result-badge">FINAL</span> '
-      + '<span class="inline-result-winner">' + winInfo + '</span>'
-      + (placeInfo ? '<span class="inline-result-place"> / ' + placeInfo + '</span>' : '')
-      + (showInfo ? '<span class="inline-result-show"> / ' + showInfo + '</span>' : '')
-      + userBetHtml
+      + '<span class="inline-result-badge">FINAL</span>'
+      + '<div class="wps-rows">'
+      +   _wpsLine('WIN',   winner, 'winPayout')
+      +   _wpsLine('PLACE', second, 'placePayout')
+      +   _wpsLine('SHOW',  third,  'showPayout')
+      + '</div>'
+      + (userBetHtml ? '<div class="wps-userbets">' + userBetHtml + '</div>' : '')
       + '</div>';
   }
   return `<div class="race-card-wrap" id="race-wrap-${race.id}">
@@ -19344,9 +19375,52 @@ async function fetchLiveResults() {
     // Update cache
     setCachedResults(code, today, allRaces);
 
+    // v2.43.0: Normalize worker payload shape.
+    // The Cloudflare worker (and Racing API behind it) emits `finishOrder`
+    // with `winPayoff/placePayoff/showPayoff` per finisher. The legacy
+    // client code throughout this file expects `results` with
+    // `winPayout/placePayout/showPayout`. Rather than patch 8+ call sites,
+    // we normalize once here so every downstream consumer (inline FINAL
+    // strip, exotic resolver, straight-bet resolver, history rollups) gets
+    // a consistent shape.
+    function _normalizeRaceResult(rr) {
+      if (!rr || typeof rr !== 'object') return rr;
+      // Build the legacy `.results` array if missing.
+      if (!rr.results && Array.isArray(rr.finishOrder)) {
+        rr.results = rr.finishOrder.map(function(f) {
+          var r = Object.assign({}, f);
+          // Field-name aliases (old <- new). Keep both so anything reading
+          // either name works.
+          if (r.winPayout   == null && r.winPayoff   != null) r.winPayout   = r.winPayoff;
+          if (r.placePayout == null && r.placePayoff != null) r.placePayout = r.placePayoff;
+          if (r.showPayout  == null && r.showPayoff  != null) r.showPayout  = r.showPayoff;
+          return r;
+        });
+      }
+      // Some tracks publish W/P/S as a separate race-level `payouts` table
+      // keyed by program number. Merge those onto the matching finisher so
+      // the inline FINAL strip can show payouts even when the per-row
+      // payoff fields come back null.
+      if (Array.isArray(rr.payouts) && Array.isArray(rr.results)) {
+        rr.payouts.forEach(function(p) {
+          var pn = String(p.programNumber || p.program || p.pp || '').replace(/[^0-9A-Za-z]/g,'');
+          if (!pn) return;
+          var match = rr.results.find(function(r) {
+            return String(r.programNumber || r.pp || '').replace(/[^0-9A-Za-z]/g,'') === pn;
+          });
+          if (!match) return;
+          if (match.winPayout   == null && p.win   != null) match.winPayout   = p.win;
+          if (match.placePayout == null && p.place != null) match.placePayout = p.place;
+          if (match.showPayout  == null && p.show  != null) match.showPayout  = p.show;
+        });
+      }
+      return rr;
+    }
+
     // Store results on race objects for Today tab inline display
     var data = getTrackData();
     allRaces.forEach(function(rr) {
+      _normalizeRaceResult(rr);
       var race = (data.races || []).find(function(r) { return r.num === rr.raceNumber; });
       if (race) {
         race._resultData = rr;

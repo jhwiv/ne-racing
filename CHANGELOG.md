@@ -1,5 +1,37 @@
 # NE Racing — Changelog
 
+## v2.43.0 — W/P/S payouts under FINAL on every race card (2026-06-04)
+
+The inline FINAL strip was silently empty because of a shape mismatch:
+the Cloudflare worker (and Racing API behind it) emits
+`finishOrder` with `winPayoff` / `placePayoff` / `showPayoff` per
+finisher, but the legacy client code was reading `results` with
+`winPayout` / `placePayout` / `showPayout`. That mismatch also broke
+straight-bet auto-resolution, the exotic resolver, and the home-tab
+Best Bet recap.
+
+**Fixes:**
+
+- Normalize the worker payload once at ingest (`_normalizeRaceResult`)
+  so every downstream consumer gets both shapes. Adds `results` as a
+  copy of `finishOrder`, aliases `winPayoff` → `winPayout` etc., and
+  merges any race-level `payouts[]` table onto the matching finisher.
+- Rewrite the inline FINAL strip into a true **W / P / S** triple with
+  program number, horse name, and `$X.XX` payout on each line. Rows
+  wrap to a column on narrow screens, sit side-by-side when there's
+  room. Three new CSS classes (`.wps-rows`, `.wps-line`, `.wps-label`
+  etc.) handle the styling on both the default and paper themes.
+- Inline result strip now uses `escHtml()` on the horse name (small
+  hardening).
+
+Side effects of the normalizer fix:
+
+- Straight W/P/S bets on finished races should now auto-resolve.
+- The exotic resolver (`resolveExoticBet`) gets correct finishOrder
+  pp/horseName lookups.
+- The home-tab Best Bet recap correctly pulls the winner name and
+  payout from finished cards.
+
 ## v2.42.1 — Suppress empty-rationale nag line (2026-06-04)
 
 `buildRationale()` used to fall back to the string
