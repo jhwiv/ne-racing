@@ -1,5 +1,73 @@
 # NE Racing — Changelog
 
+## v2.46.0-brisnet — Site restored with Brisnet PP overlay live (2026-06-05)
+
+Maintenance window closed at v2.46.0. The full Saratoga handicapping app
+is back online, now powered by Brisnet single-file past-performance data
+for today (Friday), tomorrow (Saturday) and Sunday's cards.
+
+**Data acquisition.** User purchased three Brisnet PP single files ($1.50
+each — sar0605k.zip / sar0606k.zip / sar0607k.zip) and uploaded them.
+Extracted to `/tmp/brisnet/SAR{MMDD}.DRF`. Each DRF is comma-delimited
+ASCII, 1,435 fields per row, one row per runner (146 runners across 14
+races for Friday's card).
+
+**Pre-parse step.** A new Node parser (`tools/parse-brisnet.js`, ad-hoc)
+translates the single-file format to per-card JSON committed under
+`/data/brisnet-SAR-{YYYY-MM-DD}.json`. The parsed JSON exposes per
+runner: `primePower`, `runStyle`, `quirinSpeed`, `speedPar`, `daysOff`,
+`bestBrisAllWeather`, `speedFigs` (last-3 BRIS Speed Ratings, oldest→
+latest), `speedFigsExtended` (up to 10), `lastClass` (normalized for
+the in-app CLASS_SCALE), `lastClassRaw`, `jockeyMeetWinPct`,
+`trainerMeetWinPct`, and `tjCombo365` (365-day T/J combo starts/wins/
+places/shows/$2 ROI). Coverage stats: Fri 89% Prime Power / 89% speed
+figs; Sat 96% / 97%; Sun 88% / 88%. The missing 10–16% are first-time
+starters with no past performances — expected and correct.
+
+**Worker overlay (`worker.js`).** New `mergeBrisnetIntoEntries(body,
+track, date)` runs immediately after `enrichEntriesWithScoringFields()`
+in `handleEntries()`. It fetches the matching `brisnet-{TRACK}-{DATE}.
+json` from GitHub Pages, indexes runners by raceNumber + programNumber,
+and overlays Brisnet values onto the entries response. Brisnet wins
+where it has data: real `primePower`, `runningStyle`, `speedFigs`,
+`lastClass`, plus per-meet `jockeyPct` / `trainerPct` that replace the
+frozen 2026-04 NYRA-leaderboard heuristic. Emits `body.brisnetOverlay`
+stats (`runnersMatched`, `primePowerOverlays`, `speedFigsOverlays`)
+for observability. No-ops when the per-date Brisnet JSON is absent —
+fully backwards compatible with non-Brisnet cards.
+
+**Scoring engine (`index.html` / `app.html`).** `speedSubScore()` now
+blends Prime Power and trailing BRIS figs:
+- Prime Power scaled 0→100 via `((pp - 90) / 70) * 100` (cal: PP100→30,
+  PP120→55, PP140→80, PP160→95).
+- BRIS last-3 figs scaled with the existing Beyer math.
+- Combined: 70% Prime Power, 30% figs when both present; otherwise the
+  available signal alone. Fallback to neutral 50 only when both absent.
+`dataCompleteness()` returns 1.0 whenever `primePower != null`, so the
+sub-3/7 / sub-4/7 penalty multipliers in `compositeForHorse()` no
+longer fire on well-documented Brisnet horses just because the legacy
+fig/jky/trainer fields are sparse.
+
+**UI.** Banner updated from "Beta — Data Preview Mode" to "v2.46.0 —
+Brisnet PP overlay live". Version banner bumped to
+`20260605-v2.46.0-brisnet`; service worker self-destruct path will pull
+old caches automatically. Confidence-coded race-card titles from
+v2.44.0 retained — they will now reflect the higher-quality input.
+
+**Smoke test target.** With Prime Power loaded, R13 and R14 (yesterday's
+null-FIGS races) should now show populated speed data and real model
+spread. R9 The Wonder Again (G2 turf) Pashmina remains the projected
+Best Bet at PP 153.78 with last 3 BRIS speeds 91/94/99 (most recent =
+career best), G1→G2 class drop, 35-day fresh-up after the Kentucky
+Oaks.
+
+**Known small gaps.** First-time starters appear with `null` Prime
+Power and `null` speedFigs in the Brisnet feed — the worker leaves
+their scoring untouched and they receive the legacy data-completeness
+penalty, which is correct (they genuinely have no PP data). Equibase
+workup figures and TimeformUS would patch this further but are out of
+scope for this release.
+
 ## v2.45.1-maintenance — Add ETA to maintenance page (2026-06-05)
 
 Added an "Estimated restore" callout to the maintenance landing page:

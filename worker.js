@@ -2320,6 +2320,106 @@ function enrichEntriesWithScoringFields(body) {
   return body;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// v2.46.0 — Brisnet single-file PP overlay
+// ─────────────────────────────────────────────────────────────────────────────
+// Pre-parsed Brisnet PPs live at /data/brisnet-{TRACK}-{YYYY-MM-DD}.json on
+// GitHub Pages. When the file exists for this card we merge Brisnet's real
+// per-runner numbers on top of the NYRA-leaderboard heuristic + ppHistory
+// derivations, overwriting them where Brisnet provides higher-fidelity data.
+const BRISNET_BASE = "https://jhwiv.github.io/ne-racing/data";
+
+async function fetchBrisnetCard(track, date) {
+  const url = `${BRISNET_BASE}/brisnet-${track}-${date}.json`;
+  try {
+    const res = await fetch(url, { cf: { cacheTtl: 600 } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (_) {
+    return null;
+  }
+}
+
+function normalizeProgramNumber(p) {
+  if (p == null) return "";
+  return String(p).replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+}
+
+async function mergeBrisnetIntoEntries(body, track, date) {
+  const card = await fetchBrisnetCard(track, date);
+  if (!card || !Array.isArray(card.races)) return;
+
+  // Index Brisnet runners by raceNumber → programNumber.
+  const idx = new Map();
+  for (const race of card.races) {
+    const inner = new Map();
+    for (const r of (race.runners || [])) {
+      const key = normalizeProgramNumber(r.programNumber);
+      if (key) inner.set(key, r);
+    }
+    idx.set(race.raceNumber, inner);
+  }
+
+  let runnersMatched = 0;
+  let primePowerOverlays = 0;
+  let speedFigsOverlays = 0;
+
+  for (const race of (body.races || [])) {
+    const inner = idx.get(race.raceNumber);
+    if (!inner) continue;
+    for (const runner of (race.entries || [])) {
+      const key = normalizeProgramNumber(runner.programNumber || runner.pp);
+      const b = inner.get(key);
+      if (!b) continue;
+      runnersMatched++;
+
+      // High-fidelity overlays — Brisnet wins where it has data.
+      if (b.primePower != null) {
+        runner.primePower = b.primePower;
+        primePowerOverlays++;
+      }
+      if (b.runStyle) runner.runningStyle = b.runStyle;
+      if (b.quirinSpeed != null) runner.quirinSpeed = b.quirinSpeed;
+      if (b.speedPar != null) runner.brisSpeedPar = b.speedPar;
+      if (b.daysOff != null) runner.daysOff = b.daysOff;
+      if (b.bestBrisAllWeather != null && b.bestBrisAllWeather > 0) {
+        runner.bestBrisAllWeather = b.bestBrisAllWeather;
+      }
+
+      // Speed figures: Brisnet [oldest, mid, latest] (newest at end).
+      if (Array.isArray(b.speedFigs) && b.speedFigs.some(v => v != null)) {
+        runner.speedFigs = b.speedFigs.slice(0, 3);
+        runner.speedFigsExtended = b.speedFigsExtended || null;
+        speedFigsOverlays++;
+      }
+
+      // Class: Brisnet has the real last-race class label.
+      if (b.lastClass) runner.lastClass = b.lastClass;
+      if (b.lastClassRaw) runner.lastClassRaw = b.lastClassRaw;
+
+      // Jockey/trainer meet stats from Brisnet override the embedded NYRA
+      // leaderboard — these are real per-meet numbers for this exact circuit.
+      if (b.jockeyMeetWinPct != null) runner.jockeyPct = b.jockeyMeetWinPct;
+      if (b.trainerMeetWinPct != null) runner.trainerPct = b.trainerMeetWinPct;
+
+      // T/J combo 365D — useful display field for the bet-size hint logic.
+      if (b.tjCombo365) runner.tjCombo365 = b.tjCombo365;
+
+      // Recompute dataCompleteness with the new fields.
+      runner.dataCompleteness = computeDataCompleteness(runner);
+    }
+  }
+
+  body.brisnetOverlay = {
+    source: card.source || "brisnet-single-file",
+    runnersInFeed: card.runnerCount || 0,
+    runnersMatched,
+    primePowerOverlays,
+    speedFigsOverlays,
+    generatedAt: card.generatedAt || null,
+  };
+}
+
 /**
  * NA entries → /api/entries Railbird shape.
  */
@@ -2650,6 +2750,9 @@ async function handleEntries(request, env, origin) {
       // scoring engine has the same inputs the legacy static JSON provided.
       // Runs AFTER PP enrichment so it can use ppHistory/ppSummary when present.
       try { enrichEntriesWithScoringFields(body); } catch (e) { body.scoringFieldEnrichmentError = e.message; }
+      // v2.46.0: Brisnet single-file PP overlay — highest-fidelity data wins.
+      // No-ops if /data/brisnet-{TRACK}-{DATE}.json is absent.
+      try { await mergeBrisnetIntoEntries(body, track, date); } catch (e) { body.brisnetOverlayError = e.message; }
     } else {
       // ── Free / GitHub Pages path ──────────────────────────────────────────
       body = await fetchFreeEntries(track, date, venue);
