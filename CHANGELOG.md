@@ -1,5 +1,19 @@
 # NE Racing — Changelog
 
+## v2.46.5-brisnet — Don't auto-expand the next race (2026-06-05)
+
+UI change: race cards now render fully collapsed on every page load and
+re-render. The "next upcoming" race is still marked with the gold border
+(`race-active` class) and the NEXT / LIVE badge so it's easy to spot,
+but tapping the header is now the only way to expand it. Was disruptive
+when you were focused on a different race and the page re-rendered
+(e.g. live-odds tick, version poll, tab switch back) and snapped open R1
+again.
+
+No other changes. SW + version bumped to v2.46.5 for clean propagation.
+
+---
+
 ## v2.46.4-brisnet — Real service worker + unlock survives PWA install (2026-06-05)
 
 **Why this build exists.** Two related complaints from the user after the

@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.46.4-brisnet';
+var NE_APP_VERSION = '20260605-v2.46.5-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -15085,17 +15085,18 @@ function applyRaceFocus(races, activeIdx) {
     const isActive = (i === activeIdx);
     const status = getRaceStatus(race, i, activeIdx, races);
 
-    // Collapse non-active, expand active
+    // v2.46.5: collapse ALL race cards by default — the user opens whatever
+    // race they want. Previously the "next upcoming" race was auto-expanded
+    // on every render, which was disruptive when you were focused on a
+    // different race. We still mark the active race with the gold border
+    // (race-active class) and the NEXT/LIVE badge so it's easy to find.
+    body.classList.add('hidden');
+    if (icon) icon.classList.add('collapsed');
+    if (header) header.classList.add('collapsed');
     if (isActive) {
-      body.classList.remove('hidden');
       wrap.classList.add('race-active');
-      if (icon) icon.classList.remove('collapsed');
-      if (header) header.classList.remove('collapsed');
     } else {
-      body.classList.add('hidden');
       wrap.classList.remove('race-active');
-      if (icon) icon.classList.add('collapsed');
-      if (header) header.classList.add('collapsed');
     }
 
     // Add status badge next to race number
