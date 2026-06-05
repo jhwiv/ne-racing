@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.46.6-brisnet';
+var NE_APP_VERSION = '20260605-v2.46.7-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -20095,28 +20095,105 @@ function fireConfetti() {
   setTimeout(function() { container.innerHTML = ''; }, 2500);
 }
 
-// --- Quick Pick: click all PLACE BET buttons in the ticket ---
+// --- Quick Pick: enter every expert pick into the bet slip ---
+// v2.46.7: previous version only clicked .btn-bet (1 button = Best Bet only)
+// AND each click opened the shared amount-picker modal, which overwrote
+// _pendingBet on every iteration so at most one bet ever survived.
+// New behavior: query every bet button class (.btn-bet, .btn-bet-sm,
+// .btn-bet-outline), parse the bet args out of the onclick attribute,
+// and call handleTicketBetClick() directly at a default $2 amount,
+// bypassing the modal entirely.
 function quickPickAll() {
   var card = document.getElementById('rec-bets-card');
   if (!card || card.classList.contains('hidden')) {
     showToast('No expert picks available yet', 'warning');
     return;
   }
-  var betBtns = card.querySelectorAll('.btn-bet');
+  var betBtns = card.querySelectorAll('.btn-bet, .btn-bet-sm, .btn-bet-outline');
   if (!betBtns.length) {
     showToast('No expert picks available yet', 'warning');
     return;
   }
-  var count = 0;
-  betBtns.forEach(function(b) {
-    b.click();
-    count++;
-  });
+
+  // Pull (raceNum, horseName, horsePp, betType, betTag) out of an
+  // onclick="openBetAmountPicker(event, R, 'name', PP, 'BetType', 'tag')"
+  // attribute. The HTML builders escape single quotes in names as \' so we
+  // need to handle that, plus the slash-joined names used for exotic boxes.
+  function parseBetArgs(btn) {
+    var raw = btn.getAttribute('onclick') || '';
+    // Strip everything outside the parens.
+    var m = raw.match(/openBetAmountPicker\s*\(([\s\S]*)\)\s*;?\s*$/);
+    if (!m) return null;
+    var inside = m[1];
+    // Split on top-level commas — args here have no nested parens or commas
+    // inside the string literals (HTML attribute encoding keeps it simple).
+    // We use a tiny state machine to respect single-quoted strings.
+    var args = [], buf = '', inStr = false, prev = '';
+    for (var i = 0; i < inside.length; i++) {
+      var c = inside[i];
+      if (inStr) {
+        if (c === "'" && prev !== '\\') { inStr = false; buf += c; }
+        else { buf += c; }
+      } else {
+        if (c === "'") { inStr = true; buf += c; }
+        else if (c === ',') { args.push(buf.trim()); buf = ''; }
+        else { buf += c; }
+      }
+      prev = c;
+    }
+    if (buf.trim()) args.push(buf.trim());
+    // Expected: [event, raceNum, 'name', horsePp, 'betType', 'betTag']
+    if (args.length < 6) return null;
+    function unq(s) {
+      s = s.trim();
+      if (s.length >= 2 && s[0] === "'" && s[s.length-1] === "'") {
+        return s.slice(1, -1).replace(/\\'/g, "'");
+      }
+      return s;
+    }
+    var raceNum  = parseInt(args[1], 10);
+    var horseNm  = unq(args[2]);
+    var horsePpR = args[3].trim();
+    var horsePp  = /^\d+$/.test(horsePpR) ? parseInt(horsePpR, 10) : unq(horsePpR);
+    var betType  = unq(args[4]);
+    var betTag   = unq(args[5]);
+    if (!raceNum || !horseNm || !betType) return null;
+    return { raceNum: raceNum, horseName: horseNm, horsePp: horsePp, betType: betType, betTag: betTag };
+  }
+
+  // De-dupe identical bets (race + horse + type) so an exotic that re-uses
+  // a Best Bet horse doesn't fire twice in one sweep.
+  var seen = Object.create(null);
+  var count = 0, skipped = 0;
+  for (var i = 0; i < betBtns.length; i++) {
+    var btn = betBtns[i];
+    if (btn.disabled) { skipped++; continue; }
+    var p = parseBetArgs(btn);
+    if (!p) { skipped++; continue; }
+    var key = p.raceNum + '|' + p.horseName + '|' + p.betType;
+    if (seen[key]) continue;
+    seen[key] = 1;
+    try {
+      handleTicketBetClick(
+        { preventDefault: function(){} },
+        p.raceNum, p.horseName, p.horsePp, p.betType, 2, p.betTag
+      );
+      count++;
+    } catch (err) {
+      console.warn('[quickPickAll] failed for', p, err);
+      skipped++;
+    }
+  }
+
   if (count > 0) {
-    showToast(count + ' expert picks added to bet slip!', 'success');
-    var btn = document.getElementById('quick-pick-btn');
-    if (btn) { btn.classList.add('activated'); setTimeout(function() { btn.classList.remove('activated'); }, 800); }
+    var msg = count + ' expert pick' + (count === 1 ? '' : 's') + ' added at $2 each';
+    if (skipped > 0) msg += ' (' + skipped + ' skipped)';
+    showToast(msg, 'success');
+    var qpBtn = document.getElementById('quick-pick-btn');
+    if (qpBtn) { qpBtn.classList.add('activated'); setTimeout(function() { qpBtn.classList.remove('activated'); }, 800); }
     fireConfetti();
+  } else {
+    showToast('Could not add expert picks — see console', 'warning');
   }
 }
 
@@ -20125,7 +20202,9 @@ function updateQuickPickVisibility() {
   var btn = document.getElementById('quick-pick-btn');
   if (!btn) return;
   var card = document.getElementById('rec-bets-card');
-  var hasRecs = card && !card.classList.contains('hidden') && card.querySelectorAll('.btn-bet').length > 0;
+  // v2.46.7: match the same set quickPickAll() acts on.
+  var hasRecs = card && !card.classList.contains('hidden') &&
+    card.querySelectorAll('.btn-bet, .btn-bet-sm, .btn-bet-outline').length > 0;
   btn.style.display = hasRecs ? 'flex' : 'none';
 }
 

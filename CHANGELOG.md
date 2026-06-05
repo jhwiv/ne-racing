@@ -1,5 +1,30 @@
 # NE Racing — Changelog
 
+## v2.46.7-brisnet — Follow All Expert Picks actually enters all bets (2026-06-05)
+
+**Bug.** "Follow All Expert Picks" added at most one bet to the slip
+(usually just the Best Bet). Two compounding causes:
+
+1. The handler only queried `.btn-bet` — the Best Bet class. Value Plays,
+   Action Bet, Form-Bound, and Exotic buttons use `.btn-bet-sm` and
+   `.btn-bet-outline`, so they were never clicked.
+2. Each bet button's onclick opens the shared `bet-amount-picker-overlay`
+   modal and stores the bet in a single global `_pendingBet`. Iterating
+   `.click()` over buttons overwrote `_pendingBet` on every iteration,
+   so only the last bet survived — and even that one required the user
+   to manually tap Confirm in the modal.
+
+**Fix.** Rewrite `quickPickAll()` to query all three bet button classes,
+parse the bet args directly out of the `onclick` attribute (state-machine
+string split that respects single-quoted JS literals), de-dupe by
+race+horse+type, and call `handleTicketBetClick()` directly with a $2
+default amount — bypassing the modal entirely. Disabled buttons and any
+that fail to parse are skipped and surfaced in the toast count.
+`updateQuickPickVisibility()` now also matches all three classes so the
+button shows even when there's no Best Bet, only Value/Action/Exotic.
+
+---
+
 ## v2.46.6-brisnet — PWA start_url token (real iOS Home Screen unlock) (2026-06-05)
 
 **Why this build exists.** v2.46.4 tried to fix "had to log in again after
