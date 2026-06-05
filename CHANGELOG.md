@@ -1,5 +1,39 @@
 # NE Racing — Changelog
 
+## v2.44.0 — Confidence-coded race-card titles (2026-06-05)
+
+Until now every collapsed race-card title was painted the same racing green,
+so scanning the Today tab gave no read on which races the engine actually
+liked. v2.44.0 colorizes the title bar, the race-number badge, and the
+left-accent strip on each card per the race's confidence label:
+
+- **High** → racing green (the existing default, now explicit)
+- **Medium** → gold / amber, matching the `--color-gold` token
+- **Lean** → burgundy red, matching `--color-negative` (same hue as the
+  expanded-card error/warning rails the user already recognizes)
+- **Pass** → muted gray (auto-pass races: ≤3 live runners, >50% scratched,
+  or no odds)
+
+**How it works:**
+
+- `runAdviceEngine` already computes a per-race confidence via
+  `relativeConfidence` (v2.42.0). It now stamps `race._confidenceLevel` and
+  writes a `conf-<level>` class onto the existing `#race-wrap-${race.id}`
+  DOM node in place, because the Today-tab races render before the advice
+  engine runs.
+- `buildRaceCardHTML` also seeds the class on first paint — using a stored
+  `_confidenceLevel` if one exists from a prior pass, falling back to
+  `conf-unknown` (which inherits the default green styling) otherwise. The
+  advice engine then swaps it on the next tick.
+- CSS rules added in both the default theme (`.race-card-header` block at
+  ~line 3697) and the paper-theme override block (~line 7284) so the
+  colors win regardless of which theme is active. Used `:not(.race-active)`
+  on the left-border rules so the live-race gold border still takes
+  priority for the in-progress race.
+
+No scoring logic changed — only the visual presentation of an already-
+computed signal.
+
 ## v2.43.0 — W/P/S payouts under FINAL on every race card (2026-06-04)
 
 The inline FINAL strip was silently empty because of a shape mismatch:

@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260604-v2.43.0';
+var NE_APP_VERSION = '20260605-v2.44.0';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -3702,6 +3702,29 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   border-bottom: 2px solid rgba(201,168,76,0.25);
 }
 .race-card-header.collapsed { border-radius: var(--radius-md); }
+/* v2.44.0 — confidence-coded race-card titles. Color depends on per-race
+   confidence from runAdviceEngine (high/medium/lean/pass). High = racing
+   green (default), Medium = gold/amber, Lean = burgundy red, Pass = muted. */
+.race-card-wrap.conf-high:not(.race-active) { border-left: 3px solid var(--color-positive); }
+.race-card-wrap.conf-high > .race-card-header { background: linear-gradient(135deg, #ecf6ef 0%, #f4faf2 100%); }
+.race-card-wrap.conf-high > .race-card-header .race-title { color: var(--color-racing-green); }
+.race-card-wrap.conf-high > .race-card-header .race-num { background: var(--color-positive); color: #fff; }
+
+.race-card-wrap.conf-medium:not(.race-active) { border-left: 3px solid var(--color-gold); }
+.race-card-wrap.conf-medium > .race-card-header { background: linear-gradient(135deg, #fbf3df 0%, #fdf8e9 100%); }
+.race-card-wrap.conf-medium > .race-card-header .race-title { color: #8a6a1f; }
+.race-card-wrap.conf-medium > .race-card-header .race-num { background: var(--color-gold); color: #fff; }
+
+.race-card-wrap.conf-lean:not(.race-active) { border-left: 3px solid var(--color-negative); }
+.race-card-wrap.conf-lean > .race-card-header { background: linear-gradient(135deg, #fbe9eb 0%, #fdf2f3 100%); }
+.race-card-wrap.conf-lean > .race-card-header .race-title { color: var(--color-negative); }
+.race-card-wrap.conf-lean > .race-card-header .race-num { background: var(--color-negative); color: #fff; }
+
+.race-card-wrap.conf-pass:not(.race-active) { border-left: 3px solid #9aa0a6; }
+.race-card-wrap.conf-pass { opacity: 0.85; }
+.race-card-wrap.conf-pass > .race-card-header { background: linear-gradient(135deg, #f0f0f2 0%, #f6f6f8 100%); }
+.race-card-wrap.conf-pass > .race-card-header .race-title { color: #5b6168; }
+.race-card-wrap.conf-pass > .race-card-header .race-num { background: #6b7177; color: #fff; }
 .race-status-badge {
   font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
   padding: 2px 6px; border-radius: 3px; white-space: nowrap; margin-left: 6px;
@@ -7292,6 +7315,38 @@ body.tab-handicap #fab-menu { display: none !important; }
 .race-card-header .surf-dist {
   color: var(--lux-ink-soft) !important;
 }
+
+/* v2.44.0 — paper-theme overrides for confidence-coded race-card titles.
+   These intentionally use higher-specificity selectors with !important to
+   beat the generic .race-card-header paper rule above. */
+.race-card-wrap.conf-high > .race-card-header { background: linear-gradient(135deg, #ecf6ef 0%, #f4faf2 100%) !important; }
+.race-card-wrap.conf-high > .race-card-header::before { background: var(--color-positive, #2D6A4F) !important; opacity: 1; }
+.race-card-wrap.conf-high > .race-card-header .race-title { color: var(--color-racing-green, #0D3320) !important; }
+.race-card-wrap.conf-high > .race-card-header .race-num,
+.race-card-wrap.conf-high > .race-card-header .race-number,
+.race-card-wrap.conf-high > .race-card-header .race-number-badge { background: var(--color-positive, #2D6A4F) !important; color: #fff !important; border-color: var(--color-positive, #2D6A4F) !important; }
+
+.race-card-wrap.conf-medium > .race-card-header { background: linear-gradient(135deg, #fbf3df 0%, #fdf8e9 100%) !important; }
+.race-card-wrap.conf-medium > .race-card-header::before { background: var(--color-gold, #D4A849) !important; opacity: 1; }
+.race-card-wrap.conf-medium > .race-card-header .race-title { color: #8a6a1f !important; }
+.race-card-wrap.conf-medium > .race-card-header .race-num,
+.race-card-wrap.conf-medium > .race-card-header .race-number,
+.race-card-wrap.conf-medium > .race-card-header .race-number-badge { background: var(--color-gold, #D4A849) !important; color: #fff !important; border-color: var(--color-gold, #D4A849) !important; }
+
+.race-card-wrap.conf-lean > .race-card-header { background: linear-gradient(135deg, #fbe9eb 0%, #fdf2f3 100%) !important; }
+.race-card-wrap.conf-lean > .race-card-header::before { background: var(--color-negative, #C1121F) !important; opacity: 1; }
+.race-card-wrap.conf-lean > .race-card-header .race-title { color: var(--color-negative, #C1121F) !important; }
+.race-card-wrap.conf-lean > .race-card-header .race-num,
+.race-card-wrap.conf-lean > .race-card-header .race-number,
+.race-card-wrap.conf-lean > .race-card-header .race-number-badge { background: var(--color-negative, #C1121F) !important; color: #fff !important; border-color: var(--color-negative, #C1121F) !important; }
+
+.race-card-wrap.conf-pass > .race-card-header { background: linear-gradient(135deg, #f0f0f2 0%, #f6f6f8 100%) !important; }
+.race-card-wrap.conf-pass > .race-card-header::before { background: #9aa0a6 !important; opacity: 0.7; }
+.race-card-wrap.conf-pass > .race-card-header .race-title { color: #5b6168 !important; }
+.race-card-wrap.conf-pass > .race-card-header .race-num,
+.race-card-wrap.conf-pass > .race-card-header .race-number,
+.race-card-wrap.conf-pass > .race-card-header .race-number-badge { background: #6b7177 !important; color: #fff !important; border-color: #6b7177 !important; }
+.race-card-wrap.conf-pass { opacity: 0.88; }
 
 /* ---- #4 PILLS — 4 named variants as normalization ---- */
 .badge,
@@ -14574,7 +14629,11 @@ function buildRaceCardHTML(race) {
       + (userBetHtml ? '<div class="wps-userbets">' + userBetHtml + '</div>' : '')
       + '</div>';
   }
-  return `<div class="race-card-wrap" id="race-wrap-${race.id}">
+  // v2.44.0: seed `conf-${level}` class so first paint is colorized before
+  // runAdviceEngine runs. If we don't have a level yet, conf-unknown keeps
+  // the original default styling (racing green) until advice runs and swaps.
+  const _cl = (race && race._confidenceLevel) ? ('conf-' + race._confidenceLevel) : 'conf-unknown';
+  return `<div class="race-card-wrap ${_cl}" id="race-wrap-${race.id}">
     <div class="race-card-header" onclick="toggleRaceCard('${race.id}')" id="race-header-${race.id}">
       <span class="race-num">${String(race.num).padStart(2,'0')}</span>
       <div class="race-info">
@@ -15389,6 +15448,20 @@ function runAdviceEngine() {
     const isAutoPass = isTruePass(race, scored);
     const confidence = isAutoPass ? 'low' : relativeConfidence(scored, fieldSize);
     const _hint = betSizeHint(confidence, (window._bankrollCache || null), isAutoPass);
+
+    // v2.44.0: stamp the per-race confidence on the collapsed race-card wrap so
+    // the CSS can colorize the title, race-num badge, and left accent strip
+    // according to High / Medium / Lean / Pass. The Today-tab races render BEFORE
+    // runAdviceEngine, so we update the existing DOM element in place rather than
+    // re-emitting the template. Class is removed first so a re-render swaps cleanly.
+    race._confidenceLevel = isAutoPass ? 'pass' : confidence;
+    try {
+      const _wrap = document.getElementById('race-wrap-' + race.id);
+      if (_wrap) {
+        _wrap.classList.remove('conf-high', 'conf-medium', 'conf-lean', 'conf-low', 'conf-pass', 'conf-unknown');
+        _wrap.classList.add('conf-' + race._confidenceLevel);
+      }
+    } catch (_) { /* DOM not ready yet — the next render will pick it up via the template path */ }
 
     let html = buildConfidenceBar(confidence) + (isAutoPass ? '' : buildBetSizeHint(_hint));
 
