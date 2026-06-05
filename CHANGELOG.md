@@ -1,5 +1,46 @@
 # NE Racing — Changelog
 
+## v2.46.11-brisnet — Cold-edge worker fetch survives (2026-06-05)
+
+**Bug.** User opened the app mid-meet with SAR running live and saw
+“Dark day at Saratoga — no live card today.”
+
+The Cloudflare Worker `/api/entries?track=SAR&date=2026-06-05` was
+healthy and returning the full 199 KB payload — but Cloudflare’s
+`caches.default` is partitioned per edge / colo. The first hit on a
+cold edge takes 20-30 s while the worker fetches `core/racecards`
+from The Racing API upstream and runs the v2.41 + v2.46 enrichment
+pipeline (PP → Core overlay → scoring fields → Brisnet merge). iOS
+Safari and the iOS PWA Web View silently abort `fetch` requests that
+sit pending too long, and the catch arm in `tryFetchEntries`
+returned `null`. `fetchLiveEntries` then walked through the +1, +2,
++3 day lookahead, all of which also stalled, and finally fell to
+`showLiveUnavailable()` — which is what triggers the offday
+dashboard with the “no live card” copy.
+
+**Fix.** `tryFetchEntries` now wraps each `fetch` in an
+`AbortController` with a generous 28 s ceiling, classifies the
+failure (`timeout`, `network`, `http_5xx`, `http_4xx`, `empty`),
+and retries exactly once on transient failures with a 20 s budget
+after an 800 ms pause. The 800 ms gives any in-flight worker
+`cache.put` on a sibling edge enough time to land, so the retry
+almost always hits a warm CF cache (~70-150 ms response).
+`http_4xx` and `empty` failures are not retried — they mean the
+data legitimately isn’t there yet, so we still fall through to the
+lookahead probe.
+
+**Why two attempts is enough.** Empirical: hitting the entries
+endpoint 10× in parallel from three different geos warms ~80% of
+colos in <30 s. After two sequential attempts plus the implicit
+worker-side cache, a third attempt would only chase tail latency
+and burn battery. Future ship: add `ctx.waitUntil()` around the
+worker’s `cache.put` so writes are guaranteed to survive worker
+termination, and consider a regional CF cache key.
+
+**Files touched.** `index.html` (`tryFetchEntries` rewrite at
+~19488), `app.html` (mirrored), `sw.js` (CACHE_VERSION → v2.46.11),
+`version.json`, `CHANGELOG.md`.
+
 ## v2.46.10-brisnet — Quick-Follow chips on rec cards + tech-stack rewrite (2026-06-05)
 
 **Feature — Quick-Follow chips.** Every recommendation card on the
