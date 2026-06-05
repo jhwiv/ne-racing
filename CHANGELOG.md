@@ -1,5 +1,17 @@
 # NE Racing — Changelog
 
+## v2.47.1-brisnet — Bet auto-grading fixes (2026-06-05)
+
+User reported bets were sitting unresolved after races went official. Three real bugs identified and fixed:
+
+**Bug 1 — Cache shape mismatch on app reload.** `setCachedResults()` was called BEFORE `_normalizeRaceResult()` ran, so the cached payload had only `finishOrder` and never the legacy `.results` array. On the next app reload, `resolveFromCachedResults()` silently exited at its `.results.length` guard and never graded anything. Fix: hoist `_normalizeRaceResult` to module scope, normalize before caching, and also re-normalize on read inside `resolveFromCachedResults` as a belt-and-suspenders pass for legacy caches.
+
+**Bug 2 — `_justResolved` flag was never set.** The winner-overlay handler at the bottom of `fetchLiveResults` checked `bet._justResolved` but nothing in the codebase ever set it, so the celebration overlay never fired on auto-resolved wins. Fix: set `bet._justResolved = true` in all win branches of the straight-bet and exotic-bet resolvers; clear the flag after firing the overlay and re-save so it doesn't fire repeatedly.
+
+**Bug 3 — Results poller was a one-shot.** `startResultsPolling()` only ran on boot (lines 13086 + 14186). If the user kept the tab open in background through several races, foregrounded the PWA mid-card, or returned via iOS Safari back-navigation (bfcache), the 2.5-min interval could be inactive and never restart. Fix: install document-level `visibilitychange`, `focus`, and `pageshow` listeners that kick the poller whenever attention returns; also re-kick on Bets/Results tab clicks.
+
+Files touched: `index.html` (auto-grader + hooks), `sw.js` (cache version), `version.json`.
+
 ## v2.47.0-brisnet — Permanent cold-edge fix: cron pre-warm + R2 fallback (2026-06-05)
 
 The v2.46.11 client retry shipped earlier today was a band-aid. This

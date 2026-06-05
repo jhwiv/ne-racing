@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.47.0-brisnet';
+var NE_APP_VERSION = '20260605-v2.47.1-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -19722,6 +19722,54 @@ function fuzzyHorseMatch(a, b) {
 // ═══════════════════════════════════════════════════════════════════════════
 var RESULTS_CACHE_KEY = 'ne-racing-results-cache';
 
+// v2.47.1: Hoisted from fetchLiveResults to module scope so
+// resolveFromCachedResults can also use it on app reload. Previously
+// the normalizer was nested inside fetchLiveResults, which meant cached
+// payloads (which never went through normalize because the cache write
+// happened BEFORE the inner function ran) had only `finishOrder` and
+// never the legacy `.results` the resolvers look for.
+//
+// The Cloudflare worker (and Racing API behind it) emits `finishOrder`
+// with `winPayoff/placePayoff/showPayoff` per finisher. The legacy
+// client code throughout this file expects `results` with
+// `winPayout/placePayout/showPayout`. Rather than patch 8+ call sites,
+// we normalize once so every downstream consumer (inline FINAL strip,
+// exotic resolver, straight-bet resolver, history rollups) gets a
+// consistent shape.
+function _normalizeRaceResult(rr) {
+  if (!rr || typeof rr !== 'object') return rr;
+  // Build the legacy `.results` array if missing.
+  if (!rr.results && Array.isArray(rr.finishOrder)) {
+    rr.results = rr.finishOrder.map(function(f) {
+      var r = Object.assign({}, f);
+      // Field-name aliases (old <- new). Keep both so anything reading
+      // either name works.
+      if (r.winPayout   == null && r.winPayoff   != null) r.winPayout   = r.winPayoff;
+      if (r.placePayout == null && r.placePayoff != null) r.placePayout = r.placePayoff;
+      if (r.showPayout  == null && r.showPayoff  != null) r.showPayout  = r.showPayoff;
+      return r;
+    });
+  }
+  // Some tracks publish W/P/S as a separate race-level `payouts` table
+  // keyed by program number. Merge those onto the matching finisher so
+  // the inline FINAL strip can show payouts even when the per-row
+  // payoff fields come back null.
+  if (Array.isArray(rr.payouts) && Array.isArray(rr.results)) {
+    rr.payouts.forEach(function(p) {
+      var pn = String(p.programNumber || p.program || p.pp || '').replace(/[^0-9A-Za-z]/g,'');
+      if (!pn) return;
+      var match = rr.results.find(function(r) {
+        return String(r.programNumber || r.pp || '').replace(/[^0-9A-Za-z]/g,'') === pn;
+      });
+      if (!match) return;
+      if (match.winPayout   == null && p.win   != null) match.winPayout   = p.win;
+      if (match.placePayout == null && p.place != null) match.placePayout = p.place;
+      if (match.showPayout  == null && p.show  != null) match.showPayout  = p.show;
+    });
+  }
+  return rr;
+}
+
 function getResultsCache() {
   try {
     var raw = localStorage.getItem(RESULTS_CACHE_KEY);
@@ -19942,55 +19990,20 @@ async function fetchLiveResults() {
     freshRaces.forEach(function(r) { mergedMap[r.raceNumber] = r; });
     var allRaces = Object.values(mergedMap).sort(function(a, b) { return a.raceNumber - b.raceNumber; });
 
-    // Update cache
-    setCachedResults(code, today, allRaces);
+    // v2.47.1: Normalize BEFORE caching so app-reload path
+    // (resolveFromCachedResults) sees the legacy `.results` shape and can
+    // grade bets without a live fetch. Previously normalize ran AFTER the
+    // cache write at line 19946, so the cached copy had only `finishOrder`
+    // and the on-reload resolver silently exited at the `.results.length`
+    // guard, leaving bets ungraded after a reload.
+    allRaces.forEach(function(rr) { _normalizeRaceResult(rr); });
 
-    // v2.43.0: Normalize worker payload shape.
-    // The Cloudflare worker (and Racing API behind it) emits `finishOrder`
-    // with `winPayoff/placePayoff/showPayoff` per finisher. The legacy
-    // client code throughout this file expects `results` with
-    // `winPayout/placePayout/showPayout`. Rather than patch 8+ call sites,
-    // we normalize once here so every downstream consumer (inline FINAL
-    // strip, exotic resolver, straight-bet resolver, history rollups) gets
-    // a consistent shape.
-    function _normalizeRaceResult(rr) {
-      if (!rr || typeof rr !== 'object') return rr;
-      // Build the legacy `.results` array if missing.
-      if (!rr.results && Array.isArray(rr.finishOrder)) {
-        rr.results = rr.finishOrder.map(function(f) {
-          var r = Object.assign({}, f);
-          // Field-name aliases (old <- new). Keep both so anything reading
-          // either name works.
-          if (r.winPayout   == null && r.winPayoff   != null) r.winPayout   = r.winPayoff;
-          if (r.placePayout == null && r.placePayoff != null) r.placePayout = r.placePayoff;
-          if (r.showPayout  == null && r.showPayoff  != null) r.showPayout  = r.showPayoff;
-          return r;
-        });
-      }
-      // Some tracks publish W/P/S as a separate race-level `payouts` table
-      // keyed by program number. Merge those onto the matching finisher so
-      // the inline FINAL strip can show payouts even when the per-row
-      // payoff fields come back null.
-      if (Array.isArray(rr.payouts) && Array.isArray(rr.results)) {
-        rr.payouts.forEach(function(p) {
-          var pn = String(p.programNumber || p.program || p.pp || '').replace(/[^0-9A-Za-z]/g,'');
-          if (!pn) return;
-          var match = rr.results.find(function(r) {
-            return String(r.programNumber || r.pp || '').replace(/[^0-9A-Za-z]/g,'') === pn;
-          });
-          if (!match) return;
-          if (match.winPayout   == null && p.win   != null) match.winPayout   = p.win;
-          if (match.placePayout == null && p.place != null) match.placePayout = p.place;
-          if (match.showPayout  == null && p.show  != null) match.showPayout  = p.show;
-        });
-      }
-      return rr;
-    }
+    // Update cache (now with .results populated)
+    setCachedResults(code, today, allRaces);
 
     // Store results on race objects for Today tab inline display
     var data = getTrackData();
     allRaces.forEach(function(rr) {
-      _normalizeRaceResult(rr);
       var race = (data.races || []).find(function(r) { return r.num === rr.raceNumber; });
       if (race) {
         race._resultData = rr;
@@ -20031,6 +20044,7 @@ async function fetchLiveResults() {
           if (exResult) {
             bet.result = exResult.result;
             bet.payout = exResult.payout;
+            if (exResult.result === 'win') bet._justResolved = true; // v2.47.1: fire winner overlay
             updated++;
           }
         }
@@ -20040,6 +20054,7 @@ async function fetchLiveResults() {
           if (multiResult) {
             bet.result = multiResult.result;
             bet.payout = multiResult.payout;
+            if (multiResult.result === 'win') bet._justResolved = true; // v2.47.1
             updated++;
           }
         }
@@ -20059,6 +20074,7 @@ async function fetchLiveResults() {
         if (matchedFinisher && matchedFinisher.position === 1 && matchedFinisher.winPayout) {
           bet.result = 'win';
           bet.payout = Math.round(matchedFinisher.winPayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
+          bet._justResolved = true; // v2.47.1: fire winner overlay
         } else {
           bet.result = 'loss';
           bet.payout = 0;
@@ -20068,6 +20084,7 @@ async function fetchLiveResults() {
         if (matchedFinisher && matchedFinisher.position <= 2 && matchedFinisher.placePayout) {
           bet.result = 'win';
           bet.payout = Math.round(matchedFinisher.placePayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
+          bet._justResolved = true; // v2.47.1
         } else {
           bet.result = 'loss';
           bet.payout = 0;
@@ -20077,6 +20094,7 @@ async function fetchLiveResults() {
         if (matchedFinisher && matchedFinisher.position <= 3 && matchedFinisher.showPayout) {
           bet.result = 'win';
           bet.payout = Math.round(matchedFinisher.showPayout * (parseFloat(bet.amount) || 2) / 2 * 100) / 100;
+          bet._justResolved = true; // v2.47.1
         } else {
           bet.result = 'loss';
           bet.payout = 0;
@@ -20091,14 +20109,18 @@ async function fetchLiveResults() {
       if (typeof renderStraightBets === 'function') renderStraightBets();
       updateAccuracyTracking();
 
-      // Show winner celebration for any newly won bets
+      // Show winner celebration for any newly won bets, then clear the flag
+      // so the overlay doesn't re-fire on every subsequent poll. v2.47.1.
       bets.forEach(function(bet) {
         if (bet.result === 'win' && bet._justResolved) {
           var horseName = Array.isArray(bet.selections) ? bet.selections.join(', ') : (bet.formula || bet.type);
           var profit = (parseFloat(bet.payout) || 0) - (parseFloat(bet.isExotic ? (bet.cost || bet.amount) : bet.amount) || 0);
-          showWinnerOverlay(horseName, profit, bet.raceNum, bet.type);
+          try { showWinnerOverlay(horseName, profit, bet.raceNum, bet.type); } catch(_){}
+          delete bet._justResolved;
         }
       });
+      // Persist again to drop the transient _justResolved flags from storage
+      saveTrackData(data);
     } else {
       // Even if no bets updated, save race results for Today tab
       saveTrackData(data);
@@ -20168,12 +20190,60 @@ function stopResultsPolling() {
   }
 }
 
+// v2.47.1: Safety-net hooks to restart the results poller whenever the
+// user is likely to be looking at bet status. The original boot-time
+// startResultsPolling() call at lines 13086/14186 fires once on load; if
+// the user kept the tab open in background through several races, or
+// foregrounded the PWA mid-card from a cold launch where no bets existed
+// at boot but were added later, the poller could be inactive when races
+// went official. These hooks ensure we always tick at least once when
+// attention returns.
+(function installResultsPollerHooks() {
+  if (typeof document === 'undefined') return;
+  if (window._rbResultsHooksInstalled) return;
+  window._rbResultsHooksInstalled = true;
+
+  function kick(reason) {
+    try {
+      if (typeof hasUnresolvedBets === 'function' && !hasUnresolvedBets()) return;
+      if (typeof startResultsPolling === 'function') startResultsPolling();
+    } catch(_){}
+  }
+
+  // Tab regains visibility (background → foreground, PWA resume, etc.)
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) kick('visibility');
+  });
+
+  // Window regains focus (desktop tab switch)
+  window.addEventListener('focus', function() { kick('focus'); });
+
+  // pageshow fires on bfcache restore (iOS Safari back-navigation)
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted) kick('bfcache');
+  });
+
+  // Tab clicks: when the user opens Bets or Results, poll right away.
+  // The tab system uses click handlers on elements with data-tab="bets"/etc.,
+  // so we delegate one listener on the document.
+  document.addEventListener('click', function(e) {
+    var t = e.target && e.target.closest && e.target.closest('[data-tab="bets"],[data-tab="results"],#tab-btn-bets,#tab-btn-results');
+    if (t) setTimeout(function(){ kick('tab-switch'); }, 50);
+  }, true);
+})();
+
 // On app load, also resolve bets from cached results
 function resolveFromCachedResults() {
   var code = getActiveTrack();
   var today = getTodayStr();
   var cached = getCachedResults(code, today);
   if (!cached.length) return;
+
+  // v2.47.1: belt-and-suspenders normalize. Caches written by pre-v2.47.1
+  // builds stored raw `finishOrder` without `.results`, so this resolver
+  // silently exited at the `.results.length` guard below and never graded
+  // bets on app reload. Re-normalize on read so legacy caches still work.
+  try { cached.forEach(function(rr){ _normalizeRaceResult(rr); }); } catch(_){}
 
   var data = getTrackData();
   var bets = (data.bets || []).filter(function(b) { return !b.result && (!b.date || b.date === today); });
