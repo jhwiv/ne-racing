@@ -1,5 +1,16 @@
 # NE Racing — Changelog
 
+## v2.48.1-brisnet — Expanded race cards no longer collapse on live-data polls (2026-06-06)
+
+User report: launched fresh, opened a race, watched it expand, then it silently collapsed itself.
+
+Root cause (verified by reading the source): `renderTodayTab()` is called from FOUR separate polling loops — `fetchLiveOdds` (every 60s during race hours), `fetchLiveEntries` (every 5 min), `fetchLiveScratches` (every 60s when worker configured), and `fetchLiveResults` (every 2.5 min). Each of those calls rebuilds `#races-container.innerHTML` from scratch, and `applyRaceFocus()` then explicitly collapses every race body (`body.classList.add('hidden')`) before adding the active-race styling. A snapshot/restore loop was added to the MTP ticker (line 21460) when this bug first surfaced, but it was never propagated to the live-data pollers — so within 60 seconds of the user opening any race, the next poll silently re-collapsed it.
+
+Fix: wrap `renderTodayTab` at the source so EVERY caller (current and future) gets snapshot/restore. The wrapper queries `.race-body:not(.hidden)` before delegating to the original, then re-opens those same bodies after the rebuild. Idempotent guard (`__preservesOpen`) prevents double-wrapping if a later module tries the same trick.
+
+Trade-off: a race the user has explicitly expanded stays expanded across every poll, even if some future code path wants to collapse it. No such code path currently exists. The user's explicit collapse (tapping the header → `toggleRaceCard`) still works because it sets `hidden` directly without going through `renderTodayTab`.
+
+Files touched: `app.html`, `index.html` (mirror), `sw.js` (cache bust), `version.json`.
 ## v2.48.0-brisnet — Your Bet ROI tile in Advice Report Card (2026-06-06)
 
 Added a "Your Bet ROI" row to the Advice Report Card showing end-of-day ROI on the user's own staked bets. Includes ALL bet types (win/place/show + exotics), only counts bets the grader has resolved (`b.result` set), and uses real stake amounts and real payouts from the bet log.

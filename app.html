@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260606-v2.48.0-brisnet';
+var NE_APP_VERSION = '20260606-v2.48.1-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -14879,6 +14879,41 @@ function renderTodayTab() {
     setTimeout(removePulse, 5000);
   }
 }
+
+// v2.48.1 — preserve user-expanded race cards across ANY renderTodayTab call.
+// The MTP ticker had its own snapshot/restore, but fetchLiveOdds,
+// fetchLiveEntries, fetchLiveScratches, and fetchLiveResults all call
+// renderTodayTab without preservation, which silently collapsed any
+// expanded race body within 60s of the user opening it. Wrap at the
+// source so every caller gets the same behavior.
+(function(){
+  if (typeof renderTodayTab !== 'function' || renderTodayTab.__preservesOpen) return;
+  var orig = renderTodayTab;
+  renderTodayTab = function() {
+    var openIds = [];
+    try {
+      document.querySelectorAll('.race-body:not(.hidden)').forEach(function(b){
+        var id = b.id ? b.id.replace('race-body-', '') : '';
+        if (id) openIds.push(id);
+      });
+    } catch(_){}
+    var ret = orig.apply(this, arguments);
+    try {
+      openIds.forEach(function(raceId){
+        var body = document.getElementById('race-body-' + raceId);
+        var icon = document.getElementById('collapse-icon-' + raceId);
+        var header = document.getElementById('race-header-' + raceId);
+        if (body) {
+          body.classList.remove('hidden');
+          if (icon) icon.classList.remove('collapsed');
+          if (header) header.classList.remove('collapsed');
+        }
+      });
+    } catch(_){}
+    return ret;
+  };
+  renderTodayTab.__preservesOpen = true;
+})();
 
 // v2.36.0 — NYRA Bets deep links for NYRA tracks. Page-level link (race
 // number deep links are not publicly exposed by NYRA Bets).
