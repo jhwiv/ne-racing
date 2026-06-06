@@ -1,5 +1,14 @@
 # NE Racing — Changelog
 
+## v2.48.0-brisnet — Your Bet ROI tile in Advice Report Card (2026-06-06)
+
+Added a "Your Bet ROI" row to the Advice Report Card showing end-of-day ROI on the user's own staked bets. Includes ALL bet types (win/place/show + exotics), only counts bets the grader has resolved (`b.result` set), and uses real stake amounts and real payouts from the bet log.
+
+This is distinct from the existing "Overall Advice Engine ROI" row directly above it, which only tracks the advice engine's flat-stake hypothetical performance and excludes exotics. The new row answers a different question: "how is the user actually doing with real money this card?"
+
+**Wager-field convention** (matches the scratch-refund logic around line 20085 of `app.html`): straight bets store the stake in `b.amount`; exotic bets store the per-combo base in `b.amount` and the total ticket outlay in `b.cost`. The new tile uses `b.cost || b.amount` for exotics so a $1 base × 24 combos shows as a $24 outlay, not $1.
+
+Files touched: `app.html`, `index.html` (mirror), `sw.js` (cache bust), `version.json`.
 ## v2.47.3-brisnet — Stamp Updated on EVERY successful poll (2026-06-05)
 
 v2.47.2 only stamped `race.updated` when something actually changed in the poll response (`anyUpdated` for odds, `newScratches > 0` for scratches). But the Racing API returns `null` for tote odds until ~5 MTP, and scratch lists rarely change minute-to-minute. So a card like R8 (post 3:52) at 3:50 PM was being successfully polled every 60s, but the odds came back all-null, so v2.47.2 left the stamp frozen at "1:40 PM" — making it look broken.

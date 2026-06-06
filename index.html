@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260605-v2.47.3-brisnet';
+var NE_APP_VERSION = '20260606-v2.48.0-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -10566,9 +10566,14 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
               <span class="font-semibold text-sm">Action Bet Record</span>
               <span class="mono text-sm" id="arc-action-bet">W-L: — (—%)</span>
             </div>
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center mb-1">
               <span class="font-semibold text-sm">Overall Advice Engine ROI</span>
               <span class="mono text-sm" id="arc-overall-roi">—</span>
+            </div>
+            <!-- v2.48.0 — Your Bet ROI: real-money ROI on every bet the user staked today (all bet types incl. exotics). -->
+            <div class="flex justify-between items-center">
+              <span class="font-semibold text-sm">Your Bet ROI</span>
+              <span class="mono text-sm" id="arc-user-roi">—</span>
             </div>
           </div>
         </div>
@@ -18259,6 +18264,24 @@ function renderAdviceReportCard() {
     const ret = bets.reduce((s,b)=>s+(parseFloat(b.payout)||0),0);
     const wag = bets.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
     el('arc-overall-roi').textContent = wag > 0 ? fmtPct((ret-wag)/wag*100) : '—';
+  }
+
+  // v2.48.0 — Your Bet ROI: end-of-day ROI on the user's own staked bets.
+  // Includes ALL bet types (win/place/show/exotics), only counts bets the
+  // grader has resolved (b.result is set), uses real stake amounts and real
+  // payouts from the bet log. Differs from Overall Advice Engine ROI above,
+  // which excludes exotics and reflects advice-engine performance.
+  //
+  // Wager-field convention (matches scratch-refund logic ~line 20085):
+  //   - Straight bets (WIN/PL/SH): b.amount is the actual stake.
+  //   - Exotic bets (EX/TRI/SUPER/DD/P3/P4/P5/P6): b.amount is the per-combo
+  //     base, b.cost is the total ticket outlay (combos × amount). Use cost.
+  if (el('arc-user-roi')) {
+    const graded = bets.filter(b => b.result);
+    const wagerOf = b => parseFloat(b.isExotic ? (b.cost || b.amount) : b.amount) || 0;
+    const uWag = graded.reduce((s,b) => s + wagerOf(b), 0);
+    const uRet = graded.reduce((s,b) => s + (parseFloat(b.payout) || 0), 0);
+    el('arc-user-roi').textContent = uWag > 0 ? fmtPct((uRet - uWag) / uWag * 100) : '—';
   }
 }
 
