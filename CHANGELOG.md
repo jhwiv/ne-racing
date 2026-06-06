@@ -1,5 +1,19 @@
 # NE Racing — Changelog
 
+## v2.48.4-brisnet — Race results auto-paint even without active bets (2026-06-06)
+
+User report (verified): Race 9 at Saratoga finished as 5-6-8 at ~4:13 PM post and was graded official by ~4:25 PM, but the app still showed the pre-race Action Bet (#10 to Win) and Exotic of the Day (#10/#9 box) cards at 4:21 PM — no FINAL stamp, no result inline, no payouts. The `/api/results` worker endpoint had R9 with `official: true`, full finishOrder, and all payouts at the time of the screenshot. The data was sitting there; the app never asked for it.
+
+Root cause (verified by reading the source, not guessed): `startResultsPolling()` and its safety-net `kick()` hook both short-circuit on `!hasUnresolvedBets()`. `fetchLiveResults` is the ONLY code path that writes `_resultData` / `_official` / `_result='official'` onto race objects (lines 20159-20161 of app.html). If the user has no pending bets — because they're browsing in SIM mode without placing real bets, because their bets have all already been graded, or because they simply prefer to spectate — the poller never starts, those fields are never written, `getRaceStatus()` never flips races to FINAL, and the Today tab keeps showing pre-race picks for races that finished an hour ago. The v2.47.2 work shipped the *consumer* (`getRaceStatus` preferring `race._official` / `race._resultData` over time-window) but the *producer* gate was never loosened.
+
+Fix: add `hasUngradedRaces()` — a parallel helper that returns true if there's at least one race past its post time (with a 2-minute floor) that hasn't been stamped official yet. `startResultsPolling()` now starts when EITHER bets are unresolved OR races are ungraded. The interval tick keeps going under the same OR condition. The `kick()` hook on visibility change / foreground resume picks up the same OR gate. Bet-resolution loop inside `fetchLiveResults` already early-exits per-bet when there are no bets, so SIM-mode users get only the race-state writes, no bet writes.
+
+Trade-off: SIM/spectate users now have a 2.5-minute poll running against `/api/results` during race hours. That's one ~17 KB GET every 2.5 minutes per active session — same cadence the bet-grading path was already using.
+
+Verified against production: `/api/results?track=SAR&date=2026-06-06` returns 9 official races including R9 with finishOrder=[5,6,8], exacta payout $61.94, win payout $12.48 — confirms the result data the app should be displaying but wasn't.
+
+Files: app.html (+1979 bytes: hasUngradedRaces helper + 2 gate updates + version bump), index.html (mirror), sw.js (cache bust v2.48.4-bust1), version.json (BOM preserved).
+
 ## v2.48.3-brisnet — Parallel R2 fallback eliminates cold-load blank screen (2026-06-06)
 
 User report (continued from v2.48.2): even with the off-day dashboard suppressed, the user could still see a blank or terse "loading" screen for 5–28 seconds on cold load if /api/entries was slow. Runtime-verified: a fresh headless session at 19:11 UTC saw /api/entries hang past 20s with no response, while /api/entries/r2 returned 14 races in ~200ms.

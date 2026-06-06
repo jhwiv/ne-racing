@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260606-v2.48.3-brisnet';
+var NE_APP_VERSION = '20260606-v2.48.4-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -20311,12 +20311,43 @@ function hasUnresolvedBets() {
   return bets.some(function(b) { return !b.result && (!b.date || b.date === today); });
 }
 
+// v2.48.4: results poller should run whenever there's at least one race
+// that has passed its post time but hasn't been stamped official yet.
+// Previously the poller short-circuited on hasUnresolvedBets(), which
+// meant a user browsing in SIM mode (or with all bets already resolved)
+// would never see races flip to FINAL — _resultData / _official were
+// never written, so getRaceStatus kept showing pre-race state hours
+// after the races had been graded. Decouples "show race results on
+// Today tab" from "auto-grade user bets."
+function hasUngradedRaces() {
+  try {
+    var data = getTrackData();
+    var races = (data && data.races) || [];
+    if (!races.length) return false;
+    var nowMin = (function(){ var d = new Date(); return d.getHours() * 60 + d.getMinutes(); })();
+    return races.some(function(race) {
+      if (race._official === true) return false;
+      if (race._resultData && Array.isArray(race._resultData.results) && race._resultData.results.length) return false;
+      var ptMin = parsePostTimeToMinutes(race.postTime);
+      if (ptMin < 0) return false;
+      // Consider a race ungraded if it's at least 2 minutes past post.
+      // Real grading lag is typically 5-20 minutes; the 2-minute floor
+      // avoids needlessly polling before the gates even open.
+      return nowMin >= ptMin + 2;
+    });
+  } catch(_) { return false; }
+}
+
 // v2.46.7: debounce so rapid bet additions don't fire N concurrent fetches.
 var _lastResultsFetchAt = 0;
 var RESULTS_FETCH_MIN_GAP_MS = 3000;
 function startResultsPolling() {
   stopResultsPolling();
-  if (!hasUnresolvedBets()) return;
+  // v2.48.4: poll if EITHER there are unresolved bets OR there are
+  // races that have gone off without being stamped official yet. The
+  // old gate (hasUnresolvedBets only) meant SIM-mode browsers and users
+  // without active bets never saw FINAL stamps appear.
+  if (!hasUnresolvedBets() && !hasUngradedRaces()) return;
   // Fetch immediately on start, then poll — but only if we haven't
   // already fetched within the last few seconds (debounce).
   var now = Date.now();
@@ -20325,10 +20356,11 @@ function startResultsPolling() {
     fetchLiveResults();
   }
   _resultsPollingTimer = setInterval(function() {
-    if (!document.hidden && hasUnresolvedBets()) {
+    var keepGoing = hasUnresolvedBets() || hasUngradedRaces();
+    if (!document.hidden && keepGoing) {
       _lastResultsFetchAt = Date.now();
       fetchLiveResults();
-    } else if (!hasUnresolvedBets()) {
+    } else if (!keepGoing) {
       stopResultsPolling();
     }
   }, RESULTS_POLL_INTERVAL);
@@ -20356,7 +20388,11 @@ function stopResultsPolling() {
 
   function kick(reason) {
     try {
-      if (typeof hasUnresolvedBets === 'function' && !hasUnresolvedBets()) return;
+      // v2.48.4: also kick when there are races past post-time but not
+      // yet official, so results paint without requiring active bets.
+      var needBets = (typeof hasUnresolvedBets === 'function') && hasUnresolvedBets();
+      var needGrade = (typeof hasUngradedRaces === 'function') && hasUngradedRaces();
+      if (!needBets && !needGrade) return;
       if (typeof startResultsPolling === 'function') startResultsPolling();
     } catch(_){}
   }
