@@ -341,9 +341,9 @@ async function fetchCoreRacecardsForDate(env, date, ctx) {
 
 // normHorseKey is defined earlier in the file (used by enrichEntriesWithPP).
 
-async function enrichEntriesWithCoreRacecards(body, env, date) {
+async function enrichEntriesWithCoreRacecards(body, env, date, ctx) {
   if (!body || !Array.isArray(body.races)) return body;
-  const core = await fetchCoreRacecardsForDate(env, date);
+  const core = await fetchCoreRacecardsForDate(env, date, ctx);
   if (!core || !core.racecards || !core.racecards.length) {
     body.coreEnrichment = { enabled: false, reason: core && core._error ? core._error : "no NA racecards in /racecards index for date" };
     return body;
@@ -831,7 +831,7 @@ async function fetchUpstream(path, user, pass) {
  * Caches a single date-window meets list in CF cache for a short TTL so
  * repeated handler calls within a request burst share one upstream hit.
  */
-async function findMeetId(trackCode, date, user, pass) {
+async function findMeetId(trackCode, date, user, pass, ctx) {
   // Cache key per date so the meets index can be reused across endpoints.
   const meetsCacheKey = new Request(`https://ne-racing-cache/na-meets/${date}`);
   let meetsList = null;
