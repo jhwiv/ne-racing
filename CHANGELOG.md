@@ -1,5 +1,17 @@
 # NE Racing — Changelog
 
+## v2.48.2-brisnet — Off-day dashboard no longer flashes during cold load (2026-06-06)
+
+User report: "I can't get the card to populate." Runtime verification with a headless mobile browser reproduced the symptom — bodyCount: 0, off-day dashboard visible, while /api/entries was still in flight. A few seconds later the same /api/entries returned 14 races and 223 KB of data. The card WAS there. The user was looking at a transient empty state stamped over by the off-day wrapper.
+
+Root cause: on cold load, data.races is empty until fetchLiveEntries resolves. The off-day wrapper (introduced in v2.17.0) sees the empty #no-races-msg-empty node and immediately swaps in the full "Dark day at Saratoga" dashboard — even though the network request is still pending. On slow networks or cold worker edges the user sees the off-day screen for 5–30 seconds and concludes the card is missing.
+
+Fix: gate the off-day wrapper on a module-level flag _entriesFetchAttempted that flips to true only after fetchLiveEntries has actually returned (success or definitive failure). Until then, the empty state shows the terse "loading" path instead of the full off-day dashboard.
+
+Verified: runtime-tested with Playwright/Chromium against the deployed v2.48.1 site; reproduced the off-day flash at 12s after domcontentloaded, then saw it self-correct to a 14-race card at 15s. v2.48.1 race-card preservation wrapper independently runtime-tested and confirmed working — __preservesOpen flag set; fetchLiveOdds + fetchLiveScratches + fetchLiveEntries all preserve user-expanded race bodies across re-renders.
+
+Files touched: app.html (4 edits + version bump), index.html (mirror), sw.js (cache bust to v2.48.2-bust1), version.json.
+
 ## v2.48.1-brisnet — Expanded race cards no longer collapse on live-data polls (2026-06-06)
 
 User report: launched fresh, opened a race, watched it expand, then it silently collapsed itself.
