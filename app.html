@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260606-v2.48.6-brisnet';
+var NE_APP_VERSION = '20260606-v2.48.7-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -3904,6 +3904,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .badge-live::before { content: ''; display: inline-block; width: 6px; height: 6px; background: #fff; border-radius: 50%; margin-right: 3px; animation: pulse-dot 1s ease-in-out infinite; vertical-align: middle; }
 @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 .badge-complete { background: var(--color-racing-green); color: var(--color-gold); opacity: 0.85; font-size: 0.55rem; }
+.badge-pending { background: #b07d2b; color: #fff; font-size: 0.55rem; } /* v2.48.7: muted amber for past-post races awaiting chart data */
 /* Inline race result strip on Today tab */
 .race-inline-result {
   margin-top: 4px; padding: 4px 8px; border-radius: 4px;
@@ -14980,8 +14981,12 @@ function buildRaceCardHTML(race) {
         if (ptMin > 0) {
           const nowMin = getNowMinutesET(); // P0-2 (v2.48.6)
           const diff = ptMin - nowMin;
-          if (diff <= 0 && diff > -30) statusBadge = '<span class="race-status-badge badge-live">LIVE NOW</span>';
+          // v2.48.7: tighten LIVE NOW to pt-5..pt+5; past pt+5 with no
+          // result data → RESULT PENDING (we hit this branch only when the
+          // earlier hasResults/_official check didn't fire).
+          if (diff <= 0 && diff >= -5) statusBadge = '<span class="race-status-badge badge-live">LIVE NOW</span>';
           else if (diff > 0 && diff <= 5) statusBadge = '<span class="race-status-badge badge-live">LIVE NOW</span>';
+          else if (diff < -5) statusBadge = '<span class="race-status-badge badge-pending">RESULT PENDING</span>';
         }
       }
     }
@@ -15291,9 +15296,13 @@ function getRaceStatus(race, raceIndex, activeIndex, races) {
   const pt = parsePostTimeToMinutes(race.postTime);
   if (pt < 0) return 'upcoming';
 
-  // "Live" = within ~30 min window around post time
-  if (nowMin >= pt - 5 && nowMin <= pt + 30) return 'live';
-  if (nowMin > pt + 30) return 'complete';
+  // v2.48.7: "Live" tightened to pt-5..pt+5. Once we're more than 5 min past
+  // post with no _resultData, we don't know what's happening — show 'pending'
+  // (RESULT PENDING badge) instead of leaving LIVE stuck or falsely flipping
+  // to FINAL at pt+30. Reached only when the earlier _resultData/_official
+  // check above didn't trigger, so by definition results aren't in yet.
+  if (nowMin >= pt - 5 && nowMin <= pt + 5) return 'live';
+  if (nowMin > pt + 5) return 'pending';
   return 'upcoming';
 }
 
@@ -15334,6 +15343,7 @@ function applyRaceFocus(races, activeIdx) {
 
       let badge = '';
       if (status === 'live') badge = '<span class="race-status-badge badge-live">LIVE</span>';
+      else if (status === 'pending') badge = '<span class="race-status-badge badge-pending">RESULT PENDING</span>'; // v2.48.7
       else if (isActive) badge = '<span class="race-status-badge badge-next">NEXT</span>';
       else if (status === 'complete') badge = '<span class="race-status-badge badge-complete">FINAL</span>';
 
