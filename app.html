@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260606-v2.48.5-brisnet';
+var NE_APP_VERSION = '20260606-v2.48.6-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -14949,8 +14949,7 @@ function buildRaceCardHTML(race) {
       if (isToday) {
         const ptMin = parsePostTimeToMinutes(race.postTime);
         if (ptMin > 0) {
-          const now = new Date();
-          const nowMin = now.getHours() * 60 + now.getMinutes();
+          const nowMin = getNowMinutesET(); // P0-2 (v2.48.6)
           const diff = ptMin - nowMin;
           if (diff > 0) mtp = diff;
         }
@@ -14979,8 +14978,7 @@ function buildRaceCardHTML(race) {
       if (isToday) {
         const ptMin = parsePostTimeToMinutes(race.postTime);
         if (ptMin > 0) {
-          const now = new Date();
-          const nowMin = now.getHours() * 60 + now.getMinutes();
+          const nowMin = getNowMinutesET(); // P0-2 (v2.48.6)
           const diff = ptMin - nowMin;
           if (diff <= 0 && diff > -30) statusBadge = '<span class="race-status-badge badge-live">LIVE NOW</span>';
           else if (diff > 0 && diff <= 5) statusBadge = '<span class="race-status-badge badge-live">LIVE NOW</span>';
@@ -15219,6 +15217,26 @@ function parseOddsToNum(odds) {
 
 /* ── Post-time parsing & current-race detection ── */
 
+/**
+ * P0-2 (v2.48.6): always evaluate "now" in Eastern Time, since post times
+ * are formatted in America/New_York by the worker. Device-local getHours()
+ * was wrong for any user not in ET (including the developer when on PST
+ * travel). Returns minutes since ET midnight.
+ */
+function getNowMinutesET() {
+  try {
+    var etStr = new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour12: false });
+    // Format like "6/6/2026, 16:25:00"
+    var timePart = etStr.split(',').pop().trim().split(':');
+    var h = parseInt(timePart[0], 10);
+    var m = parseInt(timePart[1], 10);
+    if (!isFinite(h) || !isFinite(m)) return new Date().getHours() * 60 + new Date().getMinutes();
+    return h * 60 + m;
+  } catch(_) {
+    return new Date().getHours() * 60 + new Date().getMinutes();
+  }
+}
+
 /** Parse "1:10 PM" or "13:10" into minutes since midnight */
 function parsePostTimeToMinutes(timeStr) {
   if (!timeStr || timeStr === 'TBD') return -1;
@@ -15240,8 +15258,7 @@ function parsePostTimeToMinutes(timeStr) {
 /** Return the index of the current/next race (0-based), or 0 if before first race, or last if after all */
 function getCurrentRaceIndex(races) {
   if (!races || !races.length) return -1;
-  const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowMin = getNowMinutesET(); // P0-2 (v2.48.6)
 
   // If viewing a future date (lookahead), default to first race
   if (loadedRaceDate && loadedRaceDate !== getTodayStr()) return 0;
@@ -15270,8 +15287,7 @@ function getRaceStatus(race, raceIndex, activeIndex, races) {
     return 'complete';
   }
   if (loadedRaceDate && loadedRaceDate !== getTodayStr()) return 'upcoming';
-  const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowMin = getNowMinutesET(); // P0-2 (v2.48.6)
   const pt = parsePostTimeToMinutes(race.postTime);
   if (pt < 0) return 'upcoming';
 
@@ -19075,6 +19091,9 @@ function stopLivePolling() {
   if (livePollingInterval) { clearInterval(livePollingInterval); livePollingInterval = null; }
   if (scratchPollingInterval) { clearInterval(scratchPollingInterval); scratchPollingInterval = null; }
   if (oddsPollingInterval) { clearInterval(oddsPollingInterval); oddsPollingInterval = null; }
+  // P1-7 (v2.48.6): also clear the results polling timer so a hidden tab
+  // doesn't keep a stale interval ticking until visibilitychange kicks it.
+  if (typeof stopResultsPolling === 'function') stopResultsPolling();
   updateLiveOddsStatus(false);
 }
 
@@ -19091,7 +19110,7 @@ function isDuringRaceHours() {
   // Convert to ET (UTC-5 or UTC-4 depending on DST)
   const etStr = now.toLocaleString('en-US', { timeZone: 'America/New_York', hour12: false });
   const etHour = parseInt(etStr.split(' ')[1].split(':')[0], 10);
-  return etHour >= 11 && etHour < 18;
+  return etHour >= 10 && etHour < 20; // P0-3 (v2.48.6): cover late-card SAR last post ~18:30 and morning warm 10:00 starts
 }
 
 /** Start/stop odds polling based on race hours and worker availability */
@@ -19179,7 +19198,25 @@ async function fetchLiveOdds() {
   // means "we asked, and this is what the feed said as of now."
   const _now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   races.forEach(function(r) { r.updated = _now; });
-  saveTrackData(data);
+  // P0-1 (v2.48.6): re-read store before save to avoid clobbering a
+  // concurrent fetchLiveEntries write. Apply only odds/MTP/updated deltas
+  // onto the fresh snapshot rather than persisting our stale `data`.
+  try {
+    const fresh = getTrackData();
+    (fresh && fresh.races || []).forEach(function(fr){
+      const r = races.find(function(x){ return x.num === fr.num; });
+      if (!r) return;
+      fr._mtp = r._mtp;
+      fr.updated = r.updated;
+      (r.horses || []).forEach(function(h){
+        const fh = (fr.horses || []).find(function(x){ return x.pp === h.pp; });
+        if (fh && h.liveOdds) { fh.liveOdds = h.liveOdds; if (h._oddsMovement) fh._oddsMovement = h._oddsMovement; }
+      });
+    });
+    saveTrackData(fresh);
+  } catch(_) {
+    saveTrackData(data);
+  }
   renderTodayTab();
   if (anyUpdated) {
     // Re-run advice engine to update overlay calculations with live odds
@@ -19438,6 +19475,9 @@ function shiftDateStrip(days) {
 }
 
 async function selectCalendarDate(dateStr) {
+  // P1-1 (v2.48.6): user-initiated date tap should always lift off-day suppression,
+  // regardless of which return path is taken below.
+  _entriesFetchAttempted = true;
   const today = getTodayStr();
   selectedCalendarDate = dateStr;
 
@@ -19723,9 +19763,11 @@ async function fetchLiveEntries() {
   let lookaheadDate = null;
   if (!result) {
     for (let d = 1; d <= 3; d++) {
-      const dt = new Date();
-      dt.setDate(dt.getDate() + d);
-      const ds = dt.toISOString().split('T')[0];
+      // P1-8 (v2.48.6): use ET-anchored date (en-CA = YYYY-MM-DD) so the lookahead
+      // doesn't roll a day early when called between 8pm-midnight ET (when UTC is
+      // already "tomorrow" and toISOString() returned d+2 instead of d+1).
+      const ds = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' })
+        .format(new Date(Date.now() + d * 86400000));
       result = await tryFetchEntries(code, ds);
       if (result) { lookaheadDate = ds; break; }
     }
@@ -19844,7 +19886,28 @@ async function fetchLiveScratches() {
       unviewedScratches += newScratches;
       updateScratchBadge();
     }
-    saveTrackData(data);
+    // P1-5 (v2.48.6): mirror P0-1 — a concurrent fetchLiveEntries may have replaced
+    // the store with fresh races while we awaited the scratches fetch. Re-read the
+    // store and merge only the scratch deltas + updated stamps before saving so we
+    // don't clobber newly-fetched entries.
+    try {
+      var fresh = getTrackData();
+      if (fresh && Array.isArray(fresh.races)) {
+        (data.races || []).forEach(function(r) {
+          var fr = fresh.races.find(function(x){ return x.num === r.num; });
+          if (!fr) return;
+          fr.updated = r.updated;
+          (r.horses || []).forEach(function(h) {
+            if (!h.scratched) return;
+            var fh = (fr.horses || []).find(function(x){ return x.pp === h.pp || x.name === h.name; });
+            if (fh) fh.scratched = true;
+          });
+        });
+        saveTrackData(fresh);
+      } else {
+        saveTrackData(data);
+      }
+    } catch (_) { saveTrackData(data); }
     renderTodayTab();
     // On initial load, show a single summary toast instead of spamming one per horse
     if (!_scratchInitialLoadDone && scratchNames.length) {
@@ -20193,6 +20256,29 @@ async function fetchLiveResults() {
           return;
         }
       }
+      // P0-4 (v2.48.6): exotic-bet scratch handling. If ANY leg of a
+      // single-race exotic is scratched, refund the full ticket cost.
+      // Without this, the exotic bypassed scratch detection and stayed
+      // perpetually pending after a late scratch.
+      if (bet.isExotic && ['EX','TRI','SUPER'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+        var exScratches = raceResult.scratches || [];
+        var legNames = [];
+        if (Array.isArray(bet.selections)) {
+          bet.selections.forEach(function(s){
+            if (Array.isArray(s)) s.forEach(function(n){ legNames.push(n); });
+            else legNames.push(s);
+          });
+        }
+        var anyScratched = legNames.some(function(n){
+          return exScratches.some(function(s){ return fuzzyHorseMatch(s, n); });
+        });
+        if (anyScratched) {
+          bet.result = 'scratch';
+          bet.payout = parseFloat(bet.cost || bet.amount) || 0;
+          updated++;
+          return;
+        }
+      }
 
       if (bet.isExotic) {
         // Single-race exotic (EX, TRI, SUPER)
@@ -20297,7 +20383,7 @@ async function fetchLiveResults() {
     // popping up every time the user adds bets pre-post when the worker
     // has no results yet, or under brief load from a bulk Quick Pick.
     var msg = e && e.message || '';
-    var isTransient = /HTTP 5\d\d|NetworkError|Failed to fetch|timeout/i.test(msg);
+    var isTransient = /HTTP 5\d\d|HTTP 404|NetworkError|Failed to fetch|timeout/i.test(msg); // P1-4 (v2.48.6): 404 (results not yet posted) is transient, not danger-toast-worthy
     if (isTransient) {
       console.warn('[fetchLiveResults] transient error — will retry on next poll:', msg);
     } else {
@@ -20330,7 +20416,7 @@ function hasUngradedRaces() {
     var data = getTrackData();
     var races = (data && data.races) || [];
     if (!races.length) return false;
-    var nowMin = (function(){ var d = new Date(); return d.getHours() * 60 + d.getMinutes(); })();
+    var nowMin = getNowMinutesET(); // P0-2 (v2.48.6)
     return races.some(function(race) {
       if (race._official === true) return false;
       if (race._resultData && Array.isArray(race._resultData.results) && race._resultData.results.length) return false;
@@ -20454,7 +20540,27 @@ function resolveFromCachedResults() {
       var isScratch = scratches.some(function(s) { return fuzzyHorseMatch(s, bet.selections[0]); });
       if (isScratch) {
         bet.result = 'scratch';
-        bet.payout = parseFloat(bet.amount) || 0;
+        bet.payout = parseFloat(bet.isExotic ? (bet.cost || bet.amount) : bet.amount) || 0; // P1-6 harmonized
+        updated++;
+        return;
+      }
+    }
+    // P0-4 (v2.48.6): exotic-bet scratch handling, mirror of fetchLiveResults
+    if (bet.isExotic && ['EX','TRI','SUPER'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+      var exScratches2 = raceResult.scratches || [];
+      var legNames2 = [];
+      if (Array.isArray(bet.selections)) {
+        bet.selections.forEach(function(s){
+          if (Array.isArray(s)) s.forEach(function(n){ legNames2.push(n); });
+          else legNames2.push(s);
+        });
+      }
+      var anyScratched2 = legNames2.some(function(n){
+        return exScratches2.some(function(s){ return fuzzyHorseMatch(s, n); });
+      });
+      if (anyScratched2) {
+        bet.result = 'scratch';
+        bet.payout = parseFloat(bet.cost || bet.amount) || 0;
         updated++;
         return;
       }
