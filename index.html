@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260606-v2.48.2-brisnet';
+var NE_APP_VERSION = '20260606-v2.48.3-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -19571,8 +19571,8 @@ async function tryFetchEntries(code, date) {
   // track's season. Avoids 12+ 404s in the console during the SAR off-season.
   if (isTrackEnabled(code) && !isDateInEnabledMeet(date)) return null;
   const url = getEntriesUrl(code, date);
-  // Inner helper does one bounded attempt and reports the failure mode so
-  // the caller can decide whether a retry is worthwhile.
+
+  // ---- v2.48.3 helper: one bounded live-fetch attempt ----
   async function attempt(timeoutMs) {
     var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var to = ac ? setTimeout(function(){ try { ac.abort(); } catch(_){} }, timeoutMs) : null;
@@ -19594,9 +19594,90 @@ async function tryFetchEntries(code, date) {
       if (to) clearTimeout(to);
     }
   }
-  // First attempt: generous 28 s window for cold worker edges.
-  var r = await attempt(28000);
+
+  // ---- v2.48.3 helper: one bounded R2 fallback attempt ----
+  // R2 mirror is stale-but-near-instant (<200ms). Only races for which the
+  // scheduled() handler has previously mirrored data are present, so a miss
+  // here just means "no fallback available" — caller should ignore.
+  async function attemptR2(timeoutMs) {
+    var store = getStore();
+    var workerUrl = store && store.settings && store.settings.workerUrl;
+    if (!workerUrl) return { ok:false, reason:'no_worker' };
+    var r2Url = workerUrl + '/api/entries/r2?track=' + encodeURIComponent(code)
+      + '&date=' + encodeURIComponent(date) + '&_t=' + Date.now();
+    var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var to = ac ? setTimeout(function(){ try { ac.abort(); } catch(_){} }, timeoutMs) : null;
+    try {
+      var opts = { cache: 'no-store' };
+      if (ac) opts.signal = ac.signal;
+      var fres = await fetch(r2Url, opts);
+      if (!fres.ok) return { ok:false, reason:'http_' + fres.status };
+      var fjson = await fres.json();
+      var fraces = transformWorkerEntries(fjson);
+      if (!fraces.length) return { ok:false, reason:'empty' };
+      return { ok:true, value: { races: fraces, date: date, isToday: date === getTodayStr(), fromFallback: true } };
+    } catch(e) {
+      var aborted = (e && (e.name === 'AbortError' || /abort/i.test(String(e.message||''))));
+      return { ok:false, reason: aborted ? 'timeout' : 'network', err: e };
+    } finally {
+      if (to) clearTimeout(to);
+    }
+  }
+
+  // ---- v2.48.3 racing strategy ----
+  // 1. Start live fetch immediately (28s budget).
+  // 2. After R2_HEADSTART_MS (2500ms), if live hasn't returned, ALSO start
+  //    an R2 fetch in parallel.
+  // 3. Return whichever resolves first with valid data. Live always preferred
+  //    if both finish in the same tick.
+  // 4. If R2 wins, fromFallback:true so the next 5-min entries poll cycle
+  //    (or any odds poll merge) gets fresher data into the same race objects.
+  //
+  // The fundamental UX win: instead of a blank "loading" screen for 5-28s
+  // while the live worker cold-starts, the user sees the card from R2 in
+  // ~200-2700ms total. The race meta + entries are stable across the day
+  // (jockeys, PPs, breeding); the only stale field is liveOdds, which
+  // gets overwritten on the next fetchLiveOdds tick anyway.
+  var R2_HEADSTART_MS = 2500;
+
+  var livePromise = attempt(28000);
+  var r2Promise = null;
+  var winner = await new Promise(function(resolve) {
+    var settled = false;
+    function pickLive(res) {
+      if (settled) return;
+      if (res && res.ok) { settled = true; resolve({ src:'live', res: res }); }
+    }
+    function pickR2(res) {
+      if (settled) return;
+      if (res && res.ok) { settled = true; resolve({ src:'r2', res: res }); }
+    }
+    livePromise.then(pickLive, function() {});
+    setTimeout(function() {
+      if (settled) return;
+      r2Promise = attemptR2(8000);
+      r2Promise.then(pickR2, function() {});
+    }, R2_HEADSTART_MS);
+    // Hard ceiling: if neither resolves in 30s, give up and let livePromise
+    // resolve naturally below for the retry path.
+    setTimeout(function() {
+      if (!settled) { settled = true; resolve(null); }
+    }, 30000);
+  });
+
+  if (winner && winner.src === 'r2') {
+    try { if (typeof showToast === 'function') showToast('Showing last cached card · live feed loading…', 'info', 3500); } catch(_){}
+    // Don't cancel livePromise — let it finish in background; next poll picks up.
+    return winner.res.value;
+  }
+  if (winner && winner.src === 'live') {
+    return winner.res.value;
+  }
+
+  // Neither raced winner — await live result for retry/error decision.
+  var r = await livePromise;
   if (r.ok) return r.value;
+
   // Retry only on transient failure modes (timeout / network / 5xx).
   // No point retrying a 404 — the data simply isn't there yet.
   var transient = (r.reason === 'timeout' || r.reason === 'network'
@@ -19605,40 +19686,17 @@ async function tryFetchEntries(code, date) {
     // Brief pause to let any in-flight worker cache.put complete on a
     // sibling edge, then a second — typically warm — attempt.
     await new Promise(function(rs){ setTimeout(rs, 800); });
-    var r2 = await attempt(20000);
-    if (r2.ok) return r2.value;
+    var r2result = await attempt(20000);
+    if (r2result.ok) return r2result.value;
   }
-  // v2.47.0: R2 fallback. The worker's scheduled() handler mirrors the
-  // last successful warm payload to R2 at /api/entries/r2. This path
-  // never touches the upstream API or the enrichment pipeline — it's
-  // just a static read — so it returns in <100 ms even when the live
-  // entries pipeline is fully degraded. We only try this for transient
-  // failures (a 404 from the live path means the date legitimately
-  // has no card; R2 won't have one either).
+
+  // Last-ditch R2 fallback (only if we haven't already tried it above).
   if (transient) {
     try {
-      var store = getStore();
-      var workerUrl = store && store.settings && store.settings.workerUrl;
-      if (workerUrl) {
-        var r2Url = workerUrl + '/api/entries/r2?track=' + encodeURIComponent(code)
-          + '&date=' + encodeURIComponent(date) + '&_t=' + Date.now();
-        var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-        var to = ac ? setTimeout(function(){ try { ac.abort(); } catch(_){} }, 8000) : null;
-        try {
-          var opts = { cache: 'no-store' };
-          if (ac) opts.signal = ac.signal;
-          var fres = await fetch(r2Url, opts);
-          if (fres.ok) {
-            var fjson = await fres.json();
-            var fraces = transformWorkerEntries(fjson);
-            if (fraces.length) {
-              try { if (typeof showToast === 'function') showToast('Showing last cached card (live feed slow)', 'warning', 4500); } catch(_){}
-              return { races: fraces, date: date, isToday: date === getTodayStr(), fromFallback: true };
-            }
-          }
-        } finally {
-          if (to) clearTimeout(to);
-        }
+      var rr2 = r2Promise ? await r2Promise : await attemptR2(8000);
+      if (rr2 && rr2.ok) {
+        try { if (typeof showToast === 'function') showToast('Showing last cached card (live feed slow)', 'warning', 4500); } catch(_){}
+        return rr2.value;
       }
     } catch (_) { /* fall through to null */ }
   }

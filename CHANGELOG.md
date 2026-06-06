@@ -1,5 +1,25 @@
 # NE Racing — Changelog
 
+## v2.48.3-brisnet — Parallel R2 fallback eliminates cold-load blank screen (2026-06-06)
+
+User report (continued from v2.48.2): even with the off-day dashboard suppressed, the user could still see a blank or terse "loading" screen for 5–28 seconds on cold load if /api/entries was slow. Runtime-verified: a fresh headless session at 19:11 UTC saw /api/entries hang past 20s with no response, while /api/entries/r2 returned 14 races in ~200ms.
+
+Root cause: tryFetchEntries was strictly sequential — live fetch first (28s timeout), retry second (20s), R2 fallback ONLY if live exhausted all retries. On cold worker edges that's 28-48s of blank screen before R2 saves the day. The mirror data was sitting there the whole time.
+
+Fix: race the live fetch against R2 in parallel after a 2500ms head-start delay.
+  1. Start live fetch immediately (28s budget, unchanged).
+  2. After 2500ms, if live hasn't returned, ALSO start R2 fetch (8s budget).
+  3. Return whichever resolves first with valid data. Result includes fromFallback:true if R2 won, so the next 5-minute entries poll seamlessly overwrites with fresh data.
+  4. Hard 30s ceiling on the race; if neither wins, fall through to existing retry path (preserved verbatim).
+
+The 2500ms head-start exists because R2 is 200ms and live is 1500-3000ms on warm edges — we don't want to flash stale R2 data when live would have won by a hair. The 2.5s threshold means warm-edge users never see R2; only cold-edge users (the ones currently seeing the bug) get R2 as a bridge.
+
+Trade-off: when R2 wins, the user briefly sees a card with stale liveOdds (whatever the last cron mirror captured). The next /api/odds poll (every 60s during race hours) overwrites with fresh odds. A toast informs the user: "Showing last cached card · live feed loading…".
+
+Verified with Playwright headless against the deployed v2.48.2 site BEFORE the patch: /api/entries hung past 20s; /api/entries/r2 returned 200 with 14 races in 200ms.
+
+Files: app.html (tryFetchEntries rewrite + version bump), index.html (mirror), sw.js (cache bust v2.48.3-bust1), version.json.
+
 ## v2.48.2-brisnet — Off-day dashboard no longer flashes during cold load (2026-06-06)
 
 User report: "I can't get the card to populate." Runtime verification with a headless mobile browser reproduced the symptom — bodyCount: 0, off-day dashboard visible, while /api/entries was still in flight. A few seconds later the same /api/entries returned 14 races and 223 KB of data. The card WAS there. The user was looking at a transient empty state stamped over by the off-day wrapper.
