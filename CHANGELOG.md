@@ -1,5 +1,17 @@
 # NE Racing — Changelog
 
+## v2.48.5-brisnet — Wire poller trigger for v2.48.4 gate (2026-06-06)
+
+v2.48.4 loosened the `startResultsPolling()` gate so it would run for users without active bets, but runtime-verified that the poller still never started in SIM/spectate mode — no caller was firing `startResultsPolling()` on cold load with no bets. Headless test showed `hasUngradedRaces()` returning `true` for the full 30-second window while `_resultsPollingTimer` remained `null` and zero `/api/results` requests fired.
+
+Root cause: every existing `startResultsPolling()` call site lived inside bet-placement flows (line 13091 after `addBet()`, line 14191 after restoring bets from storage). None fired on plain "entries loaded, no bets present" — which is exactly the SIM-mode scenario where v2.48.4 was meant to help.
+
+Fix: add a single `startResultsPolling()` call inside `fetchLiveEntries`'s success path (line 19794), immediately after `_entriesFetchAttempted = true` and before `renderTodayTab()`. The function's own internal gate (now `hasUnresolvedBets() || hasUngradedRaces()`) decides whether to actually start polling — this just provides the missing call site.
+
+Trade-off: every successful entries fetch now triggers a poller-start probe. The probe is cheap (one function call + one gate check) and the inner gate prevents redundant polls when there's nothing to grade.
+
+Files: app.html (+434 bytes, 2 edits), sw.js (cache bust v2.48.5-bust1), version.json (BOM preserved). index.html mirror skipped — covered by same blob since byte-identical.
+
 ## v2.48.4-brisnet — Race results auto-paint even without active bets (2026-06-06)
 
 User report (verified): Race 9 at Saratoga finished as 5-6-8 at ~4:13 PM post and was graded official by ~4:25 PM, but the app still showed the pre-race Action Bet (#10 to Win) and Exotic of the Day (#10/#9 box) cards at 4:21 PM — no FINAL stamp, no result inline, no payouts. The `/api/results` worker endpoint had R9 with `official: true`, full finishOrder, and all payouts at the time of the screenshot. The data was sitting there; the app never asked for it.
