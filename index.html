@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260607-v2.48.9-brisnet';
+var NE_APP_VERSION = '20260607-v2.48.10-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -11158,9 +11158,158 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         </span>
         <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <!-- v2.48.10 — Emergency reset entry (force-refresh without touching user data) -->
+      <button class="more-item" onclick="closeMoreSheet(); openResetAppModal();">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">Shit&rsquo;s fucked up</span>
+          <span class="more-item-sub">Force-refresh the app. Your bets, barn, and notes stay safe.</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
     </div>
   </div>
 </div>
+
+<!-- v2.48.10 — Emergency reset modal. Single red rectangular Reset button.
+     Calls forceRefresh() which calls neForceUpdate(NE_APP_VERSION):
+     unregisters every service worker, deletes every Cache Storage entry,
+     clears the version marker, and force-fetches fresh HTML. localStorage
+     'racing2026' (bets, barn, notes, picks, accuracy) is NOT touched. -->
+<div id="reset-app-modal" role="dialog" aria-modal="true" aria-labelledby="reset-app-title" onclick="closeResetAppModalOnBg(event)">
+  <div class="reset-app-card" role="document" onclick="event.stopPropagation()">
+    <button type="button" class="reset-app-close" onclick="closeResetAppModal()" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+    <h3 id="reset-app-title" class="reset-app-title">Shit&rsquo;s fucked up</h3>
+    <p class="reset-app-sub">This force-refreshes the app: unregisters the service worker, clears every cache, and reloads fresh from the server. Your bets, barn, notes, and picks are <strong>not touched</strong>. The page will reload in a moment.</p>
+    <button type="button" id="reset-app-btn" class="reset-app-go" onclick="doResetApp()">Reset</button>
+  </div>
+</div>
+<style>
+  #reset-app-modal {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 10010;
+    align-items: center; justify-content: center;
+    padding: 24px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #reset-app-modal.open { display: flex; }
+  #reset-app-modal .reset-app-card {
+    position: relative;
+    width: 100%; max-width: 420px;
+    background: var(--lux-cream, #F8F4EA);
+    color: var(--color-text, #1E2A36);
+    border-radius: 16px;
+    padding: 22px 22px 20px;
+    box-shadow: 0 18px 48px rgba(0,0,0,0.32);
+    font-family: var(--font-sans, system-ui, sans-serif);
+  }
+  #reset-app-modal .reset-app-close {
+    position: absolute; top: 10px; right: 10px;
+    width: 34px; height: 34px;
+    background: transparent; border: 0;
+    color: var(--color-muted, #6b7280);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+  }
+  #reset-app-modal .reset-app-close:active { background: rgba(0,0,0,0.06); }
+  #reset-app-modal .reset-app-title {
+    margin: 0 32px 8px 0;
+    font-family: var(--font-serif, 'Crimson Pro', serif);
+    font-size: 20px; line-height: 1.2; font-weight: 600;
+    color: var(--color-text, #1E2A36);
+  }
+  #reset-app-modal .reset-app-sub {
+    margin: 0 0 18px;
+    font-size: 14px; line-height: 1.5;
+    color: var(--color-muted, #4b5563);
+  }
+  #reset-app-modal .reset-app-go {
+    display: block; width: 100%;
+    padding: 14px 18px;
+    font-size: 16px; font-weight: 700;
+    color: #fff;
+    background: var(--color-negative, #c1121f);
+    border: 0; border-radius: 10px;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: background 120ms ease, transform 80ms ease, filter 80ms ease;
+  }
+  #reset-app-modal .reset-app-go:hover { background: #a00f1a; }
+  #reset-app-modal .reset-app-go:active { transform: scale(0.985); filter: brightness(0.95); }
+  #reset-app-modal .reset-app-go[disabled] { opacity: 0.6; cursor: progress; }
+</style>
+<script>
+(function(){
+  'use strict';
+  function openResetAppModal() {
+    var m = document.getElementById('reset-app-modal');
+    if (!m) return;
+    var btn = document.getElementById('reset-app-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Reset'; }
+    m.classList.add('open');
+    try { document.body.classList.add('no-scroll'); } catch(_) {}
+    // Move focus to the close button so screen readers announce the dialog
+    try {
+      var closeBtn = m.querySelector('.reset-app-close');
+      if (closeBtn) setTimeout(function(){ closeBtn.focus(); }, 50);
+    } catch(_) {}
+  }
+  function closeResetAppModal() {
+    var m = document.getElementById('reset-app-modal');
+    if (m) m.classList.remove('open');
+    try { document.body.classList.remove('no-scroll'); } catch(_) {}
+  }
+  function closeResetAppModalOnBg(e) {
+    if (e && e.target && e.target.id === 'reset-app-modal') closeResetAppModal();
+  }
+  function doResetApp() {
+    var btn = document.getElementById('reset-app-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Resetting\u2026'; }
+    // forceRefresh() calls neForceUpdate(NE_APP_VERSION) which unregisters
+    // SWs, clears all caches, clears the version marker, then force-fetches
+    // fresh HTML and swaps the document. localStorage user data untouched.
+    try {
+      if (typeof window.forceRefresh === 'function') {
+        window.forceRefresh();
+      } else if (typeof window.neForceUpdate === 'function') {
+        window.neForceUpdate(window.NE_APP_VERSION);
+      } else {
+        // Last-resort fallback if neither function is reachable: hard reload
+        window.location.replace('/index.html?_v=' + (window.NE_APP_VERSION || Date.now()) + '&_t=' + Date.now());
+      }
+    } catch (e) {
+      window.location.replace('/index.html?_t=' + Date.now());
+    }
+  }
+  // Escape to close (only when this modal is open and not actively resetting)
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var m = document.getElementById('reset-app-modal');
+      if (m && m.classList.contains('open')) {
+        var btn = document.getElementById('reset-app-btn');
+        if (btn && btn.disabled) return; // mid-reset; don't fight the navigation
+        e.stopPropagation();
+        closeResetAppModal();
+      }
+    }
+  });
+  window.openResetAppModal = openResetAppModal;
+  window.closeResetAppModal = closeResetAppModal;
+  window.closeResetAppModalOnBg = closeResetAppModalOnBg;
+  window.doResetApp = doResetApp;
+})();
+</script>
 
 <!-- v2.32.4 — RAILBIRD DEFINITION MODAL =================================== -->
 <div id="railbird-def-modal" role="dialog" aria-modal="true" aria-labelledby="rbdef-headword" onclick="closeRailbirdDefOnBg(event)">
