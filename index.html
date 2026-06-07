@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260607-v2.48.12-brisnet';
+var NE_APP_VERSION = '20260607-v2.48.13-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -13169,6 +13169,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     updateBankrollBanner();
     renderStraightBets();
     if (exoticMeta && typeof renderLockedExotics === 'function') renderLockedExotics();
+    if (typeof renderTodaysLockedBets === 'function') renderTodaysLockedBets();
     checkBankrollOverrun();
   } else if (mode === 'simulate') {
     // Add bet to internal bet slip
@@ -13187,12 +13188,13 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
       track: getActiveTrack(),
       bettingMode: 'simulate'
     };
+    // v2.48.13: every new bet starts unlocked; user must explicitly Lock All Bets
+    bet.locked = false;
     if (exoticMeta) {
       bet.isExotic = true;
       bet.cost = exoticMeta.cost;
       bet.combos = exoticMeta.combos;
       bet.formula = exoticMeta.formula;
-      bet.locked = false;
     }
     data.bets.push(bet);
     saveTrackData(data);
@@ -13200,6 +13202,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     updateBankrollBanner();
     renderStraightBets();
     if (exoticMeta && typeof renderLockedExotics === 'function') renderLockedExotics();
+    if (typeof renderTodaysLockedBets === 'function') renderTodaysLockedBets();
     checkBankrollOverrun();
   } else {
     // Real mode: open external platform + also track internally
@@ -13218,12 +13221,13 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
       track: getActiveTrack(),
       bettingMode: 'real'
     };
+    // v2.48.13: every new bet starts unlocked; user must explicitly Lock All Bets
+    bet.locked = false;
     if (exoticMeta) {
       bet.isExotic = true;
       bet.cost = exoticMeta.cost;
       bet.combos = exoticMeta.combos;
       bet.formula = exoticMeta.formula;
-      bet.locked = false;
     }
     data.bets.push(bet);
     saveTrackData(data);
@@ -13233,6 +13237,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
     showToast('Opened ' + platformName + ' — don\'t forget to log your result', 'success', 3000);
     renderStraightBets();
     if (exoticMeta && typeof renderLockedExotics === 'function') renderLockedExotics();
+    if (typeof renderTodaysLockedBets === 'function') renderTodaysLockedBets();
     checkBankrollOverrun();
   }
 
@@ -17120,6 +17125,8 @@ function lockAllBets() {
         if (existing) {
           // Update amount if changed on BETS tab
           existing.amount = amt;
+          // v2.48.13: Lock All Bets actually sets locked=true (was always implicit)
+          existing.locked = true;
         } else {
           const bet = {
             id: generateId(), date: getTodayStr(), raceNum: race.num,
@@ -17129,7 +17136,9 @@ function lockAllBets() {
             amount: amt, result: null, payout: 0,
             isBestBet: false, isValuePlay: false,
             track: getActiveTrack(),
-            bettingMode: getBettingMode()
+            bettingMode: getBettingMode(),
+            // v2.48.13: created by Lock All Bets — explicitly locked
+            locked: true
           };
           data.bets.push(bet);
         }
@@ -17138,11 +17147,23 @@ function lockAllBets() {
       horse.wps = [];
     });
   });
+  // v2.48.13: also lock today's unlocked exotic bets — button literal is "Lock
+  // All Bets" so exotics that user placed today should flip to locked=true too.
+  const __today = getTodayStr();
+  (data.bets || []).forEach(function(b) {
+    if (b && b.isExotic && b.locked !== true) {
+      if (!b.date || String(b.date).indexOf(__today) === 0) {
+        b.locked = true;
+        locked++;
+      }
+    }
+  });
   saveTrackData(data);
   straightBetAmounts = {};
   try { localStorage.removeItem('ne_straightBetAmounts'); } catch(e) {}
   renderStraightBets();
   renderTodaysLockedBets();
+  if (typeof renderLockedExotics === 'function') renderLockedExotics();
   showToast(locked + ' bet' + (locked !== 1 ? 's' : '') + ' locked to Results', 'success', 4000);
   updateBankrollBanner();
 }
@@ -17240,8 +17261,11 @@ function renderTodaysLockedBets() {
   var bets = (data && data.bets) ? data.bets : [];
 
   // Filter to today's bets (v2.38.19: use local-time helper, not UTC)
+  // v2.48.13: ALSO require locked === true. "Today's Locked Bets" must mean
+  // bets the user actually locked via Lock All Bets — not every bet on the slip.
   var today = (typeof getTodayStr === 'function') ? getTodayStr() : new Date().toISOString().slice(0, 10);
   var todayBets = bets.filter(function(b) {
+    if (b.locked !== true) return false;
     if (!b.date) return true; // no date = assume today
     return String(b.date).indexOf(today) === 0 || String(b.date).indexOf(today.replace(/-/g, '')) !== -1;
   });

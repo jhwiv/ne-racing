@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260607-v2.48.12-brisnet'; // v2.48.12: fetchLiveEntries same-date merge now preserves horse.wps; prior 5-min poll silently wiped Quick-Pick checkboxes so Lock All Bets reported 0 locked; surgical 2-line allowlist add               // bump on every ship
+const CACHE_VERSION = '20260607-v2.48.13-brisnet'; // v2.48.13: locked semantics fix — bets created by handleTicketBetClick now have locked=false; Lock All Bets sets locked=true; renderTodaysLockedBets filters locked===true; handleTicketBetClick now calls renderTodaysLockedBets to prevent stale render               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
