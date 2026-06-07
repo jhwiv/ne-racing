@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260606-v2.48.7-brisnet';
+var NE_APP_VERSION = '20260607-v2.48.8-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -3872,6 +3872,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   border-bottom: 2px solid rgba(201,168,76,0.25);
 }
 .race-card-header.collapsed { border-radius: var(--radius-md); }
+/* v2.48.8: instant tap feedback. Pure-presentation — no logic change. The body paint can take 200-400ms on a hot phone; without this the user gets zero feedback during that window and double-taps, accidentally closing the card they just opened. transform/filter don't conflict with the lux-theme !important background overrides at L7456+. */
+.race-card-header:active { transform: scale(0.997); filter: brightness(0.95); transition: transform 60ms ease, filter 60ms ease; }
 /* v2.44.0 — confidence-coded race-card titles. Color depends on per-race
    confidence from runAdviceEngine (high/medium/lean/pass). High = racing
    green (default), Medium = gold/amber, Lean = burgundy red, Pass = muted. */
@@ -3956,7 +3958,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 .race-body.hidden { display: none; }
 .race-body { content-visibility: auto; contain-intrinsic-size: 0 400px; }
-.collapse-icon { transition: transform 0.2s; color: var(--color-muted); flex-shrink: 0; }
+.collapse-icon { transition: transform 0.12s; color: var(--color-muted); flex-shrink: 0; } /* v2.48.8: 0.2s → 0.12s so chevron rotation visibly precedes body paint */
 .collapse-icon.collapsed { transform: rotate(-90deg); }
 
 /* Entry table */
@@ -15362,6 +15364,10 @@ function toggleRaceCard(id) {
   const icon = el('collapse-icon-' + id);
   const header = el('race-header-' + id);
   if (!body) return;
+  // v2.48.8: shortened chevron CSS transition (0.2s → 0.12s in stylesheet)
+  // plus :active state on .race-card-header gives the user immediate visible
+  // confirmation the tap registered, so they don't double-tap during the
+  // ~200-400ms body-paint window and accidentally close the card.
   const hidden = body.classList.toggle('hidden');
   if (icon) icon.classList.toggle('collapsed', hidden);
   if (header) header.classList.toggle('collapsed', hidden);
