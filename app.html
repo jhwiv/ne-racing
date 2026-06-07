@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260607-v2.48.10-brisnet';
+var NE_APP_VERSION = '20260607-v2.48.11-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -17076,15 +17076,28 @@ function removeStraightBet(raceId, horseId, type) {
 }
 
 function clearAllStraight() {
-  if (!confirm('Remove all straight bets?')) return;
+  // v2.48.11: "Clear All" now clears every bet visible on the Bets tab for TODAY:
+  // - unlocked straight checkboxes (h.wps)
+  // - straight bet amounts ($ values)
+  // - today's locked straight + exotic bets in data.bets
+  // Yesterday's and earlier history in data.bets is preserved.
+  if (!confirm('Clear all of today\u2019s bets on this tab? Yesterday\u2019s history is preserved.')) return;
   const data = getTrackData();
   (data.races||[]).forEach(race => {
     (race.horses||[]).forEach(h => { h.wps = []; });
+  });
+  const today = (typeof getTodayStr === 'function') ? getTodayStr() : new Date().toISOString().slice(0,10);
+  data.bets = (data.bets||[]).filter(function(b){
+    if (!b.date) return false; // undated bet → treated as today, remove
+    return String(b.date).indexOf(today) !== 0;
   });
   saveTrackData(data);
   straightBetAmounts = {};
   try { localStorage.removeItem('ne_straightBetAmounts'); } catch(e) {}
   renderStraightBets();
+  if (typeof renderLockedExotics === 'function') renderLockedExotics();
+  if (typeof renderTodaysLockedBets === 'function') renderTodaysLockedBets();
+  if (typeof updateBankrollBanner === 'function') updateBankrollBanner();
 }
 
 function lockAllBets() {
@@ -17177,7 +17190,15 @@ function checkBankrollOverrun() {
 
 function renderLockedExotics() {
   const data = getTrackData();
-  const bets = (data && data.bets || []).filter(b => b.isExotic);
+  // v2.48.11: scope Exotic Bets list to TODAY only so yesterday's exotics
+  // don't linger on the Bets tab the next morning. data.bets still retains
+  // historical entries for Results/History views.
+  const today = (typeof getTodayStr === 'function') ? getTodayStr() : new Date().toISOString().slice(0,10);
+  const bets = (data && data.bets || []).filter(function(b){
+    if (!b.isExotic) return false;
+    if (!b.date) return true; // undated → assume today (matches renderTodaysLockedBets convention)
+    return String(b.date).indexOf(today) === 0;
+  });
   const container = el('exotic-bets-list');
   const noMsg = el('no-exotic-bets');
   if (!container) return;

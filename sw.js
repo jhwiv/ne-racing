@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260607-v2.48.10-brisnet'; // v2.48.10: emergency reset entry in More sheet — 'Shit's fucked up' opens a modal with a red Reset button that calls forceRefresh() (neForceUpdate); user data untouched; match NE_APP_VERSION exactly so SW_ACTIVATED compare never triggers spurious first-install reload               // bump on every ship
+const CACHE_VERSION = '20260607-v2.48.11-brisnet'; // v2.48.11: Bets tab Clear All now clears today's locked straights + exotics (not just unlocked W/P/S); Exotic Bets list date-filtered to today so yesterday's exotics no longer linger; data.bets history preserved               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
