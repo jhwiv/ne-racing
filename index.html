@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260607-v2.48.8-brisnet';
+var NE_APP_VERSION = '20260607-v2.48.9-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -14161,6 +14161,22 @@ function initApp() {
   const store = getStore();
   if (!store) return;
 
+  // v2.48.9 — prevent stale race-card render. If the live store's races were
+  // saved for a date other than today, clear them before any render runs so
+  // renderTodayTab() shows the loading/empty state until fetchLiveEntries
+  // resolves with today's data. The per-date cache (racesByDate) is untouched
+  // so historical date-chip taps still hit cache. Without this guard, cold
+  // start renders yesterday's races for the 1-3s the network fetch takes,
+  // and (pre-Edit B) the merge-by-num logic would leave orphan races from
+  // higher-count days permanently visible.
+  try {
+    var __td = store.tracks && store.tracks[getActiveTrack()];
+    if (__td && __td.races && __td.races.length && __td.racesDate && __td.racesDate !== getTodayStr()) {
+      __td.races = [];
+      saveStore(store);
+    }
+  } catch(_) {}
+
   // One-time dedup pass to clean up any duplicate bets from prior sessions
   deduplicateBets();
 
@@ -19588,6 +19604,7 @@ async function selectCalendarDate(dateStr) {
   saveRacesForDate(dateStr, result.races, code);
   const data = getTrackData();
   data.races = result.races;
+  data.racesDate = result.date; // v2.48.9 — stamp date marker so cold start can detect stale store
   saveTrackData(data);
   updateSyncTime();
   renderTodayTab();
@@ -19830,23 +19847,38 @@ async function fetchLiveEntries() {
   }
 
   const data = getTrackData();
-  // Merge: don't overwrite if user has manual edits on same race
-  result.races.forEach(apiRace => {
-    const existing = (data.races||[]).find(r => r.num === apiRace.num);
-    if (!existing) {
-      data.races = data.races || [];
-      data.races.push(apiRace);
-    } else {
-      // Merge live odds if available
-      if (apiRace.horses) {
-        apiRace.horses.forEach(apiH => {
-          const existingH = existing.horses && existing.horses.find(h => h.pp === apiH.pp || h.name === apiH.name);
-          if (existingH && apiH.liveOdds) existingH.liveOdds = apiH.liveOdds;
+  // v2.48.9 — full replacement on cross-date load; merge preserved only when
+  // refreshing the same date. Prior behavior merged by race.num across dates,
+  // which silently left yesterday's horses/PPs visible whenever today had a
+  // lower race count or a different field for the same race number. The
+  // "preserve in-flight manual edits" intent only applies within the same
+  // race date, so we copy a small allowlist of user-mutable fields (notes,
+  // userPicks, manualScratches) from the prior race by num when same-date.
+  var __sameDate = data.racesDate && data.racesDate === result.date;
+  if (__sameDate) {
+    var __prior = {};
+    (data.races || []).forEach(function(r){ if (r && r.num != null) __prior[r.num] = r; });
+    data.races = result.races.map(function(apiRace){
+      var p = __prior[apiRace.num];
+      if (!p) return apiRace;
+      // Preserve in-session manual fields; race body itself comes from the API.
+      if (p.notes != null) apiRace.notes = p.notes;
+      if (p.userPicks != null) apiRace.userPicks = p.userPicks;
+      if (p.manualScratches != null) apiRace.manualScratches = p.manualScratches;
+      // Merge live odds when present on existing horse rows.
+      if (apiRace.horses && p.horses) {
+        apiRace.horses.forEach(function(apiH){
+          var prevH = p.horses.find(function(h){ return h.pp === apiH.pp || h.name === apiH.name; });
+          if (prevH && prevH.liveOdds && !apiH.liveOdds) apiH.liveOdds = prevH.liveOdds;
         });
       }
-      existing.updated = apiRace.updated;
-    }
-  });
+      return apiRace;
+    });
+  } else {
+    // Cross-date load (or first-ever load): full replacement, no carryover.
+    data.races = result.races;
+  }
+  data.racesDate = result.date;
   saveTrackData(data);
   updateSyncTime();
   _entriesFetchAttempted = true;  // v2.48.2: unlock off-day dashboard gate

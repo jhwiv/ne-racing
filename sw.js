@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260607-v2.48.8-brisnet'; // v2.48.8: instant tap feedback on race-card-header (perceived expand latency fix); match NE_APP_VERSION exactly so SW_ACTIVATED compare never triggers spurious first-install reload               // bump on every ship
+const CACHE_VERSION = '20260607-v2.48.9-brisnet'; // v2.48.9: stale-card root-cause fix — full replacement on cross-date load + boot-time stale clear + racesDate marker; match NE_APP_VERSION exactly so SW_ACTIVATED compare never triggers spurious first-install reload               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
