@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260607-v2.48.11-brisnet';
+var NE_APP_VERSION = '20260607-v2.48.12-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -20036,10 +20036,18 @@ async function fetchLiveEntries() {
       if (p.userPicks != null) apiRace.userPicks = p.userPicks;
       if (p.manualScratches != null) apiRace.manualScratches = p.manualScratches;
       // Merge live odds when present on existing horse rows.
+      // v2.48.12: also preserve horse.wps (unlocked W/P/S checkboxes the user
+      // ticked via Quick Pick or per-horse tap). Prior to v2.48.12 the 5-min
+      // fetchLiveEntries poll silently wiped these on same-date refresh, so
+      // Lock All Bets reported "0 bets locked". Only preserve when prior had
+      // a non-empty wps AND the API row didn't already provide one.
       if (apiRace.horses && p.horses) {
         apiRace.horses.forEach(function(apiH){
           var prevH = p.horses.find(function(h){ return h.pp === apiH.pp || h.name === apiH.name; });
           if (prevH && prevH.liveOdds && !apiH.liveOdds) apiH.liveOdds = prevH.liveOdds;
+          if (prevH && Array.isArray(prevH.wps) && prevH.wps.length && !(Array.isArray(apiH.wps) && apiH.wps.length)) {
+            apiH.wps = prevH.wps.slice();
+          }
         });
       }
       return apiRace;

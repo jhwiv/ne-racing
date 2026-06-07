@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260607-v2.48.11-brisnet'; // v2.48.11: Bets tab Clear All now clears today's locked straights + exotics (not just unlocked W/P/S); Exotic Bets list date-filtered to today so yesterday's exotics no longer linger; data.bets history preserved               // bump on every ship
+const CACHE_VERSION = '20260607-v2.48.12-brisnet'; // v2.48.12: fetchLiveEntries same-date merge now preserves horse.wps; prior 5-min poll silently wiped Quick-Pick checkboxes so Lock All Bets reported 0 locked; surgical 2-line allowlist add               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
