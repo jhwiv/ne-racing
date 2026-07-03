@@ -1,5 +1,47 @@
 # NE Racing — Changelog
 
+## v2.48.14-brisnet — Bets-tab bankroll ghost + orphaned locked bets (2026-07-03)
+
+Fixes DEFECTS A, B, C from the Bets-tab handoff wiki (three prior attempts —
+v2.48.11, v2.48.12, v2.48.13 — each shipped a real partial fix but the
+owner-reported symptom persisted). DEFECT D (Follow Expert Picks appearing to
+pre-lock bets) is NOT addressed here — its root cause is still unconfirmed
+(the only three `locked = true` write sites in the codebase are all inside
+`lockAllBets`, so the write path for the reported symptom is unresolved) and
+needs a `data.bets` console-log dump from the affected device before a fix
+can be proposed.
+
+- **DEFECT A — `updateBankrollBanner` bankroll banner (three sub-bugs in one function):**
+  - A1: the "locked" filter was `!b.isExotic || b.locked`, which let every
+    unlocked straight through. The bankroll's "current" figure dropped the
+    moment a bet was queued via a bet button, before Lock All Bets was ever
+    tapped. Filter now requires `b.locked === true`.
+  - A2: the "committed" total read only `horse.wps` for straights, which
+    `lockAllBets` clears to `[]` on lock — so locked straights vanished from
+    Committed. Now also sums today's locked straights from `data.bets`.
+  - A3: the exotics committed total had no date filter, so a prior day's
+    exotic bet kept inflating today's Committed indefinitely. Now filtered to
+    today's date (or missing-date, for legacy records).
+- **DEFECT B — `removeStraightBet`** only cleared `horse.wps`, never
+  `data.bets`. Unchecking a bet that had already been locked left an orphaned
+  row that kept re-rendering in Today's Locked Bets. Now also removes today's
+  matching locked entry from `data.bets` (prior-day history untouched).
+- **DEFECT C — legacy bets missing `bet.track`** rendered "AQU" next to
+  Saratoga races (fallback in `renderTodaysLockedBets`). Added a one-time
+  migration (`betsTrackBackfillV1`) that backfills `track: 'SAR'` on any
+  existing bet missing the field, so the fallback is no longer reachable.
+
+Added `tests/bets-tab-fix.test.js` — executes the patched functions in a
+sandboxed vm context against mock data (not just source-text assertions) to
+cover the three defects above plus a version-integrity check. No existing
+test in the suite referenced Bets-tab logic before this.
+
+**Not yet verified on a real device** — per the owner's verification rule,
+this is not "fixed" until confirmed live on iPhone.
+
+Files: app.html, index.html (mirror), sw.js (cache bust), version.json (BOM
+preserved), tests/bets-tab-fix.test.js (new).
+
 ## v2.48.5-brisnet — Wire poller trigger for v2.48.4 gate (2026-06-06)
 
 v2.48.4 loosened the `startResultsPolling()` gate so it would run for users without active bets, but runtime-verified that the poller still never started in SIM/spectate mode — no caller was firing `startResultsPolling()` on cold load with no bets. Headless test showed `hasUngradedRaces()` returning `true` for the full 30-second window while `_resultsPollingTimer` remained `null` and zero `/api/results` requests fired.

@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260607-v2.48.13-brisnet';
+var NE_APP_VERSION = '20260703-v2.48.14-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -12735,6 +12735,20 @@ function initStore() {
       existing.settings.sarLockV1 = true;
       mutated = true;
     }
+    // v2.48.14 (DEFECT C): backfill missing bet.track on legacy bets so
+    // Today's Locked Bets never falls through to the 'AQU' render fallback.
+    if (!existing.settings.betsTrackBackfillV1) {
+      if (existing.tracks && typeof existing.tracks === 'object') {
+        Object.keys(existing.tracks).forEach(function(code) {
+          const t = existing.tracks[code];
+          if (t && Array.isArray(t.bets)) {
+            t.bets.forEach(function(b) { if (b && !b.track) b.track = 'SAR'; });
+          }
+        });
+      }
+      existing.settings.betsTrackBackfillV1 = true;
+      mutated = true;
+    }
     // Ensure SAR track data bucket exists
     if (!existing.tracks.SAR) {
       existing.tracks.SAR = { bets: [], races: [], bias: [], notes: {}, adviceLog: [], scratchHistory: [] };
@@ -17073,10 +17087,25 @@ function removeStraightBet(raceId, horseId, type) {
   const horse = (race.horses||[]).find(h=>h.id===horseId);
   if (!horse) return;
   horse.wps = (horse.wps||[]).filter(t=>t!==type);
+  // v2.48.14 (DEFECT B): also clear today's matching locked entry from
+  // data.bets. Previously this only touched horse.wps, so unchecking a bet
+  // that had already been locked left an orphaned row that kept re-rendering
+  // in Today's Locked Bets. Only today's straight is removed — prior-day
+  // history is preserved.
+  const betTypeName = type === 'W' ? 'Win' : type === 'P' ? 'Place' : 'Show';
+  const today = getTodayStr();
+  data.bets = (data.bets || []).filter(function(b) {
+    if (b.isExotic) return true;
+    return !(String(b.raceNum) === String(race.num) && b.type === betTypeName &&
+             (b.selections || []).indexOf(horse.name) !== -1 &&
+             String(b.date || '').indexOf(today) === 0);
+  });
   saveTrackData(data);
   renderStraightBets();
   // Also update the button in the today tab
   renderTodayTab();
+  if (typeof renderTodaysLockedBets === 'function') renderTodaysLockedBets();
+  if (typeof updateBankrollBanner === 'function') updateBankrollBanner();
 }
 
 function clearAllStraight() {
@@ -17384,13 +17413,22 @@ function updateBankrollBanner() {
   const starting = store.settings.startingBankroll || 1000;
   const data = getTrackData();
   const bets = data && data.bets ? data.bets : [];
-  const locked = bets.filter(b => !b.isExotic || b.locked);
+  const today = getTodayStr();
+  // v2.48.14 (DEFECT A1): only actually-locked bets count toward wagered/payout.
+  // Previously `!b.isExotic || b.locked` let every unlocked straight through,
+  // so the bankroll's "current" figure dropped the moment a bet was queued,
+  // before Lock All Bets was ever tapped.
+  const locked = bets.filter(function(b) { return b.locked === true; });
   const totalPayout = locked.reduce((sum,b) => sum + (parseFloat(b.payout)||0), 0);
   const totalWagered = locked.reduce((sum,b) => sum + (parseFloat(b.amount)||0), 0);
   const current = starting + totalPayout - totalWagered;
   const budget = starting * 0.2;
 
-  // Committed: sum of current straight bet amounts
+  // Committed: unlocked straights (pre-lock working state, from h.wps) +
+  // today's locked straights + today's exotics.
+  // v2.48.14 (DEFECT A2/A3): locked straights previously vanished from this
+  // total because lockAllBets clears horse.wps; and exotics from any prior
+  // day previously stayed in the total forever (no date filter).
   const races = (data && data.races) || [];
   let committed = 0;
   races.forEach(race => {
@@ -17401,8 +17439,14 @@ function updateBankrollBanner() {
       });
     });
   });
-  // Include exotic bets from data.bets[] in committed amount
-  bets.filter(function(b) { return b.isExotic; }).forEach(function(b) { committed += parseFloat(b.cost || b.amount) || 0; });
+  bets.filter(function(b) {
+    return !b.isExotic && b.locked === true &&
+      (!b.date || String(b.date).indexOf(today) === 0);
+  }).forEach(function(b) { committed += parseFloat(b.amount) || 0; });
+  // Include today's exotic bets from data.bets[] in committed amount
+  bets.filter(function(b) {
+    return b.isExotic && (!b.date || String(b.date).indexOf(today) === 0);
+  }).forEach(function(b) { committed += parseFloat(b.cost || b.amount) || 0; });
   const remaining = budget - committed;
 
   if (el('bb-bankroll')) el('bb-bankroll').textContent = fmt$(current);
