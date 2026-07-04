@@ -183,7 +183,7 @@ test('barn_wireStallCards: card click and chevron both call barnOpenHorseProfile
 
 test('version: version.json tracks at least v2.22.1', () => {
   const v = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')
+    fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8').replace(/^\uFEFF/, '')
   );
   assert.match(v.version, /v2\.2[2-9]\.[1-9]\d*|v2\.2[3-9]\.\d+|v2\.[3-9]\d*\.\d+|v[3-9]\./,
     'version.json must be at v2.22.1 or later');

@@ -13,8 +13,11 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const INDEX = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+// version.json is written with a UTF-8 BOM by convention (see CHANGELOG);
+// fs.readFileSync + JSON.parse doesn't strip it the way the browser's
+// fetch().json() does, so strip it explicitly here.
 const VERSION_JSON = JSON.parse(
-  fs.readFileSync(path.join(ROOT, 'version.json'), 'utf8')
+  fs.readFileSync(path.join(ROOT, 'version.json'), 'utf8').replace(/^\uFEFF/, '')
 );
 
 function extractConstant(name) {

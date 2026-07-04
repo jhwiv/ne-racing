@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260704-v2.48.16-brisnet'; // v2.48.16: About sheet "What's new" rewritten to cover everything shipped since v2.46.0 (bankroll accuracy, locked-bet removal, live-card reliability, Bet ROI tile)               // bump on every ship
+const CACHE_VERSION = '20260704-v2.48.17-brisnet'; // v2.48.17: fixed BOM-crash in 3 test files masking real test runs (version-sync.test.js's own RAILBIRD_VERSION check finally ran and caught a real staleness bug), bumped stale RAILBIRD_VERSION (was v2.38.15). Left index.html's scoring-sync test failing on purpose: scripts/lib/scoring.js is stale, not index.html — do not run inline_scoring.js, it would regress live Prime Power scoring               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

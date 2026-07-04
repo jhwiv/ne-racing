@@ -79,9 +79,9 @@ live-card critical path — don't confuse it with `cloudflare-worker`.
   three together. `version.json` must keep its UTF-8 BOM (write it with
   Python's `utf-8-sig` codec, or equivalent) — this is a repo convention,
   not something the browser's `fetch().json()` actually requires (it
-  strips BOMs fine either way — only Node's `fs.readFileSync` +
-  `JSON.parse` does not, which is why `tests/version-sync.test.js` has 4
-  pre-existing failures unrelated to any of this).
+  strips BOMs fine either way; only Node's `fs.readFileSync` + `JSON.parse`
+  does not — see §5 for the test-suite fallout that caused before this was
+  fixed, 2026-07-04).
 
 ### Worker (worker.js, wrangler.toml)
 - **Manual only.** `wrangler deploy` from a checkout with the current
@@ -166,14 +166,40 @@ decision, intentionally left alone.
 ## 5. Test suite
 
 `node --test tests/*.test.js` (**not** `node --test tests/` — that form
-doesn't glob correctly on this Node version). Baseline as of 2026-07-04:
-199 passing, 4 failing, all four in `tests/version-sync.test.js` — a
-pre-existing Node-only artifact (`fs.readFileSync` + `JSON.parse` doesn't
-strip `version.json`'s BOM; the real browser runtime's `fetch().json()`
-does, so this does not affect production). None of the Bets-tab logic
-(`lockAllBets`, `updateBankrollBanner`, `removeLockedBet`, etc.) had any
-test coverage before 2026-07-03 — `tests/bets-tab-fix.test.js` and this
-handoff's Playwright QA scripts are the first coverage of that code path.
+doesn't glob correctly on this Node version). Baseline as of 2026-07-04
+(v2.48.17): 206 passing, 1 failing, 1 skipped.
+
+The 1 remaining failure — `index.html scoring block is in sync with
+scripts/lib/scoring.js` (`tests/inline-scoring-sync.test.js`) — is failing
+**on purpose**. `scripts/build/inline_scoring.js` (no `--check` flag)
+overwrites index.html's inlined scoring block from `scripts/lib/scoring.js`.
+Ran it once on 2026-07-04 to see the diff before committing anything, and
+it would have **reverted real, deliberate scoring logic**: the entire
+v2.46.0 Brisnet Prime Power blend, the data-completeness anchor for
+Brisnet-enriched horses, and the v2.42.0 relative-confidence engine — all
+real changes that were made to the live `index.html`/`app.html` inline
+block but never backported into `scripts/lib/scoring.js`, the file this
+test treats as canonical. **Do not run `inline_scoring.js` to "fix" this
+test** — it goes the wrong direction. If this ever needs fixing for real,
+someone has to backport the live scoring changes into `scripts/lib/scoring.js`
+first, then regenerate, then verify the offline backtest still produces the
+same picks.
+
+Three other failures (in `tests/version-sync.test.js`,
+`tests/redesigned-barn.test.js`, `tests/simple-barn-cleanup.test.js`) were a
+real bug, not a test artifact as first assumed: `fs.readFileSync` +
+`JSON.parse` doesn't strip `version.json`'s UTF-8 BOM the way the browser's
+`fetch().json()` does. Fixed by stripping the leading BOM (`\uFEFF`) before parsing in all
+three files (2026-07-04, v2.48.17). Fixing the crash let
+`version-sync.test.js`'s other assertions actually run for the first time,
+which caught a real, separate staleness bug: `RAILBIRD_VERSION` (a
+display-only constant, unrelated to `NE_APP_VERSION`) was frozen at
+`v2.38.15` — many versions behind. Bumped to match.
+
+None of the Bets-tab logic (`lockAllBets`, `updateBankrollBanner`,
+`removeLockedBet`, etc.) had any test coverage before 2026-07-03 —
+`tests/bets-tab-fix.test.js` and this handoff's Playwright QA scripts are
+the first coverage of that code path.
 
 ---
 

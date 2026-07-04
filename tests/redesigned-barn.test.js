@@ -111,7 +111,7 @@ test('redesign: no "Suggested horses" label is emitted into the main render', ()
 });
 
 test('redesign: version bumped to at least v2.22.0 (simple barn)', () => {
-  const versionJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'));
+  const versionJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8').replace(/^\uFEFF/, ''));
   assert.match(versionJson.version, /v2\.2[2-9]\.\d+|v2\.[3-9]\d*\.\d+|v[3-9]\./,
     'version.json must track v2.22.0 or later');
 });

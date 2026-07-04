@@ -1,5 +1,43 @@
 # NE Racing — Changelog
 
+## v2.48.17-brisnet — Fixed the test suite's own BOM crash + a real staleness bug it was masking (2026-07-04)
+
+Prompted by the owner getting repeated "[Tests] All jobs have failed" CI
+emails — a known pre-existing issue, but one now visibly annoying, worth
+actually fixing rather than continuing to explain away.
+
+- **The real bug**: `tests/version-sync.test.js`, `tests/redesigned-barn.test.js`,
+  and `tests/simple-barn-cleanup.test.js` each independently read
+  `version.json` via `fs.readFileSync(..., 'utf8')` + `JSON.parse` without
+  stripping the UTF-8 BOM the file is written with. Node doesn't strip BOMs
+  this way (the browser's `fetch().json()` does — production was never
+  affected). Fixed by stripping the leading BOM (`\uFEFF`) before parsing in all three files.
+- **What that crash was hiding**: `version-sync.test.js` crashed at
+  module-load time, before any of its own `test()` calls ever ran. Fixing
+  the crash let its other assertions run for the first time and one of them
+  immediately failed for real: `RAILBIRD_VERSION` (a separate, display-only
+  version constant used in the feedback-report telemetry string) had been
+  frozen at `v2.38.15-jockey-trainer-search` for at least 10 point releases.
+  Bumped to track `NE_APP_VERSION`.
+- **Investigated and deliberately left alone**: a 4th pre-existing failure,
+  `index.html scoring block is in sync with scripts/lib/scoring.js`. Ran
+  `scripts/build/inline_scoring.js` (no `--check`) to see what "fixing" it
+  would do — it overwrote `index.html`'s scoring block from
+  `scripts/lib/scoring.js` and would have **reverted the v2.46.0 Brisnet
+  Prime Power blend, the Brisnet data-completeness anchor, and the v2.42.0
+  relative-confidence engine** — all real logic that shipped to the live
+  inline block but was never backported into the "canonical" module this
+  test checks against. Reverted immediately; nothing from this went out.
+  `scripts/lib/scoring.js` is the stale side here, not `index.html` — see
+  `docs/HANDOFF.md` §5 before anyone tries to "fix" this test again.
+
+Baseline: 206 passing, 1 failing (the scoring-sync test above, on purpose),
+1 skipped — up from 199/4/1.
+
+Files: app.html, index.html (mirror), sw.js (cache bust), version.json (BOM
+preserved), tests/version-sync.test.js, tests/redesigned-barn.test.js,
+tests/simple-barn-cleanup.test.js, docs/HANDOFF.md.
+
 ## v2.48.16-brisnet — Rewrote the About sheet's "What's new" (2026-07-04)
 
 The About sheet's "What's new" entry hadn't been touched since v2.46.0
