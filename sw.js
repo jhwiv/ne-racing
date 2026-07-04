@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260704-v2.48.15-brisnet'; // v2.48.15: locked-bet removal (remove-bet-btn + removeLockedBet for pending bets), stale hardcoded version/race-count strings fixed in beta-preview-banner + About sheet, "Something's broken" copy replaces profanity               // bump on every ship
+const CACHE_VERSION = '20260704-v2.48.16-brisnet'; // v2.48.16: About sheet "What's new" rewritten to cover everything shipped since v2.46.0 (bankroll accuracy, locked-bet removal, live-card reliability, Bet ROI tile)               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

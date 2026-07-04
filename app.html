@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260704-v2.48.15-brisnet';
+var NE_APP_VERSION = '20260704-v2.48.16-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -11451,35 +11451,35 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <p class="about-eyebrow">About</p>
     <h2 id="about-title" class="about-title">Railbird AI</h2>
     <div class="about-list">
-      <!-- v2.46.0 — What's new -->
+      <!-- v2.48.15 — What's new -->
       <button type="button" class="about-item" data-row="whatsnew" onclick="toggleAboutRow('whatsnew')" aria-expanded="false" aria-controls="about-answer-whatsnew">
         <span class="about-item-body">
-          <span class="about-item-q">What&rsquo;s new &mdash; v2.46.0</span>
-          <span class="about-item-hint">Brisnet PP overlay shipped 2026-06-05</span>
+          <span class="about-item-q">What&rsquo;s new &mdash; v2.48.15</span>
+          <span class="about-item-hint">Bets you can trust + a lot fewer blank screens (2026-07-04)</span>
         </span>
         <svg class="about-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <div id="about-answer-whatsnew" class="about-answer">
-        <p style="margin:0 0 10px 0;"><strong>Brisnet past-performance data is now wired into every Saratoga race card.</strong> The null FIGS columns that showed up on the closing races yesterday are filled in, and the model is reading real numbers from a primary vendor instead of derived heuristics.</p>
-        <p style="margin:0 0 6px 0;"><strong>What changed under the hood</strong></p>
+        <p style="margin:0 0 10px 0;"><strong>Since Brisnet PP data went live (v2.46.0), the biggest changes have been about trust: getting the bankroll numbers right, and making sure the card is actually there when you open the app.</strong></p>
+        <p style="margin:0 0 6px 0;"><strong>Bets tab &mdash; bankroll accuracy</strong></p>
         <ul style="margin:0 0 10px 18px; padding:0;">
-          <li><strong>Prime Power</strong> &mdash; Brisnet&rsquo;s all-in current-form rating is now the lead input on the speed factor (blended 70/30 with trailing BRIS speed figs).</li>
-          <li><strong>BRIS Speed Ratings</strong> &mdash; the last three speed figs for every non-debut runner, populated on all 14 races including R13 and R14.</li>
-          <li><strong>Run style</strong> &mdash; real Brisnet codes (E / E/P / P / S) replace the sprint/route + post-position guess. Pace-pressure detection (lone speed, hot pace) reads from real data now.</li>
-          <li><strong>Jockey &amp; trainer %</strong> &mdash; real per-meet starts and wins for this Saratoga meet, replacing the frozen 2026-04 NYRA-circuit leaderboard.</li>
-          <li><strong>Class</strong> &mdash; last-race class label pulled from the Brisnet PP block (G1/G2/G3/STK/ALW/MSW/MCL/CLM) instead of inferred from race type.</li>
-          <li><strong>Data-completeness penalty</strong> no longer fires on Brisnet-enriched runners. Legitimate horses stop getting docked because of vendor gaps. The penalty still applies to true first-time starters, which is correct.</li>
+          <li>The bankroll banner no longer drops the moment you queue a bet &mdash; your balance only moves once a bet is actually locked in.</li>
+          <li>Locked straight bets no longer disappear from your Committed total. Committed now correctly reflects everything you&rsquo;ve locked in today, straight or exotic.</li>
+          <li>Yesterday&rsquo;s exotic bets no longer inflate today&rsquo;s Committed number.</li>
+          <li><strong>New:</strong> you can now remove a locked bet, as long as the race hasn&rsquo;t run yet. Once a bet is graded (win, loss, or scratch), it stays as permanent history &mdash; only pending bets can be undone.</li>
+          <li>Fixed a legacy display bug where an old bet could show &ldquo;AQU&rdquo; next to a Saratoga race.</li>
         </ul>
-        <p style="margin:0 0 6px 0;"><strong>What you&rsquo;ll see in the UI</strong></p>
+        <p style="margin:0 0 6px 0;"><strong>More reliable live cards</strong></p>
         <ul style="margin:0 0 10px 18px; padding:0;">
-          <li>FIGS rows show real numbers; the &ldquo;Avg&rdquo; pill is no longer blank.</li>
-          <li>Confidence-coded race titles (High / Medium / Lean from v2.44.0) now reflect higher-quality inputs &mdash; expect more honest Leans in chaotic spots and cleaner Highs where Prime Power separates the field.</li>
-          <li>Best Bet / Value Plays / Action Bet picks shift slightly because the scoring engine is reading new data. R9 Pashmina remains the projected Best Bet (PP 153.78, last 3 BRIS speeds 91/94/99, G1&rarr;G2 class drop).</li>
-          <li>The &ldquo;Beta &mdash; Data Preview Mode&rdquo; banner is gone, replaced with a v2.46.0 release note.</li>
+          <li>The Today card no longer flashes a blank or &ldquo;dark day&rdquo; screen while live data is still loading on a slow connection or a cold start.</li>
+          <li>A race you&rsquo;ve expanded to read now stays expanded through live odds/scratches/results updates instead of snapping shut on you.</li>
+          <li>Race results now post automatically as soon as they go official, even if you&rsquo;re just watching the card without any bets down.</li>
+          <li>A background warm-up job keeps the card fast to load even on the very first request of the day.</li>
         </ul>
-        <p style="margin:0 0 6px 0;"><strong>Coverage today</strong></p>
-        <p style="margin:0 0 10px 0;">146 of 146 runners matched against Brisnet on Friday&rsquo;s card. 130 of 146 carry a Prime Power rating; the other 16 are first-time starters with no past performances, and they&rsquo;re correctly flagged as low-data. Saturday and Sunday cards are also loaded (96% and 88% PP coverage respectively).</p>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Layout, navigation, and color system unchanged. This release is a data-quality upgrade that the existing UI surfaces automatically.</p>
+        <p style="margin:0 0 6px 0;"><strong>Also new</strong></p>
+        <ul style="margin:0;padding:0 0 0 18px;">
+          <li>A <strong>Your Bet ROI</strong> tile on the Advice Report Card &mdash; tracks real profit/loss on the bets you actually staked (straights and exotics), separate from the advice engine&rsquo;s own hypothetical performance line above it.</li>
+        </ul>
       </div>
       <button type="button" class="about-item" data-row="railbird" onclick="toggleAboutRow('railbird')" aria-expanded="false" aria-controls="about-answer-railbird">
         <span class="about-item-body">

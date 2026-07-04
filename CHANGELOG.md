@@ -1,5 +1,27 @@
 # NE Racing — Changelog
 
+## v2.48.16-brisnet — Rewrote the About sheet's "What's new" (2026-07-04)
+
+The About sheet's "What's new" entry hadn't been touched since v2.46.0
+(2026-06-05) — flagged in the v2.48.15 entry below as a content decision,
+not a mechanical fix. Rewrote it now, covering everything genuinely
+user-facing shipped since then, distilled from the real CHANGELOG entries
+(not fabricated):
+
+- Bets tab bankroll accuracy (the v2.48.14 DEFECT A/B/C fixes), plus the new
+  locked-bet removal capability from v2.48.15.
+- Live-card reliability: no more blank/off-day flash on cold load (v2.48.2,
+  v2.48.3), expanded race cards no longer self-collapse on live polls
+  (v2.48.1), results auto-post even in spectate mode (v2.48.4), and the
+  cron pre-warm + R2 fallback that makes cold starts fast (v2.47.0).
+- The new "Your Bet ROI" tile on the Advice Report Card (v2.48.0).
+
+Verified via Playwright: the section expands correctly, content matches
+what was written, zero page errors.
+
+Files: app.html, index.html (mirror), sw.js (cache bust), version.json (BOM
+preserved).
+
 ## v2.48.15-brisnet — QA audit fixes: locked-bet removal, stale copy (2026-07-04)
 
 From a full QA pass driving the app in a headless browser (mocked Racing API,
