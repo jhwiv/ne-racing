@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260703-v2.48.14-brisnet';
+var NE_APP_VERSION = '20260704-v2.48.15-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -9338,7 +9338,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
      integration is in development. Dismissable for this session. -->
 <div id="beta-preview-banner" role="note" aria-live="polite">
   <span class="bpb-dot" aria-hidden="true"></span>
-  <span class="bpb-text"><strong>v2.46.0 — Brisnet PP overlay live.</strong> Prime Power, run style, BRIS speed &amp; T/J meet stats on all 14 races.</span>
+  <span class="bpb-text"><strong>Brisnet PP overlay live.</strong> Prime Power, run style, BRIS speed &amp; T/J meet stats on today's card.</span>
   <button type="button" class="bpb-close" aria-label="Dismiss" onclick="dismissBetaPreviewBanner()">&times;</button>
 </div>
 
@@ -11168,7 +11168,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           </svg>
         </span>
         <span class="more-item-body">
-          <span class="more-item-title">Shit&rsquo;s fucked up</span>
+          <span class="more-item-title">Something&rsquo;s broken</span>
           <span class="more-item-sub">Force-refresh the app. Your bets, barn, and notes stay safe.</span>
         </span>
         <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
@@ -11187,7 +11187,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <button type="button" class="reset-app-close" onclick="closeResetAppModal()" aria-label="Close">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
     </button>
-    <h3 id="reset-app-title" class="reset-app-title">Shit&rsquo;s fucked up</h3>
+    <h3 id="reset-app-title" class="reset-app-title">Something&rsquo;s broken</h3>
     <p class="reset-app-sub">This force-refreshes the app: unregisters the service worker, clears every cache, and reloads fresh from the server. Your bets, barn, notes, and picks are <strong>not touched</strong>. The page will reload in a moment.</p>
     <button type="button" id="reset-app-btn" class="reset-app-go" onclick="doResetApp()">Reset</button>
   </div>
@@ -11572,7 +11572,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <li><strong>Perplexity Computer + Claude + GitHub</strong> &mdash; AI-agent development loop: spec, build, QA, ship.</li>
           <li><strong>SendGrid</strong> &mdash; transactional email for feedback notifications.</li>
         </ul>
-        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong>v2.46.10-brisnet</strong>.</p>
+        <p style="margin:0;color:#6B7785;font-size:12px;">Current version: <strong id="about-current-version"></strong>.</p>
       </div>
     </div>
   </div>
@@ -11974,6 +11974,10 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     var m = document.getElementById('about-sheet');
     if (!m) return;
     m.classList.add('open');
+    try {
+      var vEl = document.getElementById('about-current-version');
+      if (vEl) vEl.textContent = (typeof NE_APP_VERSION !== 'undefined') ? NE_APP_VERSION : 'unknown';
+    } catch(_) {}
     try {
       var closeBtn = m.querySelector('.about-close');
       if (closeBtn) closeBtn.focus();
@@ -17349,6 +17353,14 @@ function renderTodaysLockedBets() {
     html += '<div style="text-align:right;flex-shrink:0">';
     html += '<div style="font-size:0.9rem;font-weight:700;color:rgba(255,255,255,0.85)">$' + amt.toFixed(2) + '</div>';
     if (plLine) html += '<div style="margin-top:2px">' + plLine + '</div>';
+    // v2.48.15: locked bets had no way to be removed once locked — only an
+    // ungraded (pending) bet can be un-locked; a bet with a result stays
+    // as permanent history.
+    if (result === 'pending' && bet.id) {
+      html += '<button class="remove-bet-btn" style="margin-top:4px" onclick="removeLockedBet(\'' + bet.id + '\')" aria-label="Remove bet">'
+        + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+        + '</button>';
+    }
     html += '</div>';
     html += '</div>';
     html += '</div>';
@@ -17368,6 +17380,23 @@ function renderTodaysLockedBets() {
   html += '</div>';
 
   container.innerHTML = html;
+}
+
+// v2.48.15: removes a single locked, still-pending bet (straight or exotic)
+// from data.bets by id. Previously the only way to undo a locked bet was
+// "Clear All", which wiped every bet for the day. Only reachable from the
+// remove button rendered above, which itself is only shown while
+// result === 'pending' — a graded bet (win/loss/scratch) is permanent
+// history and cannot be removed this way.
+function removeLockedBet(betId) {
+  const data = getTrackData();
+  data.bets = (data.bets || []).filter(function(b) { return b.id !== betId; });
+  saveTrackData(data);
+  renderTodaysLockedBets();
+  if (typeof renderLockedExotics === 'function') renderLockedExotics();
+  if (typeof renderStraightBets === 'function') renderStraightBets();
+  if (typeof updateBankrollBanner === 'function') updateBankrollBanner();
+  if (typeof showToast === 'function') showToast('Bet removed', 'success', 2000);
 }
 
 // v2.30.0: handler for inline bankroll form in the Bets-tab empty-state banner.

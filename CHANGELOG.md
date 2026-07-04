@@ -1,5 +1,44 @@
 # NE Racing — Changelog
 
+## v2.48.15-brisnet — QA audit fixes: locked-bet removal, stale copy (2026-07-04)
+
+From a full QA pass driving the app in a headless browser (mocked Racing API,
+realistic fixture data matching the live production JSON shape):
+
+- **Locked straight bets had no way to be removed.** `lockAllBets` clears
+  `horse.wps` on lock, and the only remove control (`renderStraightBets`)
+  reads exclusively from `horse.wps` — so once a bet was locked, it vanished
+  from every editable list. Verified live: the Today tab's W/P/S button also
+  reverts to its plain, unchecked state after locking, giving no visual
+  indication a bet already exists on that horse. Only escape hatch was
+  "Clear All" (wipes every bet for the day, locked and unlocked, straight and
+  exotic). Exotic bets never had this problem — `renderLockedExotics` /
+  `removeExoticBet` already worked regardless of lock state.
+  Fix: added a remove button to `renderTodaysLockedBets()`, shown only while
+  `result === 'pending'` (a graded win/loss/scratch stays as permanent
+  history), wired to a new `removeLockedBet(betId)` that deletes the matching
+  entry from `data.bets` and re-renders the bankroll banner + both bet lists.
+- **Stale hardcoded version strings** in two places: the beta-preview banner
+  said "v2.46.0 ... on all 14 races" (now generic, evergreen text); the About
+  sheet's "Current version" said "v2.46.10-brisnet" (now reads
+  `NE_APP_VERSION` live when the sheet opens, via a new `#about-current-version`
+  span populated in `openAboutSheet()`).
+- **Replaced profanity in production UI copy.** The emergency force-refresh
+  entry (menu item + modal title) said "Shit's fucked up" — now "Something's
+  broken". Functionality unchanged.
+
+Not fixed (flagged, not mine to decide): the About sheet's "What's new" entry
+still references v2.46.0 (2026-06-05) as the latest change — updating it
+properly means writing new changelog copy for everything shipped since, which
+is a content decision, not a mechanical fix.
+
+Verified via Playwright against both files: banner text, About sheet version,
+menu/modal copy, and the full lock → remove → bankroll-updates flow (committed
+went from $2.00 to $0.00 after removal, zero page errors throughout).
+
+Files: app.html, index.html (mirror), sw.js (cache bust), version.json (BOM
+preserved).
+
 ## v2.48.14-brisnet — Bets-tab bankroll ghost + orphaned locked bets (2026-07-03)
 
 Fixes DEFECTS A, B, C from the Bets-tab handoff wiki (three prior attempts —
