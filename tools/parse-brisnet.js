@@ -29,12 +29,12 @@ const fs   = require('fs');
 const path = require('path');
 
 const DATES = [
-  { mmdd: '0605', iso: '2026-06-05' },
-  { mmdd: '0606', iso: '2026-06-06' },
-  { mmdd: '0607', iso: '2026-06-07' },
+  { mmdd: '0704', iso: '2026-07-04' },
+  { mmdd: '0705', iso: '2026-07-05' },
+  { mmdd: '0709', iso: '2026-07-09' },
 ];
 const TRACK = 'SAR';
-const OUT_DIR = '/tmp/ne-racing-current/data';
+const OUT_DIR = path.join(__dirname, '..', 'data');
 
 // Map Brisnet class codes to the CLASS_SCALE the scoring engine uses.
 // CLASS_SCALE in app.html is keyed by short codes the legacy build-entries.js
