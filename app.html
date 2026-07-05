@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.6-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.7-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.6-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.6-brisnet';
+var RAILBIRD_VERSION = 'v2.49.7-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -11513,34 +11513,35 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <p class="about-eyebrow">About</p>
     <h2 id="about-title" class="about-title">Railbird AI</h2>
     <div class="about-list">
-      <!-- v2.48.15 — What's new -->
+      <!-- v2.49.6 — What's new -->
       <button type="button" class="about-item" data-row="whatsnew" onclick="toggleAboutRow('whatsnew')" aria-expanded="false" aria-controls="about-answer-whatsnew">
         <span class="about-item-body">
-          <span class="about-item-q">What&rsquo;s new &mdash; v2.48.15</span>
-          <span class="about-item-hint">Bets you can trust + a lot fewer blank screens (2026-07-04)</span>
+          <span class="about-item-q">What&rsquo;s new &mdash; v2.49.6</span>
+          <span class="about-item-hint">A live results tab, real-time scratch handling, and data that stops going stale (2026-07-05)</span>
         </span>
         <svg class="about-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <div id="about-answer-whatsnew" class="about-answer">
-        <p style="margin:0 0 10px 0;"><strong>Since Brisnet PP data went live (v2.46.0), the biggest changes have been about trust: getting the bankroll numbers right, and making sure the card is actually there when you open the app.</strong></p>
-        <p style="margin:0 0 6px 0;"><strong>Bets tab &mdash; bankroll accuracy</strong></p>
+        <p style="margin:0 0 10px 0;"><strong>The biggest changes this round: a dedicated results tab, bets that recalculate the instant a scratch happens instead of after the race, and fixes for live data quietly going stale.</strong></p>
+        <p style="margin:0 0 6px 0;"><strong>New: Today&rsquo;s Results tab</strong></p>
         <ul style="margin:0 0 10px 18px; padding:0;">
-          <li>The bankroll banner no longer drops the moment you queue a bet &mdash; your balance only moves once a bet is actually locked in.</li>
-          <li>Locked straight bets no longer disappear from your Committed total. Committed now correctly reflects everything you&rsquo;ve locked in today, straight or exotic.</li>
-          <li>Yesterday&rsquo;s exotic bets no longer inflate today&rsquo;s Committed number.</li>
-          <li><strong>New:</strong> you can now remove a locked bet, as long as the race hasn&rsquo;t run yet. Once a bet is graded (win, loss, or scratch), it stays as permanent history &mdash; only pending bets can be undone.</li>
-          <li>Fixed a legacy display bug where an old bet could show &ldquo;AQU&rdquo; next to a Saratoga race.</li>
+          <li>A new tab (right next to Bets) shows every race on today&rsquo;s card in one place &mdash; live status as post time approaches, and full Win/Place/Show payouts the moment each race goes official.</li>
+          <li>Updates automatically while you&rsquo;re looking at it &mdash; no need to refresh or switch tabs back and forth to see if a race has finalized.</li>
         </ul>
-        <p style="margin:0 0 6px 0;"><strong>More reliable live cards</strong></p>
+        <p style="margin:0 0 6px 0;"><strong>Bets you can trust &mdash; now in real time</strong></p>
         <ul style="margin:0 0 10px 18px; padding:0;">
-          <li>The Today card no longer flashes a blank or &ldquo;dark day&rdquo; screen while live data is still loading on a slow connection or a cold start.</li>
-          <li>A race you&rsquo;ve expanded to read now stays expanded through live odds/scratches/results updates instead of snapping shut on you.</li>
-          <li>Race results now post automatically as soon as they go official, even if you&rsquo;re just watching the card without any bets down.</li>
-          <li>A background warm-up job keeps the card fast to load even on the very first request of the day.</li>
+          <li>Scratches now refund your straight bets and exotic tickets the instant the scratch is detected &mdash; not after the race finishes. Previously a scratched horse just showed a warning and left your bankroll totals untouched for hours.</li>
+          <li>A checked Win/Place/Show box on a horse that gets scratched now clears itself automatically.</li>
+          <li><strong>New:</strong> a &ldquo;Clear Bet History&rdquo; button on the Results &amp; Bankroll screen, for a full reset across every date.</li>
+        </ul>
+        <p style="margin:0 0 6px 0;"><strong>More reliable live data</strong></p>
+        <ul style="margin:0 0 10px 18px; padding:0;">
+          <li>Fixed a bug where live entries and odds could quietly stop updating for hours after the app sat backgrounded on your phone &mdash; the &ldquo;Updated&rdquo; time now stays honest.</li>
+          <li>The &ldquo;Preparing the day&rsquo;s card&rdquo; loading screen is now a large, unmissable card with a progress bar, instead of a tiny line of italic text that was easy to mistake for the app being stuck.</li>
         </ul>
         <p style="margin:0 0 6px 0;"><strong>Also new</strong></p>
         <ul style="margin:0;padding:0 0 0 18px;">
-          <li>A <strong>Your Bet ROI</strong> tile on the Advice Report Card &mdash; tracks real profit/loss on the bets you actually staked (straights and exotics), separate from the advice engine&rsquo;s own hypothetical performance line above it.</li>
+          <li>Post positions are now color-coded everywhere they appear &mdash; race cards, Handicap picks, Bets, and exotic tickets &mdash; using the same saddle-cloth colors NYRA uses on its own race cards.</li>
         </ul>
       </div>
       <button type="button" class="about-item" data-row="railbird" onclick="toggleAboutRow('railbird')" aria-expanded="false" aria-controls="about-answer-railbird">

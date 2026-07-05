@@ -2,12 +2,15 @@
 
 **Live site:** https://www.railbirdai.com
 **Repo:** `jhwiv/ne-racing`
-**Last verified:** 2026-07-04, against production, not assumed.
+**Last verified:** 2026-07-05, against production, not assumed.
 
 This supersedes any prior handoff doc that circulated outside this repo. A
 few things in earlier notes were wrong (branch name, hosting provider, a
 GitHub Pages "dead" claim) — this version corrects those and documents only
-what was actually confirmed working end-to-end on 2026-07-04.
+what was actually confirmed working end-to-end on 2026-07-04/05. See §5 for
+everything shipped in the v2.49.x wave (2026-07-05): the Pages deploy
+watchdog, post-position colors, the new Today's Results tab, the live-data
+staleness fix, and real-time bet recalculation on scratch.
 
 ---
 
@@ -171,18 +174,95 @@ reading alone):
 - Profanity in production UI copy ("Shit's fucked up") replaced with
   "Something's broken" — cosmetic only, same function.
 
-**Known, not fixed:** the About sheet's "What's new" entry still displays
-v2.46.0 (2026-06-05) as the latest change. Updating it properly means
-writing new changelog copy for everything shipped since — a content
-decision, intentionally left alone.
+**About sheet "What's new" copy:** rewritten at v2.48.16 (2026-07-04), then
+again at v2.49.6 (2026-07-05) to cover the whole v2.49.x wave below. This is
+manual content, not auto-generated from CHANGELOG.md — it drifts stale on
+its own schedule and needs a deliberate rewrite each time a batch of
+user-visible changes ships. Check it's still current before assuming it is.
 
 ---
 
-## 5. Test suite
+## 5. v2.49.x feature wave (2026-07-05)
+
+Seven releases shipped same-day, each verified via Playwright before commit
+(seed a mock store/route, exercise the actual code path, screenshot or
+assert on the resulting DOM — never "read the diff and assume it works").
+
+- **v2.49.0 — Post-position color badges.** Standard US saddle-cloth colors
+  (1 Red, 2 White, 3 Blue, 4 Yellow, 5 Green, 6 Black, 7 Orange, 8 Pink,
+  9 Turquoise, 10-14 striped), matching NYRA's own race-card convention.
+  New `ppBadgeHtml()`/`ppBadgeStyle()`, applied everywhere a program number
+  renders as markup (race card, Handicap picks, Bets, exotic tickets) but
+  deliberately not in the 5 plain-text/clipboard contexts, where a `<span>`
+  can't render anyway. **Note:** this deploy itself failed on GitHub's side
+  (see §2) and only actually reached production ~10 minutes later, papered
+  over by the next commit's successful deploy — the reason the watchdog
+  below exists.
+- **`.github/workflows/pages-deploy-watchdog.yml`** — see §2. Added the same
+  day the v2.49.0 deploy silently failed and nobody noticed.
+- **v2.49.1 — Clear Bet History button** on the Results & Bankroll screen;
+  wipes every bet, every date, every track (distinct from the Bets tab's
+  "Clear All", which only clears today). Confirmed bet data is 100% local
+  `localStorage` (`racing2026` key) — no server-side account, so nothing
+  shown is ever another user's. Also fixed a real bug surfaced while testing
+  this: `renderResultsList()` permanently detached the `#no-results-msg`
+  empty-state node from the DOM the first time any bet rendered, so once
+  all bets were cleared the empty state could never come back — fixed by
+  rebuilding that markup from a literal string instead of a stale DOM ref.
+- **v2.49.2 — Bigger cold-load state.** "Preparing the day's card" was a
+  tiny 0.85rem italic line, easy to mistake for a dead screen. Now a large
+  card with an animated indeterminate progress bar. Found and fixed a real
+  contrast bug in the same pass: `--lux-navy`/`--lux-ink-soft` are
+  repointed by a later "msp" theme layer to cream/dark-ink tokens, so the
+  card actually renders light, not dark, in the live theme — a hardcoded
+  light-tint progress-bar track was nearly invisible against it. Fixed by
+  deriving the track color from `currentColor` via `color-mix()` so it
+  adapts to whichever theme is active.
+- **v2.49.3/v2.49.4 — Today's Results tab.** New 5th bottom-nav tab, right
+  of Bets: one row per today's race with a status badge (Upcoming/Live/
+  Result Pending/Final — reusing `getRaceStatus()`, the same source of
+  truth the Today tab uses) and, once final, the Win/Place/Show payout
+  lines. `refreshStatusTabIfActive()` hooks the existing
+  `fetchLiveEntries()`/`fetchLiveResults()` completion points and
+  re-renders only if this tab is the one on screen. `fmtPayout()`/
+  `wpsLine()`/`buildWpsRowsHtml()` were hoisted out of `buildRaceCardHTML()`
+  so this tab and the Today tab's inline FINAL strip share one
+  implementation instead of two. (v2.49.4 was a same-day label-only rename
+  to "Today's Results".)
+- **v2.49.5 — Fixed live data going stale for hours after backgrounding.**
+  Reported live: every race stuck at the same morning "Updated" timestamp
+  at 1pm. Root cause: `startLivePolling()` only resumed on
+  `visibilitychange`, which iOS PWAs don't reliably fire when the OS (not
+  the user) suspends/resumes a backgrounded home-screen app. The results
+  poller had already hit this exact gap and been fixed with `focus`/
+  `pageshow` backups (`installResultsPollerHooks`) — live polling never got
+  the same treatment until now. Added a debounced (10s floor)
+  `wakeLivePolling()` wired to both events.
+- **v2.49.6 — Real-time bet recalculation on scratch.** Owner asked
+  directly whether scratches recalculate bets in real time; audit found
+  advice/strategy recalculation was already correct (`renderTodayTab()`
+  always re-runs `runAdviceEngine()`, which excludes scratched horses) but
+  bet recalculation wasn't — a scratch only flagged the horse and showed a
+  manual "remove this bet" banner, leaving locked bets and unlocked
+  selections sitting in the bankroll totals until the race went official.
+  New `applyScratchToBetsAndData()`, called from both `toggleScratch()`
+  (manual) and `fetchLiveScratches()` (60s live poll): refunds straight
+  bets and single-race exotics (EX/TRI/SUPER) on the scratched horse
+  immediately, clears any unlocked W/P/S checkbox on it. Deliberately does
+  **not** touch multi-race exotics (DD/P3/P4/P5/P6) — pari-mutuel pools
+  substitute the beaten favorite for a scratched leg horse, which can't be
+  determined until that leg's race actually runs, so only the existing
+  post-results `resolveMultiRaceBet()` can grade those correctly.
+
+---
+
+## 6. Test suite
 
 `node --test tests/*.test.js` (**not** `node --test tests/` — that form
 doesn't glob correctly on this Node version). Baseline as of 2026-07-04
-(v2.48.17): 206 passing, 1 failing, 1 skipped.
+(v2.48.17): 206 passing, 1 failing, 1 skipped. Reconfirmed unchanged through
+every v2.49.x release on 2026-07-05 (see §5) — the 1 known failure below,
+nothing else.
 
 The 1 remaining failure — `index.html scoring block is in sync with
 scripts/lib/scoring.js` (`tests/inline-scoring-sync.test.js`) — is failing
@@ -218,7 +298,7 @@ the first coverage of that code path.
 
 ---
 
-## 6. Saratoga meet dates (confirmed live via Racing API, 2026-07-04)
+## 7. Saratoga meet dates (confirmed live via Racing API, 2026-07-04)
 
 - Meet running now through 2026-09-07 per in-app copy.
 - Opening day 2026-07-09 confirmed provisioned with real entries (9 races)

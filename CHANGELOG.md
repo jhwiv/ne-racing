@@ -1,5 +1,31 @@
 # NE Racing — Changelog
 
+## v2.49.7-brisnet — Refreshed About sheet + docs/HANDOFF.md (2026-07-05)
+
+Owner asked what still needed fixing; besides two known pre-existing
+items (DEFECT D, still blocked on device console-log data; and this
+stale copy), flagged that the About sheet's "What's new" entry hadn't
+been touched since v2.48.16 and was missing the entire v2.49.0-v2.49.6
+wave. Owner said to refresh it.
+
+Rewrote the About sheet's "What's new" section to cover: the new
+Today's Results tab, real-time bet recalculation on scratch, the
+Clear Bet History button, the fixed live-data staleness bug, the bigger
+loading state, and post-position colors.
+
+Also refreshed `docs/HANDOFF.md`: corrected a stale note that still
+described the About sheet as showing v2.46.0 (it was already rewritten
+once at v2.48.16), and added a new §5 walking through everything shipped
+in the v2.49.x wave — the Pages deploy watchdog, all seven v2.49.x
+releases, and why each one happened.
+
+Files: `app.html`, `index.html` (About sheet copy only — no logic
+changes), `sw.js`, `version.json`, `docs/HANDOFF.md`. Verified via
+Playwright: opened the About sheet, expanded "What's new", confirmed the
+new copy renders correctly with no console errors. Full test suite: 206
+passing, 1 failing (same pre-existing, intentional scoring-sync
+failure), no regressions.
+
 ## v2.49.6-brisnet — Real-time bet recalculation on scratch (2026-07-05)
 
 Owner asked directly: are bets and strategies updating with current data
