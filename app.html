@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.3-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.4-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.3-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.3-brisnet';
+var RAILBIRD_VERSION = 'v2.49.4-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10032,7 +10032,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </button>
       <button class="desktop-nav-btn" onclick="switchTab('status')" id="dnav-status">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-        Status
+        Today&rsquo;s Results
       </button>
       <button class="desktop-nav-btn" onclick="switchTab('handicap')" id="dnav-handicap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -10371,7 +10371,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     </section>
 
     <!-- ===== TAB: STATUS (today's races, live results as they finalize) ===== -->
-    <section id="tab-status" class="tab-panel" role="tabpanel" aria-label="Status">
+    <section id="tab-status" class="tab-panel" role="tabpanel" aria-label="Today&rsquo;s Results">
       <h2 class="section-title">Today&rsquo;s Results</h2>
       <div class="flex gap-1 mb-2">
         <button class="btn btn-ghost btn-sm" onclick="fetchLiveResults()">
@@ -11067,11 +11067,11 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     </svg>
     <span>Bets</span>
   </button>
-  <button class="tab-btn" id="tab-btn-status" onclick="switchTab('status')" aria-label="Status" aria-selected="false">
+  <button class="tab-btn" id="tab-btn-status" onclick="switchTab('status')" aria-label="Today&rsquo;s Results" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
     </svg>
-    <span>Status</span>
+    <span>Today&rsquo;s Results</span>
   </button>
   <button class="tab-btn" id="tab-btn-handicap" onclick="switchTab('handicap')" aria-label="Handicapping" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

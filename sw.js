@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.3-brisnet'; // v2.49.3: new Status tab (right of Bets) — today's races with live status badges and WIN/PLACE/SHOW payouts as results finalize               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.4-brisnet'; // v2.49.4: renamed the Status tab label to "Today's Results" (bottom nav, desktop nav, aria-labels) — same tab/content, clearer name               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

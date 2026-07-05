@@ -1,5 +1,15 @@
 # NE Racing — Changelog
 
+## v2.49.4-brisnet — Renamed Status tab to "Today's Results" (2026-07-05)
+
+Owner-requested label change: the tab added in v2.49.3 is now labeled
+"Today's Results" everywhere it's visible — bottom nav, desktop nav,
+and both aria-labels (nav button + panel). Internal ids (`tab-status`,
+`tab-btn-status`, `dnav-status`) and all render logic are unchanged, so
+this is a display-only rename. Verified via Playwright that the
+two-line wrapped label fits in the 5-tab bottom bar without breaking
+layout or truncating.
+
 ## v2.49.3-brisnet — New Status tab: today's races and results as they finalize (2026-07-05)
 
 Owner-requested: a tab to the right of Bets, called Status, showing
