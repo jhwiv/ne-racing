@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.10-brisnet'; // v2.49.10: fixed a bug where a single race could claim BOTH Value Play slots (two different, competing exacta suggestions for the same race) — Value Plays are now deduped to at most one per race, same as Best Bet and Action Bet               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.11-brisnet'; // v2.49.11: "Check Results (Live)" now always shows a toast, even when nothing newly resolves — previously it succeeded silently with zero feedback, reading as a dead button               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

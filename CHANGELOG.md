@@ -1,5 +1,29 @@
 # NE Racing — Changelog
 
+## v2.49.11-brisnet — "Check Results (Live)" now always confirms it ran (2026-07-05)
+
+Owner reported: "Refresh button doesn't do anything."
+
+Root cause: `fetchLiveResults()`'s success toast only fired
+`if (updated > 0)` — i.e., only when tapping the button newly resolved
+at least one bet. If the only still-pending bets are on races that
+genuinely haven't gone official yet, the fetch succeeds, merges
+whatever's cached, re-renders — and shows nothing at all. No toast, no
+visible change. From the tap, there's zero evidence anything happened,
+which is indistinguishable from a dead button.
+
+Added an else branch: when nothing newly resolves, show "Checked — no
+new results yet" (plus a pending count if any bets are still open)
+instead of staying silent. Every tap now gives positive confirmation the
+check actually ran.
+
+Files: `app.html`, `index.html` (`fetchLiveResults()`), `sw.js`,
+`version.json`. Verified via Playwright: seeded an already-fully-graded
+bet, mocked the results endpoint to return a response with nothing new
+to resolve, confirmed the button click now produces the new toast.
+Full test suite: 206 passing, 1 failing (same pre-existing, intentional
+scoring-sync failure), no regressions.
+
 ## v2.49.10-brisnet — Fixed two competing Value Play exactas for the same race (2026-07-05)
 
 Owner feedback from live use: "A little strange that the app had two
