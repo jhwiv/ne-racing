@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.7-brisnet'; // v2.49.7: refreshed the About sheet's "What's new" copy to cover v2.49.0-v2.49.6 (was stale since v2.48.16); refreshed docs/HANDOFF.md with the whole v2.49.x wave               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.8-brisnet'; // v2.49.8: fixed the cold-load progress bar freezing at a fixed position under prefers-reduced-motion (the blanket accessibility override killed the infinite slide with no fallback) — now pulses opacity instead, no motion, still reads as "working"               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

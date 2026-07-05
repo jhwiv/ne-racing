@@ -1,5 +1,40 @@
 # NE Racing — Changelog
 
+## v2.49.8-brisnet — Fixed the cold-load progress bar freezing (2026-07-05)
+
+Owner reported: the v2.49.2 progress bar "goes to one spot then stops
+until complete. It doesn't move with progress."
+
+Root cause: a global `@media (prefers-reduced-motion: reduce)` rule
+(`*, *::before, *::after { animation-duration: 0.01ms !important;
+animation-iteration-count: 1 !important; }`) forces every CSS animation
+on the page to finish in ~0ms and not repeat, for users with the OS-level
+"reduce motion" accessibility setting on. That's the correct, deliberate
+behavior for accessibility — but it left the progress bar's `infinite`
+slide with no fallback: the animation "completes" almost instantly, and
+with no `animation-fill-mode`, the bar just reverts to its static,
+unanimated CSS (40% width, no transform) and sits there, unmoving, for
+the entire rest of the actual load. Confirmed via Playwright with
+`prefers-reduced-motion: reduce` emulated: the bar's `transform` stayed
+`none` for the whole load, frozen at a fixed 40%-width position.
+
+Fixed by adding a more-specific override inside the same media query: a
+static full-width bar with a gentle opacity pulse (0.45 → 1 → 0.45) —
+still gives visible "this is actively working" feedback, but with no
+translation/parallax, so it doesn't reintroduce the motion the
+preference exists to suppress. A class selector beats a universal one
+in specificity even when both use `!important`, so this correctly wins
+over the blanket rule.
+
+Files: `app.html`, `index.html` (new `.loading-progress-bar` override +
+`@keyframes loadingBarPulse` inside the reduced-motion media query),
+`sw.js`, `version.json`. Verified via Playwright with
+`prefers-reduced-motion: reduce` emulated: the bar is now full-width
+with opacity genuinely oscillating between ~0.45 and ~0.99 across
+frames (previously frozen); re-confirmed the normal (non-reduced-motion)
+sliding animation is unaffected. Full test suite: 206 passing, 1 failing
+(same pre-existing, intentional scoring-sync failure), no regressions.
+
 ## v2.49.7-brisnet — Refreshed About sheet + docs/HANDOFF.md (2026-07-05)
 
 Owner asked what still needed fixing; besides two known pre-existing
