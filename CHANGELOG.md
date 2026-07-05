@@ -1,5 +1,40 @@
 # NE Racing — Changelog
 
+## v2.49.9-brisnet — Today's Results now shows your bet outcomes, not a race board (2026-07-05)
+
+Owner corrected the original v2.49.3 request: "Today's results should be
+results of today's bets not today's race results." The tab (as built)
+showed every race's official finish order and payouts regardless of
+whether the owner had a bet on it — a neutral results board, which is
+what the Results & Bankroll page's Bet History already is, just scoped
+to all-time instead of today.
+
+Rewrote `renderStatusTab()`/`buildBetStatusRowHTML()` (was
+`buildStatusRowHTML()`) to be bet-centric: one row per bet placed today
+(`data.bets` filtered to today's date, no race-existence requirement),
+sorted by race number, each showing bet type, selection, amount, and
+result — WIN (green, profit), LOSS (red, stake lost), SCRATCHED (amber,
+refund), or PENDING (gray, with a context note: post time not yet
+reached, race underway, or waiting on official results — reusing
+`getRaceStatus()`, the Today tab's own source of truth, so this can't
+disagree with what the Today tab shows for the same race). Empty state
+copy changed from "No card loaded" to "No bets placed today yet" with a
+Go to Bets button, matching the new purpose.
+
+`refreshStatusTabIfActive()`'s hook into `fetchLiveEntries()`/
+`fetchLiveResults()` is unchanged — a bet flipping from pending to
+win/loss/scratch (including the new real-time scratch refund from
+v2.49.6) still updates this tab live if it's the one on screen.
+
+Files: `app.html`, `index.html` (`renderStatusTab()`,
+`buildBetStatusRowHTML()`, static empty-state markup), `sw.js`,
+`version.json`. Verified via Playwright: seeded one bet each in win/
+loss/scratch/pending states across 3 races, confirmed all four render
+with correct badges, P&L math, and pending-context copy; confirmed the
+empty state (no bets today) still renders correctly. Full test suite:
+206 passing, 1 failing (same pre-existing, intentional scoring-sync
+failure), no regressions.
+
 ## v2.49.8-brisnet — Fixed the cold-load progress bar freezing (2026-07-05)
 
 Owner reported: the v2.49.2 progress bar "goes to one spot then stops

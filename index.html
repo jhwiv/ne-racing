@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.8-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.9-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.8-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.8-brisnet';
+var RAILBIRD_VERSION = 'v2.49.9-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10387,7 +10387,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <div id="todays-locked-bets-list"></div>
     </section>
 
-    <!-- ===== TAB: STATUS (today's races, live results as they finalize) ===== -->
+    <!-- ===== TAB: STATUS (results of TODAY'S BETS, as they finalize — not a
+         neutral race-results board; that's the Results & Bankroll page) ===== -->
     <section id="tab-status" class="tab-panel" role="tabpanel" aria-label="Today&rsquo;s Results">
       <h2 class="section-title">Today&rsquo;s Results</h2>
       <div class="flex gap-1 mb-2">
@@ -10399,8 +10400,9 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <div id="status-races-container">
         <div class="empty-state" id="no-status-msg">
           <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" opacity="0.3" fill="currentColor"/><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" stroke-width="2.5"/></svg>
-          <h4>No card loaded</h4>
-          <p>Race status will appear here once today&rsquo;s card loads.</p>
+          <h4>No bets placed today yet</h4>
+          <p>Lock in a bet and its result will show up here as it finalizes.</p>
+          <button class="btn btn-primary btn-sm" onclick="switchTab('bets')">Go to Bets</button>
         </div>
       </div>
     </section>
@@ -15676,19 +15678,25 @@ function applyRaceFocus(races, activeIdx) {
 }
 
 /* =============================================================
-   TAB: STATUS — today's races and results, live as they finalize.
-   Reuses getRaceStatus() (Today tab's source of truth) and
-   buildWpsRowsHtml() (Today tab's inline FINAL strip) so a race's status
-   here always agrees with what the Today tab shows for the same race.
+   TAB: STATUS — results of TODAY'S BETS, live as they finalize. NOT a
+   neutral race-results board (that's the Results & Bankroll page's Bet
+   History, all-time). One row per bet placed today: pending/win/loss/
+   scratch, with context on why a still-pending bet hasn't graded yet
+   (reuses getRaceStatus(), the Today tab's own source of truth, so this
+   never disagrees with what the Today tab shows for the same race).
    ============================================================= */
 function renderStatusTab() {
   const data = getTrackData();
+  const today = getTodayStr();
   const races = (data && data.races) ? data.races : [];
+  const bets = (data && data.bets ? data.bets : []).filter(function(b) {
+    return !b.date || String(b.date).indexOf(today) === 0;
+  });
   const container = el('status-races-container');
   const noMsg = el('no-status-msg');
   if (!container) return;
 
-  if (!races.length) {
+  if (!bets.length) {
     container.innerHTML = '';
     if (noMsg) { noMsg.classList.remove('hidden'); container.appendChild(noMsg); }
     return;
@@ -15696,7 +15704,13 @@ function renderStatusTab() {
   if (noMsg) noMsg.classList.add('hidden');
 
   const activeIdx = getCurrentRaceIndex(races);
-  container.innerHTML = races.map((race, i) => buildStatusRowHTML(race, i, activeIdx, races)).join('');
+  const sorted = [...bets].sort(function(a, b) {
+    return (parseInt(a.raceNum, 10) || 0) - (parseInt(b.raceNum, 10) || 0);
+  });
+  container.innerHTML = sorted.map(function(bet) {
+    const race = races.find(function(r) { return r.num === parseInt(bet.raceNum, 10); });
+    return buildBetStatusRowHTML(bet, race, races, activeIdx);
+  }).join('');
 }
 
 // Called from the entries/results/scratches fetch paths so the Status tab
@@ -15709,30 +15723,61 @@ function refreshStatusTabIfActive() {
   } catch (_) {}
 }
 
-function buildStatusRowHTML(race, i, activeIdx, races) {
-  const status = getRaceStatus(race, i, activeIdx, races);
-  const typeLbl = CLASS_LABELS[race.type] || race.type || '';
+function buildBetStatusRowHTML(bet, race, races, activeIdx) {
+  const isWin = bet.result === 'win';
+  const isLoss = bet.result === 'loss';
+  const isScratch = bet.result === 'scratch';
+  const isPending = !bet.result;
 
-  let badge;
-  if (status === 'live') badge = '<span class="race-status-badge badge-live">LIVE</span>';
-  else if (status === 'pending') badge = '<span class="race-status-badge badge-pending">RESULT PENDING</span>';
-  else if (status === 'complete') badge = '<span class="race-status-badge badge-complete">FINAL</span>';
-  else badge = '<span class="race-status-badge badge-upcoming">UPCOMING</span>';
+  const resultBadge = isWin
+    ? '<span class="race-status-badge" style="background:var(--color-positive);color:#fff">WIN</span>'
+    : isLoss
+    ? '<span class="race-status-badge" style="background:var(--color-negative);color:#fff">LOSS</span>'
+    : isScratch
+    ? '<span class="badge-scratch">SCRATCHED</span>'
+    : '<span class="race-status-badge badge-upcoming">PENDING</span>';
 
-  const hasResults = status === 'complete' && race._resultData && race._resultData.results && race._resultData.results.length;
-  const resultBlock = hasResults
-    ? buildWpsRowsHtml(race)
-    : '<div class="status-row-note">' + (status === 'live' ? 'Race is underway&hellip;' : status === 'pending' ? 'Waiting on official results&hellip;' : 'Not yet run.') + '</div>';
+  // Context on WHY a pending bet hasn't graded yet, if we still have the race.
+  let pendingNote = '';
+  if (isPending && race) {
+    const raceIdx = races.indexOf(race);
+    const status = getRaceStatus(race, raceIdx, activeIdx, races);
+    if (status === 'live') pendingNote = 'Race is underway&hellip;';
+    else if (status === 'pending') pendingNote = 'Waiting on official results&hellip;';
+    else if (race.postTime) pendingNote = 'Post: ' + race.postTime;
+  }
+
+  const wagered = parseFloat(bet.isExotic ? (bet.cost || bet.amount) : bet.amount) || 0;
+  const payout = parseFloat(bet.payout) || 0;
+  let pnlHtml = '';
+  if (isWin) pnlHtml = '<span class="mono font-bold" style="color:var(--color-positive)">+' + fmt$(payout - wagered) + '</span>';
+  else if (isLoss) pnlHtml = '<span class="mono font-bold" style="color:var(--color-negative)">−' + fmt$(wagered) + '</span>';
+  else if (isScratch) pnlHtml = '<span class="mono" style="color:#92400e">Refund ' + fmt$(wagered) + '</span>';
+
+  var selectionsText = '';
+  if (Array.isArray(bet.selections)) {
+    selectionsText = bet.selections.map(function(s) { return Array.isArray(s) ? s.join('/') : s; }).join(', ');
+  } else if (bet.selections && typeof bet.selections === 'object') {
+    var parts = [];
+    Object.keys(bet.selections).forEach(function(key) {
+      var val = bet.selections[key];
+      parts.push(Array.isArray(val) ? val.join('/') : String(val));
+    });
+    selectionsText = parts.join(' / ');
+  }
+
+  var typeLabel = bet.type || 'BET';
+  if (bet.isExotic) typeLabel = typeLabel.toUpperCase().replace(/_/g, ' ');
 
   return `<div class="status-row">
     <div class="status-row-head">
-      <span class="race-num">${String(race.num).padStart(2,'0')}</span>
+      <span class="race-num">R${escHtml(String(bet.raceNum != null ? bet.raceNum : '—'))}</span>
       <div class="status-row-info">
-        <div class="status-row-title">${typeLbl} — ${race.distance || ''}${badge}</div>
-        <div class="status-row-meta">${race.postTime ? 'Post: ' + race.postTime : ''}${race.updated ? ' &nbsp;&middot;&nbsp; Updated ' + race.updated : ''}</div>
+        <div class="status-row-title">${escHtml(typeLabel)} &middot; ${escHtml(selectionsText)} ${resultBadge}</div>
+        <div class="status-row-meta">${fmt$(wagered)} wagered${pendingNote ? ' &nbsp;&middot;&nbsp; ' + pendingNote : ''}</div>
       </div>
+      <div style="text-align:right;flex-shrink:0">${pnlHtml}</div>
     </div>
-    ${resultBlock}
   </div>`;
 }
 

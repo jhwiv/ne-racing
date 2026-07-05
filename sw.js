@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.8-brisnet'; // v2.49.8: fixed the cold-load progress bar freezing at a fixed position under prefers-reduced-motion (the blanket accessibility override killed the infinite slide with no fallback) — now pulses opacity instead, no motion, still reads as "working"               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.9-brisnet'; // v2.49.9: Today's Results tab now shows results of TODAY'S BETS (win/loss/scratch/pending per bet placed), not a neutral race-results board — that's the Results & Bankroll page's job               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
