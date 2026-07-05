@@ -1,5 +1,36 @@
 # NE Racing — Changelog
 
+## v2.49.5-brisnet — Fixed live data going stale for hours after backgrounding (2026-07-05)
+
+Owner reported via screenshot: every race on the Today tab showed
+"Updated 6:57 AM" at 12:58 PM — six hours stale, despite being well
+inside the 10am-8pm ET live-polling window.
+
+Root cause: `startLivePolling()` (drives `fetchLiveEntries`,
+`fetchLiveScratches`, and `startOddsPolling`/`fetchLiveOdds` — the
+"Updated" timestamp specifically comes from the odds/results pollers,
+not the entries fetch) only resumed on `visibilitychange`. iOS PWAs
+launched from the home screen don't reliably fire `visibilitychange`
+when the OS itself suspends and later resumes the WebView in the
+background — as opposed to the user manually switching tabs, which does
+fire it reliably. When that event doesn't fire, every interval this
+function set up dies with the suspended page and never restarts, with
+nothing surfaced to the user to explain the freeze.
+
+The results poller (`installResultsPollerHooks`, shipped earlier) had
+already hit this same gap and was fixed with `focus`/`pageshow` listeners
+as backups to `visibilitychange`. Live polling never got the same fix.
+Added it now: `focus` and `pageshow` (bfcache restore) both now call a
+debounced `wakeLivePolling()` (10s floor, so desktop alt-tabbing doesn't
+hammer the Worker) that restarts `startLivePolling()` from scratch.
+
+Files: `app.html`, `index.html` (`startLivePolling()`), `sw.js`,
+`version.json`. Verified via Playwright: dispatching a `focus` event
+triggers an additional `/api/entries` fetch (call count 2→3), a second
+immediate `focus` is correctly debounced (stays at 3, no double-fetch).
+Full test suite: 206 passing, 1 failing (same pre-existing, intentional
+scoring-sync failure), no regressions.
+
 ## v2.49.4-brisnet — Renamed Status tab to "Today's Results" (2026-07-05)
 
 Owner-requested label change: the tab added in v2.49.3 is now labeled

@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.4-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.5-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.4-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.4-brisnet';
+var RAILBIRD_VERSION = 'v2.49.5-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -19576,13 +19576,30 @@ function getScratchesUrl(code, date) {
 function startLivePolling() {
   stopLivePolling();
   fetchLiveEntries();
-  // Pause polling when tab is backgrounded to save battery
-  if (!window._visChangeRegistered) {
-    window._visChangeRegistered = true;
+  // Pause polling when tab is backgrounded to save battery, resume when it
+  // comes back. v2.49.5: visibilitychange alone isn't reliable enough for
+  // iOS PWAs resuming from OS-level background suspension — the results
+  // poller (installResultsPollerHooks, below) already needed focus/pageshow
+  // backups for the same reason. Without them here too, a backgrounded PWA
+  // can go hours with every "Updated" timestamp frozen at whenever it was
+  // suspended and nothing visibly broken to explain why (reported live:
+  // every race stuck at the same 6:57 AM timestamp at 1pm). Debounced to
+  // 10s so desktop alt-tabbing doesn't hammer the Worker on every focus.
+  if (!window._liveWakeHooksInstalled) {
+    window._liveWakeHooksInstalled = true;
+    var _lastLiveWake = 0;
+    var wakeLivePolling = function() {
+      var now = Date.now();
+      if (now - _lastLiveWake < 10000) return;
+      _lastLiveWake = now;
+      startLivePolling();
+    };
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState === 'hidden') { stopLivePolling(); }
-      else if (document.visibilityState === 'visible') { startLivePolling(); }
+      else if (document.visibilityState === 'visible') { wakeLivePolling(); }
     });
+    window.addEventListener('focus', wakeLivePolling);
+    window.addEventListener('pageshow', function(e) { if (e.persisted) wakeLivePolling(); });
   }
   livePollingInterval = setInterval(fetchLiveEntries, 5 * 60 * 1000);
   // Scratches only if Worker URL is configured

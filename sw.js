@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.4-brisnet'; // v2.49.4: renamed the Status tab label to "Today's Results" (bottom nav, desktop nav, aria-labels) — same tab/content, clearer name               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.5-brisnet'; // v2.49.5: fixed live entries/odds polling going silently stale for hours after PWA backgrounding — added focus/pageshow wake hooks (visibilitychange alone isn't reliable on iOS), matching the pattern the results poller already used               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
