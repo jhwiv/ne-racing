@@ -1,5 +1,47 @@
 # NE Racing — Changelog
 
+## v2.49.13-brisnet — CRITICAL: Exacta Box bets could never resolve (2026-07-05)
+
+Owner reported live: several straight WIN bets had graded correctly
+(showing LOSS) while Exacta Box bets on those *same already-final races*
+sat stuck on PENDING no matter how many times results were checked —
+"why do they update and other results don't?"
+
+Root cause: `handleTicketBetClick()` (wired to the Value Play / Exotic-
+of-the-Day ticket buttons) stores `bet.type` as the display label
+`"Exacta Box"`. Every bet-grading path — `fetchLiveResults()`,
+`resolveFromCachedResults()`, and the new-this-session
+`applyScratchToBetsAndData()` — checks `bet.type` against the hardcoded
+short codes `['EX','TRI','SUPER']` / `['DD','P3','P4','P5','P6']`.
+`"EXACTA BOX"` matches neither list, so the bet fell through every
+single grading branch and was structurally incapable of ever resolving
+— not slow, not stuck-pending-until-official, just permanently dead.
+The full bet-builder wizard (a separate code path) already stores the
+correct short code (`bt.id`), so wizard-built exotics were unaffected;
+only tickets built from the Value Play/Exotic-of-the-Day quick-bet
+buttons hit this.
+
+Added `normalizeExoticTypeCode()` and applied it at all 7 call sites
+that match `bet.type`, plus `resolveExoticBet()`'s and
+`resolveMultiRaceBet()`'s own internal derivation — 9 sites total. Maps
+both the short codes and the display labels ("Exacta Box", "Trifecta
+Box", "Superfecta Box", "Daily Double", "Pick 3/4/5/6") to the same
+short code, so grading works regardless of which flow created the bet.
+This is a grading-side fix, not a data migration — it retroactively
+unblocks every already-stuck pending bet the next time results are
+checked, with no changes needed to bets already sitting in
+`localStorage`.
+
+Files: `app.html`, `index.html` (`normalizeExoticTypeCode()`,
+`resolveExoticBet()`, `resolveMultiRaceBet()`, and all 7 grading-path
+call sites), `sw.js`, `version.json`. Verified via Playwright: seeded
+two "Exacta Box"-typed bets (matching the exact production bug shape)
+against mocked official results — one a genuine win, one a genuine
+loss — both resolved correctly with the right payout, where previously
+they would have stayed PENDING forever regardless of real results.
+Full test suite: 206 passing, 1 failing (same pre-existing, intentional
+scoring-sync failure), no regressions.
+
 ## v2.49.12-brisnet — Cold-load screen explains a long wait (2026-07-05)
 
 Owner reported: "Why does it take so long to prepare today's card?

@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.12-brisnet'; // v2.49.12: cold-load screen now explains a long wait instead of leaving the indeterminate bar silent — "Still checking… slow connections can take up to a minute" after 7s, since tryFetchEntries' timeout/retry budget can legitimately run 30-50s               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.13-brisnet'; // v2.49.13: CRITICAL — Exacta Box bets from the Value Play ticket flow stored bet.type as a display label ("Exacta Box") instead of the short code ("EX") every grading path checked for, so those bets could NEVER resolve, no matter how many times results were checked. Fixed with a normalizeExoticTypeCode() helper applied everywhere bet.type is matched               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

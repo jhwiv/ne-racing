@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.12-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.13-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.12-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.12-brisnet';
+var RAILBIRD_VERSION = 'v2.49.13-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -15969,7 +15969,7 @@ function applyScratchToBetsAndData(data, race, horse) {
       }
       return;
     }
-    if (['EX', 'TRI', 'SUPER'].indexOf((bet.type || '').toUpperCase()) === -1) return;
+    if (['EX', 'TRI', 'SUPER'].indexOf(normalizeExoticTypeCode(bet.type)) === -1) return;
     var legNames = [];
     if (Array.isArray(bet.selections)) {
       bet.selections.forEach(function(s) {
@@ -20732,12 +20732,35 @@ function getCachedRaceNumbers(track, date) {
 // AUTO-RESOLUTION ENGINE — resolves straight + exotic bets from Equibase
 // ═══════════════════════════════════════════════════════════════════════════
 
+// v2.49.13: bets created via the ticket/Value-Play "Exacta Box" quick-bet
+// button (handleTicketBetClick, onclick="openBetAmountPicker(...,'Exacta
+// Box',...)") store bet.type as that display label, not the short code
+// ("EX") the full bet-builder wizard uses and every grading path below
+// checks for via a hardcoded ['EX','TRI','SUPER']/['DD',...] list. That
+// mismatch meant these specific bets could never match either branch and
+// stayed permanently PENDING — not slow, structurally unresolvable — no
+// matter how many times results were checked. Reported live: "these
+// results update, why don't others?" Normalizes both forms to the short
+// code so grading works regardless of which flow created the bet.
+function normalizeExoticTypeCode(type) {
+  var t = String(type || '').toUpperCase();
+  if (t === 'EX' || t.indexOf('EXACTA') >= 0) return 'EX';
+  if (t === 'TRI' || t.indexOf('TRIFECTA') >= 0) return 'TRI';
+  if (t === 'SUPER' || t.indexOf('SUPERFECTA') >= 0) return 'SUPER';
+  if (t === 'DD' || t.indexOf('DAILY DOUBLE') >= 0) return 'DD';
+  if (t === 'P3' || /PICK\s*3/.test(t)) return 'P3';
+  if (t === 'P4' || /PICK\s*4/.test(t)) return 'P4';
+  if (t === 'P5' || /PICK\s*5/.test(t)) return 'P5';
+  if (t === 'P6' || /PICK\s*6/.test(t)) return 'P6';
+  return t;
+}
+
 /**
  * Resolves a single-race exotic bet against race results.
  * Returns { result: 'win'|'loss', payout: number } or null if can't resolve.
  */
 function resolveExoticBet(bet, raceResult) {
-  var betType = (bet.type || '').toUpperCase();
+  var betType = normalizeExoticTypeCode(bet.type);
   var mode = bet.mode || 'box';
   var selections = bet.selections || {};
   var finishOrder = (raceResult.results || []).sort(function(a, b) { return a.position - b.position; });
@@ -20841,7 +20864,7 @@ function resolveExoticBet(bet, raceResult) {
  * Returns { result: 'win'|'loss'|null, payout: number } — null means not all legs resolved yet.
  */
 function resolveMultiRaceBet(bet, allRaceResults) {
-  var betType = (bet.type || '').toUpperCase();
+  var betType = normalizeExoticTypeCode(bet.type);
   var legMap = { DD: 2, P3: 3, P4: 4, P5: 5, P6: 6 };
   var numLegs = legMap[betType];
   if (!numLegs) return null;
@@ -20971,7 +20994,7 @@ async function fetchLiveResults() {
       // single-race exotic is scratched, refund the full ticket cost.
       // Without this, the exotic bypassed scratch detection and stayed
       // perpetually pending after a late scratch.
-      if (bet.isExotic && ['EX','TRI','SUPER'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+      if (bet.isExotic && ['EX','TRI','SUPER'].indexOf(normalizeExoticTypeCode(bet.type)) >= 0) {
         var exScratches = raceResult.scratches || [];
         var legNames = [];
         if (Array.isArray(bet.selections)) {
@@ -20993,7 +21016,7 @@ async function fetchLiveResults() {
 
       if (bet.isExotic) {
         // Single-race exotic (EX, TRI, SUPER)
-        if (['EX', 'TRI', 'SUPER'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+        if (['EX', 'TRI', 'SUPER'].indexOf(normalizeExoticTypeCode(bet.type)) >= 0) {
           var exResult = resolveExoticBet(bet, raceResult);
           if (exResult) {
             bet.result = exResult.result;
@@ -21003,7 +21026,7 @@ async function fetchLiveResults() {
           }
         }
         // Multi-race exotic (DD, P3, P4, P5, P6)
-        else if (['DD', 'P3', 'P4', 'P5', 'P6'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+        else if (['DD', 'P3', 'P4', 'P5', 'P6'].indexOf(normalizeExoticTypeCode(bet.type)) >= 0) {
           var multiResult = resolveMultiRaceBet(bet, allRaces);
           if (multiResult) {
             bet.result = multiResult.result;
@@ -21266,7 +21289,7 @@ function resolveFromCachedResults() {
       }
     }
     // P0-4 (v2.48.6): exotic-bet scratch handling, mirror of fetchLiveResults
-    if (bet.isExotic && ['EX','TRI','SUPER'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+    if (bet.isExotic && ['EX','TRI','SUPER'].indexOf(normalizeExoticTypeCode(bet.type)) >= 0) {
       var exScratches2 = raceResult.scratches || [];
       var legNames2 = [];
       if (Array.isArray(bet.selections)) {
@@ -21287,10 +21310,10 @@ function resolveFromCachedResults() {
     }
 
     if (bet.isExotic) {
-      if (['EX', 'TRI', 'SUPER'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+      if (['EX', 'TRI', 'SUPER'].indexOf(normalizeExoticTypeCode(bet.type)) >= 0) {
         var exResult = resolveExoticBet(bet, raceResult);
         if (exResult) { bet.result = exResult.result; bet.payout = exResult.payout; updated++; }
-      } else if (['DD', 'P3', 'P4', 'P5', 'P6'].indexOf((bet.type || '').toUpperCase()) >= 0) {
+      } else if (['DD', 'P3', 'P4', 'P5', 'P6'].indexOf(normalizeExoticTypeCode(bet.type)) >= 0) {
         var multiResult = resolveMultiRaceBet(bet, cached);
         if (multiResult) { bet.result = multiResult.result; bet.payout = multiResult.payout; updated++; }
       }
