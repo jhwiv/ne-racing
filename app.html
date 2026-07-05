@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.0-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.1-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.0-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.0-brisnet';
+var RAILBIRD_VERSION = 'v2.49.1-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10597,7 +10597,10 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </div>
 
       <!-- Bet history -->
-      <div class="section-title">Bet History</div>
+      <div class="flex justify-between items-center" style="flex-wrap:wrap;gap:0.5rem">
+        <div class="section-title" style="margin-bottom:0">Bet History</div>
+        <button class="btn btn-danger btn-sm" onclick="clearBetHistory()">Clear Bet History</button>
+      </div>
       <div id="results-list">
         <div class="empty-state" id="no-results-msg">
           <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" opacity="0.3" fill="currentColor"/><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" stroke-width="2.5"/></svg>
@@ -17183,6 +17186,35 @@ function clearAllStraight() {
   if (typeof updateBankrollBanner === 'function') updateBankrollBanner();
 }
 
+function clearBetHistory() {
+  // v2.49.1: full wipe of the Bet History list on the Results tab — every
+  // bet, every date, every track. Unlike clearAllStraight() (Bets tab "Clear
+  // All", today only), this is a permanent reset of bankroll/ROI history.
+  // Bet data lives only in this browser's localStorage (STORAGE_KEY
+  // 'racing2026'); there is no server-side account or shared store, so this
+  // can only ever clear bets logged on this device.
+  if (!confirm('Clear your ENTIRE bet history? This removes every bet on every date and cannot be undone.')) return;
+  const store = getStore();
+  if (!store || !store.tracks) return;
+  Object.keys(store.tracks).forEach(function(code) {
+    const t = store.tracks[code];
+    t.bets = [];
+    (t.races || []).forEach(function(race) {
+      (race.horses || []).forEach(function(h) { h.wps = []; });
+    });
+  });
+  saveStore(store);
+  straightBetAmounts = {};
+  try { localStorage.removeItem('ne_straightBetAmounts'); } catch(e) {}
+  if (typeof renderStraightBets === 'function') renderStraightBets();
+  if (typeof renderLockedExotics === 'function') renderLockedExotics();
+  if (typeof renderTodaysLockedBets === 'function') renderTodaysLockedBets();
+  if (typeof updateBankrollBanner === 'function') updateBankrollBanner();
+  if (typeof renderTodayTab === 'function') renderTodayTab();
+  renderResultsTab();
+  showToast('Bet history cleared', 'success');
+}
+
 function lockAllBets() {
   const data = getTrackData();
   const races = (data && data.races) ? data.races : [];
@@ -18459,17 +18491,25 @@ function renderResultsList() {
   var bets = getResultsBets();
 
   const container = el('results-list');
-  const noMsg = el('no-results-msg');
   if (!container) return;
 
   const sorted = [...bets].sort((a,b) => (b.date||'').localeCompare(a.date||'') || (String(b.raceNum)||'0').localeCompare(String(a.raceNum)||'0', undefined, {numeric:true}));
 
   if (!sorted.length) {
-    container.innerHTML = '';
-    if (noMsg) { noMsg.classList.remove('hidden'); container.appendChild(noMsg); }
+    // v2.49.1: rebuild the empty state from a literal string rather than
+    // reattaching the original #no-results-msg DOM node — the non-empty
+    // branch below replaces container.innerHTML wholesale, which permanently
+    // detaches that node the first time any bet renders. Without this, the
+    // empty state could never come back once bets existed (e.g. after
+    // Clear Bet History wipes every bet).
+    container.innerHTML = '<div class="empty-state" id="no-results-msg">' +
+      '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" opacity="0.3" fill="currentColor"/><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" stroke-width="2.5"/></svg>' +
+      '<h4>Your scoreboard awaits</h4>' +
+      '<p>Lock in some bets and let\'s see how you do.</p>' +
+      '<button class="btn btn-primary btn-sm" onclick="switchTab(\'bets\')">Go to Bets</button>' +
+      '</div>';
     return;
   }
-  if (noMsg) noMsg.classList.add('hidden');
 
   container.innerHTML = sorted.map(bet => {
     const isWin = bet.result === 'win';

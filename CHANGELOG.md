@@ -1,5 +1,44 @@
 # NE Racing — Changelog
 
+## v2.49.1-brisnet — Clear Bet History button (2026-07-05)
+
+Owner asked to confirm the bet history shown in the app is theirs, not a
+beta tester's. Confirmed: bet data lives entirely in this browser's
+`localStorage` under key `racing2026` (`getStore()`/`saveStore()` in
+app.html/index.html). There is no server-side account or shared data
+store — the Worker's KV namespaces (`BETA_VISITS`, `BETA_REQUESTS`,
+`BETA_ACCESS`) only track the invite/access-gate flow, not bet data, and
+`worker.js` has no bet-related endpoint at all. So the history on any
+device is exclusively what was logged on that device.
+
+Added a "Clear Bet History" button next to the "Bet History" heading on
+the Results & Bankroll screen (reachable via More → Results & Bankroll).
+New `clearBetHistory()` function wipes every bet, on every date, across
+every track — distinct from the existing Bets-tab "Clear All", which only
+clears today's bets. Confirms via `confirm()` before wiping, since it's
+irreversible.
+
+While QA'ing this with Playwright (seeding `racing2026` with mock bets,
+clicking the new button, verifying the list actually emptied), found and
+fixed a pre-existing bug in `renderResultsList()`: the empty-state
+placeholder (`#no-results-msg`, "Your scoreboard awaits") was a live DOM
+node captured once and only ever *reattached* — but the non-empty render
+path replaces `#results-list`'s entire `innerHTML`, which permanently
+detaches that node from the DOM the first time any bet renders. Once that
+happened, no later empty state could ever show again: clearing all bets
+(via the new button, or any other future path that could zero out a
+user's full history) left a blank Bet History section with no
+explanation. Fixed by rebuilding the empty-state markup as a literal
+string each time, instead of depending on a DOM reference that gets
+wiped out from under it.
+
+Files: `app.html`, `index.html` (new button + `clearBetHistory()` +
+`renderResultsList()` fix), `sw.js`, `version.json`. Verified via
+Playwright: seeded 2 mock bets across 2 dates, confirmed the button
+clears both, confirmed the empty state now correctly reappears
+(previously it did not). Full test suite: 206 passing, 1 failing (same
+pre-existing, intentional scoring-sync failure), no regressions.
+
 ## v2.49.0-brisnet — Post-position color-coded badges (2026-07-05)
 
 Owner-requested, prompted by a screenshot of NYRA's own race card. Program

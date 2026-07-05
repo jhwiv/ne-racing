@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.0-brisnet'; // v2.49.0: post-position color-coded badges (standard US saddle-cloth colors) on race cards, Handicap picks, Bets tab lines, and exotic tickets — new ppBadgeHtml() helper               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.1-brisnet'; // v2.49.1: "Clear Bet History" button on Results & Bankroll; fixed a bug where the empty-state placeholder was permanently lost from the DOM once any bet had rendered, so clearing all bets left a blank Bet History section instead of "Your scoreboard awaits"               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
