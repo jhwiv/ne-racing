@@ -1,5 +1,36 @@
 # NE Racing — Changelog
 
+## v2.49.12-brisnet — Cold-load screen explains a long wait (2026-07-05)
+
+Owner reported: "Why does it take so long to prepare today's card?
+Progress bar not accurate."
+
+Investigated `tryFetchEntries()`'s existing timeout/retry budget
+(v2.46.11): it races a 28s live-Worker attempt against an 8s R2 mirror
+fallback, and on a transient failure (timeout/network/5xx) retries with
+a further 20s attempt. On a genuinely slow or cold-cache round trip this
+can legitimately run 30-50+ seconds — deliberately, to avoid the worse
+failure mode of falsely showing "no card today" just because a fetch
+was slow. But the progress bar is indeterminate (never tied to real
+percentage) and the copy never changed, so a long-but-expected wait
+looked identical to a stuck/broken one, with nothing telling the user
+which it was.
+
+Added a 7-second patience timer: if the cold-load screen is still up
+after 7s, the copy updates in place to "Still checking… slow
+connections can take up to a minute" — turns silence into an honest
+expectation instead of looking frozen. Guarded so it can't fire after
+the load already finished (a fast load hides the indicator well before
+7s) or leak into a later load cycle.
+
+Files: `app.html`, `index.html` (`showLoadingIndicator()`,
+`hideLoadingIndicator()`), `sw.js`, `version.json`. Verified via
+Playwright: a 12s-delayed load shows the updated "Still checking…"
+copy at 8.5s; a 2s fast load has the indicator correctly hidden by
+8.5s with the real race card rendered, and never picks up the
+patience-timer text. Full test suite: 206 passing, 1 failing (same
+pre-existing, intentional scoring-sync failure), no regressions.
+
 ## v2.49.11-brisnet — "Check Results (Live)" now always confirms it ran (2026-07-05)
 
 Owner reported: "Refresh button doesn't do anything."

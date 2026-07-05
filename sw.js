@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.11-brisnet'; // v2.49.11: "Check Results (Live)" now always shows a toast, even when nothing newly resolves — previously it succeeded silently with zero feedback, reading as a dead button               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.12-brisnet'; // v2.49.12: cold-load screen now explains a long wait instead of leaving the indeterminate bar silent — "Still checking… slow connections can take up to a minute" after 7s, since tryFetchEntries' timeout/retry budget can legitimately run 30-50s               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

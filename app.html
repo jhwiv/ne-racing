@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.11-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.12-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.11-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.11-brisnet';
+var RAILBIRD_VERSION = 'v2.49.12-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -21357,11 +21357,30 @@ function showLoadingIndicator() {
     indicator.innerHTML = '<div class="loading-indicator-text">Preparing the day’s card…</div>' +
       '<div class="loading-progress-track"><div class="loading-progress-bar"></div></div>';
     if (container) container.style.display = 'none';
+    // v2.49.12: tryFetchEntries() races a 28s live attempt against an 8s R2
+    // fallback, and on a transient failure retries with a further 20s
+    // attempt — a genuinely slow/cold-cache round trip can legitimately run
+    // 30-50+ seconds. The progress bar is indeterminate (it was never meant
+    // to track real percentage) and gave no cue that a long wait is
+    // *expected*, not stuck — reported live as "why does it take so long?
+    // Progress bar not accurate." Update the copy in place if it's still
+    // loading after a few seconds so a long wait reads as "slow connection,"
+    // not "broken." clearTimeout guards against a stale timer from a PRIOR
+    // load cycle firing mid-way through a fresh one.
+    clearTimeout(window._coldLoadPatienceTimer);
+    window._coldLoadPatienceTimer = setTimeout(function() {
+      var stillLoading = indicator === el('live-loading-indicator') && !indicator.classList.contains('hidden');
+      var textEl = indicator.querySelector('.loading-indicator-text');
+      if (stillLoading && textEl) {
+        textEl.textContent = 'Still checking… slow connections can take up to a minute';
+      }
+    }, 7000);
   }
   indicator.classList.remove('hidden');
 }
 
 function hideLoadingIndicator() {
+  clearTimeout(window._coldLoadPatienceTimer);
   const indicator = el('live-loading-indicator');
   if (indicator) indicator.classList.add('hidden');
   const container = el('races-container');
