@@ -1,5 +1,44 @@
 # NE Racing — Changelog
 
+## v2.49.3-brisnet — New Status tab: today's races and results as they finalize (2026-07-05)
+
+Owner-requested: a tab to the right of Bets, called Status, showing
+results for today's races as they finalize.
+
+New 5th bottom-nav tab (Today / Bets / **Status** / Handicap / More) and
+matching desktop nav entry. The Status tab lists every race on today's
+card as one row each: race number, type/distance, a status badge
+(UPCOMING / LIVE / RESULT PENDING / FINAL — reusing `getRaceStatus()`, the
+same function the Today tab already uses, so the two tabs can never
+disagree about a race's state), post time, and — once results are in —
+the WIN/PLACE/SHOW payout lines. A "Check Results (Live)" button forces
+an immediate `/api/results` fetch, same as the one on the old Results tab.
+
+Refactored the Today tab's inline FINAL strip: `fmtPayout()`, `wpsLine()`,
+and `buildWpsRowsHtml()` were hoisted out of `buildRaceCardHTML()` into
+top-level functions so the Status tab renders the identical WIN/PLACE/SHOW
+markup without duplicating it — one payout-formatting implementation, two
+call sites.
+
+Live updates: `refreshStatusTabIfActive()` is called from the end of
+`fetchLiveEntries()` and `fetchLiveResults()` (the same two places that
+already refresh the Today tab's inline results) and only actually
+re-renders if `#tab-status` is the currently active panel — so a race
+flipping to FINAL updates the Status tab immediately if you're looking at
+it, with no wasted work if you're not.
+
+Files: `app.html`, `index.html` (new `#tab-status` section, bottom-nav +
+desktop-nav buttons, `renderStatusTab()` / `buildStatusRowHTML()` /
+`refreshStatusTabIfActive()`, hoisted WPS helpers, new `.status-row` /
+`.badge-upcoming` CSS), `sw.js`, `version.json`. Verified via Playwright:
+tab order confirmed Today→Bets→Status→Handicap→More; a seeded finalized
+race renders FINAL with correct WIN/PLACE/SHOW payouts and a seeded
+not-yet-run race renders UPCOMING with "Not yet run."; confirmed
+`refreshStatusTabIfActive()` no-ops while the tab isn't active and
+live-updates the DOM (a changed payout value) while it is. Full test
+suite: 206 passing, 1 failing (same pre-existing, intentional
+scoring-sync failure), no regressions.
+
 ## v2.49.2-brisnet — Bigger, more visible "loading the card" state (2026-07-05)
 
 Owner-requested after a screenshot showed a tiny italic "Preparing the

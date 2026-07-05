@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.2-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.3-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.2-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.2-brisnet';
+var RAILBIRD_VERSION = 'v2.49.3-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -3907,6 +3907,15 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 .badge-complete { background: var(--color-racing-green); color: var(--color-gold); opacity: 0.85; font-size: 0.55rem; }
 .badge-pending { background: #b07d2b; color: #fff; font-size: 0.55rem; } /* v2.48.7: muted amber for past-post races awaiting chart data */
+.badge-upcoming { background: #9aa0a6; color: #fff; font-size: 0.55rem; } /* v2.49.3: Status tab — race hasn't gone off yet */
+/* Status tab — one row per race, results board style */
+.status-row { background: var(--color-white); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 0.75rem 1rem; margin-bottom: 0.6rem; }
+.status-row-head { display: flex; align-items: flex-start; gap: 0.6rem; }
+.status-row-info { flex: 1; min-width: 0; }
+.status-row-title { font-weight: 700; font-size: 0.88rem; color: var(--color-racing-green); }
+.status-row-meta { font-size: 0.72rem; color: var(--color-muted); margin-top: 2px; }
+.status-row-note { margin-top: 6px; font-size: 0.78rem; color: var(--color-muted); font-style: italic; }
+.status-row .wps-rows { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; row-gap: 4px; }
 /* Inline race result strip on Today tab */
 .race-inline-result {
   margin-top: 4px; padding: 4px 8px; border-radius: 4px;
@@ -10021,6 +10030,10 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         Bets
       </button>
+      <button class="desktop-nav-btn" onclick="switchTab('status')" id="dnav-status">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+        Status
+      </button>
       <button class="desktop-nav-btn" onclick="switchTab('handicap')" id="dnav-handicap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         Handicap
@@ -10355,6 +10368,24 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <span id="today-locked-count" style="font-size:0.7rem;font-weight:400;color:rgba(255,255,255,0.4)"></span>
       </div>
       <div id="todays-locked-bets-list"></div>
+    </section>
+
+    <!-- ===== TAB: STATUS (today's races, live results as they finalize) ===== -->
+    <section id="tab-status" class="tab-panel" role="tabpanel" aria-label="Status">
+      <h2 class="section-title">Today&rsquo;s Results</h2>
+      <div class="flex gap-1 mb-2">
+        <button class="btn btn-ghost btn-sm" onclick="fetchLiveResults()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Check Results (Live)
+        </button>
+      </div>
+      <div id="status-races-container">
+        <div class="empty-state" id="no-status-msg">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" opacity="0.3" fill="currentColor"/><path d="M32 8l6 12 14 2-10 10 2 14-12-6-12 6 2-14L12 22l14-2z" stroke-width="2.5"/></svg>
+          <h4>No card loaded</h4>
+          <p>Race status will appear here once today&rsquo;s card loads.</p>
+        </div>
+      </div>
     </section>
 
     <!-- ===== TAB 3: HANDICAPPING ===== -->
@@ -11035,6 +11066,12 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       <line x1="9" y1="7" x2="9" y2="17" stroke-dasharray="2 2"/>
     </svg>
     <span>Bets</span>
+  </button>
+  <button class="tab-btn" id="tab-btn-status" onclick="switchTab('status')" aria-label="Status" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
+    </svg>
+    <span>Status</span>
   </button>
   <button class="tab-btn" id="tab-btn-handicap" onclick="switchTab('handicap')" aria-label="Handicapping" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -14530,6 +14567,7 @@ function renderTabContent(name) {
   switch(name) {
     case 'today': renderTodayTab(); break;
     case 'bets': renderBetsTab(); break;
+    case 'status': renderStatusTab(); break;
     case 'handicap': renderHandicapTab(); break;
     case 'results': renderResultsTab(); break;
     case 'reference': renderReferenceTab(); break;
@@ -15142,6 +15180,36 @@ function buildNyraBetsUrl(trackCode){
   return NYRA_BETS_URLS[trackCode] || 'https://www.nyrabets.com';
 }
 
+// v2.49.3: hoisted out of buildRaceCardHTML so the Status tab's results
+// board can render the same WIN/PLACE/SHOW strip without duplicating it.
+function fmtPayout(v) { return (v == null || isNaN(v)) ? '' : ('$' + Number(v).toFixed(2)); }
+
+function wpsLine(label, fin, payoutField) {
+  if (!fin) return '';
+  const pp = fin.pp || fin.programNumber || '';
+  const payout = fmtPayout(fin[payoutField]);
+  return '<span class="wps-line wps-' + label.toLowerCase() + '">'
+       + '<span class="wps-label">' + label + '</span> '
+       + (pp ? '<span class="wps-pp">#' + pp + '</span> ' : '')
+       + '<span class="wps-horse">' + escHtml(fin.horseName || '') + '</span>'
+       + (payout ? ' <span class="wps-payout">' + payout + '</span>' : '')
+       + '</span>';
+}
+
+// Win/Place/Show rows (no wrapper) for a race with normalized _resultData.
+function buildWpsRowsHtml(race) {
+  if (!race._resultData || !race._resultData.results || !race._resultData.results.length) return '';
+  const rd = race._resultData;
+  const winner = rd.results.find(function(r) { return r.position === 1; });
+  const second = rd.results.find(function(r) { return r.position === 2; });
+  const third  = rd.results.find(function(r) { return r.position === 3; });
+  return '<div class="wps-rows">'
+       +   wpsLine('WIN',   winner, 'winPayout')
+       +   wpsLine('PLACE', second, 'placePayout')
+       +   wpsLine('SHOW',  third,  'showPayout')
+       + '</div>';
+}
+
 function buildRaceCardHTML(race) {
   const horses = race.horses || [];
   const typeLbl = CLASS_LABELS[race.type] || race.type || '';
@@ -15214,22 +15282,6 @@ function buildRaceCardHTML(race) {
   // the legacy shape or the new Racing API `finishOrder` shape.
   let inlineResultHtml = '';
   if (race._resultData && race._resultData.results && race._resultData.results.length) {
-    const rd = race._resultData;
-    const fmt = function(v) { return (v == null || isNaN(v)) ? '' : ('$' + Number(v).toFixed(2)); };
-    const winner = rd.results.find(r => r.position === 1);
-    const second = rd.results.find(r => r.position === 2);
-    const third  = rd.results.find(r => r.position === 3);
-    function _wpsLine(label, fin, payoutField) {
-      if (!fin) return '';
-      const pp = fin.pp || fin.programNumber || '';
-      const payout = fmt(fin[payoutField]);
-      return '<span class="wps-line wps-' + label.toLowerCase() + '">'
-           + '<span class="wps-label">' + label + '</span> '
-           + (pp ? '<span class="wps-pp">#' + pp + '</span> ' : '')
-           + '<span class="wps-horse">' + escHtml(fin.horseName || '') + '</span>'
-           + (payout ? ' <span class="wps-payout">' + payout + '</span>' : '')
-           + '</span>';
-    }
     // User bet W/L badges (kept from previous version)
     const data = getTrackData();
     const raceBets = (data.bets || []).filter(b => parseInt(b.raceNum, 10) === race.num && b.date === getTodayStr());
@@ -15242,11 +15294,7 @@ function buildRaceCardHTML(race) {
     });
     inlineResultHtml = '<div class="race-inline-result">'
       + '<span class="inline-result-badge">FINAL</span>'
-      + '<div class="wps-rows">'
-      +   _wpsLine('WIN',   winner, 'winPayout')
-      +   _wpsLine('PLACE', second, 'placePayout')
-      +   _wpsLine('SHOW',  third,  'showPayout')
-      + '</div>'
+      + buildWpsRowsHtml(race)
       + (userBetHtml ? '<div class="wps-userbets">' + userBetHtml + '</div>' : '')
       + '</div>';
   }
@@ -15607,6 +15655,67 @@ function applyRaceFocus(races, activeIdx) {
   // NOTE: No auto-scroll to active race. The user controls their own scroll
   // position. Auto-scrolling was causing the page to snap away from the
   // ticket card / hero on tab switches, page load, and live-data refreshes.
+}
+
+/* =============================================================
+   TAB: STATUS — today's races and results, live as they finalize.
+   Reuses getRaceStatus() (Today tab's source of truth) and
+   buildWpsRowsHtml() (Today tab's inline FINAL strip) so a race's status
+   here always agrees with what the Today tab shows for the same race.
+   ============================================================= */
+function renderStatusTab() {
+  const data = getTrackData();
+  const races = (data && data.races) ? data.races : [];
+  const container = el('status-races-container');
+  const noMsg = el('no-status-msg');
+  if (!container) return;
+
+  if (!races.length) {
+    container.innerHTML = '';
+    if (noMsg) { noMsg.classList.remove('hidden'); container.appendChild(noMsg); }
+    return;
+  }
+  if (noMsg) noMsg.classList.add('hidden');
+
+  const activeIdx = getCurrentRaceIndex(races);
+  container.innerHTML = races.map((race, i) => buildStatusRowHTML(race, i, activeIdx, races)).join('');
+}
+
+// Called from the entries/results/scratches fetch paths so the Status tab
+// reflects new data immediately if it's the tab currently on screen,
+// without re-rendering it (wasted work) when the user isn't looking at it.
+function refreshStatusTabIfActive() {
+  try {
+    const panel = el('tab-status');
+    if (panel && panel.classList.contains('active')) renderStatusTab();
+  } catch (_) {}
+}
+
+function buildStatusRowHTML(race, i, activeIdx, races) {
+  const status = getRaceStatus(race, i, activeIdx, races);
+  const typeLbl = CLASS_LABELS[race.type] || race.type || '';
+
+  let badge;
+  if (status === 'live') badge = '<span class="race-status-badge badge-live">LIVE</span>';
+  else if (status === 'pending') badge = '<span class="race-status-badge badge-pending">RESULT PENDING</span>';
+  else if (status === 'complete') badge = '<span class="race-status-badge badge-complete">FINAL</span>';
+  else badge = '<span class="race-status-badge badge-upcoming">UPCOMING</span>';
+
+  const hasResults = status === 'complete' && race._resultData && race._resultData.results && race._resultData.results.length;
+  const resultBlock = hasResults
+    ? buildWpsRowsHtml(race)
+    : '<div class="status-row-note">' + (status === 'live' ? 'Race is underway&hellip;' : status === 'pending' ? 'Waiting on official results&hellip;' : 'Not yet run.') + '</div>';
+
+  return `<div class="status-row">
+    <div class="status-row-head">
+      <span class="race-num">${String(race.num).padStart(2,'0')}</span>
+      <div class="status-row-info">
+        <div class="status-row-title">${typeLbl} — ${race.distance || ''}${badge}</div>
+        <div class="status-row-meta">${race.postTime ? 'Post: ' + race.postTime : ''}${race.updated ? ' &nbsp;&middot;&nbsp; Updated ' + race.updated : ''}</div>
+      </div>
+    </div>
+    ${resultBlock}
+  </div>`;
 }
 
 /* Race card collapse */
@@ -20264,6 +20373,7 @@ async function fetchLiveEntries() {
   // v2.48.4 needed but didn't add.
   try { if (typeof startResultsPolling === 'function') startResultsPolling(); } catch(_){}
   renderTodayTab();
+  refreshStatusTabIfActive();
 }
 
 var _scratchInitialLoadDone = false;
@@ -20794,6 +20904,7 @@ async function fetchLiveResults() {
 
     // Render Today tab to show inline results
     renderTodayTab();
+    refreshStatusTabIfActive();
 
     var racesResolved = allRaces.length;
     var pending = bets.filter(function(b) { return !b.result; }).length;
