@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.9-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.10-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.9-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.9-brisnet';
+var RAILBIRD_VERSION = 'v2.49.10-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -16927,10 +16927,24 @@ function updateTopPicksCard(allScores) {
   }
 
   // Value Plays: overlay > 0.08 AND score >= 55 (upgraded from simple ML >= 5 check)
+  // v2.49.10: dedupe by race BEFORE picking the top 2. Every other slot here
+  // (Best Bet, Action Bet) is one-race-one-pick, and valueRaceIds below is
+  // built as a Set assuming the same — but the filter+slice previously ran
+  // over the flat, race-grouped allScores list with no per-race cap, so a
+  // race with two horses that both cleared the overlay/score bar could
+  // claim BOTH Value Play slots. Reported live: Race 1 showed two Value
+  // Play cards, each suggesting a different exacta box — directly
+  // competing bets, neither of which hit.
   const bestBetRaceId = bestBetEntry ? bestBetEntry.race.id : null;
-  const valuePlays = allScores.filter(s =>
-    (s.overlay || 0) > 0.08 && s.score >= 55 && s.race.id !== bestBetRaceId
-  ).slice(0, 2);
+  const valuePlayCandidatesByRace = {};
+  allScores.forEach(s => {
+    if ((s.overlay || 0) <= 0.08 || s.score < 55 || s.race.id === bestBetRaceId) return;
+    const existing = valuePlayCandidatesByRace[s.race.id];
+    if (!existing || s.score > existing.score) valuePlayCandidatesByRace[s.race.id] = s;
+  });
+  const valuePlays = Object.values(valuePlayCandidatesByRace)
+    .sort((a, b) => (b.overlay || 0) - (a.overlay || 0))
+    .slice(0, 2);
 
   // v2.42.0: Action Bets — every non-PASS race that didn't claim the Best Bet
   // or a Value Play slot. With relative confidence, even a Lean has *some*

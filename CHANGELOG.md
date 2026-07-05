@@ -1,5 +1,35 @@
 # NE Racing — Changelog
 
+## v2.49.10-brisnet — Fixed two competing Value Play exactas for the same race (2026-07-05)
+
+Owner feedback from live use: "A little strange that the app had two
+different value plays for race one and both were exactas with different
+horses, so competing bets. Neither worked out."
+
+Root cause: `updateTopPicksCard()`'s Value Play selection filtered the
+flat, race-grouped `allScores` list for horses clearing the overlay/
+score bar and took the first 2 matches with `.slice(0, 2)` — with no
+per-race cap. Best Bet and Action Bet are both one-slot-per-race by
+construction, but Value Play wasn't: if a single race happened to have
+two horses that both cleared the bar (and no other race's horses came
+earlier in the list), that one race could claim both Value Play slots,
+each independently paired with a "second horse" for its own exacta
+suggestion — two different, genuinely competing tickets for the same
+race, exactly as reported.
+
+Fixed by reducing candidates to at most one per race (the higher-scoring
+of the two, when a race has multiple qualifiers) before picking the top
+2 by overlay. Verified with a crafted scenario reproducing the exact
+bug shape: a race with two qualifying horses (scores 65 and 60, both
+clearing the bar) plus a second race with one qualifier. Before the fix
+this would produce two Value Play cards both for the first race; after,
+it correctly produces one card per race across the two distinct races.
+
+Files: `app.html`, `index.html` (`updateTopPicksCard()`'s Value Play
+selection), `sw.js`, `version.json`. Full test suite: 206 passing, 1
+failing (same pre-existing, intentional scoring-sync failure), no
+regressions.
+
 ## v2.49.9-brisnet — Today's Results now shows your bet outcomes, not a race board (2026-07-05)
 
 Owner corrected the original v2.49.3 request: "Today's results should be
