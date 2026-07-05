@@ -1,5 +1,49 @@
 # NE Racing — Changelog
 
+## v2.49.6-brisnet — Real-time bet recalculation on scratch (2026-07-05)
+
+Owner asked directly: are bets and strategies updating with current data
+on each update, and scratches must recalculate bets in real time.
+
+Audited the full scratch pipeline. Strategy/advice recalculation was
+already correct — `renderTodayTab()` unconditionally re-runs
+`runAdviceEngine()` (which filters out scratched horses) on every single
+scratch path, live or manual. Bet recalculation was NOT: a scratch only
+set `horse.scratched = true` and showed a manual "Horse scratched —
+remove this bet" banner in the Bets tab. An existing locked bet, or an
+unlocked W/P/S selection, sat completely untouched — still counted in
+the bankroll's committed total — until the race went official, which for
+an early scratch could be hours later.
+
+Added `applyScratchToBetsAndData()`, called from both scratch paths
+(`toggleScratch()` — manual — and `fetchLiveScratches()` — the 60s live
+poll): the instant a horse is newly scratched, any unlocked W/P/S
+checkbox on it is cleared, and any not-yet-graded straight bet or
+single-race exotic (EX/TRI/SUPER) on that horse is immediately marked
+`result: 'scratch'` with a full refund — exactly the same grading
+`fetchLiveResults()` already applies post-race, just triggered the
+moment the scratch is known instead of waiting for the race to finish.
+Deliberately does NOT touch multi-race exotics (DD/P3/P4/P5/P6): pools
+substitute the beaten favorite for a scratched leg horse, which can't be
+determined until that leg's race actually runs, so only the existing
+post-results `resolveMultiRaceBet()` can grade those correctly.
+
+`fetchLiveScratches()` applies the recalculation to a freshly re-read
+copy of the store (not the possibly-stale snapshot held across the
+`await`), consistent with its existing concurrency-safe merge pattern,
+so a concurrent entries fetch can't clobber the refund.
+
+Files: `app.html`, `index.html` (`applyScratchToBetsAndData()`,
+`toggleScratch()`, `fetchLiveScratches()`), `sw.js`, `version.json`.
+Verified via Playwright: a locked straight bet and a locked single-race
+exacta on a scratched horse both auto-refund correctly; an unrelated bet
+in a different race is untouched; a Daily Double with one leg on the
+scratched horse is correctly left ungraded; an unlocked WPS selection on
+the scratched horse clears; the same refund fires correctly through the
+live `fetchLiveScratches()` network path, not just the manual toggle.
+Full test suite: 206 passing, 1 failing (same pre-existing, intentional
+scoring-sync failure), no regressions.
+
 ## v2.49.5-brisnet — Fixed live data going stale for hours after backgrounding (2026-07-05)
 
 Owner reported via screenshot: every race on the Today tab showed

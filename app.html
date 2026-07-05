@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.5-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.6-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.5-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.5-brisnet';
+var RAILBIRD_VERSION = 'v2.49.6-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -15870,6 +15870,60 @@ function toggleWPS(raceId, horseId, type, btnEl) {
   updateBetSlipBadge();
 }
 
+// v2.49.6: real-time bet recalculation on scratch. Previously a scratch only
+// flagged the horse (horse.scratched = true) and showed a manual "remove
+// this bet" banner in the Bets tab — the bettor's committed total and any
+// already-locked bet stayed exactly as-is until the race went official,
+// which for an early scratch could be hours later.
+//
+// Straight bets and single-race exotics (EX/TRI/SUPER) on the scratched
+// horse are unambiguous the instant the scratch is known — the wager
+// cannot win — so they're refunded immediately here, the same way
+// fetchLiveResults() already refunds them post-race, just triggered
+// earlier. Multi-race exotics (DD/P3/P4/P5/P6) are deliberately NOT
+// touched: pari-mutuel pools substitute the beaten favorite for a
+// scratched leg horse, which can't be determined until that leg's race
+// actually runs — only resolveMultiRaceBet() (post-official-results) can
+// grade those correctly. Also clears any unlocked W/P/S checkbox on the
+// horse so it stops counting toward the committed bankroll total.
+// Returns the number of bets refunded.
+function applyScratchToBetsAndData(data, race, horse) {
+  if (horse.wps && horse.wps.length) horse.wps = [];
+
+  const today = getTodayStr();
+  let refunded = 0;
+  (data.bets || []).forEach(function(bet) {
+    if (bet.result) return; // already graded
+    if (bet.date && String(bet.date).indexOf(today) !== 0) return;
+    if (parseInt(bet.raceNum, 10) !== race.num) return;
+
+    if (!bet.isExotic) {
+      const betHorse = Array.isArray(bet.selections) ? bet.selections[0] : null;
+      if (betHorse && fuzzyHorseMatch(betHorse, horse.name)) {
+        bet.result = 'scratch';
+        bet.payout = parseFloat(bet.amount) || 0;
+        refunded++;
+      }
+      return;
+    }
+    if (['EX', 'TRI', 'SUPER'].indexOf((bet.type || '').toUpperCase()) === -1) return;
+    var legNames = [];
+    if (Array.isArray(bet.selections)) {
+      bet.selections.forEach(function(s) {
+        if (Array.isArray(s)) s.forEach(function(n) { legNames.push(n); });
+        else legNames.push(s);
+      });
+    }
+    var hit = legNames.some(function(n) { return fuzzyHorseMatch(n, horse.name); });
+    if (hit) {
+      bet.result = 'scratch';
+      bet.payout = parseFloat(bet.cost || bet.amount) || 0;
+      refunded++;
+    }
+  });
+  return refunded;
+}
+
 function toggleScratch(raceId, horseId, scratched) {
   const data = getTrackData();
   const race = (data.races || []).find(r => r.id === raceId);
@@ -15883,11 +15937,16 @@ function toggleScratch(raceId, horseId, scratched) {
     data.scratchHistory.push({ horseId, horseName: horse.name, raceNum: race.num, time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) });
     unviewedScratches++;
     updateScratchBadge();
-    showToast(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' — Race ' + race.num + ': #' + horse.pp + ' ' + horse.name + ' scratched', 'scratch');
+    const refunded = applyScratchToBetsAndData(data, race, horse);
+    let msg = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' — Race ' + race.num + ': #' + horse.pp + ' ' + horse.name + ' scratched';
+    if (refunded) msg += ' — ' + refunded + ' bet(s) auto-refunded';
+    showToast(msg, 'scratch');
   }
   saveTrackData(data);
   // Re-run advice engine and update Recommended Bets card
   renderTodayTab();
+  if (typeof renderBetsTab === 'function') renderBetsTab();
+  if (typeof refreshStatusTabIfActive === 'function') refreshStatusTabIfActive();
 }
 
 function updateScratchBadge() {
@@ -20409,6 +20468,7 @@ async function fetchLiveScratches() {
     const data = getTrackData();
     let newScratches = 0;
     var scratchNames = [];
+    var newlyScratched = []; // { raceNum, horseName, pp } -- resolved against `fresh` below
     scratches.forEach(s => {
       const raceNum = s.raceNumber || s.raceNum;
       const race = (data.races||[]).find(r => r.num === raceNum);
@@ -20418,6 +20478,7 @@ async function fetchLiveScratches() {
       if (horse && !horse.scratched) {
         horse.scratched = true;
         newScratches++;
+        newlyScratched.push({ raceNum: race.num, horseName: horse.name, pp: horse.pp });
         // Only show individual toasts for new scratches discovered AFTER initial load
         if (_scratchInitialLoadDone) {
           const reason = s.reason ? ' (' + s.reason + ')' : '';
@@ -20441,6 +20502,7 @@ async function fetchLiveScratches() {
     // the store with fresh races while we awaited the scratches fetch. Re-read the
     // store and merge only the scratch deltas + updated stamps before saving so we
     // don't clobber newly-fetched entries.
+    var totalRefunded = 0;
     try {
       var fresh = getTrackData();
       if (fresh && Array.isArray(fresh.races)) {
@@ -20454,12 +20516,33 @@ async function fetchLiveScratches() {
             if (fh) fh.scratched = true;
           });
         });
+        // v2.49.6: real-time bet recalculation -- refund straight bets and
+        // single-race exotics on horses newly scratched this poll. Applied
+        // to `fresh` (not `data`), which may be stale relative to a
+        // concurrent fetchLiveEntries write.
+        newlyScratched.forEach(function(ns) {
+          var fr2 = fresh.races.find(function(x) { return x.num === ns.raceNum; });
+          if (!fr2) return;
+          var fh2 = (fr2.horses || []).find(function(x) { return x.pp === ns.pp || x.name === ns.horseName; });
+          if (fh2) totalRefunded += applyScratchToBetsAndData(fresh, fr2, fh2);
+        });
         saveTrackData(fresh);
       } else {
+        newlyScratched.forEach(function(ns) {
+          var r2 = (data.races || []).find(function(x) { return x.num === ns.raceNum; });
+          if (!r2) return;
+          var h2 = (r2.horses || []).find(function(x) { return x.pp === ns.pp || x.name === ns.horseName; });
+          if (h2) totalRefunded += applyScratchToBetsAndData(data, r2, h2);
+        });
         saveTrackData(data);
       }
     } catch (_) { saveTrackData(data); }
     renderTodayTab();
+    if (typeof renderBetsTab === 'function') renderBetsTab();
+    if (typeof refreshStatusTabIfActive === 'function') refreshStatusTabIfActive();
+    if (totalRefunded) {
+      showToast(totalRefunded + ' bet(s) auto-refunded due to scratch', 'warning', 4000);
+    }
     // On initial load, show a single summary toast instead of spamming one per horse
     if (!_scratchInitialLoadDone && scratchNames.length) {
       showToast('\u26A0\uFE0F ' + scratchNames.length + ' horse' + (scratchNames.length > 1 ? 's' : '') + ' scratched today \u2014 tap any race to see details', 'scratch', 5000);
