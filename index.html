@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.13-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.14-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.13-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.13-brisnet';
+var RAILBIRD_VERSION = 'v2.49.14-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -19025,16 +19025,32 @@ function updateAccuracyTracking() {
     const key = localStorage.key(i);
     if (key && key.startsWith('ne-racing-ticket-' + code)) ticketKeys.push(key);
   }
+  // v2.49.14: measure whether the expert-consensus-picked HORSE actually
+  // won its real race, not whether the user happened to ALSO place and
+  // win a matching bet on it. The previous check only counted a "win"
+  // when a bet existed with result==='win' AND matched the pick — since
+  // the user typically only wagers on a subset of the horses that carry
+  // an expertConsensus flag (Best Bet + maybe one Value Play, while
+  // multiple picks can be flagged per day), this discarded the vast
+  // majority of actual expert-pick wins whenever the user simply hadn't
+  // bet that specific horse, making the tracked "success rate" look far
+  // worse than the picks actually performed. Reported live: "look at the
+  // very low success rate of the expert picks and figure out why they
+  // were so bad." Now checks the real per-date results cache directly,
+  // independent of the user's own betting pattern.
   let ecWins = 0, ecTotal = 0;
   ticketKeys.forEach(key => {
     try {
       const ticket = JSON.parse(localStorage.getItem(key));
-      if (ticket && ticket.expertConsensus) {
+      if (ticket && ticket.expertConsensus && ticket.expertConsensus.length) {
+        const dateResults = getCachedResults(ticket.track || code, ticket.date);
         ticket.expertConsensus.forEach(ec => {
           ecTotal++;
-          // Check if this horse won by looking at bets
-          const matchingBet = bets.find(b => b.raceNum === ec.race && b.result === 'win' && ((b.selections || []).includes(ec.name) || b.pp === ec.pp));
-          if (matchingBet) ecWins++;
+          const raceResult = dateResults.find(r => r.raceNumber === ec.race);
+          const winner = raceResult && raceResult.results && raceResult.results.find(r => r.position === 1);
+          if (winner && (fuzzyHorseMatch(winner.horseName, ec.name) || String(winner.pp) === String(ec.pp))) {
+            ecWins++;
+          }
         });
       }
     } catch(e) {}

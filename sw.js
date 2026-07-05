@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.13-brisnet'; // v2.49.13: CRITICAL — Exacta Box bets from the Value Play ticket flow stored bet.type as a display label ("Exacta Box") instead of the short code ("EX") every grading path checked for, so those bets could NEVER resolve, no matter how many times results were checked. Fixed with a normalizeExoticTypeCode() helper applied everywhere bet.type is matched               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.14-brisnet'; // v2.49.14: fixed the "Expert Consensus" accuracy metric — it was measuring whether the USER also happened to place a winning bet on a consensus-flagged horse, not whether the horse actually won, silently discarding most real expert-pick wins and reporting a falsely terrible success rate               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

@@ -1,5 +1,38 @@
 # NE Racing — Changelog
 
+## v2.49.14-brisnet — Fixed the "Expert Consensus" accuracy metric (2026-07-05)
+
+Owner asked directly: look at the very low success rate of the expert
+picks and figure out why they were so bad.
+
+Root cause found in `updateAccuracyTracking()`: the "win" check for an
+expert-consensus-flagged horse (2+ handicappers agreeing) was
+`bets.find(b => ... && b.result === 'win' ...)` — i.e. it only counted a
+win when the user had ALSO personally placed a matching bet on that
+exact horse AND that bet won. But the user typically only wagers the
+Best Bet (and maybe one Value Play) each day, while multiple *different*
+horses across Value Plays and the Action Bet can independently carry the
+expertConsensus flag. Every consensus pick the user never happened to
+bet on was silently counted as a total with zero chance of ever
+registering a win — regardless of whether that horse actually won its
+race. This wasn't measuring "how good are the expert picks"; it was
+measuring "how much did the user's own betting pattern happen to
+overlap with them," which is a much smaller, much less favorable number.
+
+Fixed to check the real per-date results cache (`getCachedResults()`,
+already used elsewhere for offline bet grading) directly: an expert
+consensus pick now counts as a win whenever that horse was the actual
+race winner, independent of whether — or what — the user bet.
+
+Files: `app.html`, `index.html` (`updateAccuracyTracking()`'s expert
+consensus section), `sw.js`, `version.json`. Verified via Playwright:
+seeded a ticket flagging two horses as expert-consensus picks in a race
+with a cached official result, zero bets placed on either — confirmed
+the correctly-picked winner now counts as a win (1/2), where the
+previous logic would have shown 0/2 regardless of the real outcome.
+Full test suite: 206 passing, 1 failing (same pre-existing, intentional
+scoring-sync failure), no regressions.
+
 ## v2.49.13-brisnet — CRITICAL: Exacta Box bets could never resolve (2026-07-05)
 
 Owner reported live: several straight WIN bets had graded correctly
