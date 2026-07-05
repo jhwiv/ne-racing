@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260705-v2.49.1-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.2-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260705-v2.49.1-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.1-brisnet';
+var RAILBIRD_VERSION = 'v2.49.2-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -4968,6 +4968,19 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .loading-indicator { display: flex; align-items: center; gap: 0.5rem; padding: 1rem; color: var(--color-muted); font-size: 0.85rem; }
 .loading-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-gold); animation: pulseDot 1s ease infinite; }
 @keyframes pulseDot { 0%,100%{ opacity:0.3; transform:scale(0.8); } 50%{ opacity:1; transform:scale(1.2); } }
+/* v2.49.2: cold-load "preparing the card" state — was a tiny italic line,
+   easy to mistake for a permanent empty state. Now a large, unmissable
+   card matching the existing no-races-msg treatment, with an indeterminate
+   progress bar so it visibly reads as "working," not "stuck." */
+.loading-indicator-cold { display: block; background: var(--lux-navy, #1B2E4B); color: var(--lux-ink-soft, #EDE8DC); border-radius: 14px; margin: 12px 0; padding: 32px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); text-align: center; }
+.loading-indicator-text { color: inherit; font-family: 'Crimson Pro', serif; font-size: 1.15rem; font-weight: 600; font-style: italic; margin-bottom: 18px; }
+/* color-mix against currentColor (set above) rather than a hardcoded light
+   tint — --lux-navy/--lux-ink-soft are redefined per active theme (e.g. the
+   "msp" theme repoints --lux-navy at a cream token), so a fixed light-on-dark
+   tint went nearly invisible once that theme made this card render light. */
+.loading-progress-track { width: 100%; max-width: 280px; height: 8px; margin: 0 auto; background: color-mix(in srgb, currentColor 18%, transparent); border-radius: 999px; overflow: hidden; }
+.loading-progress-bar { height: 100%; width: 40%; border-radius: 999px; background: var(--color-gold); animation: loadingBarSlide 1.4s ease-in-out infinite; }
+@keyframes loadingBarSlide { 0% { transform: translateX(-100%); } 50% { transform: translateX(60%); } 100% { transform: translateX(250%); } }
 .workout-table { width: 100%; font-size: 0.8rem; border-collapse: collapse; margin-top: 0.5rem; }
 .workout-table th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-muted); text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(0,0,0,0.1); }
 .workout-table td { padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(0,0,0,0.05); }
@@ -10223,7 +10236,10 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 
       <!-- Race cards container -->
       <div id="races-container">
-        <div class="empty-state" id="no-races-msg" style="background:var(--lux-navy,#1B2E4B);border-radius:14px;margin:12px 0;padding:28px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08)"><div style="text-align:center;color:var(--lux-ink-soft,#EDE8DC);font-family:'Crimson Pro',serif;font-size:16px;line-height:1.55;font-style:italic">Preparing the day&rsquo;s card&hellip;</div></div>
+        <div class="loading-indicator-cold" id="no-races-msg">
+          <div class="loading-indicator-text">Preparing the day&rsquo;s card&hellip;</div>
+          <div class="loading-progress-track"><div class="loading-progress-bar"></div></div>
+        </div>
       </div>
     </section>
 
@@ -21021,14 +21037,30 @@ function updateSyncTime() {
 }
 
 function showLoadingIndicator() {
+  // v2.49.2: cold load (no race cards visible yet) gets a large, unmissable
+  // "preparing the card" treatment with a progress bar, so it can't be
+  // mistaken for a stuck/broken screen. Background polling refreshes (races
+  // already on screen) keep the old small non-disruptive row instead —
+  // otherwise every 5-minute poll would flash the whole card list away.
+  const data = getTrackData();
+  const hasExistingRaces = !!(data && data.races && data.races.length);
+  const container = el('races-container');
+
   let indicator = el('live-loading-indicator');
   if (!indicator) {
     indicator = document.createElement('div');
     indicator.id = 'live-loading-indicator';
-    indicator.className = 'loading-indicator';
-    indicator.innerHTML = '<div class="loading-dot"></div> Loading entries...';
-    const container = el('races-container');
     if (container) container.parentNode.insertBefore(indicator, container);
+  }
+
+  if (hasExistingRaces) {
+    indicator.className = 'loading-indicator';
+    indicator.innerHTML = '<div class="loading-dot"></div> Refreshing entries...';
+  } else {
+    indicator.className = 'loading-indicator-cold';
+    indicator.innerHTML = '<div class="loading-indicator-text">Preparing the day’s card…</div>' +
+      '<div class="loading-progress-track"><div class="loading-progress-bar"></div></div>';
+    if (container) container.style.display = 'none';
   }
   indicator.classList.remove('hidden');
 }
@@ -21036,6 +21068,8 @@ function showLoadingIndicator() {
 function hideLoadingIndicator() {
   const indicator = el('live-loading-indicator');
   if (indicator) indicator.classList.add('hidden');
+  const container = el('races-container');
+  if (container) container.style.display = '';
 }
 
 /* =============================================================

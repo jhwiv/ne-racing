@@ -1,5 +1,44 @@
 # NE Racing — Changelog
 
+## v2.49.2-brisnet — Bigger, more visible "loading the card" state (2026-07-05)
+
+Owner-requested after a screenshot showed a tiny italic "Preparing the
+day's card…" line that's easy to mistake for a permanent dead end rather
+than an active load. Asked for larger, more visible text with a progress
+bar.
+
+The cold-load state (shown before today's entries have ever loaded — both
+the static boot placeholder and the live `fetchLiveEntries()` indicator)
+is now a large card: bold italic headline plus an animated indeterminate
+progress bar (gold sliding segment on a neutral track), replacing the old
+8px pulsing dot + 0.85rem text row. Background polling refreshes (every 5
+min, when race cards are already on screen) deliberately keep the old
+small "Refreshing entries…" row instead — the container is not hidden in
+that case, so already-loaded cards don't flicker away every poll cycle.
+
+While building this, found that `--lux-navy`/`--lux-ink-soft` are
+redefined by a later "msp" theme layer to point at cream/dark-ink tokens
+instead of literal navy/light-ink — so a card assumed to always render
+dark-with-light-text actually renders light-with-dark-text in the
+currently active theme (confirmed via computed styles: `--lux-navy`
+resolves to `#F8F4EA`, not navy). A first pass at the progress-bar track
+used a hardcoded light tint that went nearly invisible against that light
+background. Fixed by deriving the track color from `currentColor` via
+`color-mix()`, so it adapts to whichever theme is actually active instead
+of assuming one.
+
+Files: `app.html`, `index.html` (new `.loading-indicator-cold` /
+`.loading-indicator-text` / `.loading-progress-track` /
+`.loading-progress-bar` CSS + `@keyframes loadingBarSlide`; rewrote
+`showLoadingIndicator()`/`hideLoadingIndicator()` to branch on whether
+races already exist; updated the static `#no-races-msg` boot placeholder
+to match), `sw.js`, `version.json`. Verified via Playwright: cold load
+shows the big card with `#races-container` hidden and the gold bar
+visibly animating across the track; a refresh with existing races shows
+the old small "Refreshing entries…" row with the container still visible
+and cards intact. Full test suite: 206 passing, 1 failing (same
+pre-existing, intentional scoring-sync failure), no regressions.
+
 ## v2.49.1-brisnet — Clear Bet History button (2026-07-05)
 
 Owner asked to confirm the bet history shown in the app is theirs, not a
