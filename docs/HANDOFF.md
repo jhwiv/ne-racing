@@ -71,8 +71,23 @@ live-card critical path — don't confuse it with `cloudflare-worker`.
 - **Known flake:** the "pages build and deployment" workflow's deploy step
   can fail with a generic `Deployment failed, try again later.` even though
   the Jekyll build itself succeeded. This is GitHub's own deploy API, not
-  anything in this repo's content — just re-run the failed job. Hit this
-  twice on 2026-07-04, resolved both times within 1–2 retries.
+  anything in this repo's content. Hit twice on 2026-07-04 and twice more on
+  2026-07-05 (resolved within 1–3 retries each time). On 2026-07-05 this
+  actually shipped a real problem: the v2.49.0 pp-badge deploy failed
+  silently, nobody retried it, and the color-coding sat live-in-git-but-
+  not-actually-deployed for ~10 minutes until the *next* commit's deploy
+  happened to succeed and carried it out (Pages deploys the full tree, not
+  a diff, so a later successful deploy papers over an earlier failed one —
+  but only if there is a later push at all).
+- **`.github/workflows/pages-deploy-watchdog.yml`** (added 2026-07-05) fixes
+  the "nobody noticed" half of that failure mode. It can't hook the Pages
+  deploy directly (that check isn't a workflow file in this repo, so
+  `workflow_run` can't target it), so instead it triggers on every push to
+  `master`, polls the GitHub API for the matching "pages build and
+  deployment" run, and calls `rerun-failed-jobs` up to 3 times if it fails.
+  If it's still failing after 3 attempts, the watchdog job itself fails —
+  which surfaces as a normal GitHub Actions failure notification, so a
+  stuck deploy is never silent even when auto-retry can't fix it.
 - Version discipline: `NE_APP_VERSION` (in both HTML files), `CACHE_VERSION`
   (sw.js), and `version.json`'s `version` field must all match exactly, or
   the client's boot-time version check force-reloads in a loop. Bump all

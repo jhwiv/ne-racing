@@ -1,0 +1,92 @@
+name: Pages Deploy Watchdog
+
+# GitHub's built-in "pages build and deployment" check (dynamic/pages/pages-
+# build-deployment) is not a workflow file in this repo, so it can't be
+# retried via a workflow_run trigger. It also has a known, undocumented
+# flake ("Deployment failed, try again later.") that is unrelated to repo
+# content — see docs/HANDOFF.md section 2. Historically this required a
+# human to notice a red X in the Actions tab and manually click "Re-run
+# failed jobs." If nobody noticed (e.g. this was the last push of the day),
+# the live site silently kept serving the previous build indefinitely.
+#
+# This workflow polls for that deployment run after every push to master,
+# auto-retries it up to 3 times, and only gives up loudly: if it's still
+# failing after 3 attempts, this job itself fails, which triggers GitHub's
+# normal "workflow run failed" notification email/UI — so the failure is
+# never silent, even when the auto-retry can't fix it.
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Pages deployment, retry on failure
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -e
+          echo "Watching 'pages build and deployment' for commit $SHA"
+
+          find_run_id() {
+            gh api "repos/$REPO/actions/runs?per_page=30" \
+              --jq ".workflow_runs[] | select(.head_sha==\"$SHA\" and .name==\"pages build and deployment\") | .id" \
+              | head -1
+          }
+
+          RUN_ID=""
+          for i in $(seq 1 20); do
+            RUN_ID=$(find_run_id || true)
+            if [ -n "$RUN_ID" ]; then break; fi
+            echo "Deployment run not found yet, waiting... ($i/20)"
+            sleep 15
+          done
+
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No 'pages build and deployment' run appeared for $SHA within 5 minutes"
+            exit 1
+          fi
+          echo "Found run $RUN_ID: https://github.com/$REPO/actions/runs/$RUN_ID"
+
+          MAX_RETRIES=3
+          ATTEMPT=0
+          while true; do
+            STATUS=""
+            CONCLUSION=""
+            for i in $(seq 1 40); do
+              JSON=$(gh api "repos/$REPO/actions/runs/$RUN_ID")
+              STATUS=$(echo "$JSON" | jq -r .status)
+              CONCLUSION=$(echo "$JSON" | jq -r .conclusion)
+              if [ "$STATUS" = "completed" ]; then break; fi
+              sleep 15
+            done
+
+            if [ "$STATUS" != "completed" ]; then
+              echo "::error::Run $RUN_ID did not complete within timeout (last status: $STATUS)"
+              exit 1
+            fi
+
+            if [ "$CONCLUSION" = "success" ]; then
+              echo "Deployment succeeded (attempt $((ATTEMPT+1)))."
+              exit 0
+            fi
+
+            ATTEMPT=$((ATTEMPT+1))
+            echo "Deployment finished with conclusion '$CONCLUSION' — attempt $ATTEMPT of $MAX_RETRIES"
+            if [ "$ATTEMPT" -ge "$MAX_RETRIES" ]; then
+              echo "::error::Pages deployment for $SHA failed after $MAX_RETRIES attempts. The live site may be stale — check https://github.com/$REPO/actions/runs/$RUN_ID"
+              exit 1
+            fi
+
+            echo "Re-running failed jobs..."
+            gh api -X POST "repos/$REPO/actions/runs/$RUN_ID/rerun-failed-jobs"
+            sleep 15
+          done
