@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260704-v2.48.17-brisnet'; // v2.48.17: fixed BOM-crash in 3 test files masking real test runs (version-sync.test.js's own RAILBIRD_VERSION check finally ran and caught a real staleness bug), bumped stale RAILBIRD_VERSION (was v2.38.15). Left index.html's scoring-sync test failing on purpose: scripts/lib/scoring.js is stale, not index.html — do not run inline_scoring.js, it would regress live Prime Power scoring               // bump on every ship
+const CACHE_VERSION = '20260705-v2.49.0-brisnet'; // v2.49.0: post-position color-coded badges (standard US saddle-cloth colors) on race cards, Handicap picks, Bets tab lines, and exotic tickets — new ppBadgeHtml() helper               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

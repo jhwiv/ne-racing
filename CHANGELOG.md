@@ -1,5 +1,30 @@
 # NE Racing — Changelog
 
+## v2.49.0-brisnet — Post-position color-coded badges (2026-07-05)
+
+Owner-requested, prompted by a screenshot of NYRA's own race card. Program
+numbers are now colored using the standard US saddle-cloth convention (same
+one NYRA/Equibase use): 1 Red, 2 White, 3 Blue, 4 Yellow, 5 Green, 6 Black,
+7 Orange, 8 Pink, 9 Turquoise, 10-14 use the standard striped pairs for
+fields larger than 9.
+
+New `ppBadgeHtml(pp)` / `ppBadgeStyle(pp)` helpers (`.pp-badge` CSS class)
+applied everywhere a program number renders as markup: the main race card
+(`.pp-cell`, all 3 occurrences — Today tab, Manual Pace Figures table, Class
+comparison table), Handicap advice picks (Best Bet / Value Play / Action
+Bet / general picks list), Bets tab straight-bet lines, and exotic ticket
+lines. Left untouched on purpose: the handful of plain-text strings (toast
+warnings, "copy ticket to clipboard" lines) that aren't HTML — a colored
+`<span>` would just show as garbage in plain text.
+
+Verified via Playwright against realistic fixture data: badges render with
+correct colors on both the Today tab race card and the Handicap advice
+list, zero page errors. Full test suite unchanged: 206 passing, 1 failing
+(the scoring-sync test, still intentional — see docs/HANDOFF.md §5).
+
+Files: app.html, index.html (mirror), sw.js (cache bust), version.json (BOM
+preserved).
+
 ## v2.48.17-brisnet — Fixed the test suite's own BOM crash + a real staleness bug it was masking (2026-07-04)
 
 Prompted by the owner getting repeated "[Tests] All jobs have failed" CI

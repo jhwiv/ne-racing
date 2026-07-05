@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260704-v2.48.17-brisnet';
+var NE_APP_VERSION = '20260705-v2.49.0-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260704-v2.48.17-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.48.17-brisnet';
+var RAILBIRD_VERSION = 'v2.49.0-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -3982,6 +3982,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .entry-table tr.scratched td { opacity: 0.55; }
 .entry-table tr.scratched .horse-name { text-decoration: line-through; }
 .pp-cell { font-family: var(--font-mono); font-weight: 500; text-align: center; width: 30px; }
+.pp-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 4px;
+  border-radius: 4px; font-weight: 700; font-size: 0.72rem;
+  font-family: var(--font-mono); vertical-align: middle; line-height: 1;
+}
 .horse-name { font-weight: 600; cursor: pointer; color: var(--color-racing-green); }
 .horse-name:hover { text-decoration: underline; }
 .odds-cell { font-family: var(--font-mono); font-size: 0.78rem; }
@@ -15331,7 +15337,7 @@ function buildHorseRowHTML(raceId, h) {
         Scr
       </label>
     </td>
-    <td class="pp-cell">${h.pp || ''}</td>
+    <td class="pp-cell">${ppBadgeHtml(h.pp)}</td>
     <td><span class="horse-name" onclick="openHorseModal('${raceId}','${h.id}')">${h.name || '—'}</span>${bulletIcon}${equipBadge}${h.scratched ? ' <span class="badge badge-scratch">SCRATCHED</span>' : ''}</td>
     <td class="odds-cell">${h.ml || '—'}</td>
     <td>${liveOddsCell}</td>
@@ -15371,6 +15377,45 @@ function hasBulletWorkout(h) {
 
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escJs(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"  ); }
+
+// Standard US saddle-cloth / post-position colors (1-9 solid, matches
+// NYRA/Equibase convention exactly; 10-14 use the standard striped pairs
+// for fields larger than 9).
+var PP_BADGE_COLORS = {
+  1:  ['#D32F2F', '#fff'],
+  2:  ['#FFFFFF', '#111', '1px solid #999'],
+  3:  ['#1565C0', '#fff'],
+  4:  ['#FBC02D', '#111'],
+  5:  ['#2E7D32', '#fff'],
+  6:  ['#111111', '#fff'],
+  7:  ['#EF6C00', '#fff'],
+  8:  ['#D81B60', '#fff'],
+  9:  ['#00838F', '#fff']
+};
+var PP_BADGE_STRIPES = {
+  10: ['#D32F2F', '#FFFFFF'],
+  11: ['#1565C0', '#FFFFFF'],
+  12: ['#FBC02D', '#111111'],
+  13: ['#2E7D32', '#FFFFFF'],
+  14: ['#111111', '#EF6C00']
+};
+function ppBadgeStyle(pp) {
+  var n = parseInt(pp, 10);
+  var solid = PP_BADGE_COLORS[n];
+  if (solid) {
+    return 'background:' + solid[0] + ';color:' + solid[1] + (solid[2] ? ';border:' + solid[2] : '');
+  }
+  var stripe = PP_BADGE_STRIPES[n];
+  if (stripe) {
+    return 'background:repeating-linear-gradient(45deg,' + stripe[0] + ',' + stripe[0] + ' 4px,' + stripe[1] + ' 4px,' + stripe[1] + ' 8px)'
+      + ';color:#111;text-shadow:0 0 2px rgba(255,255,255,0.85)';
+  }
+  return 'background:#9e9e9e;color:#fff'; // unknown / pp > 14 fallback
+}
+function ppBadgeHtml(pp) {
+  if (pp == null || pp === '') return '';
+  return '<span class="pp-badge" style="' + ppBadgeStyle(pp) + '">' + escHtml(String(pp)) + '</span>';
+}
 
 function buildEquibaseUrl(raceNum) {
   // v2.38.10: Equibase deep-link to a specific race uses the canonical static
@@ -16147,7 +16192,7 @@ function runAdviceEngine() {
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
-          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${oddsDisplay}${overlayPct} ${valueFlag}${convictionBadge}${equipBadge}${betPill}</div>
+          <div class="advice-horse-name">${ppBadgeHtml(s.horse.pp)} ${escHtml(s.horse.name)} ${oddsDisplay}${overlayPct} ${valueFlag}${convictionBadge}${equipBadge}${betPill}</div>
           ${rationaleHtml}
         </div>
         <div class="advice-score">${s.score.toFixed(0)}</div>
@@ -16702,7 +16747,7 @@ function updateTopPicksCard(allScores) {
       <span class="rec-bet-expand-hint">&#9660;</span>
       <div class="rec-bet-tag rec-tag-best">&#127942; Best Bet</div>${convictionBadge}${buildStrengthStars(bbConf)}
       <div class="card-explainer">Strongest edge on the card \u2014 our highest-conviction play</div>
-      <div class="rec-bet-detail">Race ${bestBetEntry.race.num}: <strong>#${bestBetEntry.horse.pp} ${escHtml(bestBetEntry.horse.name).toUpperCase()}</strong> to WIN</div>
+      <div class="rec-bet-detail">Race ${bestBetEntry.race.num}: <strong>${ppBadgeHtml(bestBetEntry.horse.pp)} ${escHtml(bestBetEntry.horse.name).toUpperCase()}</strong> to WIN</div>
       <div class="rec-bet-amount">$${suggestedAmt} to Win</div>
       ${bbPayout ? '<div class="ticket-payout">' + bbPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
@@ -16731,7 +16776,7 @@ function updateTopPicksCard(allScores) {
       <span class="rec-bet-expand-hint">&#9660;</span>
       <div class="rec-bet-tag rec-tag-value">&#128176; Value Play</div>${buildStrengthStars(vpConf)}
       <div class="card-explainer">Odds are better than our model says \u2014 the market is underpricing this horse</div>
-      <div class="rec-bet-detail">Race ${v.race.num}: <strong>#${v.horse.pp} ${escHtml(v.horse.name).toUpperCase()}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(${v.horse.ml || 'N/A'}${overlayStr})</span></div>
+      <div class="rec-bet-detail">Race ${v.race.num}: <strong>${ppBadgeHtml(v.horse.pp)} ${escHtml(v.horse.name).toUpperCase()}</strong> <span class="mono" style="font-size:0.78rem;opacity:0.7">(${v.horse.ml || 'N/A'}${overlayStr})</span></div>
       <div class="rec-bet-amount">$2 EX Box with ${exPartner || '#2'}</div>
       ${vpPayout ? '<div class="ticket-payout">' + vpPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
@@ -16758,7 +16803,7 @@ function updateTopPicksCard(allScores) {
       <span class="rec-bet-expand-hint">&#9660;</span>
       <div class="rec-bet-tag rec-tag-action">&#127919; Action Bet</div>${buildStrengthStars(actConf)}
       <div class="card-explainer">Smaller-stake fun play \u2014 decent edge but not as strong as the Best Bet</div>
-      <div class="rec-bet-detail">Race ${ab.entry.race.num}: <strong>#${ab.entry.horse.pp} ${escHtml(ab.entry.horse.name).toUpperCase()}</strong> to WIN</div>
+      <div class="rec-bet-detail">Race ${ab.entry.race.num}: <strong>${ppBadgeHtml(ab.entry.horse.pp)} ${escHtml(ab.entry.horse.name).toUpperCase()}</strong> to WIN</div>
       <div class="rec-bet-amount">$${actionAmt} to Win</div>
       ${actPayout ? '<div class="ticket-payout">' + actPayout + '</div>' : ''}
       <div class="rec-bet-reason">"${reason}"</div>
@@ -16807,7 +16852,7 @@ function updateTopPicksCard(allScores) {
     exoticHtml = `<div class="ticket-exotic card-exotic">
       <div class="ticket-exotic-tag">&#127922; Exotic of the Day</div>
       <div class="card-explainer">A bonus exacta pairing where the model sees a clear top-two</div>
-      <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: #${ex1.horse.pp}/#${ex2.horse.pp} \u2014 $2</div>
+      <div class="ticket-exotic-detail">EX BOX R${exRaceNum}: ${ppBadgeHtml(ex1.horse.pp)}/${ppBadgeHtml(ex2.horse.pp)} \u2014 $2</div>
       <div class="ticket-exotic-reason">"${exReason}"</div>
       ${buildBarnFollowChips(ex1.horse)}
       ${buildBarnFollowChips(ex2.horse)}
@@ -17053,7 +17098,7 @@ function renderStraightBets() {
         const scratchWarn = horse.scratched ? `<div class="banner banner-warning" style="font-size:0.72rem;padding:0.3rem 0.6rem;margin-top:4px">Horse scratched — remove this bet</div>` : '';
         html += `<div class="bet-slip-item straight" id="bsi-${betId}">
           <span class="bet-slip-label">${type === 'W' ? 'WIN' : type === 'P' ? 'PLACE' : 'SHOW'}</span>
-          <span class="bet-slip-horse">R${race.num} · #${horse.pp||''} <span class="horse-name" style="cursor:pointer" onclick="openHorseModal('${race.id}','${horse.id}')">${escHtml(horse.name)}</span> <span class="text-xs text-muted">${horse.ml||''}</span></span>
+          <span class="bet-slip-horse">R${race.num} · ${ppBadgeHtml(horse.pp)} <span class="horse-name" style="cursor:pointer" onclick="openHorseModal('${race.id}','${horse.id}')">${escHtml(horse.name)}</span> <span class="text-xs text-muted">${horse.ml||''}</span></span>
           <span class="text-xs text-muted">$</span>
           <input class="bet-amount-input" type="number" value="${amt}" min="0.5" step="0.5" inputmode="decimal"
             onchange="saveStraightBetAmount('${betId}', this.value); updateBankrollBanner(); renderStraightBets()">
@@ -17586,7 +17631,7 @@ function renderAdviceEnginePanel() {
       html += `<div class="advice-row">
         <div class="advice-grade ${gradeClass}">${grade}</div>
         <div style="flex:1;min-width:0">
-          <div class="advice-horse-name">#${s.horse.pp||''} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">ML: '+ml+'</span>' : ''}${liveOddsHtml}${overlayPct} ${valueFlag}${convictionBadge}${hcBetPill}</div>
+          <div class="advice-horse-name">${ppBadgeHtml(s.horse.pp)} ${escHtml(s.horse.name)} ${ml ? '<span class="mono text-xs text-muted">ML: '+ml+'</span>' : ''}${liveOddsHtml}${overlayPct} ${valueFlag}${convictionBadge}${hcBetPill}</div>
           ${buildAngleBadges(s.horse, race)}
           ${rationaleHtmlHC}
           ${i === 0 ? buildWhyThisPick(s, race) : ''}
@@ -17897,7 +17942,7 @@ function renderSpeedFigureChart() {
 
     html += `<div class="sf-bar-wrap">
       <div class="sf-bar-label">
-        <span>#${h.pp||''} ${escHtml(h.name)}</span>
+        <span>${ppBadgeHtml(h.pp)} ${escHtml(h.name)}</span>
         <span class="mono text-xs text-muted">Avg: ${avgStr}${trendIcon}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:2px">
@@ -17982,7 +18027,7 @@ function renderPaceInputs() {
     <thead><tr><th>PP</th><th>Horse</th><th>Style</th><th>E1</th><th>E2</th><th>LP</th></tr></thead>
     <tbody>
       ${horses.map(h=>`<tr>
-        <td class="pp-cell">${h.pp||''}</td>
+        <td class="pp-cell">${ppBadgeHtml(h.pp)}</td>
         <td><span class="font-semibold text-sm">${escHtml(h.name)}</span></td>
         <td><span class="badge badge-muted" style="font-size:0.62rem">${h.runningStyle||'—'}</span></td>
         <td><input class="sf-input" type="number" id="pace-e1-${h.id}" inputmode="numeric" placeholder="—" value="${h.e1||''}"></td>
@@ -18061,7 +18106,7 @@ function renderClassInputs() {
           else if (diff < -15) { arrow='<span class="class-arrow class-up">&#9650;</span>'; label='Rising'; rowStyle='background:rgba(193,18,31,0.04)'; }
           else { arrow='<span class="class-arrow class-up" style="opacity:0.6">&#9650;</span>'; label='Slight Rise'; }
           return `<tr style="${rowStyle}">
-            <td class="pp-cell">${h.pp||''}</td>
+            <td class="pp-cell">${ppBadgeHtml(h.pp)}</td>
             <td class="font-semibold">${escHtml(h.name)}</td>
             <td class="text-sm">${lcLabel}</td>
             <td class="text-sm">${todayClassLabel}</td>
