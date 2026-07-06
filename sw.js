@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260706-v2.49.15-brisnet'; // v2.49.15: fixed wizard-built Daily Double/Pick 3-6 bets — resolveMultiRaceBet() never read the 'leg_N' selection keys wizLockBet() actually writes, so every leg fell through to an empty array and every multi-race exotic graded as a loss regardless of the real outcome               // bump on every ship
+const CACHE_VERSION = '20260706-v2.49.16-brisnet'; // v2.49.16: removeExoticBet() never refreshed the bankroll banner, so Committed/Remaining stayed stale after deleting an exotic bet until an unrelated action happened to re-render them               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

@@ -1,5 +1,29 @@
 # NE Racing — Changelog
 
+## v2.49.16-brisnet — Removing an exotic bet left the bankroll banner stale (2026-07-06)
+
+Found during the same audit that produced v2.49.15. `removeExoticBet(betId)`
+filters the bet out of `data.bets` and re-renders the locked-exotics list
+and the Today's Locked Bets panel, but never called `updateBankrollBanner()`
+— unlike its two siblings, `removeStraightBet` and `removeLockedBet`, which
+both correctly call it. The banner's Committed total sums today's exotic
+bets' cost, so after removing one, Committed stayed inflated and Remaining
+stayed understated until some unrelated action happened to trigger a
+banner refresh.
+
+Fixed by adding the same guarded `updateBankrollBanner()` call
+`removeStraightBet` already makes, in the same style.
+
+Files: `app.html`, `index.html` (`removeExoticBet()`), `sw.js`,
+`version.json`. Verified via Playwright: seeded a $60 exotic bet dated
+today, rendered the Bets tab, confirmed `#bb-committed` included it.
+On unpatched code, called `removeExoticBet` and confirmed `#bb-committed`
+was unchanged despite the bet being gone (proving the bug). After the fix,
+confirmed `#bb-committed` drops by $60 and `#bb-remaining` rises by $60
+immediately, with no other action taken. Full test suite: 206 passing,
+1 failing (same pre-existing, intentional scoring-sync failure), no
+regressions.
+
 ## v2.49.15-brisnet — CRITICAL: wizard-built Daily Double/Pick 3-6 bets always graded as a loss (2026-07-06)
 
 Found during a full audit for more instances of the same key/type-shape

@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260706-v2.49.15-brisnet';
+var NE_APP_VERSION = '20260706-v2.49.16-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260706-v2.49.15-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.15-brisnet';
+var RAILBIRD_VERSION = 'v2.49.16-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -17623,6 +17623,7 @@ function removeExoticBet(betId) {
   saveTrackData(data);
   renderLockedExotics();
   renderTodaysLockedBets();
+  if (typeof updateBankrollBanner === 'function') updateBankrollBanner();
 }
 
 function renderTodaysLockedBets() {
