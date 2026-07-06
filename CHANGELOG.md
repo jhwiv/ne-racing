@@ -1,5 +1,37 @@
 # NE Racing — Changelog
 
+## (no version bump) — Locked the v2.49.13–19 bug fixes into permanent regression tests (2026-07-06)
+
+Every fix in the v2.49.13–19 run was verified live with a one-off Playwright
+script, but none of those became part of the permanent suite — so a future
+edit to this code could silently reintroduce any of them with nothing to
+catch it. Added `tests/grading-and-accuracy-regressions.test.js`: 15 tests
+that execute the actual patched functions (extracted from `index.html` via
+the same `vm`-sandbox pattern already used in `tests/bets-tab-fix.test.js`)
+rather than re-driving a browser.
+
+Covers: "Exacta Box" display-label grading (v2.49.13), Expert Consensus
+counting real race winners independent of user bets (v2.49.14), the
+wizard's `leg_N`-keyed multi-race exotic grading plus the
+`deduplicateBets()` crash on the same shape (v2.49.15), `removeExoticBet()`
+refreshing the bankroll banner (v2.49.16), `isActionBet` being set on
+Action Bet ticket clicks (v2.49.17), Overall Advice Engine ROI excluding
+untagged/ungraded bets and the bet-type breakdown merging legacy/short-code
+exotic rows (v2.49.18), and the "still pending" toast count excluding
+bets from other dates (v2.49.19). Also locked in the pre-existing
+v2.49.6 scratch-refund behavior while in the neighborhood.
+
+Verified the tests are meaningful, not tautological: temporarily swapped in
+the pre-session `index.html` (commit `d2003b7`, the last commit before
+v2.49.13) and reran the new file — 10 of the 15 tests correctly failed
+against the old code (exactly the ones asserting each bug's fix), while
+the other 5 correctly passed on both versions (they cover pre-existing
+correct behavior — losing legs, legacy selection shapes, true duplicate
+merging — that was never broken). Restored the current `index.html`
+afterward with no changes. No version bump: this is test-only, no
+app.html/index.html/sw.js behavior changed. Full suite: 221 passing, 1
+failing (same pre-existing, intentional scoring-sync failure), 1 skipped.
+
 ## v2.49.19-brisnet — "Check Results" toast reported stale bets as pending long after the track closed (2026-07-06)
 
 Reported live with a screenshot: the app showed "Checked — no new results
