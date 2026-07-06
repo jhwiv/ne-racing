@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260706-v2.49.17-brisnet';
+var NE_APP_VERSION = '20260706-v2.49.18-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260706-v2.49.17-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.17-brisnet';
+var RAILBIRD_VERSION = 'v2.49.18-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -18715,16 +18715,25 @@ function renderSparkline() {
   if (sparkEl) sparkEl.innerHTML = svgHtml;
 }
 
+// v2.49.18: display names for the normalized exotic type codes, so grouping
+// legacy display-label bets ("Exacta Box") together with short-code bets
+// ("EX") still reads naturally in the breakdown table.
+var EXOTIC_TYPE_DISPLAY_NAMES = { EX:'Exacta', TRI:'Trifecta', SUPER:'Superfecta', DD:'Daily Double', P3:'Pick 3', P4:'Pick 4', P5:'Pick 5', P6:'Pick 6' };
+
 function renderBetTypeBreakdown() {
   const bets = getResultsBets();
   const byType = {};
   bets.forEach(b => {
-    const t = b.type || 'Other';
-    if (!byType[t]) byType[t] = { count:0, wins:0, wagered:0, returned:0 };
-    byType[t].count++;
-    if (b.result === 'win') byType[t].wins++;
-    byType[t].wagered += parseFloat(b.isExotic ? (b.cost||b.amount) : b.amount)||0;
-    byType[t].returned += parseFloat(b.payout)||0;
+    // v2.49.18: group exotics by their normalized code (already-shipped
+    // normalizeExoticTypeCode() helper) so legacy "Exacta Box" bets and
+    // new "EX" bets merge into one row instead of rendering separately.
+    const key = b.isExotic ? normalizeExoticTypeCode(b.type) : (b.type || 'Other');
+    const display = b.isExotic ? (EXOTIC_TYPE_DISPLAY_NAMES[key] || key) : key;
+    if (!byType[key]) byType[key] = { count:0, wins:0, wagered:0, returned:0, display: display };
+    byType[key].count++;
+    if (b.result === 'win') byType[key].wins++;
+    byType[key].wagered += parseFloat(b.isExotic ? (b.cost||b.amount) : b.amount)||0;
+    byType[key].returned += parseFloat(b.payout)||0;
   });
   const tbody = el('breakdown-body');
   const emptyEl = el('breakdown-empty');
@@ -18735,12 +18744,12 @@ function renderBetTypeBreakdown() {
     return;
   }
   if (emptyEl) emptyEl.classList.add('hidden');
-  tbody.innerHTML = Object.entries(byType).map(([type, stats]) => {
+  tbody.innerHTML = Object.values(byType).map((stats) => {
     const winPct = stats.count ? (stats.wins/stats.count*100).toFixed(0) : 0;
     const roi = stats.wagered > 0 ? ((stats.returned-stats.wagered)/stats.wagered*100).toFixed(1) : '—';
     const roiColor = parseFloat(roi) >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
     return `<tr>
-      <td class="font-semibold">${type}</td>
+      <td class="font-semibold">${stats.display}</td>
       <td class="mono">${stats.count}</td>
       <td class="mono">${stats.wins}</td>
       <td class="mono">${winPct}%</td>
@@ -18960,8 +18969,15 @@ function renderAdviceReportCard() {
     el('arc-action-bet').textContent = total ? `${w}-${total-w} (${(w/total*100).toFixed(1)}%)` : 'W-L: — (—%)';
   }
   if (el('arc-overall-roi')) {
-    const ret = bets.reduce((s,b)=>s+(parseFloat(b.payout)||0),0);
-    const wag = bets.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
+    // v2.49.18: scope to graded, engine-flagged bets only (Best Bet / Value
+    // Play / Action Bet). Previously this pooled in every non-exotic bet the
+    // user ever placed, tagged or not, and even ungraded/pending bets
+    // (payout treated as 0, silently dragging ROI down as if already lost)
+    // — making it a near-duplicate of Your Bet ROI below rather than an
+    // independent measure of the advice engine's own picks.
+    const engineBets = bets.filter(b => (b.isBestBet || b.isValuePlay || b.isActionBet) && b.result);
+    const ret = engineBets.reduce((s,b)=>s+(parseFloat(b.payout)||0),0);
+    const wag = engineBets.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
     el('arc-overall-roi').textContent = wag > 0 ? fmtPct((ret-wag)/wag*100) : '—';
   }
 

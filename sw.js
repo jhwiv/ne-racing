@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260706-v2.49.17-brisnet'; // v2.49.17: isActionBet was never assigned anywhere, permanently zeroing the "Action Bet Record" tile no matter how many Action Bet picks the user placed and won               // bump on every ship
+const CACHE_VERSION = '20260706-v2.49.18-brisnet'; // v2.49.18: "Overall Advice Engine ROI" pooled in every non-exotic bet ever placed (tagged or not, graded or not), making it a near-duplicate of Your Bet ROI instead of measuring the advice engine's own picks; also merged legacy/short-code exotic type rows in the bet breakdown table               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

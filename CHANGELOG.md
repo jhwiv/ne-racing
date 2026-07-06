@@ -1,5 +1,50 @@
 # NE Racing — Changelog
 
+## v2.49.18-brisnet — "Overall Advice Engine ROI" was really just "Your Bet ROI" minus exotics (2026-07-06)
+
+Last fix from the same audit that produced v2.49.15/16/17.
+`renderAdviceReportCard()`'s Overall Advice Engine ROI tile computed its
+return/wagered totals from `data.bets.filter(b=>!b.isExotic)` — every
+non-exotic bet the user ever placed, with no filter for `isBestBet` /
+`isValuePlay` / `isActionBet`, and (found during my own re-read while
+verifying this fix, beyond what the audit originally flagged) no filter
+for `b.result` either. Ungraded/pending bets were included with `payout`
+treated as 0, silently dragging the ROI down as if they'd already lost.
+The tile folded in every straight bet ever placed, tagged or not, graded
+or not — it wasn't measuring "how good is the advice engine," it was a
+near-duplicate of "Your Bet ROI" a few lines below (which correctly
+filters `b.result` truthy).
+
+Fixed by scoping the tile to graded, engine-flagged bets only:
+`bets.filter(b => (b.isBestBet || b.isValuePlay || b.isActionBet) &&
+b.result)`. This lands after v2.49.17 so `isActionBet` is actually
+populated — otherwise this tile would only be "half" correct. Kept the
+minimal fix rather than a fuller redesign (aggregating the engine's own
+picks per day via the ticket object, independent of what the user staked,
+mirroring the Expert Consensus fix) — that would require adding `ml` odds
+to ticket fields that don't currently carry them and inventing a stake
+convention for hypothetical never-placed bets; a legitimate future
+enhancement, not part of this bugfix batch.
+
+Bundled in: `renderBetTypeBreakdown()` (Results & Bankroll tab) now groups
+exotic bets by `normalizeExoticTypeCode(bet.type)` (the same helper shipped
+in v2.49.13) instead of the raw `bet.type` string, with a short display-name
+map (Exacta/Trifecta/Superfecta/Daily Double/Pick 3-6) so rows still read
+naturally. Previously a legacy "Exacta Box" bet and a new "EX" bet would
+render as two separate rows instead of merging into one.
+
+Files: `app.html`, `index.html` (`renderAdviceReportCard()`,
+`renderBetTypeBreakdown()`), `sw.js`, `version.json`. Verified via
+Playwright: seeded an `isBestBet` graded win, an `isValuePlay` graded loss,
+an `isActionBet` graded win, and a plain untagged straight bet (graded win,
+large stake) — confirmed the untagged bet's return/stake pooled into the
+tile's ROI pre-fix, confirmed it's excluded post-fix with the ROI matching
+only the three tagged bets. Separately confirmed a legacy "Exacta Box" bet
+and a new "EX" bet render as two rows pre-fix and merge into one "Exacta"
+row post-fix with combined count/wins/wagered/returned. Full test suite:
+206 passing, 1 failing (same pre-existing, intentional scoring-sync
+failure), no regressions.
+
 ## v2.49.17-brisnet — "Action Bet Record" tile was a dead metric (2026-07-06)
 
 Found during the same audit that produced v2.49.15/16. `handleTicketBetClick()`
