@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260706-v2.49.16-brisnet';
+var NE_APP_VERSION = '20260706-v2.49.17-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260706-v2.49.16-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.16-brisnet';
+var RAILBIRD_VERSION = 'v2.49.17-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -13285,6 +13285,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
       payout: 0,
       isBestBet: betTag === 'best',
       isValuePlay: betTag === 'value',
+      isActionBet: betTag === 'action',
       track: getActiveTrack(),
       bettingMode: 'simulate'
     };
@@ -13318,6 +13319,7 @@ function handleTicketBetClick(e, raceNum, horseName, horsePp, betType, amount, b
       payout: 0,
       isBestBet: betTag === 'best',
       isValuePlay: betTag === 'value',
+      isActionBet: betTag === 'action',
       track: getActiveTrack(),
       bettingMode: 'real'
     };
@@ -17506,7 +17508,7 @@ function lockAllBets() {
             horse: horse.name,
             selections: [horse.name], pp: [horse.pp],
             amount: amt, result: null, payout: 0,
-            isBestBet: false, isValuePlay: false,
+            isBestBet: false, isValuePlay: false, isActionBet: false,
             track: getActiveTrack(),
             bettingMode: getBettingMode(),
             // v2.48.13: created by Lock All Bets — explicitly locked

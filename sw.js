@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260706-v2.49.16-brisnet'; // v2.49.16: removeExoticBet() never refreshed the bankroll banner, so Committed/Remaining stayed stale after deleting an exotic bet until an unrelated action happened to re-render them               // bump on every ship
+const CACHE_VERSION = '20260706-v2.49.17-brisnet'; // v2.49.17: isActionBet was never assigned anywhere, permanently zeroing the "Action Bet Record" tile no matter how many Action Bet picks the user placed and won               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

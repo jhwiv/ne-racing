@@ -1,5 +1,39 @@
 # NE Racing — Changelog
 
+## v2.49.17-brisnet — "Action Bet Record" tile was a dead metric (2026-07-06)
+
+Found during the same audit that produced v2.49.15/16. `handleTicketBetClick()`
+— wired to the Value Play, Exotic-of-the-Day, Best Bet, and Action Bet
+ticket buttons — sets `isBestBet: betTag === 'best'` and `isValuePlay:
+betTag === 'value'` at both bet-construction sites, but never set
+`isActionBet: betTag === 'action'`, even though `betTag === 'action'` is a
+real, reachable value from the Action Bet button and the advice-bet-pills.
+`isActionBet` was read in `updateAccuracyTracking()` but assigned nowhere,
+so `actionBetTotal` was permanently 0 and the tile showed `— (—%)` no
+matter how many Action Bet picks the user placed and won.
+
+Fixed by adding `isActionBet: betTag === 'action'` next to the existing two
+flags at both construction sites in `handleTicketBetClick()`. Also added
+`isActionBet: false` alongside `isBestBet: false, isValuePlay: false` at
+`lockAllBets()`'s straight-bet construction site for consistency (a
+no-op functionally — undefined and false are both falsy for this check —
+but keeps all three flags explicitly present everywhere a bet object is
+built). Kept the tile's semantics identical to its siblings Best Bet
+Record / Value Play ROI ("did the user's own tagged wager win") rather
+than switching to Expert Consensus's "did the pick win regardless of
+betting" semantics — this was a missing flag, not a wrong metric.
+
+Files: `app.html`, `index.html` (`handleTicketBetClick()`, `lockAllBets()`),
+`sw.js`, `version.json`. Verified via Playwright: seeded a ticket with an
+Action Bet pick, invoked `handleTicketBetClick` with `betTag: 'action'` —
+confirmed the resulting bet's `isActionBet` was falsy pre-fix and, after
+grading it a win, `actionBetTotal === 0`. Post-fix, confirmed `isActionBet
+=== true`, and after grading a win, `actionBetWins === 1`,
+`actionBetTotal === 1` (tile renders `1-0 (100.0%)`). Also confirmed
+`isBestBet`/`isValuePlay` remain correctly false on the same bet (no
+cross-contamination). Full test suite: 206 passing, 1 failing (same
+pre-existing, intentional scoring-sync failure), no regressions.
+
 ## v2.49.16-brisnet — Removing an exotic bet left the bankroll banner stale (2026-07-06)
 
 Found during the same audit that produced v2.49.15. `removeExoticBet(betId)`
