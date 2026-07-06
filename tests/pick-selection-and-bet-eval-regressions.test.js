@@ -235,6 +235,32 @@ test('v2.49.20 regression: Value Play never recommends a horse from a True-Pass 
   assert.ok(races.includes('rB'), 'the legitimate rB candidate must still qualify (no over-fix)');
 });
 
+// ── speedSubScore: Prime Power must match its own documented calibration ──
+// Confirmed via CHANGELOG.md's v2.46.0 entry (2026-06-05, the original ship
+// of Prime Power scoring): the calibration table (PP100->30, PP120->55,
+// PP140->80, PP160->95) was documented from day one, but the linear formula
+// that shipped alongside it never actually produced those values.
+test('v2.49.21 regression: speedSubScore\'s Prime Power sub-score matches its documented calibration table exactly', () => {
+  const src = sliceFn('speedSubScore', 'function classSubScore');
+  const ctx = makeSandbox({});
+  const cases = [[100, 30], [120, 55], [140, 80], [160, 95]];
+  for (const [pp, expected] of cases) {
+    const horse = { primePower: pp, speedFigs: [] };
+    const result = vm.runInContext(src + '\nspeedSubScore(horse);', Object.assign(ctx, { horse }));
+    assert.ok(Math.abs(result.score - expected) < 1e-6,
+      `PP ${pp} must score ${expected} per the documented calibration (the v2.49.21 bug: the old linear formula gave a materially different value)`);
+  }
+});
+
+test('v2.49.21 regression: speedSubScore extrapolates sensibly and stays clamped to [0,100] outside the documented range', () => {
+  const src = sliceFn('speedSubScore', 'function classSubScore');
+  const ctx = makeSandbox({});
+  const low = vm.runInContext(src + '\nspeedSubScore(horse);', Object.assign(ctx, { horse: { primePower: 60, speedFigs: [] } }));
+  const high = vm.runInContext(src + '\nspeedSubScore(horse);', Object.assign(ctx, { horse: { primePower: 200, speedFigs: [] } }));
+  assert.ok(low.score >= 0 && low.score < 30, 'a very low Prime Power must extrapolate below the PP100 anchor, clamped at 0');
+  assert.ok(high.score <= 100 && high.score > 95, 'a very high Prime Power must extrapolate above the PP160 anchor, clamped at 100');
+});
+
 // ── dataCompleteness: primePower:0 must not short-circuit to "fully complete" ─
 test('v2.49.20 regression: dataCompleteness does not treat primePower:0 as full data coverage', () => {
   const src = sliceFn('dataCompleteness', 'function buildPaceContext');

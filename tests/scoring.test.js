@@ -59,6 +59,33 @@ test('speedSubScore: career-best most-recent gets +8', () => {
   assert.ok(r2.score > r1.score + 5, 'career-best latest fig should bump score');
 });
 
+// v2.49.21: brought into parity with the live engine's Prime-Power blend so
+// scripts/training/extract_features.js (which imports this exact function
+// to build the fitted-weights training feature matrix) computes the same
+// "speed" quantity the live engine actually uses -- previously this file's
+// speedSubScore was figs-only while the live inline version blended Prime
+// Power at 70% weight, a silent train/serve skew.
+test('speedSubScore: Prime Power blend matches the documented calibration (PP100->30, PP120->55, PP140->80, PP160->95)', () => {
+  for (const [pp, expected] of [[100, 30], [120, 55], [140, 80], [160, 95]]) {
+    const r = S.speedSubScore({ primePower: pp, speedFigs: [] });
+    assert.ok(Math.abs(r.score - expected) < 1e-6, `PP ${pp} should score ${expected}, got ${r.score}`);
+  }
+});
+
+test('speedSubScore: blends 70% Prime Power / 30% figs when both are present', () => {
+  const ppOnly = S.speedSubScore({ primePower: 120, speedFigs: [] });
+  const figsOnly = S.speedSubScore({ speedFigs: [70, 70, 70] });
+  const both = S.speedSubScore({ primePower: 120, speedFigs: [70, 70, 70] });
+  const expected = ppOnly.score * 0.7 + figsOnly.score * 0.3;
+  assert.ok(Math.abs(both.score - expected) < 1e-6, `expected ${expected}, got ${both.score}`);
+});
+
+test('speedSubScore: no figs and no Prime Power still falls back to neutral 50', () => {
+  const r = S.speedSubScore({ speedFigs: [] });
+  assert.equal(r.score, 50);
+  assert.equal(r.n, 0);
+});
+
 // ── classSubScore ────────────────────────────────────────────────────────────
 test('classSubScore: dropping from G1 into ALW = big bonus', () => {
   const raceClass = S.classValueFor('ALW'); // 48

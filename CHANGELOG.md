@@ -1,5 +1,64 @@
 # NE Racing — Changelog
 
+## v2.49.21-brisnet — Prime Power scoring never matched its own documented calibration, since day one (2026-07-06)
+
+Owner pushed back hard on the two items flagged-but-not-fixed in v2.49.20
+("Keep digging") rather than accepting them as open questions. Resolved
+both by finding the actual source of truth instead of guessing.
+
+**Root cause, confirmed via git archaeology.** `speedSubScore()`'s Prime
+Power calculation (`((pp-90)/70)*100`) has carried the comment "Calibration:
+PP 100 → 30, PP 120 → 55, PP 140 → 80, PP 160 → 95" since the feature's very
+first ship. Checked the original **v2.46.0 CHANGELOG entry** (2026-06-05,
+over a month before this session started) — it documents that exact same
+calibration table as the shipped design intent, right next to that exact
+same formula. The formula has never actually produced those values: PP100
+gave 14.3 (not 30), PP120 gave 42.9 (not 55), PP140 gave 71.4 (not 80) — a
+13-16 point understatement across the range where most non-elite horses
+fall, live in production, for over a month. This isn't a formula that
+drifted from a comment; the shipped code has never matched its own
+documented spec.
+
+**Why a single linear tweak can't fix it:** the four calibration checkpoints
+aren't linear across their own range — 100→120→140 has a consistent slope
+of 1.25, but 140→160 flattens to 0.75 (presumably so truly elite Prime Power
+doesn't saturate the sub-score too early). No single `((pp-A)/B)*100`
+formula can hit all four points exactly. Fixed with piecewise-linear
+interpolation directly through the documented anchors, extrapolating past
+each end using its nearest segment's slope, clamped to [0,100]. Verified:
+PP100→30.00, PP120→55.00, PP140→80.00, PP160→95.00 — exact matches.
+
+**Second item: the fitted-weights train/serve skew, closed for real.**
+`scripts/training/extract_features.js` imports `scripts/lib/scoring.js`'s
+`speedSubScore()` to build the "speed" feature the conditional-logit fitter
+trains against — but that file's version was figs-only, with no Prime Power
+handling at all, while the live engine's speed score is Prime-Power-
+dominated (70% weight). Any weight fitted this way would have been
+calibrated against a feature with a completely different scale/distribution
+than what the live engine actually multiplies that weight against.
+Currently dormant (`data/weights/v2.json` has no fitted weights yet — the
+engine still runs on hand-picked defaults), but this closes it before it
+becomes live and silent. Ported the corrected, Prime-Power-aware
+`speedSubScore()` into `scripts/lib/scoring.js` so the training pipeline now
+computes the exact same speed feature the live engine uses. This is
+additive only (new `primePower` branch; existing figs-only behavior
+unchanged when `primePower` is absent) and does not touch the other two
+known, deliberate divergences between this file and the live inlined block
+(`dataCompleteness`'s Prime Power completeness shortcut, `confidenceFor`'s
+delegation to the separate `relativeConfidence` engine) — `tests/inline-
+scoring-sync.test.js` remains intentionally failing for those, unchanged.
+
+Files: `app.html`, `index.html` (`speedSubScore()`), `scripts/lib/
+scoring.js` (`speedSubScore()`), `sw.js`, `version.json`. Verified: two new
+tests in `tests/pick-selection-and-bet-eval-regressions.test.js` confirming
+the live engine's calibration is exact and extrapolation is sane, three new
+tests in `tests/scoring.test.js` confirming `scripts/lib/scoring.js`'s
+ported version matches the same calibration and blends correctly; all
+confirmed to fail against the pre-fix formula and pass after. Ran
+`extract_features.js` against local fixtures post-change — emits cleanly,
+no errors. Full test suite: 237 passing, 1 failing (same pre-existing,
+intentional scoring-sync failure — unaffected by this change), 1 skipped.
+
 ## v2.49.20-brisnet — Handicapping-engine audit: True-Pass gate, ticket tracking, Bet Evaluator (2026-07-06)
 
 Owner asked whether the app was fundamentally trustworthy after the v2.49.13-19

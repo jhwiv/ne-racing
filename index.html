@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260706-v2.49.20-brisnet';
+var NE_APP_VERSION = '20260706-v2.49.21-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260706-v2.49.20-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.20-brisnet';
+var RAILBIRD_VERSION = 'v2.49.21-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -266,9 +266,40 @@ function speedSubScore(horse) {
 
   // Prime Power scale: ~80 (slow claiming) to ~165 (Grade 1 elite). Map to 0..100.
   // Calibration: PP 100 → 30, PP 120 → 55, PP 140 → 80, PP 160 → 95.
+  //
+  // v2.49.21: this calibration table has been documented since the very
+  // first Prime Power ship (v2.46.0, 2026-06-05, see CHANGELOG.md) but the
+  // single linear formula that used to sit here (((pp-90)/70)*100) never
+  // actually produced it: PP100 gave 14.3 (not 30), PP120 gave 42.9 (not
+  // 55), PP140 gave 71.4 (not 80) -- understating real Prime Power's
+  // contribution by 13-16 points across the range where most non-elite
+  // horses fall, for over a month of live scoring. The four anchor points
+  // are not linear across their full range (100->120->140 has slope 1.25;
+  // 140->160 flattens to slope 0.75, presumably so truly elite PP doesn't
+  // saturate the sub-score too early), so no single linear formula can hit
+  // all four -- piecewise-linear interpolation through the documented
+  // anchors is the direct, faithful fix, extrapolating past each end using
+  // its nearest segment's slope.
+  const PP_CAL = [[100, 30], [120, 55], [140, 80], [160, 95]];
   let ppScore = null;
   if (pp != null) {
-    ppScore = Math.min(100, Math.max(0, ((pp - 90) / 70) * 100));
+    if (pp <= PP_CAL[0][0]) {
+      const slope = (PP_CAL[1][1] - PP_CAL[0][1]) / (PP_CAL[1][0] - PP_CAL[0][0]);
+      ppScore = PP_CAL[0][1] + slope * (pp - PP_CAL[0][0]);
+    } else if (pp >= PP_CAL[PP_CAL.length - 1][0]) {
+      const last = PP_CAL.length - 1;
+      const slope = (PP_CAL[last][1] - PP_CAL[last - 1][1]) / (PP_CAL[last][0] - PP_CAL[last - 1][0]);
+      ppScore = PP_CAL[last][1] + slope * (pp - PP_CAL[last][0]);
+    } else {
+      for (let i = 0; i < PP_CAL.length - 1; i++) {
+        if (pp >= PP_CAL[i][0] && pp <= PP_CAL[i + 1][0]) {
+          const slope = (PP_CAL[i + 1][1] - PP_CAL[i][1]) / (PP_CAL[i + 1][0] - PP_CAL[i][0]);
+          ppScore = PP_CAL[i][1] + slope * (pp - PP_CAL[i][0]);
+          break;
+        }
+      }
+    }
+    ppScore = Math.min(100, Math.max(0, ppScore));
   }
 
   let figScore = null;
