@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260706-v2.49.19-brisnet';
+var NE_APP_VERSION = '20260706-v2.49.20-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260706-v2.49.19-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.19-brisnet';
+var RAILBIRD_VERSION = 'v2.49.20-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -412,7 +412,14 @@ function dataCompleteness(horse) {
   // sub-3/7 and sub-4/7 penalty multipliers in compositeForHorse() do not
   // unfairly knock down well-documented Brisnet horses just because the
   // legacy fig/jky/trainer fields are sparse.
-  if (horse.primePower != null) return 1;
+  // v2.49.20: use the same >0 guard as jockeyPct/trainerPct above -- a real
+  // Brisnet Prime Power is never legitimately 0 (documented range ~80-165),
+  // so primePower:0 only occurs from malformed upstream data. `!= null`
+  // treated that as "fully complete" (return 1, no penalty) at the exact
+  // same time speedSubScore() computes the worst-possible speed sub-score
+  // for it -- a data-completeness signal directly contradicting the speed
+  // signal for the same malformed row.
+  if ((parseFloat(horse.primePower) || 0) > 0) return 1;
   return n / 7;
 }
 
@@ -10846,7 +10853,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
               <ul style="font-size:0.85rem;line-height:1.7;padding-left:1.2rem;margin-bottom:0.75rem">
                 <li>A bet has positive EV when the true win probability exceeds the implied probability of the tote odds</li>
                 <li>Implied probability = 1 / (decimal odds). At 4-1, implied probability = 20%. If you estimate the horse wins 28% of the time, that&rsquo;s an 8% overlay</li>
-                <li>This app&rsquo;s Advice Engine calculates overlay as: (modelProb - impliedProb) / impliedProb &mdash; values &gt; 0.08 (8% overlay) flag a horse as a &ldquo;Value Play&rdquo;</li>
+                <li>This app&rsquo;s Advice Engine calculates overlay as: modelProb - impliedProb (a straight percentage-point difference, matching the worked example above) &mdash; values &gt; 0.08 (8 points) flag a horse as a &ldquo;Value Play&rdquo;</li>
                 <li>Professional bettors focus exclusively on overlay &mdash; they don&rsquo;t care if a horse &ldquo;wins,&rdquo; they care if it wins MORE OFTEN than the odds price in</li>
                 <li>Key insight: you can be profitable betting horses that lose 70% of the time, as long as the 30% wins pay enough to overcome losses + takeout</li>
               </ul>
@@ -13716,6 +13723,16 @@ function renderBetEvalLegs(pool) {
   var existing = el('bet-eval-start-race');
   if (existing) startIdx = parseInt(existing.value || '0', 10) || 0;
 
+  // v2.49.20: legSelections is keyed by LEG INDEX, but which race sits under
+  // a given leg index changes whenever Start Race changes. Without this,
+  // a horse picked in one race silently re-renders as "active" (pre-selected)
+  // under a completely different race after switching the start race, and a
+  // stale pp can silently ride into the evaluated ticket.
+  if (_betEvalState._legStartIdx !== startIdx) {
+    _betEvalState.legSelections = {};
+    _betEvalState._legStartIdx = startIdx;
+  }
+
   for (var i = 0; i < n; i++) {
     var raceIdx = startIdx + i;
     var r = races[raceIdx];
@@ -13893,9 +13910,18 @@ function renderBetEvalResult(r) {
   var resEl = el('bet-eval-result');
   if (!resEl) return;
   var ev = r.expectedValue;
+  // v2.49.20: base the verdict purely on the sign of expectedValue (which
+  // already correctly accounts for takeout for every bet type). The old
+  // logic additionally required r.overlay.isOverlay for "OVERLAY" and its
+  // absence for "Underlay" -- but isOverlay ignores takeout while ev doesn't,
+  // so a real gray zone existed where a bet had positive isOverlay but
+  // negative ev, and BOTH branches fell through to "Fair" for a bet that
+  // actually loses money on average. It also meant evaluateExotic() and
+  // evaluateMultiRace() (which never set r.overlay at all) could never show
+  // "OVERLAY" even with strongly positive EV.
   var verdictClass = 'fair', verdictTxt = 'Fair';
-  if (r.overlay && r.overlay.isOverlay && ev > 0) { verdictClass = 'overlay'; verdictTxt = 'OVERLAY'; }
-  else if (ev < 0 && (!r.overlay || !r.overlay.isOverlay)) { verdictClass = 'underlay'; verdictTxt = 'Underlay'; }
+  if (ev > 0) { verdictClass = 'overlay'; verdictTxt = 'OVERLAY'; }
+  else if (ev < 0) { verdictClass = 'underlay'; verdictTxt = 'Underlay'; }
 
   var poolLabel = (r.type || '').toUpperCase();
   var probLine = (r.probability != null) ? ('Win-chain ' + _betEvalFmtPct(r.probability)) : '';
@@ -16571,11 +16597,17 @@ function relativeConfidence(scored, fieldSize) {
 // spec: <=3 unscratched runners, OR >50% scratches, OR no morning-line odds.
 function isTruePass(race, scored) {
   if (!scored || !scored.length) return true;
-  const all = scored.length;
-  const scratched = scored.filter(s => s.horse && s.horse.scratched).length;
-  const live = all - scratched;
+  const live = scored.length; // both scoring engines filter !h.scratched before scoring, so `scored` never contains a scratched horse
   if (live <= 3) return true;
-  if (all > 0 && (scratched / all) > 0.50) return true;
+  // v2.49.20: the scratch-ratio check previously computed scratched/all
+  // using `scored` for BOTH counts -- since `scored` is already scratch-free
+  // by construction, that ratio was always 0 and this branch could never
+  // fire, no matter how many horses actually scratched out of the race.
+  // Use the race's original, unfiltered field (race.horses, which still
+  // includes scratched entries) as the true denominator.
+  const fullField = (race && Array.isArray(race.horses)) ? race.horses.length : live;
+  const scratchedCount = fullField - live;
+  if (fullField > 0 && (scratchedCount / fullField) > 0.50) return true;
   // Odds check: a race with literally zero ML odds anywhere is degenerate.
   const withOdds = scored.filter(s => {
     const ml = s.horse && s.horse.ml;
@@ -16941,6 +16973,11 @@ function updateTopPicksCard(allScores) {
   const valuePlayCandidatesByRace = {};
   allScores.forEach(s => {
     if ((s.overlay || 0) <= 0.08 || s.score < 55 || s.race.id === bestBetRaceId) return;
+    // v2.49.20: Value Play never checked the True-Pass gate that Best Bet
+    // and Action Bet both enforce, so the app could recommend a real wager
+    // in a race the engine itself considers too thin to handicap (e.g. a
+    // <=3-live-runner field).
+    if (raceInfo[s.race.id] && raceInfo[s.race.id].truePass) return;
     const existing = valuePlayCandidatesByRace[s.race.id];
     if (!existing || s.score > existing.score) valuePlayCandidatesByRace[s.race.id] = s;
   });
@@ -17102,6 +17139,11 @@ function updateTopPicksCard(allScores) {
   let bestExoticRace = null;
   let bestExoticScore = -1;
   Object.entries(raceMap).forEach(([raceId, group]) => {
+    // v2.49.20: Exotic of the Day never checked the True-Pass gate, so it
+    // could land on the exact same race the Pass row already lists as
+    // "not enough edge to risk your bankroll" -- a direct on-screen
+    // contradiction on the same ticket.
+    if (raceInfo[raceId] && raceInfo[raceId].truePass) return;
     if (group.length >= 2 && group[0].score > bestExoticScore) {
       bestExoticScore = group[0].score;
       bestExoticRace = { raceId, group };
@@ -17161,7 +17203,10 @@ function updateTopPicksCard(allScores) {
   syncBettingModeUI();
 
   // Store ticket picks in localStorage for accuracy tracking
-  storeTicketPicks(bestBetEntry, valuePlays, topAction);
+  // v2.49.20: pass ALL displayed Action Bets (topActionBets), not just the
+  // #1-ranked one -- up to 5 render as equally-styled cards on the ticket,
+  // so expert-consensus tracking must see every one the user actually sees.
+  storeTicketPicks(bestBetEntry, valuePlays, topActionBets);
 }
 
 function buildTicketReason(s, race) {
@@ -17212,27 +17257,34 @@ function copyTicket() {
   }
 }
 
-function storeTicketPicks(bestBet, valuePlays, actionBet) {
+function storeTicketPicks(bestBet, valuePlays, actionBets) {
   const store = getStore();
   const code = getActiveTrack();
   const date = loadedRaceDate || getTodayStr();
   const key = 'ne-racing-ticket-' + code + '-' + date;
+  const topActionBet = (actionBets && actionBets[0]) ? actionBets[0] : null;
   const picks = {
     date,
     track: code,
     bestBet: bestBet ? { race: bestBet.race.num, pp: bestBet.horse.pp, name: bestBet.horse.name, score: bestBet.score } : null,
     valuePlays: valuePlays.map(v => ({ race: v.race.num, pp: v.horse.pp, name: v.horse.name, score: v.score, ml: v.horse.ml })),
-    actionBet: actionBet ? { race: actionBet.entry.race.num, pp: actionBet.entry.horse.pp, name: actionBet.entry.horse.name, score: actionBet.entry.score } : null,
-    expertConsensus: findExpertConsensusPicks(bestBet, valuePlays, actionBet)
+    actionBet: topActionBet ? { race: topActionBet.entry.race.num, pp: topActionBet.entry.horse.pp, name: topActionBet.entry.horse.name, score: topActionBet.entry.score } : null,
+    // v2.49.20: also store every displayed Action Bet (up to 5, per v2.40.2),
+    // not just the #1-ranked one -- all render as equally-styled cards on
+    // the ticket, so expert-consensus tracking below must see every one the
+    // user actually sees, not just the top pick. `actionBet` (singular)
+    // above is kept unchanged for any existing reader expecting that shape.
+    actionBets: (actionBets || []).map(a => ({ race: a.entry.race.num, pp: a.entry.horse.pp, name: a.entry.horse.name, score: a.entry.score })),
+    expertConsensus: findExpertConsensusPicks(bestBet, valuePlays, actionBets)
   };
   try { localStorage.setItem(key, JSON.stringify(picks)); } catch(e) {}
 }
 
-function findExpertConsensusPicks(bestBet, valuePlays, actionBet) {
+function findExpertConsensusPicks(bestBet, valuePlays, actionBets) {
   const all = [];
   if (bestBet && bestBet.expertMatchCount >= 2) all.push({ race: bestBet.race.num, pp: bestBet.horse.pp, name: bestBet.horse.name });
   valuePlays.forEach(v => { if (v.expertMatchCount >= 2) all.push({ race: v.race.num, pp: v.horse.pp, name: v.horse.name }); });
-  if (actionBet && actionBet.entry.expertMatchCount >= 2) all.push({ race: actionBet.entry.race.num, pp: actionBet.entry.horse.pp, name: actionBet.entry.horse.name });
+  (actionBets || []).forEach(a => { if (a.entry.expertMatchCount >= 2) all.push({ race: a.entry.race.num, pp: a.entry.horse.pp, name: a.entry.horse.name }); });
   return all;
 }
 

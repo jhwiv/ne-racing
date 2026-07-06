@@ -72,12 +72,22 @@ function parseOddsToNum(ml) {
 }
 
 /**
- * Overlay = (modelProb - impliedProb) / impliedProb
+ * Overlay = modelProb - impliedProb (a percentage-point difference).
  * Both probs in [0,1]. Returns 0 when impliedProb is non-positive.
+ *
+ * v2.49.20: this previously computed a RELATIVE edge
+ * ((modelProb-impliedProb)/impliedProb), but the live app's own overlay
+ * calculation (attachOverlay() in index.html/app.html) has always used the
+ * ABSOLUTE difference, and classifyOverlay()'s thresholds below are
+ * calibrated for that absolute scale (a relative edge routinely exceeds
+ * 0.15 and would misclassify almost everything as "big-overlay"). This
+ * module has no production callers today, so fixing it here is safe, but
+ * the mismatch would have silently broken badge classification the moment
+ * something started calling it.
  */
 function overlay(modelProb, impliedProb) {
   if (!impliedProb || impliedProb <= 0) return 0;
-  return (modelProb - impliedProb) / impliedProb;
+  return modelProb - impliedProb;
 }
 
 /**

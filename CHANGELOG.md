@@ -1,5 +1,108 @@
 # NE Racing — Changelog
 
+## v2.49.20-brisnet — Handicapping-engine audit: True-Pass gate, ticket tracking, Bet Evaluator (2026-07-06)
+
+Owner asked whether the app was fundamentally trustworthy after the v2.49.13-19
+bet-grading fixes, and asked for an audit-and-fix pass over the core
+handicapping/pick-selection engine specifically (the one major area not yet
+stress-tested this way). Three parallel audits covered the core scoring math,
+the Best Bet/Value Play/Action Bet/Exotic-of-the-Day pick-selection logic, and
+the standalone Bet Evaluator tool. Found and fixed five confirmed bugs, plus
+one dormant landmine and one documentation error:
+
+**`isTruePass()`'s "&gt;50% scratched" auto-Pass rule could never fire.** It computed
+`scratched / all` using the `scored` array — but both scoring engines already
+filter out scratched horses before `scored` is ever built, so `scratched` was
+provably always 0. A race with 60% of its field scratched but &gt;3 live runners
+remaining (and valid odds on the survivors) was NOT auto-classified as a Pass,
+contrary to the documented product rule ("&lt;=3 live runners, &gt;50% scratches, or
+no odds"), meaning a race gutted by scratches could still become the day's
+Best Bet or an Action Bet. Fixed to use the race's original, unfiltered
+`race.horses` (which the function already received as an unused parameter) as
+the true denominator.
+
+**Value Play and Exotic of the Day never checked the True-Pass gate at all**
+— unlike Best Bet and Action Bet, which both correctly exclude True-Pass
+races. Exotic of the Day could land on the exact same race the Pass row
+already lists as "not enough edge to risk your bankroll" — a direct,
+visible, on-screen contradiction on the same ticket. Value Play could
+silently recommend a real wager in a race the engine itself considers too
+thin to handicap. Both now check the same `raceInfo[raceId].truePass` flag
+Best Bet and Action Bet already use.
+
+**The ticket only ever recorded the #1-ranked Action Bet for expert-consensus
+tracking**, even though up to 5 render as equally-styled cards (raised from 3
+in v2.40.2). `storeTicketPicks()`/`findExpertConsensusPicks()` only received
+`topActionBets[0]`, silently discarding expert-match data for the other 4
+displayed picks — the same underlying failure mode v2.49.14 fixed for Expert
+Consensus, just via a different data-loss path. Now passes and checks the
+full `topActionBets` array; the singular `actionBet` ticket field is kept
+unchanged for backward compatibility, and a new `actionBets` array field
+stores all of them.
+
+**Bet Evaluator: switching "Start Race" for a multi-race bet (Pick 3-6) left
+stale horse selections from the previous race silently active.**
+`_betEvalState.legSelections` is keyed by leg INDEX, not by race — so
+picking a horse in Leg 1 while it mapped to Race 1, then changing Start Race
+so Leg 1 now maps to Race 3, left the Race-1 pick's program number rendering
+as "active" (pre-checked) under Race 3's completely different field (post
+positions restart at 1 every race, so pp collisions are the norm). A user
+who didn't notice could evaluate — or worse, later place — a bet on a horse
+they never actually selected. Fixed by clearing `legSelections` whenever the
+Start Race index changes.
+
+**Bet Evaluator: the verdict badge ("OVERLAY"/"Fair"/"Underlay") mislabeled
+genuinely losing bets as "Fair"** in a takeout gray zone — `isOverlay` doesn't
+account for takeout while `expectedValue` does, so a bet could have
+`isOverlay: true` and `ev &lt; 0` simultaneously, and neither branch's condition
+matched, falling through to "Fair". It also meant exotic/multi-race bets
+(whose evaluator functions never set `r.overlay` at all) could never show
+"OVERLAY" no matter how positive their EV. Fixed to base the verdict purely
+on the sign of `expectedValue`, which already correctly incorporates takeout
+for every bet type.
+
+**Smaller, bundled in:** `dataCompleteness()` treated `primePower: 0`
+(malformed data — a real Brisnet Prime Power is never legitimately 0) as
+"fully complete" via a `!= null` check, while `speedSubScore()` simultaneously
+computed the worst-possible speed score for the same value — two signals
+directly contradicting each other for the same bad row. Changed to the same
+`&gt; 0` guard already used for `jockeyPct`/`trainerPct`. Also fixed the About
+sheet's help text, which described the overlay formula as a relative
+percentage `(modelProb-impliedProb)/impliedProb` — the live app has always
+computed an absolute difference `modelProb-impliedProb` (the sheet's own
+worked example directly beneath it was already consistent with the absolute
+formula, just not the formula written one line below it). Fixed
+`scripts/lib/advice-utils.js`'s dormant `overlay()` helper to match the live
+absolute-difference formula for the same reason — it has zero production
+callers today, so this was safe, but would have silently broken badge
+classification the moment anything started calling it.
+
+**Reported, not fixed — flagged for a decision, not guessed at:** the audit
+also found (1) the live Prime-Power speed-score formula (`((pp-90)/70)*100`)
+does not produce the calibration its own adjacent comment claims (PP 120
+should map to ~55 per the comment; the formula actually gives ~42.9) — fixing
+this means changing real scoring output for every Prime-Power-driven horse,
+and it's genuinely ambiguous whether the formula or the comment is the bug,
+so this was not touched; and (2) the fitted-weights training pipeline
+(`scripts/training/extract_features.js`) computes its "speed" feature from
+the figs-only `scripts/lib/scoring.js`, while the live engine's speed score is
+Prime-Power-dominated — a train/serve skew that is currently dormant
+(`data/weights/v2.json` has no fitted weights yet) but would silently
+miscalibrate scoring the moment a fitted-weights file is deployed.
+
+Files: `app.html`, `index.html` (`isTruePass()`, the Value Play/Exotic-of-
+the-Day selection blocks, `storeTicketPicks()`/`findExpertConsensusPicks()`,
+`renderBetEvalLegs()`, `renderBetEvalResult()`, `dataCompleteness()`, the
+About-sheet overlay explainer), `scripts/lib/advice-utils.js`, `sw.js`,
+`version.json`. Verified: 11 new permanent regression tests in
+`tests/pick-selection-and-bet-eval-regressions.test.js` (vm-sandboxed,
+same pattern as the v2.49.13-19 regression file), each confirmed to fail
+against the pre-fix code before the fix and pass after; the Bet Evaluator's
+stale-leg-selection fix (which needs real DOM/state, not a pure data
+transform) was verified via a live Playwright script instead, confirmed
+failing pre-fix and passing post-fix. Full test suite: 230 passing, 1
+failing (same pre-existing, intentional scoring-sync failure), 1 skipped.
+
 ## (no version bump) — Locked the v2.49.13–19 bug fixes into permanent regression tests (2026-07-06)
 
 Every fix in the v2.49.13–19 run was verified live with a one-off Playwright

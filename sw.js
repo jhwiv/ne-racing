@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260706-v2.49.19-brisnet'; // v2.49.19: "Check Results" toast's still-pending count included ungraded bets from ALL past dates, not just today's card, making it look like results were outstanding long after the track actually closed and every one of today's races had graded               // bump on every ship
+const CACHE_VERSION = '20260706-v2.49.20-brisnet'; // v2.49.20: handicapping-engine audit — isTruePass's scratch-ratio gate could never fire, Value Play/Exotic of the Day ignored the True-Pass gate entirely, the ticket only tracked the #1 Action Bet for expert-consensus, and the standalone Bet Evaluator had a stale-leg-selection bug plus a mislabeled verdict badge               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

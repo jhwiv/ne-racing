@@ -67,9 +67,11 @@ test('parseOddsToNum: supports dash and slash fractions', () => {
   assert.equal(U.parseOddsToNum('3.5'), 3.5);
 });
 
-test('overlay: positive when model thinks horse is more likely than tote', () => {
-  assert.ok(Math.abs(U.overlay(0.20, 0.10) - 1.0) < 1e-9);
-  assert.ok(Math.abs(U.overlay(0.09, 0.10) - (-0.1)) < 1e-9);
+test('overlay: absolute percentage-point difference, matching the live app\'s attachOverlay()', () => {
+  // Matches app.html's own worked example in the About sheet: 28% model
+  // prob vs. 20% implied (4-1) tote odds = an 8-point overlay.
+  assert.ok(Math.abs(U.overlay(0.28, 0.20) - 0.08) < 1e-9);
+  assert.ok(Math.abs(U.overlay(0.09, 0.10) - (-0.01)) < 1e-9);
   assert.equal(U.overlay(0.20, 0), 0);
   assert.equal(U.overlay(0.20, -0.5), 0);
 });
