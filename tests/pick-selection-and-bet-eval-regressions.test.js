@@ -66,6 +66,7 @@ function makeElMap() {
 function makeSandbox(overrides) {
   const { el } = makeElMap();
   const sandbox = { el, console };
+  sandbox.window = sandbox; // browsers alias window to the global scope
   Object.assign(sandbox, overrides);
   return vm.createContext(sandbox);
 }
@@ -113,7 +114,7 @@ test('v2.49.20 regression: isTruePass still auto-Passes on <=3 live runners (pre
 test('v2.49.20 regression: findExpertConsensusPicks checks every displayed Action Bet, not just the #1-ranked one', () => {
   const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
   const ctx = makeSandbox({
-    getStore: () => ({}),
+    getStore: () => ({ settings: {} }), // no workerUrl -- logTicketPicksToEngine() no-ops
     getActiveTrack: () => 'SAR',
     getTodayStr: () => '2026-07-06',
     localStorage: { setItem: () => {} },
@@ -143,6 +144,134 @@ test('v2.49.20 regression: findExpertConsensusPicks checks every displayed Actio
   assert.ok(stored.expertConsensus.some(p => p.name === 'Consensus Pick B'));
   assert.equal(stored.actionBets.length, 3, 'all 3 displayed Action Bets must be stored');
   assert.equal(stored.actionBet.name, 'Top Score No Consensus', 'the singular actionBet field stays the #1 pick for backward compatibility');
+});
+
+// ── v2.49.22: Engine Accuracy — wiring the previously-unused server-side
+// ENGINE_ACCURACY system (worker.js POST /api/picks/log, POST
+// /api/picks/settle) into the client for the first time.
+function makeFakeStorage() {
+  const map = new Map();
+  return {
+    getItem: (k) => (map.has(k) ? map.get(k) : null),
+    setItem: (k, v) => { map.set(k, String(v)); },
+    removeItem: (k) => map.delete(k),
+  };
+}
+
+test('v2.49.22 regression: storeTicketPicks logs the Best Bet, Value Play, and Action Bet picks to /api/picks/log', async () => {
+  const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
+  const fetchCalls = [];
+  const fakeStorage = makeFakeStorage();
+  const ctx = makeSandbox({
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => '2026-07-06',
+    localStorage: fakeStorage,
+    fetch: async (url, opts) => { fetchCalls.push({ url, body: JSON.parse(opts.body) }); return { ok: true }; },
+  });
+  ctx.window.RailbirdEngine = { currentEngine: () => 'v2', deviceId: () => 'd_test' };
+  ctx.loadedRaceDate = null;
+
+  const bestBet = { race: { num: 1 }, horse: { pp: 3, name: 'Best Bet Horse', ml: '5-2' }, score: 82, modelProb: 0.35, expertMatchCount: 0 };
+  const valuePlays = [{ race: { num: 2 }, horse: { pp: 4, name: 'Value Horse', ml: '9-2' }, score: 60, modelProb: 0.2, expertMatchCount: 0 }];
+  const actionBets = [{ entry: { race: { num: 3 }, horse: { pp: 1, name: 'Action Horse', ml: '3-1' }, score: 58, modelProb: 0.18, expertMatchCount: 0 } }];
+
+  await vm.runInContext(src + '\nstoreTicketPicks(bestBet, valuePlays, actionBets);',
+    Object.assign(ctx, { bestBet, valuePlays, actionBets }));
+  // logTicketPicksToEngine fires async fetches; give the microtask queue a tick.
+  await new Promise((r) => setTimeout(r, 10));
+
+  assert.equal(fetchCalls.length, 3, 'must log exactly one pick per Best Bet / Value Play / Action Bet');
+  const byTag = Object.fromEntries(fetchCalls.map((c) => [c.body.betTag, c.body]));
+  assert.equal(byTag.best.pp, 3);
+  assert.equal(byTag.best.engine, 'v2');
+  assert.equal(byTag.best.amount, 2, 'must log a flat $2 reference stake, not the bankroll-scaled suggested amount');
+  assert.equal(byTag.value.pp, 4);
+  assert.equal(byTag.action.pp, 1);
+  assert.ok(fetchCalls.every((c) => c.url === 'https://fake.test/api/picks/log'));
+});
+
+test('v2.49.22 regression: logPickToEngine does not re-POST an already-logged pick (idempotency guard)', async () => {
+  const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
+  const fetchCalls = [];
+  const fakeStorage = makeFakeStorage();
+  const ctx = makeSandbox({
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => '2026-07-06',
+    localStorage: fakeStorage,
+    fetch: async (url, opts) => { fetchCalls.push(JSON.parse(opts.body)); return { ok: true }; },
+  });
+  ctx.window.RailbirdEngine = { currentEngine: () => 'v2', deviceId: () => 'd_test' };
+  ctx.loadedRaceDate = null;
+
+  const bestBet = { race: { num: 1 }, horse: { pp: 3, name: 'Best Bet Horse', ml: '5-2' }, score: 82, modelProb: 0.35 };
+  await vm.runInContext(src + '\nlogPickToEngine("best", bestBet);', Object.assign(ctx, { bestBet }));
+  await new Promise((r) => setTimeout(r, 10));
+  await vm.runInContext('logPickToEngine("best", bestBet);', ctx);
+  await new Promise((r) => setTimeout(r, 10));
+
+  assert.equal(fetchCalls.length, 1, 'a second call for the identical pick must not re-POST once the first call succeeded');
+});
+
+test('v2.49.22 regression: settleEnginePicksForRace reads the ticket\'s engine and posts the real finishing position/payout', async () => {
+  const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
+  const fetchCalls = [];
+  const fakeStorage = makeFakeStorage();
+  fakeStorage.setItem('ne-racing-ticket-SAR-2026-07-06', JSON.stringify({
+    date: '2026-07-06', track: 'SAR', engine: 'v2',
+    bestBet: { race: 4, pp: 3, name: 'Best Bet Horse', score: 82 },
+    valuePlays: [], actionBets: [],
+  }));
+  const ctx = makeSandbox({
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => '2026-07-06',
+    localStorage: fakeStorage,
+    fetch: async (url, opts) => { fetchCalls.push(JSON.parse(opts.body)); return { ok: true }; },
+  });
+  ctx.loadedRaceDate = null;
+
+  const raceResult = { raceNumber: 4, results: [
+    { position: 1, pp: 3, horseName: 'Best Bet Horse', winPayout: 6.4 },
+    { position: 2, pp: 5, horseName: 'Runner Up' },
+  ] };
+  await vm.runInContext(src + '\nsettleEnginePicksForRace(4, raceResult);', Object.assign(ctx, { raceResult }));
+  await new Promise((r) => setTimeout(r, 10));
+
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls[0].engine, 'v2', 'must read the engine tag from the stored ticket, not assume a default');
+  assert.equal(fetchCalls[0].position, 1);
+  assert.equal(fetchCalls[0].payout, 6.4);
+});
+
+test('v2.49.22 regression: settleEnginePicksForRace reports a losing pick with payout 0, not the winner\'s payout', () => {
+  const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
+  const fetchCalls = [];
+  const fakeStorage = makeFakeStorage();
+  fakeStorage.setItem('ne-racing-ticket-SAR-2026-07-06', JSON.stringify({
+    date: '2026-07-06', track: 'SAR', engine: 'v1',
+    bestBet: { race: 4, pp: 5, name: 'Runner Up', score: 70 }, // this ticket's pick FINISHED 2nd
+    valuePlays: [], actionBets: [],
+  }));
+  const ctx = makeSandbox({
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => '2026-07-06',
+    localStorage: fakeStorage,
+    fetch: async (url, opts) => { fetchCalls.push(JSON.parse(opts.body)); return { ok: true }; },
+  });
+  ctx.loadedRaceDate = null;
+
+  const raceResult = { raceNumber: 4, results: [
+    { position: 1, pp: 3, horseName: 'Best Bet Horse', winPayout: 6.4 },
+    { position: 2, pp: 5, horseName: 'Runner Up' },
+  ] };
+  vm.runInContext(src + '\nsettleEnginePicksForRace(4, raceResult);', Object.assign(ctx, { raceResult }));
+
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls[0].position, 2);
+  assert.equal(fetchCalls[0].payout, 0, 'a non-winning pick must settle with payout 0, never the actual winner\'s payout');
 });
 
 // ── Bet Evaluator verdict badge: base on ev sign, not a takeout-blind flag ─

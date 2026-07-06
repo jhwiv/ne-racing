@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260706-v2.49.21-brisnet';
+var NE_APP_VERSION = '20260706-v2.49.22-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260706-v2.49.21-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.21-brisnet';
+var RAILBIRD_VERSION = 'v2.49.22-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10692,6 +10692,22 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         </div>
       </div>
 
+      <!-- v2.49.22: Engine Accuracy -- server-tracked, cross-device, real-
+           result record of the engine's OWN picks (independent of what any
+           one user actually staked). Wires the already-built worker.js
+           ENGINE_ACCURACY KV system into the UI for the first time. -->
+      <div class="card mb-2">
+        <div class="card-header">
+          <h3>Engine Accuracy <span class="text-xs text-muted" style="font-weight:400">— all real picks, server-tracked</span></h3>
+        </div>
+        <div class="card-body">
+          <div id="engine-accuracy-body">
+            <p class="text-muted text-sm">Loading…</p>
+          </div>
+          <button class="btn btn-ghost btn-sm mt-1" onclick="refreshEngineAccuracy()">Refresh</button>
+        </div>
+      </div>
+
       <!-- Result bet buttons -->
       <div class="flex gap-1 mb-2">
         <button class="btn btn-ghost btn-sm" onclick="fetchLiveResults()">
@@ -17298,6 +17314,10 @@ function storeTicketPicks(bestBet, valuePlays, actionBets) {
   const picks = {
     date,
     track: code,
+    // v2.49.22: which engine produced this ticket, so settleEnginePicksForRace()
+    // can tag the outcome correctly when results come in, possibly after a
+    // reload (the live A/B toggle state at settle time may differ from build time).
+    engine: (window.RailbirdEngine && window.RailbirdEngine.currentEngine) ? window.RailbirdEngine.currentEngine() : 'v1',
     bestBet: bestBet ? { race: bestBet.race.num, pp: bestBet.horse.pp, name: bestBet.horse.name, score: bestBet.score } : null,
     valuePlays: valuePlays.map(v => ({ race: v.race.num, pp: v.horse.pp, name: v.horse.name, score: v.score, ml: v.horse.ml })),
     actionBet: topActionBet ? { race: topActionBet.entry.race.num, pp: topActionBet.entry.horse.pp, name: topActionBet.entry.horse.name, score: topActionBet.entry.score } : null,
@@ -17310,6 +17330,108 @@ function storeTicketPicks(bestBet, valuePlays, actionBets) {
     expertConsensus: findExpertConsensusPicks(bestBet, valuePlays, actionBets)
   };
   try { localStorage.setItem(key, JSON.stringify(picks)); } catch(e) {}
+
+  // v2.49.22: also log these same picks to the server-side ENGINE_ACCURACY
+  // system (worker.js POST /api/picks/log) so there's a durable, cross-
+  // device, real-outcome record of whether the engine's OWN picks win --
+  // independent of what the user actually staked, and surviving a cleared
+  // localStorage. This system has existed in the worker since "PR #2" but
+  // was never called from anywhere in the client until now.
+  try { logTicketPicksToEngine(bestBet, valuePlays, actionBets); } catch(e) {}
+}
+
+// ── Engine accuracy: server-side pick logging + settlement (v2.49.22) ──────
+// Wires the already-built worker.js endpoints (POST /api/picks/log,
+// POST /api/picks/settle, GET /api/picks/stats) into the client. Guards
+// every call with a client-side "already sent" cache purely to avoid
+// flooding the worker with redundant identical requests on every re-render
+// -- the KV keys themselves (pick:{track}:{date}:{race}:{engine}:{pp}) are
+// already idempotent PUTs, so a duplicate call is harmless, just wasteful.
+function _engineAccuracyKeyCache(storageKey) {
+  try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) { return {}; }
+}
+function _engineAccuracyMarkSent(storageKey, cacheKey) {
+  try {
+    var m = _engineAccuracyKeyCache(storageKey);
+    m[cacheKey] = true;
+    var keys = Object.keys(m);
+    if (keys.length > 500) { keys.slice(0, keys.length - 500).forEach(function(k){ delete m[k]; }); }
+    localStorage.setItem(storageKey, JSON.stringify(m));
+  } catch(e) {}
+}
+
+function logPickToEngine(pickTag, entry) {
+  if (!entry || !entry.race || !entry.horse) return;
+  var store = getStore();
+  var workerUrl = store && store.settings.workerUrl;
+  if (!workerUrl) return;
+  var engine = (window.RailbirdEngine && window.RailbirdEngine.currentEngine) ? window.RailbirdEngine.currentEngine() : 'v1';
+  var track = getActiveTrack();
+  var date = loadedRaceDate || getTodayStr();
+  var race = entry.race.num;
+  var pp = entry.horse.pp;
+  var cacheKey = track + ':' + date + ':' + race + ':' + engine + ':' + pp + ':' + pickTag;
+  var sent = _engineAccuracyKeyCache('ne-racing-logged-picks');
+  if (sent[cacheKey]) return;
+  fetch(workerUrl + '/api/picks/log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      engine: engine, track: track, date: date, race: race, pp: pp,
+      horseName: entry.horse.name, betType: 'Win', betTag: pickTag,
+      // Flat $2 reference stake, independent of any bankroll-scaled suggested
+      // amount on the ticket -- this is an engine-comparison record, not a
+      // real wager, and must stay comparable across days/devices/users.
+      amount: 2,
+      score: entry.score, prob: entry.modelProb, ml: entry.horse.ml,
+      deviceId: (window.RailbirdEngine && window.RailbirdEngine.deviceId) ? window.RailbirdEngine.deviceId() : null,
+    }),
+  }).then(function(res) {
+    if (res && res.ok) _engineAccuracyMarkSent('ne-racing-logged-picks', cacheKey);
+  }).catch(function() {});
+}
+
+function logTicketPicksToEngine(bestBet, valuePlays, actionBets) {
+  if (bestBet) logPickToEngine('best', bestBet);
+  (valuePlays || []).forEach(function(v) { logPickToEngine('value', v); });
+  (actionBets || []).forEach(function(a) { logPickToEngine('action', a.entry); });
+}
+
+function settleEnginePicksForRace(raceNum, raceResult) {
+  if (!raceResult || !raceResult.results || !raceResult.results.length) return;
+  var store = getStore();
+  var workerUrl = store && store.settings.workerUrl;
+  if (!workerUrl) return;
+  var track = getActiveTrack();
+  var date = loadedRaceDate || getTodayStr();
+  var ticketKey = 'ne-racing-ticket-' + track + '-' + date;
+  var ticket;
+  try { ticket = JSON.parse(localStorage.getItem(ticketKey)); } catch(e) { return; }
+  if (!ticket) return;
+  var engine = ticket.engine || 'v1';
+
+  var picks = [];
+  if (ticket.bestBet && ticket.bestBet.race === raceNum) picks.push(ticket.bestBet);
+  (ticket.valuePlays || []).forEach(function(v) { if (v.race === raceNum) picks.push(v); });
+  (ticket.actionBets || []).forEach(function(a) { if (a.race === raceNum) picks.push(a); });
+  if (!picks.length) return;
+
+  picks.forEach(function(p) {
+    var finisher = raceResult.results.find(function(f) { return String(f.pp) === String(p.pp); });
+    if (!finisher) return;
+    var cacheKey = track + ':' + date + ':' + raceNum + ':' + engine + ':' + p.pp;
+    var settled = _engineAccuracyKeyCache('ne-racing-settled-picks');
+    if (settled[cacheKey]) return;
+    var position = finisher.position;
+    var payout = (position === 1 && finisher.winPayout) ? parseFloat(finisher.winPayout) : 0;
+    fetch(workerUrl + '/api/picks/settle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ engine: engine, track: track, date: date, race: raceNum, pp: p.pp, position: position, payout: payout }),
+    }).then(function(res) {
+      if (res && res.ok) _engineAccuracyMarkSent('ne-racing-settled-picks', cacheKey);
+    }).catch(function() {});
+  });
 }
 
 function findExpertConsensusPicks(bestBet, valuePlays, actionBets) {
@@ -18673,6 +18795,42 @@ function renderResultsTab() {
   renderBetTypeBreakdown();
   renderResultsList();
   renderAdviceReportCard();
+  refreshEngineAccuracy();
+}
+
+// v2.49.22: fetch and render the server-side, cross-device Engine Accuracy
+// stats (GET /api/picks/stats) -- real win-rate/ROI for each engine version,
+// computed from actual settled picks, not the user's own betting behavior.
+function refreshEngineAccuracy() {
+  var body = el('engine-accuracy-body');
+  if (!body) return;
+  var store = getStore();
+  var workerUrl = store && store.settings.workerUrl;
+  if (!workerUrl) {
+    body.innerHTML = '<p class="text-muted text-sm">Set a Worker URL in Settings to enable this.</p>';
+    return;
+  }
+  body.innerHTML = '<p class="text-muted text-sm">Loading…</p>';
+  fetch(workerUrl + '/api/picks/stats')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var engines = (data && data.engines) || {};
+      var order = ['v2', 'v1', 'baseline_ml'];
+      var labels = { v2: 'v2 engine (current)', v1: 'v1 engine (legacy)', baseline_ml: 'Morning-line favorite' };
+      var rows = order.filter(function(e) { return engines[e]; }).map(function(e) {
+        var s = engines[e];
+        var wl = s.settled ? (s.wins + '-' + (s.settled - s.wins) + ' (' + (s.winRate * 100).toFixed(1) + '%)') : '— (—%)';
+        var roi = s.roi != null ? fmtPct(s.roi * 100) : '—';
+        return '<div class="flex justify-between items-center mb-1">' +
+          '<span class="font-semibold text-sm">' + labels[e] + '</span>' +
+          '<span class="mono text-sm">' + wl + ' · ROI ' + roi + ' · n=' + s.settled + '</span>' +
+        '</div>';
+      }).join('');
+      body.innerHTML = rows || '<p class="text-muted text-sm">No settled picks yet — check back after today’s races finish.</p>';
+    })
+    .catch(function() {
+      body.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable, or this endpoint isn’t deployed yet).</p>';
+    });
 }
 
 function getResultsBets() {
@@ -21070,6 +21228,13 @@ async function fetchLiveResults() {
     // Update cache (now with .results populated)
     setCachedResults(code, today, allRaces);
 
+    // v2.49.22: settle any logged engine picks (Best Bet/Value Play/Action
+    // Bet) whose race just got results, independent of the straight-bet
+    // grading below (which only touches the user's own placed bets).
+    allRaces.forEach(function(rr) {
+      try { settleEnginePicksForRace(rr.raceNumber, rr); } catch(e) {}
+    });
+
     // Store results on race objects for Today tab inline display
     var data = getTrackData();
     // v2.47.2: stamp races touched by the results merge so the Updated
@@ -21392,6 +21557,14 @@ function resolveFromCachedResults() {
   // silently exited at the `.results.length` guard below and never graded
   // bets on app reload. Re-normalize on read so legacy caches still work.
   try { cached.forEach(function(rr){ _normalizeRaceResult(rr); }); } catch(_){}
+
+  // v2.49.22: settle logged engine picks from cache too -- this must not be
+  // gated on the user having any ungraded bets of their own (the early
+  // return just below), since engine-pick settlement is independent of
+  // what the user actually staked.
+  cached.forEach(function(rr) {
+    try { settleEnginePicksForRace(rr.raceNumber, rr); } catch(e) {}
+  });
 
   var data = getTrackData();
   var bets = (data.bets || []).filter(function(b) { return !b.result && (!b.date || b.date === today); });

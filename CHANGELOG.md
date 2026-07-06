@@ -1,5 +1,71 @@
 # NE Racing — Changelog
 
+## v2.49.22-brisnet — Wired up the never-connected server-side Engine Accuracy system (2026-07-06)
+
+Owner's real complaint, restated bluntly: tired of surfacing problems one
+prompt at a time, wants the app actually measured against reality instead
+of more bug reports. Found the answer while investigating what a genuine
+backtest would need: `worker.js` already has a complete, working
+pick-tracking system — `POST /api/picks/log`, `POST /api/picks/settle`,
+`GET /api/picks/stats` — that logs a pick, settles it against the real
+result, and computes real win-rate/ROI per engine version (v1, v2,
+baseline_ml), durable in Cloudflare KV, independent of any one device's
+localStorage. It's labeled "PR #2" in the code and has clearly existed for
+a while. **The client has never once called it.** Grepped `app.html` for
+every one of those three paths — zero matches, anywhere.
+
+This is the real reason nothing has ever durably answered "does this app's
+advice actually work": the only accuracy tracking that has ever run is
+per-device localStorage math (the tiles fixed earlier today) — it resets on
+a cleared browser, doesn't survive a device switch, and grades what the
+*user* staked, not what the *engine* actually picked.
+
+**Wired it up for real:**
+- `storeTicketPicks()` now also POSTs the Best Bet, every Value Play, and
+  every displayed Action Bet to `/api/picks/log` the moment the daily
+  ticket builds — tagged with the live engine (v1/v2), a flat $2 reference
+  stake (so the comparison stays meaningful across days/bankrolls), and the
+  model's own score/probability/morning-line odds. The ticket itself now
+  also stores which engine produced it, so settlement later can tag the
+  outcome correctly even after a page reload.
+- `fetchLiveResults()` and `resolveFromCachedResults()` (the live-poll and
+  on-reload result paths) now also call the new `settleEnginePicksForRace()`
+  for every race that gets results — independent of whether the user
+  placed any bet of their own — POSTing the real finishing position and win
+  payout to `/api/picks/settle`.
+- New "Engine Accuracy" card on the Results & Bankroll tab, fetching
+  `/api/picks/stats` and showing real win-loss record and ROI per engine,
+  server-computed from actual settled picks.
+- All calls are wrapped in `try/catch` and guarded by a client-side
+  "already sent" cache keyed to the exact pick (the KV writes themselves
+  are idempotent PUTs, so a duplicate call is harmless — the cache purely
+  avoids flooding the worker with redundant identical requests on re-renders).
+
+**Depends on infrastructure outside this repo — action items for the
+maintainer, not something committing code can verify:** `worker.js` is
+deployed separately via `wrangler deploy`, never automatically from git, so
+this only works once the currently-deployed worker actually has these
+endpoints (confirm the deployed worker matches this repo's `worker.js`, or
+redeploy it). The endpoints also require the `ENGINE_ACCURACY` KV
+namespace to be bound in the Cloudflare dashboard — if it isn't yet, create
+and bind it first (`if (!env.ENGINE_ACCURACY) return jsonError(...)` is the
+existing guard in the worker code).
+
+Files: `app.html`, `index.html` (`storeTicketPicks()`, new
+`logPickToEngine()`/`logTicketPicksToEngine()`/`settleEnginePicksForRace()`,
+`fetchLiveResults()`, `resolveFromCachedResults()`, new
+`refreshEngineAccuracy()` + Engine Accuracy card, `renderResultsTab()`),
+`sw.js`, `version.json`. Verified via a live Playwright script mocking the
+worker's three endpoints end-to-end: confirmed a built ticket POSTs the
+correct body to `/api/picks/log`, confirmed a subsequent live-results fetch
+POSTs the correct win position/payout to `/api/picks/settle`, and confirmed
+the Engine Accuracy card renders the mocked stats correctly. Also added 5
+new permanent regression tests (logging body shape, idempotency guard,
+settlement reading the ticket's stored engine, and a losing pick settling
+with payout 0 rather than the winner's payout). Full test suite: 241
+passing, 1 failing (same pre-existing, intentional scoring-sync failure),
+1 skipped.
+
 ## v2.49.21-brisnet — Prime Power scoring never matched its own documented calibration, since day one (2026-07-06)
 
 Owner pushed back hard on the two items flagged-but-not-fixed in v2.49.20

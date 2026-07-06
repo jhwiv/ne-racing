@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260706-v2.49.21-brisnet'; // v2.49.21: fixed the Prime Power speed-score formula, which never matched its own documented calibration since the very first ship — real-money scoring was silently understating Prime Power's contribution by 13-16 points across most of the field for over a month               // bump on every ship
+const CACHE_VERSION = '20260706-v2.49.22-brisnet'; // v2.49.22: wired the previously-unused server-side ENGINE_ACCURACY system into the client — every Best Bet/Value Play/Action Bet is now logged and settled against real results, with a new Engine Accuracy card showing real, durable, cross-device win-rate and ROI per engine version               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
