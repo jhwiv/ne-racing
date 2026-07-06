@@ -1,5 +1,64 @@
 # NE Racing — Changelog
 
+## v2.49.15-brisnet — CRITICAL: wizard-built Daily Double/Pick 3-6 bets always graded as a loss (2026-07-06)
+
+Found during a full audit for more instances of the same key/type-shape
+mismatch class that caused the v2.49.13 Exacta Box bug — this one is
+worse, because it fails silently in the *wrong* direction: it doesn't
+get stuck pending, it confidently tells the user they lost when they
+may have won every leg.
+
+Root cause: the full bet-builder wizard's `wizLockBet()` writes each
+multi-race exotic's per-leg selections keyed as `'leg_0'`, `'leg_1'`,
+`'leg_2'`, etc. But `resolveMultiRaceBet()` — the function that grades
+Daily Double / Pick 3 / Pick 4 / Pick 5 / Pick 6 bets against official
+results — only ever looked up a leg's picks via `selections[leg]`,
+`selections[String(raceNum)]`, or `selections['pos_' + leg]`. None of
+those match `leg_N`, so every leg's selection lookup fell through to an
+empty array, `legCorrect` was always false, and `allCorrect` was always
+false. Every wizard-built multi-race exotic bet graded `'loss'`
+unconditionally — including ones where every single leg actually won.
+
+Fixed with a one-line additive fallback in `resolveMultiRaceBet()`:
+`selections[leg] || selections[String(rn)] || selections['pos_' + leg]
+|| selections['leg_' + leg] || []`. Purely additive — the three existing
+fallback branches (used by other selection shapes) are untouched, and
+`wizLockBet()`'s write side is untouched so already-placed bets in
+users' localStorage keep grading correctly.
+
+While verifying this fix, found a second, more severe bug in the same
+selections-shape duality: `deduplicateBets()` (runs unguarded at the
+very top of `initApp()`, before the date strip, tab content, drawer,
+or odds table render) built its per-bet dedup key with
+`(bet.selections || []).join(',')` — which assumes `selections` is
+always an array. For any multi-race exotic it's actually the `leg_N`-
+keyed object described above, so `.join` doesn't exist on it and the
+call throws uncaught. Since this runs before almost everything else in
+`initApp()`, any user with a multi-race exotic bet plus one other bet
+on the books would have the rest of app initialization silently abort
+on load. Fixed by only calling `.join` on real arrays and falling back
+to `JSON.stringify(bet.selections || {})` for object-shaped selections
+— produces the same dedup key as before for every existing array-shaped
+bet, and a stable (if different) key for object-shaped ones instead of
+throwing.
+
+Files: `app.html`, `index.html` (`resolveMultiRaceBet()`,
+`deduplicateBets()`), `sw.js`,
+`version.json`. Verified via Playwright: seeded a 3-leg Pick 3 bet with
+`selections: {leg_0:[...], leg_1:[...], leg_2:[...]}` (the exact shape
+`wizLockBet()` produces), a losing-leg variant, and a legacy numeric-key
+Daily Double (`selections: {0:[...], 1:[...]}`), all alongside mocked
+official results. On unpatched code: confirmed a page-load exception
+(`TypeError: (bet.selections || []).join is not a function`) from
+`deduplicateBets()`, and confirmed the clean-sweep Pick 3 graded `'loss'`
+despite every leg winning (both bugs reproduced). After the fix: no
+page errors, the clean-sweep Pick 3 grades `'win'` with the correct
+payout, the losing-leg variant still correctly grades `'loss'`, and the
+legacy numeric-key bet still grades `'win'` via the pre-existing
+fallback — no regression to any other lookup path. Full test suite: 206
+passing, 1 failing (same pre-existing, intentional scoring-sync
+failure), no regressions.
+
 ## v2.49.14-brisnet — Fixed the "Expert Consensus" accuracy metric (2026-07-05)
 
 Owner asked directly: look at the very low success rate of the expert

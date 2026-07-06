@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260705-v2.49.14-brisnet'; // v2.49.14: fixed the "Expert Consensus" accuracy metric — it was measuring whether the USER also happened to place a winning bet on a consensus-flagged horse, not whether the horse actually won, silently discarding most real expert-pick wins and reporting a falsely terrible success rate               // bump on every ship
+const CACHE_VERSION = '20260706-v2.49.15-brisnet'; // v2.49.15: fixed wizard-built Daily Double/Pick 3-6 bets — resolveMultiRaceBet() never read the 'leg_N' selection keys wizLockBet() actually writes, so every leg fell through to an empty array and every multi-race exotic graded as a loss regardless of the real outcome               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
