@@ -1,5 +1,36 @@
 # NE Racing — Changelog
 
+## v2.49.19-brisnet — "Check Results" toast reported stale bets as pending long after the track closed (2026-07-06)
+
+Reported live with a screenshot: the app showed "Checked — no new results
+yet (11 still pending)" well after the track had closed for the day, even
+though Today's Results showed every visible race already graded WIN/LOSS/
+SCRATCHED.
+
+Root cause in `fetchLiveResults()`: the bet-resolution loop correctly skips
+bets from other dates (`if (bet.date && bet.date !== today) return;`), but
+the "still pending" count a few lines later — `bets.filter(b => !b.result)`
+— reused the same unscoped `bets` array (`data.bets || []`, every bet ever
+placed on this track) with no date filter at all. Any bet from a prior day
+that never got graded (an old race whose cached results have since aged
+out, or a straggler from before this session's earlier grading fixes)
+permanently inflated this count, so the toast could keep reporting "N still
+pending" indefinitely even when today's entire card had already resolved.
+`resolveFromCachedResults()` (the app-reload path) already scoped its own
+version of this same computation to today's bets — `fetchLiveResults()`'s
+toast just never got the matching filter.
+
+Fixed by applying the same `(!b.date || b.date === today)` guard already
+used everywhere else in this function to the pending count.
+
+Files: `app.html`, `index.html` (`fetchLiveResults()`), `sw.js`,
+`version.json`. Verified via Playwright: seeded today's only bet already
+graded, plus two orphaned ungraded bets dated a month earlier — confirmed
+the toast read "Checked — no new results yet (2 still pending)" pre-fix
+despite today's card being fully resolved, and "Checked — no new results
+yet" (no stale count) post-fix. Full test suite: 206 passing, 1 failing
+(same pre-existing, intentional scoring-sync failure), no regressions.
+
 ## v2.49.18-brisnet — "Overall Advice Engine ROI" was really just "Your Bet ROI" minus exotics (2026-07-06)
 
 Last fix from the same audit that produced v2.49.15/16/17.

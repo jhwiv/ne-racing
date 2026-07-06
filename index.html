@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260706-v2.49.18-brisnet';
+var NE_APP_VERSION = '20260706-v2.49.19-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260706-v2.49.18-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.18-brisnet';
+var RAILBIRD_VERSION = 'v2.49.19-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -21143,7 +21143,14 @@ async function fetchLiveResults() {
     refreshStatusTabIfActive();
 
     var racesResolved = allRaces.length;
-    var pending = bets.filter(function(b) { return !b.result; }).length;
+    // v2.49.19: scope the "still pending" count to today's bets, matching the
+    // date guard the resolution loop above already applies (and the same
+    // scoping resolveFromCachedResults() uses). Without this, any bet from a
+    // prior day that was never graded (e.g. an old race whose cached results
+    // have since aged out) permanently inflates this count, making it look
+    // like today's card still has results outstanding long after the track
+    // has closed and every one of today's races has actually graded.
+    var pending = bets.filter(function(b) { return !b.result && (!b.date || b.date === today); }).length;
     if (updated > 0) {
       showToast(updated + ' bet(s) auto-resolved from ' + racesResolved + ' race result(s)' + (pending > 0 ? ' \u2014 ' + pending + ' still pending' : ''), 'success', 4000);
     } else {
