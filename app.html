@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260706-v2.49.22-brisnet';
+var NE_APP_VERSION = '20260706-v2.49.23-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260706-v2.49.22-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.22-brisnet';
+var RAILBIRD_VERSION = 'v2.49.23-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10430,7 +10430,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <section id="tab-status" class="tab-panel" role="tabpanel" aria-label="Today&rsquo;s Results">
       <h2 class="section-title">Today&rsquo;s Results</h2>
       <div class="flex gap-1 mb-2">
-        <button class="btn btn-ghost btn-sm" onclick="fetchLiveResults()">
+        <button class="btn btn-ghost btn-sm" onclick="fetchLiveResults(true)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           Check Results (Live)
         </button>
@@ -10710,7 +10710,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 
       <!-- Result bet buttons -->
       <div class="flex gap-1 mb-2">
-        <button class="btn btn-ghost btn-sm" onclick="fetchLiveResults()">
+        <button class="btn btn-ghost btn-sm" onclick="fetchLiveResults(true)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           Check Results (Live)
         </button>
@@ -17168,12 +17168,33 @@ function updateTopPicksCard(allScores) {
   // ── Pass Races ──
   if (passRaceNums.length) {
     passRaceNums.sort((a,b) => a - b);
-    html += `<div class="rec-bet-item card-pass">
-      <div class="rec-bet-tag rec-tag-pass">&#9940; Pass</div>
-      <div class="card-explainer">Not enough edge to risk your bankroll here</div>
-      <div class="pass-races-line">Races ${passRaceNums.join(', ')} \u2014 Save bankroll</div>
-    </div>`;
-    ticketLines.push(`PASS — Races ${passRaceNums.join(', ')}`);
+    // v2.49.23: distinguish "no odds posted yet" (a future-date data-
+    // availability fact) from "the model checked and there's no edge."
+    // Reported live: viewing a card several days out, EVERY race showed
+    // "Pass -- Save bankroll", reading as "nothing here is worth betting"
+    // when the real reason is that morning-line odds simply haven't posted
+    // for that date yet -- isTruePass()'s zero-odds gate fires the same way
+    // across the whole card in that case, with no other signal to
+    // distinguish it from a genuinely thin/bad card.
+    const anyOddsOnCard = allScores.some(s => {
+      const ml = s.horse && s.horse.ml;
+      return ml && parseOddsToNum(ml) > 0;
+    });
+    if (!anyOddsOnCard) {
+      html += `<div class="rec-bet-item card-pass">
+        <div class="rec-bet-tag rec-tag-pass">&#128197; No Odds Yet</div>
+        <div class="card-explainer">Morning-line odds haven’t posted for this date yet \u2014 advice needs real odds to work with</div>
+        <div class="pass-races-line">Races ${passRaceNums.join(', ')} \u2014 check back closer to post time</div>
+      </div>`;
+      ticketLines.push(`NO ODDS YET — Races ${passRaceNums.join(', ')} (check back closer to post time)`);
+    } else {
+      html += `<div class="rec-bet-item card-pass">
+        <div class="rec-bet-tag rec-tag-pass">&#9940; Pass</div>
+        <div class="card-explainer">Not enough edge to risk your bankroll here</div>
+        <div class="pass-races-line">Races ${passRaceNums.join(', ')} \u2014 Save bankroll</div>
+      </div>`;
+      ticketLines.push(`PASS — Races ${passRaceNums.join(', ')}`);
+    }
 
     // v2.40.2: Jim's Way fallback per-PASS-race loop REMOVED from Today's Ticket.
     // Stacking 10 Jim's Way tiles overwhelmed the ticket on thin-data days.
@@ -20809,6 +20830,16 @@ async function fetchLiveEntries() {
 
 var _scratchInitialLoadDone = false;
 async function fetchLiveScratches() {
+  // v2.49.23: mirror fetchLiveEntries()'s existing guard. Without this, the
+  // 60-second scratch-poll interval kept firing while the user was viewing
+  // a future/past date's card (e.g. browsing ahead to Saturday), and
+  // unconditionally called renderTodayTab() at the end regardless -- tearing
+  // down and rebuilding the entire race-list DOM out from under the user
+  // every 60 seconds while they scrolled, with no useful result (scratches
+  // fetched are always for TODAY, which can't match horses on a different
+  // date's already-loaded card anyway). Reported live as "when you scroll
+  // the app is very glitchy and will jump all over."
+  if (selectedCalendarDate && selectedCalendarDate !== getTodayStr()) return;
   const code = getActiveTrack();
   const today = getTodayStr();
   const url = getScratchesUrl(code, today);
@@ -21191,7 +21222,19 @@ function resolveMultiRaceBet(bet, allRaceResults) {
   return { result: 'loss', payout: 0 };
 }
 
-async function fetchLiveResults() {
+async function fetchLiveResults(isManual) {
+  // v2.49.23: mirror fetchLiveEntries()'s existing guard against a future/
+  // past date. This function unconditionally calls renderTodayTab() near
+  // the end regardless of what the user is currently viewing, so the
+  // results-poll timer kept tearing down and rebuilding the race list every
+  // cycle while the user browsed a different date -- same root cause as the
+  // fetchLiveScratches() fix just above. Only toast when manually tapped
+  // (the "Check Results (Live)" button) so the automatic poll doesn't spam
+  // a toast every cycle while the user is just reading a future card.
+  if (selectedCalendarDate && selectedCalendarDate !== getTodayStr()) {
+    if (isManual) showToast('Live results are only available for today’s card.', 'default', 3000);
+    return;
+  }
   var store = getStore();
   var workerUrl = store && store.settings.workerUrl;
   if (!workerUrl) { showToast('Live results require a Worker URL. Check Settings.', 'danger', 4000); return; }

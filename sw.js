@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260706-v2.49.22-brisnet'; // v2.49.22: wired the previously-unused server-side ENGINE_ACCURACY system into the client — every Best Bet/Value Play/Action Bet is now logged and settled against real results, with a new Engine Accuracy card showing real, durable, cross-device win-rate and ROI per engine version               // bump on every ship
+const CACHE_VERSION = '20260706-v2.49.23-brisnet'; // v2.49.23: fixed a scroll glitch — fetchLiveScratches()/fetchLiveResults() unconditionally rebuilt the whole race-list DOM every poll cycle even while viewing a future/past date; also replaced misleading "Pass -- Save bankroll" copy with "No Odds Yet" when a future card's odds simply haven't posted               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

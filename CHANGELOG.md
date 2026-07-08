@@ -1,5 +1,55 @@
 # NE Racing — Changelog
 
+## v2.49.23-brisnet — Scroll glitch on future dates + misleading "Save your bankroll" copy (2026-07-06)
+
+Reported live, in the middle of real use: browsing to Saturday's card (a
+horse in Race 6, Secret Connection), scrolling was "very glitchy" and would
+"jump all over, sometimes going back to today or tomorrow." Same report
+also flagged every race on that card showing "Pass — Save your bankroll."
+
+**Scroll glitch, root cause confirmed:** `fetchLiveEntries()` already
+guards against overriding the user's view — `if (selectedCalendarDate &&
+selectedCalendarDate !== today) return;` — but the 60-second scratch-poll
+(`fetchLiveScratches()`) and the results-poll (`fetchLiveResults()`) both
+had no such guard, and both unconditionally call `renderTodayTab()` at the
+end regardless of what date is loaded. So every 60 seconds, while the user
+was scrolled deep into Saturday's card, the entire race-list DOM got torn
+down and rebuilt out from under them — with zero benefit, since scratches/
+results fetched are always for *today*, which can't match horses on a
+different date's already-loaded card anyway. Fixed both functions with the
+same guard `fetchLiveEntries()` already uses. `fetchLiveResults()` now
+takes an `isManual` parameter so the "Check Results (Live)" button still
+explains itself with a toast when tapped on a non-today date, while the
+automatic background poll stays silent (no toast spam every cycle).
+
+**"Save your bankroll" on every race, root cause confirmed:** the user's
+own hypothesis was right — `isTruePass()`'s third gate ("a race with
+literally zero ML odds anywhere is degenerate") fires correctly for
+*today's* card if odds are missing, but for a card several days out,
+morning-line odds simply haven't been posted yet by the track's own line-
+maker — a normal data-availability fact, not a judgment that the race is
+bad. Since that gate fires the same way across every race when a whole
+card has no odds yet, the ticket showed "Pass — Save your bankroll" for
+literally every race, reading as "nothing here is worth betting" rather
+than "come back once odds are posted." Fixed by detecting when zero horses
+on the entire card have ML odds and swapping to a "📅 No Odds Yet" tag with
+copy that says what's actually true ("check back closer to post time")
+instead of the alarming, inaccurate-in-this-context "Pass" framing. A
+genuinely thin race on a card that otherwise has real odds elsewhere still
+gets the original "Pass — Save bankroll" treatment — this only changes
+when the *entire* card is odds-less.
+
+Files: `app.html`, `index.html` (`fetchLiveScratches()`,
+`fetchLiveResults()`, the Pass-races block in the ticket-building code, the
+"Check Results (Live)" button), `sw.js`, `version.json`. Verified via 6 new
+permanent regression tests (vm-sandboxed) covering both scratches/results
+poll guards and both Pass/No-Odds-Yet ticket branches, plus a live
+Playwright script confirming the scratches endpoint is hit twice pre-fix
+(once on load, once while browsing a future date) and only once post-fix
+(the future-date call correctly short-circuits before touching the
+network). Full test suite: 246 passing, 1 failing (same pre-existing,
+intentional scoring-sync failure), 1 skipped.
+
 ## v2.49.22-brisnet — Wired up the never-connected server-side Engine Accuracy system (2026-07-06)
 
 Owner's real complaint, restated bluntly: tired of surfacing problems one

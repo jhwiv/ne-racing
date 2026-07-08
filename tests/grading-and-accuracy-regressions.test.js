@@ -59,7 +59,7 @@ const TODAY = '2026-07-06';
 // localStorage, which none of the functions under test here actually call).
 const GRADING_HELPERS_SRC = sliceBetween(
   'function normalizeHorseName(name)',
-  'async function fetchLiveResults()'
+  'async function fetchLiveResults(isManual)'
 );
 
 function makeElMap() {
@@ -388,9 +388,10 @@ test('v2.49.18 regression: renderBetTypeBreakdown merges a legacy "Exacta Box" b
 // ── v2.49.19: "still pending" count must be scoped to today's bets ─────────
 test('v2.49.19 regression: fetchLiveResults\' pending count excludes ungraded bets from other dates', async () => {
   const helpers = GRADING_HELPERS_SRC; // fuzzyHorseMatch, _normalizeRaceResult
-  const src = sliceBetween('async function fetchLiveResults()', 'function hasUnresolvedBets');
+  const src = sliceBetween('async function fetchLiveResults(isManual)', 'function hasUnresolvedBets');
   let toastMsg = null;
   const ctx = makeSandbox({
+    selectedCalendarDate: null, // v2.49.23: fetchLiveResults() now guards on this
     getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
     showToast: (msg) => { toastMsg = msg; },
     getCachedResults: () => [],
@@ -421,4 +422,123 @@ test('v2.49.19 regression: fetchLiveResults\' pending count excludes ungraded be
   await vm.runInContext(helpers + '\n' + src + '\nfetchLiveResults();', ctx);
   assert.equal(toastMsg, 'Checked — no new results yet',
     'the toast must not report stale bets from other dates as "still pending" (the v2.49.19 bug reported live)');
+});
+
+// ── v2.49.23: background polls must not disturb a future/past-date view ───
+// Reported live: "when you scroll the app is very glitchy and will jump all
+// over, sometimes going back to today or tomorrow." Root cause: the 60s
+// scratch-poll and the results-poll both unconditionally called
+// renderTodayTab() at the end regardless of what date the user was
+// viewing, tearing down and rebuilding the whole race-list DOM out from
+// under a user scrolled into a future card. fetchLiveEntries() already had
+// this guard; fetchLiveScratches()/fetchLiveResults() did not.
+test('v2.49.23 regression: fetchLiveScratches does nothing when viewing a non-today date', async () => {
+  const src = sliceBetween('async function fetchLiveScratches()', 'function normalizeHorseName');
+  let renderCalled = false;
+  let fetchCalled = false;
+  const ctx = makeSandbox({
+    selectedCalendarDate: '2026-07-11', // viewing a future Saturday, not today
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => TODAY,
+    getScratchesUrl: () => 'https://fake.test/scratches',
+    fetch: async () => { fetchCalled = true; return { ok: true, json: async () => ({ scratches: [] }) }; },
+    getTrackData: () => ({ races: [] }),
+    renderTodayTab: () => { renderCalled = true; },
+  });
+  await vm.runInContext(src + '\nfetchLiveScratches();', ctx);
+  assert.equal(fetchCalled, false, 'must not even fetch scratches while viewing a non-today date');
+  assert.equal(renderCalled, false, 'must not rebuild the race-list DOM while viewing a non-today date (the v2.49.23 bug)');
+});
+
+test('v2.49.23 regression: fetchLiveScratches still works normally when viewing today', async () => {
+  const src = sliceBetween('async function fetchLiveScratches()', 'function normalizeHorseName');
+  let renderCalled = false;
+  const trackData = { races: [{ num: 3, horses: [{ pp: 2, name: 'Scratch Me', scratched: false }] }] };
+  const ctx = makeSandbox({
+    selectedCalendarDate: null,
+    _scratchInitialLoadDone: true,
+    unviewedScratches: 0,
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => TODAY,
+    getScratchesUrl: () => 'https://fake.test/scratches',
+    fetch: async () => ({ ok: true, json: async () => ({ scratches: [{ raceNumber: 3, pp: 2, horseName: 'Scratch Me' }] }) }),
+    getTrackData: () => trackData,
+    saveTrackData: () => {},
+    applyScratchToBetsAndData: () => 0,
+    updateScratchBadge: () => {},
+    showToast: () => {},
+    renderTodayTab: () => { renderCalled = true; },
+    renderBetsTab: () => {},
+    refreshStatusTabIfActive: () => {},
+    updateSyncTime: () => {},
+  });
+  await vm.runInContext(src + '\nfetchLiveScratches();', ctx);
+  assert.equal(renderCalled, true, 'must still poll and render normally when actually viewing today (no over-fix)');
+});
+
+test('v2.49.23 regression: fetchLiveResults toasts when manually tapped on a non-today date, but stays silent for the automatic poll', async () => {
+  const src = sliceBetween('async function fetchLiveResults(isManual)', 'function hasUnresolvedBets');
+  let toastMsg = null;
+  const makeCtx = () => makeSandbox({
+    selectedCalendarDate: '2026-07-11',
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    showToast: (msg) => { toastMsg = msg; },
+  });
+
+  // Automatic poll (no args) — must stay completely silent.
+  toastMsg = null;
+  await vm.runInContext(src + '\nfetchLiveResults();', makeCtx());
+  assert.equal(toastMsg, null, 'the automatic results-poll must not toast while viewing a non-today date');
+
+  // Manual tap (isManual=true) — must explain why nothing happened.
+  toastMsg = null;
+  await vm.runInContext(src + '\nfetchLiveResults(true);', makeCtx());
+  assert.match(toastMsg, /only available for today/i);
+});
+
+// ── v2.49.23: "No Odds Yet" vs "Pass" — the daily ticket's Pass-row copy ───
+// Reported live: viewing a card several days out (odds not yet posted),
+// EVERY race showed "Pass -- Save bankroll", reading as "nothing here is
+// worth betting" when the real reason is that morning-line odds simply
+// haven't posted for that date yet.
+test('v2.49.23 regression: the ticket shows "No Odds Yet" (not "Pass -- Save bankroll") when zero horses on the card have ML odds', () => {
+  const src = sliceBetween(
+    '  // ── Pass Races ──',
+    "\n  // ── Exotic of the Day"
+  );
+  const ctx = makeSandbox({
+    parseOddsToNum: (ml) => { const n = parseFloat(String(ml).split('-')[0]); return isFinite(n) ? n : NaN; },
+  });
+  const raceA = { id: 'rA', num: 1 };
+  const noOddsHorse = { race: raceA, score: 60, horse: { pp: 1, name: 'No Odds Horse', ml: null } };
+  ctx.passRaceNums = [1];
+  ctx.bestBetRaceId = null; ctx.valueRaceIds = new Set(); ctx.actionRaceIds = new Set();
+  ctx.raceMap = { rA: [noOddsHorse] };
+  ctx.allScores = [noOddsHorse];
+  ctx.html = ''; ctx.ticketLines = [];
+  vm.runInContext(src, ctx);
+  assert.match(ctx.html, /No Odds Yet/, 'must show the "No Odds Yet" framing, not "Pass", when no horse on the card has ML odds');
+  assert.doesNotMatch(ctx.html, /Save bankroll/);
+});
+
+test('v2.49.23 regression: the ticket still shows "Pass -- Save bankroll" when the card genuinely has odds elsewhere', () => {
+  const src = sliceBetween(
+    '  // ── Pass Races ──',
+    "\n  // ── Exotic of the Day"
+  );
+  const ctx = makeSandbox({
+    parseOddsToNum: (ml) => { const n = parseFloat(String(ml).split('-')[0]); return isFinite(n) ? n : NaN; },
+  });
+  const raceA = { id: 'rA', num: 1 };
+  const raceB = { id: 'rB', num: 2 };
+  const passHorse = { race: raceA, score: 40, horse: { pp: 1, name: 'Pass Race Horse', ml: null } };
+  const oddsElsewhere = { race: raceB, score: 70, horse: { pp: 1, name: 'Has Odds', ml: '5-2' } };
+  ctx.passRaceNums = [1];
+  ctx.bestBetRaceId = null; ctx.valueRaceIds = new Set(); ctx.actionRaceIds = new Set();
+  ctx.raceMap = { rA: [passHorse], rB: [oddsElsewhere] };
+  ctx.allScores = [passHorse, oddsElsewhere];
+  ctx.html = ''; ctx.ticketLines = [];
+  vm.runInContext(src, ctx);
+  assert.match(ctx.html, /Save bankroll/, 'a genuinely thin race on a card that otherwise has real odds must keep the original "Pass" framing (no over-fix)');
+  assert.doesNotMatch(ctx.html, /No Odds Yet/);
 });
