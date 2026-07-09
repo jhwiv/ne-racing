@@ -303,3 +303,40 @@ the first coverage of that code path.
 - Meet running now through 2026-09-07 per in-app copy.
 - Opening day 2026-07-09 confirmed provisioned with real entries (9 races)
   as of 2026-07-04.
+
+---
+
+## 8. Future options (deferred, not scheduled)
+
+Ideas raised and explicitly deferred — not bugs, not committed work. Pick
+these up only if asked.
+
+### 8.1 Engine Accuracy card: split "engine picks" vs. "your placed bets" (2026-07-06)
+
+Shipped in v2.49.22, the Engine Accuracy card (`refreshEngineAccuracy()`,
+worker's `/api/picks/stats`) currently shows **only** the engine's own
+recommended-pick accuracy: `logTicketPicksToEngine()` logs the Best Bet/Value
+Plays/Action Bets at a flat $2 stake automatically on every ticket build,
+independent of whether the user bets on them, and the KV keys
+(`pick:{track}:{date}:{race}:{engine}:{pp}`) carry no user/device dimension —
+so it's a global aggregate across all users, not a personal stat.
+
+The user asked whether this could also show "bets actually placed by the
+user" side by side. Answer given: yes, feasible. Approach if ever built:
+
+- At log/settle time, check `data.bets` (this device's localStorage) for a
+  matching real wager (same race/horse/bet type) and tag the settle record
+  with `userPlaced: true/false`.
+- Extend `/api/picks/stats` to return both aggregates.
+- Render two lines in the card, e.g.:
+  ```
+  Engine picks (all users):     41-59 (41%) · ROI -8%  · n=100
+  Picks you actually bet:        6-9  (40%) · ROI -12% · n=15
+  ```
+
+Touches: `storeTicketPicks`/`logPickToEngine`/`settleEnginePicksForRace`
+(app.html + index.html), `worker.js` (`/api/picks/log`, `/api/picks/settle`,
+`/api/picks/stats`), `refreshEngineAccuracy()`'s render.
+
+User's explicit response when offered: **"no. add it to future options"** —
+do not implement unless asked again.
