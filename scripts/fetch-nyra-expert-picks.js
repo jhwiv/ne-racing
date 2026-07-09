@@ -66,6 +66,17 @@ async function fetchSource(source) {
       return { source, ok: false, reason: `HTTP ${res.status} ${res.statusText}` };
     }
     const html = await res.text();
+    // Debug aid: dump the raw fetched HTML when NYRA_DEBUG_DIR is set (used
+    // by the workflow's diagnostic run, never during the normal scheduled
+    // job) so a parse failure can be root-caused from the real page content
+    // instead of guessed at again.
+    if (process.env.NYRA_DEBUG_DIR) {
+      try {
+        const slug = source.label.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+        fs.mkdirSync(process.env.NYRA_DEBUG_DIR, { recursive: true });
+        fs.writeFileSync(path.join(process.env.NYRA_DEBUG_DIR, `${slug}.html`), html);
+      } catch (e) { /* best-effort only */ }
+    }
     const result = parseNyraPicksHtml(html);
     return { source, ok: result.picks.length > 0, picks: result.picks, strategy: result.strategy, reason: result.reason };
   } catch (err) {

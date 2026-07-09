@@ -21,7 +21,12 @@ on:
     # Every 30 min, 11:00-19:00 UTC (~7am-3pm ET) covering typical Saratoga
     # post times during the meet. Cron is UTC.
     - cron: '*/30 11-19 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Dump each source''s raw fetched HTML as a downloadable artifact instead of committing (diagnostic run, no write)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -38,12 +43,29 @@ jobs:
           node-version: '20'
 
       - name: Fetch NYRA expert picks
-        run: node scripts/fetch-nyra-expert-picks.js --track SAR
+        env:
+          NYRA_DEBUG_DIR: ${{ inputs.debug && 'nyra-debug' || '' }}
+        run: node scripts/fetch-nyra-expert-picks.js --track SAR ${{ inputs.debug && '--dry-run' || '' }}
+
+      - name: Upload raw HTML (debug run only)
+        if: ${{ inputs.debug }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nyra-debug-html
+          path: nyra-debug/
+          retention-days: 3
 
       - name: Commit updated entries file
+        if: ${{ !inputs.debug }}
         run: |
           git config user.name "railbird-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/entries-SAR-*.json
+          # -f: .gitignore has a blanket `data/entries-SAR-*.json` rule (added
+          # for QA-harness-regenerated rehearsal output) that also matches this
+          # pipeline's legitimate output for any new date. Confirmed live
+          # (2026-07-09 dry run): `git add` on an ignored path exits non-zero
+          # without -f, which aborted this step under `bash -e` before it ever
+          # reached the commit/push lines.
+          git add -f data/entries-SAR-*.json
           git diff --cached --quiet || git commit -m "chore: refresh NYRA expert picks"
           git push
