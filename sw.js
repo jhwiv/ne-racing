@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260706-v2.49.23-brisnet'; // v2.49.23: fixed a scroll glitch — fetchLiveScratches()/fetchLiveResults() unconditionally rebuilt the whole race-list DOM every poll cycle even while viewing a future/past date; also replaced misleading "Pass -- Save bankroll" copy with "No Odds Yet" when a future card's odds simply haven't posted               // bump on every ship
+const CACHE_VERSION = '20260709-v2.49.24-brisnet'; // v2.49.24: tightened results-poll cadence (150s→60s client, 120s→60s worker cache) after a report of races sitting RESULT PENDING long after post               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

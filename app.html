@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260706-v2.49.23-brisnet';
+var NE_APP_VERSION = '20260709-v2.49.24-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260706-v2.49.23-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.23-brisnet';
+var RAILBIRD_VERSION = 'v2.49.24-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -21469,9 +21469,15 @@ async function fetchLiveResults(isManual) {
   }
 }
 
-/* ── Auto-polling for results every 2.5 minutes ── */
+/* ── Auto-polling for results every 60 seconds ── */
+// v2.49.24: tightened from 2.5 min → 60s (matching the worker's own
+// odds-poll cadence and its now-60s results cache TTL) after a report of
+// races sitting at "RESULT PENDING" long after post. Every source of
+// latency we control (client poll + worker Cache-Control TTL) is now 60s
+// or less; any gap beyond that is the upstream provider not having
+// confirmed official results yet, not something a client poll can outrun.
 var _resultsPollingTimer = null;
-var RESULTS_POLL_INTERVAL = 150 * 1000; // 2.5 minutes
+var RESULTS_POLL_INTERVAL = 60 * 1000; // 60 seconds
 
 function hasUnresolvedBets() {
   var data = getTrackData();

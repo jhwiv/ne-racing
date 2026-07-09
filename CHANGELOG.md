@@ -1,5 +1,46 @@
 # NE Racing — Changelog
 
+## v2.49.24-brisnet — Tightened results-poll cadence (2026-07-09)
+
+Reported live: races 1-3 on Saturday's card (post times 1:10 PM, 1:44 PM,
+2:18 PM) still showing "RESULT PENDING" at 2:57 PM — more than an hour past
+post for the earliest race.
+
+**Traced the full pipeline before touching anything:** `fetchLiveResults()`
+already auto-polls (`startResultsPolling()`, gated on `hasUngradedRaces()` —
+any race past post+2min without `_official`/`_resultData` keeps the poller
+alive indefinitely), already resumes immediately on tab-focus/visibility/
+bfcache-restore (`installResultsPollerHooks()`, v2.47.1), and already
+retries silently on transient upstream errors without giving up. None of
+that was broken. The "Updated H:MM PM" stamp on each race card comes from
+the separate odds poll, not the results poll, so it doesn't actually prove
+results were checked recently — that was worth calling out since it can
+read as "the app checked and still found nothing" when it only proves odds
+polling is alive.
+
+**What was genuinely ours to fix:** the two latency knobs we control were
+both wider than they needed to be — the client polled every 150s
+(`RESULTS_POLL_INTERVAL`) and the worker cached `/api/results` responses
+for 120s (`CACHE_TTL.results`), stacking up to ~4.5 minutes of our own
+added delay on top of whatever the upstream provider takes to confirm a
+race official. Both are now 60s, matching the odds-poll cadence — worst
+case added latency is now ~2 minutes, not ~4.5.
+
+**What this does not and cannot fix:** if a race genuinely hasn't been
+confirmed official yet by the upstream provider (The Racing API's NA
+results feed — photo finish / stewards' inquiry / provider-side posting
+lag), no client polling frequency changes when that data becomes
+available. If races are still sitting pending well past this tightened
+~60s ceiling, that points at either an upstream data lag or a
+worker-side bug in `handleResults`/`findMeetId` that needs live evidence
+(the exact `/api/results` response body or the "Check Results (Live)"
+toast text) to chase further — this sandbox has no outbound network
+access to the deployed worker or the upstream API to verify live
+behavior directly.
+
+Changed: `RESULTS_POLL_INTERVAL` 150000ms → 60000ms (app.html, index.html);
+`CACHE_TTL.results` 120 → 60 (worker.js).
+
 ## v2.49.23-brisnet — Scroll glitch on future dates + misleading "Save your bankroll" copy (2026-07-06)
 
 Reported live, in the middle of real use: browsing to Saturday's card (a

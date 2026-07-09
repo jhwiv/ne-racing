@@ -112,7 +112,10 @@ const CACHE_TTL = {
   entries:   300,   // 5 min for free static files
   scratches:  60,   // 60 s for Equibase live feed
   odds:        60,
-  results:   120,
+  results:    60,   // v2.49.24: was 120 — halved so a freshly-posted official
+                     // result reaches users as fast as odds/scratches do,
+                     // instead of sitting behind a stale edge-cache entry
+                     // for up to 2 extra minutes on top of the client poll.
 };
 
 // ─── Upstream base URL (The Racing API) ─────────────────────────────────────
