@@ -1,5 +1,59 @@
 # NE Racing — Changelog
 
+## v2.49.27-brisnet — Fix NYRA parser against real live pages; drop confirmed-dead sources (2026-07-09)
+
+Direct follow-up to v2.49.26, which shipped the NYRA expert-picks scraper
+with an explicit caveat: the parser was written without live network
+access to NYRA's real pages and needed a checked dry run before the
+schedule could be trusted. Ran that check via GitHub Actions
+(`workflow_dispatch` with a debug mode added for this purpose) against all
+four configured URLs. Real findings:
+
+- **`talking-horses/` (Serling): works, but not in the shape assumed.**
+  The real page is a **multi-panelist panel**, not just Andy Serling's own
+  picks — confirmed live text: `"Andy Serling | @AndySerling Race 1 3 - 5
+  Race 2 6 - 2 - 3 - 8 ... Megan Burgess | @TheMeganBurgess Race 1 5 - 6 -
+  1 - 3 ..."`. Each named contributor gives their own ranked list of
+  program numbers per race (no horse names in this format). Added a new
+  parser strategy (`tryExtractFromHandicapperPanel`,
+  `scripts/lib/nyra-picks-parser.js`) that attributes each named panelist
+  independently (`source: "Talking Horses - {Name}"`) instead of collapsing
+  everyone into one "NYRA - Serling" vote — more accurate, and yields more
+  real consensus signal than originally planned since a multi-panelist
+  page counts as multiple independent votes toward the "N experts agree"
+  threshold.
+- **`timeformus/` (Aragona): confirmed dead, not a parsing bug.** The page's
+  own text says outright: *"David Aragona is no longer posting TimeformUS
+  analysis on NYRA.com."* No parser fix can extract picks that were never
+  published. Disabled in `SOURCES` (commented out with the reason) rather
+  than querying a confirmed-dead page every 30 minutes forever.
+- **`nyra-bets-picks/` (DeSantis) and `nyra-picks/` (Vizcaya): both 404.**
+  The URLs from the original `docs/SARATOGA_NYRA.md` scaffolding are
+  stale/wrong. This script cannot discover the correct current URLs itself
+  (no way to search NYRA's site from here) — disabled in `SOURCES` pending
+  the real URLs.
+
+**Also fixed, found while wiring the panel-attribution change:**
+`fetch-nyra-expert-picks.js`'s race/pick merge used `.find()` per source,
+which — now that one source can yield multiple named picks for the same
+race — would have silently kept only the first panelist and dropped every
+other one. Switched to iterating all matches, and to a `_nyraPipeline: true`
+marker field (rather than a `source` string-prefix check) for identifying
+which `expertPicks` entries this script owns on a rewrite, since picks are
+no longer one-fixed-label-per-URL.
+
+**Client fix:** the per-race "Expert Picks" chip template
+(`${escHtml(ep.horseName)}`, app.html/index.html) rendered the literal
+string `"null"` for any pick with no horse name — exactly what the new
+Talking Horses panel format produces (program numbers only). Now omits the
+name span entirely when absent; also escapes `ep.source` (previously
+interpolated raw).
+
+Tests: added a fixture test in `tests/nyra-picks-parser.test.js` using the
+exact real captured panel text, confirming both panelists are attributed
+independently and neither collapses into the other. Confirmed it fails
+against the pre-fix parser (`strategy: 'none'`) and passes after.
+
 ## v2.49.26-brisnet — Activate the NYRA expert-picks pipeline (2026-07-09)
 
 Follow-up to the v2.49.25 sanity-check: "Expert Consensus Record" showing

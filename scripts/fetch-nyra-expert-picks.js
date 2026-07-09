@@ -34,11 +34,25 @@ const WORKER_URL = process.env.RAILBIRD_WORKER_URL || 'https://cloudflare-worker
 
 // Per docs/SARATOGA_NYRA.md — four NYRA-official handicappers, refreshed
 // every race day during the meet.
+//
+// Live-checked 2026-07-09 (see CHANGELOG.md v2.49.27):
+//   - talking-horses/ : WORKS. Confirmed a multi-panelist page (Andy
+//     Serling plus guest handicappers like Megan Burgess), not just
+//     Serling alone -- each named panelist is attributed individually via
+//     scripts/lib/nyra-picks-parser.js's handicapper-panel strategy.
+//   - timeformus/     : CONFIRMED DEAD, not a scraping bug -- the page's
+//     own text says "David Aragona is no longer posting TimeformUS
+//     analysis on NYRA.com." Disabled below; re-enable only if NYRA starts
+//     publishing a replacement TimeformUS analysis page.
+//   - nyra-bets-picks/, nyra-picks/ : 404 on both. URLs from the original
+//     docs/SARATOGA_NYRA.md scaffolding are stale/wrong; the real current
+//     URLs need to be found (this script can't discover them itself).
+//     Disabled below rather than hitting a known 404 every scheduled run.
 const SOURCES = [
-  { label: 'NYRA - Serling', url: 'https://www.nyra.com/saratoga/racing/talking-horses/' },
-  { label: 'NYRA - Aragona', url: 'https://www.nyra.com/saratoga/racing/timeformus/' },
-  { label: 'NYRA - DeSantis', url: 'https://www.nyra.com/saratoga/racing/nyra-bets-picks/' },
-  { label: 'NYRA - Vizcaya', url: 'https://www.nyra.com/saratoga/racing/nyra-picks/' },
+  { label: 'NYRA Talking Horses', url: 'https://www.nyra.com/saratoga/racing/talking-horses/' },
+  // { label: 'NYRA - Aragona', url: 'https://www.nyra.com/saratoga/racing/timeformus/' }, // DEAD: discontinued per the page itself
+  // { label: 'NYRA - DeSantis', url: 'https://www.nyra.com/saratoga/racing/nyra-bets-picks/' }, // 404: needs correct URL
+  // { label: 'NYRA - Vizcaya', url: 'https://www.nyra.com/saratoga/racing/nyra-picks/' }, // 404: needs correct URL
 ];
 
 function parseArgs(argv) {
@@ -159,11 +173,14 @@ async function main() {
     return;
   }
 
-  // Build/refresh expertPicks per race. Existing non-NYRA-sourced picks (if
-  // any future source is ever added) are preserved; only entries whose
-  // source starts with "NYRA - " are replaced on each run so a scrape that
-  // finds fewer picks this cycle doesn't leave stale duplicates from a
-  // previous cycle.
+  // Build/refresh expertPicks per race. Existing non-pipeline picks (if any
+  // future source is ever added by hand) are preserved; only entries this
+  // script itself wrote (tagged `_nyraPipeline: true`) are replaced each run
+  // so a scrape that finds fewer picks this cycle doesn't leave stale
+  // duplicates from a previous cycle. Tagged by a marker field rather than a
+  // `source` string prefix because a single URL can now yield MULTIPLE
+  // independently-named picks (one per panelist on a multi-handicapper page
+  // like Talking Horses), not just one fixed label per source.
   let existing = { track: args.track, date: args.date, races: [] };
   if (fs.existsSync(entriesPath)) {
     try { existing = JSON.parse(fs.readFileSync(entriesPath, 'utf8')); } catch (e) { /* start fresh */ }
@@ -174,11 +191,17 @@ async function main() {
   Array.from(raceNumbers).sort((a, b) => a - b).forEach((num) => {
     if (!raceByNum.has(num)) raceByNum.set(num, { race_number: num, expertPicks: [] });
     const race = raceByNum.get(num);
-    const kept = (race.expertPicks || []).filter((ep) => !String(ep.source || '').startsWith('NYRA - '));
+    const kept = (race.expertPicks || []).filter((ep) => !ep._nyraPipeline);
     const fresh = [];
     results.forEach((r) => {
-      const pick = (r.picks || []).find((p) => p.race === num);
-      if (pick) fresh.push({ source: r.source.label, pick: pick.pick, horseName: pick.horseName });
+      (r.picks || []).filter((p) => p.race === num).forEach((pick) => {
+        fresh.push({
+          source: pick.source || r.source.label,
+          pick: pick.pick,
+          horseName: pick.horseName,
+          _nyraPipeline: true,
+        });
+      });
     });
     race.expertPicks = kept.concat(fresh);
   });
@@ -188,7 +211,7 @@ async function main() {
   existing.races = Array.from(raceByNum.values()).sort((a, b) => a.race_number - b.race_number);
   existing.expertPicksLastUpdated = new Date().toISOString();
 
-  const totalPicks = existing.races.reduce((s, r) => s + (r.expertPicks || []).filter((ep) => String(ep.source || '').startsWith('NYRA - ')).length, 0);
+  const totalPicks = existing.races.reduce((s, r) => s + (r.expertPicks || []).filter((ep) => ep._nyraPipeline).length, 0);
   console.log(`\n${totalPicks} NYRA pick(s) across ${existing.races.length} race(s).`);
 
   if (args.dryRun) {

@@ -16,7 +16,7 @@
 
 /**
  * @param {string} html
- * @returns {{ picks: Array<{race:number, pick:number|null, horseName:string|null}>, strategy: string, reason?: string }}
+ * @returns {{ picks: Array<{race:number, pick:number|null, horseName:string|null, source?:string}>, strategy: string, reason?: string }}
  */
 function parseNyraPicksHtml(html) {
   if (!html || typeof html !== 'string') {
@@ -25,6 +25,9 @@ function parseNyraPicksHtml(html) {
 
   const fromJson = tryExtractFromEmbeddedJson(html);
   if (fromJson.length) return { picks: fromJson, strategy: 'embedded-json' };
+
+  const fromPanel = tryExtractFromHandicapperPanel(html);
+  if (fromPanel.length) return { picks: fromPanel, strategy: 'handicapper-panel' };
 
   const fromText = tryExtractFromVisibleText(html);
   if (fromText.length) return { picks: fromText, strategy: 'visible-text' };
@@ -95,22 +98,74 @@ function firstDefined() {
   return null;
 }
 
-/**
- * Strategy 2 (fallback): strip tags down to visible text and look for
- * "Race N" followed shortly by a "#N Horse Name" / "No. N Horse Name"
- * pattern -- the common plain-text shape of a handicapper's top selection.
- * Much more fragile than strategy 1; only used when no embedded JSON model
- * was found.
- */
-function tryExtractFromVisibleText(html) {
-  const picks = [];
-  const text = html
+function stripToVisibleText(html) {
+  return html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/\s+/g, ' ');
+}
+
+/**
+ * Strategy 2: NYRA's "Talking Horses" panel format, confirmed against the
+ * real live page (2026-07-09): a list of named contributors, each as
+ * "{Name} | @{twitter_handle}" followed by that person's own picks for every
+ * race as "Race N {pp}-{pp}-{pp}-{pp}" (ranked program numbers, no horse
+ * names available in this format). e.g.:
+ *   "Andy Serling | @AndySerling Race 1 3 - 5 Race 2 6 - 2 - 3 - 8 ...
+ *    Megan Burgess | @TheMeganBurgess Race 1 5 - 6 - 1 - 3 ..."
+ * Each named contributor is treated as an independent expert vote (tagged
+ * via the per-pick `source` field) rather than collapsed into a single
+ * "NYRA - Serling" vote -- the page is a multi-handicapper panel, not just
+ * Serling's own picks, so attributing each panelist by name is both more
+ * accurate and yields more consensus signal.
+ */
+function tryExtractFromHandicapperPanel(html) {
+  const text = stripToVisibleText(html);
+  const picks = [];
+  const panelistRe = /([A-Z][A-Za-z'.\- ]{1,40}?)\s*\|\s*@([A-Za-z0-9_]+)/g;
+  const markers = [];
+  let pm;
+  while ((pm = panelistRe.exec(text)) !== null) {
+    markers.push({ index: pm.index, end: panelistRe.lastIndex, name: pm[1].trim() });
+  }
+  if (!markers.length) return picks;
+
+  const seen = new Set();
+  for (let i = 0; i < markers.length; i++) {
+    const start = markers[i].end;
+    const end = i + 1 < markers.length ? markers[i + 1].index : text.length;
+    const block = text.slice(start, end);
+    const raceRe = /\bRace\s+(\d{1,2})\s+((?:\d{1,2}\s*-\s*)+\d{1,2}|\d{1,2})\b/g;
+    let rm;
+    while ((rm = raceRe.exec(block)) !== null) {
+      const raceNum = parseInt(rm[1], 10);
+      const firstPick = parseInt(rm[2].split('-')[0].trim(), 10);
+      const key = markers[i].name + ':' + raceNum;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      picks.push({
+        race: raceNum,
+        pick: firstPick,
+        horseName: null,
+        source: `Talking Horses - ${markers[i].name}`,
+      });
+    }
+  }
+  return picks;
+}
+
+/**
+ * Strategy 3 (fallback): strip tags down to visible text and look for
+ * "Race N" followed shortly by a "#N Horse Name" / "No. N Horse Name"
+ * pattern -- a plain-text shape of a handicapper's top selection. Much more
+ * fragile than strategies 1-2; only used when neither found anything.
+ */
+function tryExtractFromVisibleText(html) {
+  const picks = [];
+  const text = stripToVisibleText(html);
 
   const raceRe = /\bRace\s*#?\s*(\d{1,2})\b/gi;
   let raceMatch;
@@ -141,4 +196,4 @@ function dedupePicks(picks) {
   return Array.from(byRace.values());
 }
 
-module.exports = { parseNyraPicksHtml, tryExtractFromEmbeddedJson, tryExtractFromVisibleText };
+module.exports = { parseNyraPicksHtml, tryExtractFromEmbeddedJson, tryExtractFromHandicapperPanel, tryExtractFromVisibleText };

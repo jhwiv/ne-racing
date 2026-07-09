@@ -12,12 +12,20 @@ had never actually worked before despite the scaffolding existing since
 v2.14 — `race.expertPicks` was hardcoded to `[]` in the live paid-data
 path and nothing called the worker endpoint that could have filled it in.
 
-The one open item: the scraper's parsing logic was written without live
-network access to NYRA's actual pages (sandboxed dev environment), so it
-needs a human-checked dry run (`node scripts/fetch-nyra-expert-picks.js
---track SAR --dry-run`, or the workflow's `workflow_dispatch`) to confirm
-it's actually finding real picks before the 30-min schedule should be
-trusted unattended.
+**Update 2026-07-09 (v2.49.27), same day — live-checked against real
+pages via GitHub Actions.** Of the four sources below, only Talking Horses
+actually works, and not in the shape originally assumed:
+
+| Source | Status |
+|---|---|
+| Talking Horses (`talking-horses/`) | **Works.** Real page is a multi-panelist show (Serling + rotating guest handicappers like Megan Burgess), each giving ranked program numbers per race, no horse names. Each named panelist is now attributed independently — see CHANGELOG.md's v2.49.27 entry. |
+| TimeformUS (`timeformus/`) | **Confirmed dead**, not a scraping bug — the page's own text says "David Aragona is no longer posting TimeformUS analysis on NYRA.com." Disabled in `SOURCES`. |
+| NYRA Bets picks (`nyra-bets-picks/`) | **404.** URL is stale/wrong. Disabled in `SOURCES` pending the real URL. |
+| NYRA Picks / Spanish (`nyra-picks/`) | **404.** Same as above. |
+
+Finding the correct current URLs for the two 404s is the one remaining
+open item, and isn't something this script (or this dev environment) can
+do on its own — no way to search/browse NYRA's site from here.
 
 ## Design
 
@@ -62,4 +70,11 @@ Worker endpoint `GET /api/expert-picks?track=SAR&date=YYYY-MM-DD` already exists
 
 ## HTML structure reminder
 
-Each pick entry is `{source: string, pick: number, horseName: string}`. `source` is shown verbatim (with `NYRA - ` stripped) as a `.detail-expert-chip`. Match is checked by `pick === horse.pp || horseName === horse.name`.
+Each pick entry is `{source: string, pick: number|null, horseName: string|null}`.
+`horseName` can be `null` (the real Talking Horses format only gives ranked
+program numbers, no names) — the chip template omits the name span when
+absent rather than rendering the literal string "null" (fixed v2.49.27).
+`source` is shown verbatim as a `.detail-expert-chip`; only literal `NYRA - `
+prefixes are stripped, so panelist-attributed sources like `"Talking Horses
+- Andy Serling"` render as-is. Match is checked by `pick === horse.pp ||
+horseName === horse.name`.
