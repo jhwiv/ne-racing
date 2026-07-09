@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260709-v2.49.25-brisnet';
+var NE_APP_VERSION = '20260709-v2.49.26-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260709-v2.49.25-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.25-brisnet';
+var RAILBIRD_VERSION = 'v2.49.26-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -20832,6 +20832,39 @@ async function fetchLiveEntries() {
   try { if (typeof startResultsPolling === 'function') startResultsPolling(); } catch(_){}
   renderTodayTab();
   refreshStatusTabIfActive();
+  // v2.49.26: fire-and-forget -- don't block the entries render on this.
+  // See fetchExpertPicksForCard() for why race.expertPicks was always []
+  // in live (paid-mode) entries before this.
+  try { fetchExpertPicksForCard(code, result.date); } catch(_){}
+}
+
+// v2.49.26: wires the already-built worker endpoint GET /api/expert-picks
+// (handleExpertPicks, reads entries-{track}-{date}.json's per-race
+// expertPicks field from GitHub Pages, kept fresh by
+// scripts/fetch-nyra-expert-picks.js) into the client. Paid-mode entries
+// (normaliseNaEntries) hardcode expertPicks to [] since that's a TheRacingAPI
+// field that doesn't exist -- this call is what actually populates it.
+async function fetchExpertPicksForCard(code, date) {
+  try {
+    var store = getStore();
+    var workerUrl = store && store.settings.workerUrl;
+    if (!workerUrl) return;
+    var res = await fetch(workerUrl + '/api/expert-picks?track=' + code + '&date=' + date + '&_t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    var body = await res.json();
+    var byRace = {};
+    (body.expertPicks || []).forEach(function(r) { byRace[r.race] = r.picks || []; });
+    if (!Object.keys(byRace).length) return;
+    var data = getTrackData();
+    // Bail if the user navigated to a different date while this was in flight.
+    if (!data || data.racesDate !== date) return;
+    var changed = false;
+    (data.races || []).forEach(function(race) {
+      var picks = byRace[race.num];
+      if (picks && picks.length) { race.expertPicks = picks; changed = true; }
+    });
+    if (changed) { saveTrackData(data); renderTodayTab(); }
+  } catch(e) {}
 }
 
 var _scratchInitialLoadDone = false;

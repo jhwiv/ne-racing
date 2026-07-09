@@ -1,0 +1,49 @@
+name: NYRA Expert Picks (Saratoga)
+
+# Scrapes NYRA's four public handicapper-picks pages for the Saratoga meet
+# and publishes them into data/entries-SAR-{date}.json's per-race
+# `expertPicks` field. That's the exact file/field worker.js's
+# GET /api/expert-picks (handleExpertPicks) already reads from GitHub Pages,
+# and app.html/index.html's fetchExpertPicksForCard() (v2.49.26) already
+# fetches that endpoint and merges it into each race -- no worker or client
+# changes needed to activate this, just keeping the file fresh.
+#
+# See docs/SARATOGA_NYRA.md for the full design and source list.
+#
+# IMPORTANT: NYRA's page markup is not a documented, versioned public
+# contract, and scripts/lib/nyra-picks-parser.js was written without live
+# network access to inspect the real pages. Run this via workflow_dispatch
+# once and check the logged output (which parse strategy each source hit,
+# or why it found nothing) before trusting the schedule below.
+
+on:
+  schedule:
+    # Every 30 min, 11:00-19:00 UTC (~7am-3pm ET) covering typical Saratoga
+    # post times during the meet. Cron is UTC.
+    - cron: '*/30 11-19 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch NYRA expert picks
+        run: node scripts/fetch-nyra-expert-picks.js --track SAR
+
+      - name: Commit updated entries file
+        run: |
+          git config user.name "railbird-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/entries-SAR-*.json
+          git diff --cached --quiet || git commit -m "chore: refresh NYRA expert picks"
+          git push

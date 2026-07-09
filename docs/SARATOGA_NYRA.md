@@ -2,6 +2,23 @@
 
 Added in v2.14 as scaffolding. Activated each year when the Saratoga meet opens (mid-July).
 
+**Activated 2026-07-09 (v2.49.26)**, the day the 2026 meet opened. The
+ingestion + worker + client wiring below is live: `scripts/fetch-nyra-
+expert-picks.js` (scraper), `.github/workflows/nyra-expert-picks.yml`
+(scheduled runner), and `fetchExpertPicksForCard()` in app.html/index.html
+(client wiring to the already-existing `GET /api/expert-picks`). See
+CHANGELOG.md's v2.49.26 entry for the full root-cause writeup of why this
+had never actually worked before despite the scaffolding existing since
+v2.14 — `race.expertPicks` was hardcoded to `[]` in the live paid-data
+path and nothing called the worker endpoint that could have filled it in.
+
+The one open item: the scraper's parsing logic was written without live
+network access to NYRA's actual pages (sandboxed dev environment), so it
+needs a human-checked dry run (`node scripts/fetch-nyra-expert-picks.js
+--track SAR --dry-run`, or the workflow's `workflow_dispatch`) to confirm
+it's actually finding real picks before the 30-min schedule should be
+trusted unattended.
+
 ## Design
 
 Four NYRA-official handicappers feed into the existing `expertPicks` array on each Saratoga race, joining the standard DRF/Equibase/Brisnet/TimeformUS/TDN voters. Each counts as **one equal-weight vote** in the consensus engine — so no change to `runAdviceEngine` scoring logic. More voters simply produce a stronger consensus signal when they converge.

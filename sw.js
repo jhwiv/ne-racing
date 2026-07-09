@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260709-v2.49.25-brisnet'; // v2.49.25: fixed Bet Type Breakdown counting still-pending bets as $0-return losses, diluting Win%/ROI               // bump on every ship
+const CACHE_VERSION = '20260709-v2.49.26-brisnet'; // v2.49.26: activated NYRA expert-picks pipeline — race.expertPicks was hardcoded empty in live paid-mode data, silently killing Expert Consensus tracking since launch               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

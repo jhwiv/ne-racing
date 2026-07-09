@@ -1,5 +1,70 @@
 # NE Racing — Changelog
 
+## v2.49.26-brisnet — Activate the NYRA expert-picks pipeline (2026-07-09)
+
+Follow-up to the v2.49.25 sanity-check: "Expert Consensus Record" showing
+"W-L: — (—%)" turned out not to be a "not enough data yet" situation. Traced
+the full chain: `race.expertPicks` — the field every expert-consensus
+computation reads (`countExpertPicks`, `findExpertConsensusPicks`,
+the per-race "Expert Sources" chips, the "🔒 LOCK — N of M experts agree"
+messaging) — is hardcoded to `[]` for every race in `normaliseNaEntries()`
+(worker.js), the function that builds every live card once the app runs on
+the paid TheRacingAPI source, which is what's actually deployed. Nothing in
+the client ever wrote to it either. A real worker endpoint,
+`GET /api/expert-picks` (`handleExpertPicks`), already existed to serve real
+picks from a static `entries-{track}-{date}.json` file on GitHub Pages —
+but the client never called it. This whole system had never worked in
+production; it wasn't close, it was structurally incapable of populating.
+
+`docs/SARATOGA_NYRA.md` (scaffolded back in v2.14, "activated each year
+when the Saratoga meet opens") already specified exactly this feature:
+four NYRA-official handicappers (Serling/Talking Horses, Aragona/TimeformUS,
+DeSantis/NYRA Bets picks, Vizcaya/NYRA Picks) as equal-weight voters in the
+existing consensus engine. Saratoga's 2026 meet opened today
+(2026-07-09, per docs/HANDOFF.md), so this was due now, not someday.
+
+**Built, with explicit user sign-off to scrape NYRA's public picks pages**
+(a prior GitHub Actions pipeline for full entries data — `.github/workflows/
+daily-entries.yml` — had been deliberately disabled over unlicensed-scraping
+concerns; this is a narrower, explicitly-authorized case: public
+handicapper opinion pages, not live wagering data):
+
+- `scripts/lib/nyra-picks-parser.js` — parses a NYRA picks page into
+  `{race, pick, horseName}` entries. Tries embedded-JSON extraction first
+  (recursively scans any `__NEXT_DATA__`/`application/json` script block for
+  race-pick-shaped objects — robust to markup changes since it doesn't
+  depend on CSS/DOM structure), falling back to a visible-text regex
+  ("Race N ... #N Horse Name"). Never throws; reports which strategy hit
+  (or why none did) so a scrape that finds nothing is diagnosable from logs.
+- `scripts/fetch-nyra-expert-picks.js` — CLI: fetches all four NYRA URLs,
+  discovers real race numbers from the live worker's own `/api/entries` (so
+  it isn't guessing the day's race count), and merges fresh picks into
+  `data/entries-SAR-{date}.json`'s per-race `expertPicks`, replacing only
+  the previously-written `NYRA - ` sourced entries each run so a thin
+  scrape doesn't leave stale duplicates. Supports `--dry-run`.
+- `.github/workflows/nyra-expert-picks.yml` — runs the script every 30 min,
+  11:00-19:00 UTC, and `workflow_dispatch` for manual runs, committing the
+  refreshed file (GitHub Pages picks it up automatically, matching the
+  existing static-data deploy path).
+- `fetchExpertPicksForCard()` (app.html/index.html) — calls
+  `/api/expert-picks` after entries load and merges `picks` into each race's
+  `expertPicks` in memory, fire-and-forget so it never blocks the entries
+  render. Bails cleanly if the user navigated to a different date mid-flight.
+
+**Honest caveat, stated up front rather than after the fact:** NYRA's page
+markup is not a documented, versioned public API, and this was built
+without live network access to inspect the real pages (sandboxed dev
+environment, no outbound access to nyra.com). The parser is defensive
+(never throws, reports its own success/failure per source) but its first
+real run against the live pages needs a human check —
+`node scripts/fetch-nyra-expert-picks.js --track SAR --dry-run` or the
+workflow's `workflow_dispatch` trigger — before the schedule should be
+trusted unattended.
+
+Tests: `tests/nyra-picks-parser.test.js` (5 tests, fixture-driven, no
+network) and `tests/expert-picks-client.test.js` (3 tests covering the
+merge, the stale-navigation bail-out, and no-throw on failure).
+
 ## v2.49.25-brisnet — Fix Bet Type Breakdown counting pending bets as losses (2026-07-09)
 
 Asked to sanity-check a live screenshot of the Results & Bankroll tab
