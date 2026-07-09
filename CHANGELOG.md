@@ -1,5 +1,57 @@
 # NE Racing — Changelog
 
+## v2.49.29-brisnet — Fix 3 real bugs surfaced by a debug run against the corrected URLs (2026-07-09)
+
+Direct follow-up to v2.49.28. Ran the debug workflow against the two
+newly-corrected URLs (DeSantis, Vizcaya) to verify them the same way
+Talking Horses was verified — and it was worth it. Three real bugs found,
+none of them guessable from Perplexity's description alone:
+
+1. **Hablan Los Caballos also uses the panel format** (`{Name} |
+   @{handle}`) — confirmed live text: `"Darwin Vizcaya | @DarwinVizcaya_
+   Race 1 3 Race 2 6 - 7 ..."`. The existing handicapper-panel strategy
+   correctly matched it, but `tryExtractFromHandicapperPanel` had
+   `"Talking Horses - "` hardcoded into the source label — every Vizcaya
+   pick was mislabeled `"Talking Horses - Darwin Vizcaya"`, as if he were
+   a guest on Serling's show rather than hosting his own. Fixed: the
+   parser now returns each panelist's bare name only; the CLI caller
+   (`fetch-nyra-expert-picks.js`) combines it with whichever page-specific
+   label it configured for that URL (`"{label} - {name}"`), since the
+   identical panel shape recurs across differently-branded shows.
+
+2. **The DeSantis page's post time broke pick extraction entirely.** Real
+   captured text: `"Race 1 1:10 PM ET 6-3 Race 2 1:44 PM ET 5-6-4-2 ..."`.
+   `tryExtractFromRaceNumberList` tolerated "some gap" of non-digit
+   characters between "Race N" and the picks — but a clock time itself
+   contains digits, so it matched the "1" in "1:10" as the pick instead of
+   the real "6-3", for every single race. Fixed by explicitly recognizing
+   and skipping the post-time token (`H:MM AM/PM ET`) rather than
+   generically tolerating a gap of any kind.
+
+3. **A named callout could bleed its horse name onto unrelated earlier
+   races.** The real DeSantis page has both a full numeric picks table for
+   every race AND a separate "Best Bet"-style callout naming a horse for
+   just one race. `tryExtractFromVisibleText` used a flat 200-character
+   forward window per "Race N" mention with no stop condition at the next
+   race's own heading — so a later callout's name could bleed backward
+   onto every earlier race that happened to fall within 200 characters of
+   it. Fixed by bounding each race's search window to the next "Race N"
+   occurrence (mirroring how per-panelist blocks are already bounded in
+   the handicapper-panel strategy).
+
+Also: strategies are no longer strictly first-match-wins. `visible-text`
+and `race-number-list` are now merged (race-number-list's broad numeric
+coverage seeded first, visible-text's richer named entries overwriting
+where both cover the same race) rather than treated as exclusive
+alternatives — the DeSantis page genuinely needs both to get complete,
+correctly-named data.
+
+Tests: `tests/nyra-picks-parser.test.js` replaced the earlier
+Perplexity-approximated DeSantis fixture with the exact real captured
+text (confirms bugs 2 and 3 against ground truth, not a guess), added a
+Vizcaya-attribution test, and updated the panel test's assertions for the
+now-bare `source` field. Full suite: 260 pass / 1 known-fail / 1 skip.
+
 ## v2.49.28-brisnet — Correct the 2 dead NYRA source URLs; add a single-handicapper parser strategy (2026-07-09)
 
 Direct follow-up to v2.49.27. Asked Perplexity Computer (real browser

@@ -29,17 +29,32 @@ function parseNyraPicksHtml(html) {
   const fromPanel = tryExtractFromHandicapperPanel(html);
   if (fromPanel.length) return { picks: fromPanel, strategy: 'handicapper-panel' };
 
-  // Tried before race-number-list deliberately: this requires an explicit
-  // "#N"/"No. N" marker plus an actual horse name, which is more specific
-  // (and richer) than the bare-number pattern below -- trying it first
-  // means a page that DOES give real horse names doesn't lose them to the
-  // more generic strategy just because a number happens to follow shortly
-  // after a race heading too.
+  // Merged rather than tried as mutually-exclusive alternatives -- confirmed
+  // necessary against the real NYRA Bets DeSantis page (2026-07-09): it has
+  // BOTH a full per-race numeric picks table (every race, no names) AND a
+  // handful of featured-pick callouts elsewhere on the page with real horse
+  // names for only some races. Picking whichever strategy found anything
+  // first (as a prior version of this function did) silently dropped every
+  // race the other one would have caught -- e.g. visible-text alone found
+  // named picks for only 4 of 9 races, discarding the other 5 the broader
+  // race-number-list strategy would have filled in. race-number-list's
+  // entries seed the map first (broad coverage, no names); visible-text's
+  // richer entries (real horse name) overwrite them where both cover the
+  // same race, so a name is never dropped in favor of a bare number either.
   const fromText = tryExtractFromVisibleText(html);
-  if (fromText.length) return { picks: fromText, strategy: 'visible-text' };
-
   const fromRaceList = tryExtractFromRaceNumberList(html);
-  if (fromRaceList.length) return { picks: fromRaceList, strategy: 'race-number-list' };
+  if (fromText.length || fromRaceList.length) {
+    const byRace = new Map();
+    fromRaceList.forEach((p) => byRace.set(p.race, p));
+    fromText.forEach((p) => byRace.set(p.race, p));
+    const strategy = fromText.length && fromRaceList.length
+      ? 'visible-text+race-number-list'
+      : (fromText.length ? 'visible-text' : 'race-number-list');
+    return {
+      picks: Array.from(byRace.values()).sort((a, b) => a.race - b.race),
+      strategy,
+    };
+  }
 
   return { picks: [], strategy: 'none', reason: 'no recognizable pick data found by any strategy' };
 }
@@ -118,18 +133,22 @@ function stripToVisibleText(html) {
 }
 
 /**
- * Strategy 2: NYRA's "Talking Horses" panel format, confirmed against the
- * real live page (2026-07-09): a list of named contributors, each as
- * "{Name} | @{twitter_handle}" followed by that person's own picks for every
- * race as "Race N {pp}-{pp}-{pp}-{pp}" (ranked program numbers, no horse
- * names available in this format). e.g.:
+ * Strategy 2: a named-contributor panel format, confirmed against two real
+ * live pages (2026-07-09): Talking Horses (multiple contributors -- Andy
+ * Serling, Megan Burgess) and Hablan Los Caballos (one contributor, Darwin
+ * Vizcaya) -- both list each contributor as "{Name} | @{twitter_handle}"
+ * followed by that person's own picks for every race as
+ * "Race N {pp}-{pp}-{pp}-{pp}" (ranked program numbers, no horse names
+ * available in this format). e.g.:
  *   "Andy Serling | @AndySerling Race 1 3 - 5 Race 2 6 - 2 - 3 - 8 ...
  *    Megan Burgess | @TheMeganBurgess Race 1 5 - 6 - 1 - 3 ..."
  * Each named contributor is treated as an independent expert vote (tagged
- * via the per-pick `source` field) rather than collapsed into a single
- * "NYRA - Serling" vote -- the page is a multi-handicapper panel, not just
- * Serling's own picks, so attributing each panelist by name is both more
- * accurate and yields more consensus signal.
+ * via the per-pick `source` field, the bare name only -- NOT prefixed with
+ * a page title here, since this same panel shape recurs across different
+ * shows; the caller combines it with whichever page-specific label it
+ * configured, e.g. "Talking Horses - Andy Serling" vs. "Hablan Los
+ * Caballos - Darwin Vizcaya") rather than collapsed into one vote per page
+ * -- more accurate, and yields more consensus signal per page.
  */
 function tryExtractFromHandicapperPanel(html) {
   const text = stripToVisibleText(html);
@@ -159,7 +178,7 @@ function tryExtractFromHandicapperPanel(html) {
         race: raceNum,
         pick: firstPick,
         horseName: null,
-        source: `Talking Horses - ${markers[i].name}`,
+        source: markers[i].name,
       });
     }
   }
@@ -167,29 +186,31 @@ function tryExtractFromHandicapperPanel(html) {
 }
 
 /**
- * Strategy 4 (tried after visible-text): single-handicapper pages that use
- * the same "Race N {pp}-{pp}-{pp}" ranked-list shape as the Talking Horses
- * panel, but
- * without "{Name} | @{handle}" markers separating multiple contributors --
- * e.g. NYRA Bets' DeSantis picks table ("MATTHEW'S FULL CARD PICKS...
- * Race 1 ... 6-3") and the Spanish-language "Hablan Los Caballos" page
- * (per Perplexity Computer's live check, 2026-07-09). The whole page is
- * attributed to whichever `source.label` the caller configured for that
- * URL, since there's only one implicit contributor. Reported per Perplexity
- * as plain text / a plain HTML table -- tag-stripping handles both the same
- * way. Not yet verified against this pipeline's own captured raw HTML (see
- * SOURCES comment in fetch-nyra-expert-picks.js) -- confirm via a debug run
- * before trusting on the schedule.
+ * Strategy 4: single-handicapper pages using the same "Race N
+ * {pp}-{pp}-{pp}" ranked-list shape as the panel format above, but with no
+ * "{Name} | @{handle}" markers separating multiple contributors -- e.g. NYRA
+ * Bets' DeSantis picks table, confirmed live (2026-07-09):
+ *   "Race 1 1:10 PM ET 6-3 Race 2 1:44 PM ET 5-6-4-2 ..."
+ * The whole page is attributed to whichever `source.label` the caller
+ * configured for that URL, since there's only one implicit contributor.
+ *
+ * The post time between "Race N" and the actual picks ("1:10 PM ET") is
+ * explicitly modeled and skipped, rather than tolerating any generic gap --
+ * confirmed necessary against the real page: a generic "skip up to N
+ * non-digit characters" gap can't skip a post time at all, since a clock
+ * time itself contains digits, and an earlier version of this function
+ * matched the "1" in "1:10" as the pick instead of the real "6-3" for
+ * every single race. Recognizing the exact real-world clutter (post time,
+ * AM/PM, "ET") instead of generically tolerating "some gap" avoids that
+ * ambiguity entirely, and also naturally avoids the "Race N - 0MTP"
+ * minutes-to-post nav widget (seen on Talking Horses and the dead
+ * TimeformUS page) being misread as a pick of 0, since neither the literal
+ * "-" nor "MTP" match anything this pattern recognizes as skippable.
  */
 function tryExtractFromRaceNumberList(html) {
   const text = stripToVisibleText(html);
   const picks = [];
-  // The trailing (?![A-Za-z]) matters: NYRA pages carry a "Race N - 0MTP"
-  // minutes-to-post nav widget (confirmed present on both Talking Horses
-  // and the dead TimeformUS page) that would otherwise false-positive as a
-  // pick of "0" -- rejecting a match immediately followed by a letter skips
-  // that specific false positive without needing to know the exact markup.
-  const raceRe = /\bRace\s+(\d{1,2})\b[^0-9]{0,20}?((?:\d{1,2}\s*-\s*)+\d{1,2}|\d{1,2})(?![A-Za-z])/g;
+  const raceRe = /\bRace\s+(\d{1,2})\b\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)?\s*(?:ET)?\s*)?((?:\d{1,2}\s*-\s*)+\d{1,2}|\d{1,2})(?![A-Za-z0-9:])/g;
   let m;
   while ((m = raceRe.exec(text)) !== null) {
     const raceNum = parseInt(m[1], 10);
@@ -210,10 +231,22 @@ function tryExtractFromVisibleText(html) {
   const text = stripToVisibleText(html);
 
   const raceRe = /\bRace\s*#?\s*(\d{1,2})\b/gi;
+  const matches = [];
   let raceMatch;
   while ((raceMatch = raceRe.exec(text)) !== null) {
-    const raceNum = parseInt(raceMatch[1], 10);
-    const windowText = text.slice(raceMatch.index, raceMatch.index + 200);
+    matches.push({ index: raceMatch.index, end: raceRe.lastIndex, race: parseInt(raceMatch[1], 10) });
+  }
+  for (let i = 0; i < matches.length; i++) {
+    // Bounded to the NEXT "Race N" occurrence (or a 200-char cap, whichever
+    // is closer), not a flat 200-char window -- confirmed necessary against
+    // a real page shape: a numeric picks table for every race followed
+    // later by a single separate "Best Bet" callout for just one race. A
+    // flat window let that one later callout's name bleed backward onto
+    // every earlier race's "Race N" mention that happened to fall within
+    // 200 characters of it, since nothing stopped the search at the next
+    // race's own heading.
+    const boundEnd = i + 1 < matches.length ? matches[i + 1].index : text.length;
+    const windowText = text.slice(matches[i].end, Math.min(boundEnd, matches[i].end + 200));
     // Capture a run of 1-4 consecutive Capitalized-word tokens right after
     // the program number -- this naturally stops at the first lowercase-
     // leading word (e.g. "looks", "has") without needing a lookahead that
@@ -221,7 +254,7 @@ function tryExtractFromVisibleText(html) {
     const pickMatch = windowText.match(/(?:No\.?\s*|#\s*)(\d{1,2})\s+((?:[A-Z][A-Za-z'.-]*\s*){1,4})/);
     if (pickMatch) {
       picks.push({
-        race: raceNum,
+        race: matches[i].race,
         pick: parseInt(pickMatch[1], 10),
         horseName: pickMatch[2].trim(),
       });

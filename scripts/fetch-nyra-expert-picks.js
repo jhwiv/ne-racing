@@ -62,10 +62,17 @@ const WORKER_URL = process.env.RAILBIRD_WORKER_URL || 'https://cloudflare-worker
 // over raw HTML) -- run a debug workflow_dispatch after any parser change
 // here before trusting these on the schedule, same discipline as Talking
 // Horses.
+// Labels for panel-format pages (Talking Horses, Hablan Los Caballos) are
+// the show name only, NOT a specific person -- the parser's
+// handicapper-panel strategy returns each contributor's bare name in
+// `pick.source`, which gets combined with this label below ("{label} -
+// {name}") to attribute each panelist individually. DeSantis's page has no
+// panelist markers (single implicit contributor, race-number-list
+// strategy), so its label carries the full attribution on its own.
 const SOURCES = [
   { label: 'NYRA Talking Horses', url: 'https://www.nyra.com/saratoga/racing/talking-horses/' },
   { label: 'NYRA Bets - DeSantis', url: 'https://racing.nyrabets.com/handicapping/bet-saratoga' },
-  { label: 'Hablan Los Caballos - Vizcaya', url: 'https://www.nyra.com/saratoga/racing/hablan-los-caballos/' },
+  { label: 'Hablan Los Caballos', url: 'https://www.nyra.com/saratoga/racing/hablan-los-caballos/' },
   // { label: 'NYRA - Aragona', url: 'https://www.nyra.com/saratoga/racing/timeformus/' }, // DEAD: discontinued per the page itself
 ];
 
@@ -210,7 +217,13 @@ async function main() {
     results.forEach((r) => {
       (r.picks || []).filter((p) => p.race === num).forEach((pick) => {
         fresh.push({
-          source: pick.source || r.source.label,
+          // pick.source (when set) is a bare contributor name from the
+          // handicapper-panel strategy -- combine with this URL's show-name
+          // label rather than using either alone, so "Andy Serling" reads
+          // as "NYRA Talking Horses - Andy Serling" and "Darwin Vizcaya"
+          // (on a DIFFERENT show) correctly reads as "Hablan Los Caballos -
+          // Darwin Vizcaya", not a hardcoded show name from the parser.
+          source: pick.source ? `${r.source.label} - ${pick.source}` : r.source.label,
           pick: pick.pick,
           horseName: pick.horseName,
           _nyraPipeline: true,

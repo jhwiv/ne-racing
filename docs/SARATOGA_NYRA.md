@@ -18,21 +18,19 @@ actually works, and not in the shape originally assumed:
 
 | Source | Status |
 |---|---|
-| Talking Horses (`talking-horses/`) | **Works.** Real page is a multi-panelist show (Serling + rotating guest handicappers like Megan Burgess), each giving ranked program numbers per race, no horse names. Each named panelist is now attributed independently — see CHANGELOG.md's v2.49.27 entry. |
+| Talking Horses (`talking-horses/`) | **Works, verified against real captured text.** Multi-panelist show (Andy Serling + guest handicappers like Megan Burgess), each giving ranked program numbers per race, no horse names. Each named panelist attributed independently. |
+| Hablan Los Caballos (`hablan-los-caballos/`) | **Works, verified against real captured text (v2.49.29).** Also uses the panel format (host Darwin Vizcaya, `"Darwin Vizcaya | @DarwinVizcaya_ Race 1 3 ..."`). Fixed a real mislabeling bug where this got attributed as `"Talking Horses - Darwin Vizcaya"` since the panel-format label was hardcoded to Talking Horses's name — the parser now returns bare contributor names and the caller attaches the correct per-page show label. |
+| NYRA Bets picks (DeSantis, `racing.nyrabets.com/handicapping/bet-saratoga`) | **Works, verified against real captured text (v2.49.29).** Real page shape: `"Race 1 1:10 PM ET 6-3 Race 2 1:44 PM ET 5-6-4-2 ..."` (per-race post time + dash-ranked picks), plus a separate "Best Bet"-style named callout for select races. Fixed two real bugs found against the real text: the post time's own digits ("1:10") were being misread as the pick instead of the real "6-3"; and the named callout's horse name was bleeding backward onto every earlier race within 200 characters of it. See CHANGELOG.md's v2.49.29 entry for both root causes. |
 | TimeformUS (`timeformus/`) | **Confirmed dead**, not a scraping bug — the page's own text says "David Aragona is no longer posting TimeformUS analysis on NYRA.com." Disabled in `SOURCES`. No text-scrapable replacement exists (NYRA's TrackMaster Selections page is informational only; real selections are behind the NYRA Bets app). |
-| NYRA Bets picks (DeSantis) | **Found via Perplexity Computer (2026-07-09):** moved off nyra.com entirely, to `racing.nyrabets.com/handicapping/bet-saratoga`. Real HTML table, same "Race N num-num" shape as Talking Horses but single-handicapper (no panelist markers) — handled by the new `race-number-list` parser strategy (v2.49.28). Not yet verified against this pipeline's own captured raw HTML. |
-| NYRA Picks / Spanish (Vizcaya) | **Found via Perplexity Computer:** renamed to "Hablan Los Caballos" (Spanish for "Talking Horses"), still on nyra.com at `/saratoga/racing/hablan-los-caballos/`. Same shape as DeSantis's page. Also not yet verified against raw HTML. |
 | Central hub | `nyra.com/saratoga/racing/expert-picks/` links to all of NYRA's own handicappers — not scraped yet; would help auto-discover URLs if these move again. |
 
-Both newly-corrected URLs need a `workflow_dispatch` debug run (`debug:
-true`) to confirm the parser matches their real markup, same discipline
-Talking Horses already went through — Perplexity described the page shape
-but didn't hand over raw HTML to verify against directly.
+All three live sources have now been verified against real captured page
+text via `workflow_dispatch` debug runs (not just Perplexity's description)
+— same discipline applied to each one before trusting it on the schedule.
 
 `nyra.com/robots.txt` doesn't functionally exist (redirects to a 404 SPA
 page, no disallow/crawl-delay rules). `racing.nyrabets.com/robots.txt`
-hasn't been checked yet since DeSantis's picks only just moved to that
-host.
+hasn't been checked yet.
 
 ## Design
 
