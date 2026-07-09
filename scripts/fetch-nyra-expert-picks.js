@@ -66,15 +66,34 @@ async function fetchSource(source) {
       return { source, ok: false, reason: `HTTP ${res.status} ${res.statusText}` };
     }
     const html = await res.text();
-    // Debug aid: dump the raw fetched HTML when NYRA_DEBUG_DIR is set (used
-    // by the workflow's diagnostic run, never during the normal scheduled
-    // job) so a parse failure can be root-caused from the real page content
-    // instead of guessed at again.
+    // Debug aid: when NYRA_DEBUG_DIR is set (workflow diagnostic run only,
+    // never the scheduled job), dump the raw HTML as a file AND print a
+    // bounded diagnostic straight to stdout. The artifact upload requires
+    // downloading from external blob storage to inspect, which isn't always
+    // reachable -- printing to the job log (fetched via the GitHub API,
+    // which is reachable) is the fallback that doesn't depend on that.
     if (process.env.NYRA_DEBUG_DIR) {
       try {
         const slug = source.label.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
         fs.mkdirSync(process.env.NYRA_DEBUG_DIR, { recursive: true });
         fs.writeFileSync(path.join(process.env.NYRA_DEBUG_DIR, `${slug}.html`), html);
+      } catch (e) { /* best-effort only */ }
+      try {
+        const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+        const hasNextData = /__NEXT_DATA__/.test(html);
+        const jsonScriptCount = (html.match(/<script[^>]+type=["']application\/json["']/gi) || []).length;
+        const visibleText = html
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        console.log(`\n  --- DEBUG: ${source.label} (${source.url}) ---`);
+        console.log(`  html length: ${html.length}`);
+        console.log(`  <title>: ${titleMatch ? titleMatch[1].trim() : '(none found)'}`);
+        console.log(`  has __NEXT_DATA__: ${hasNextData}`);
+        console.log(`  application/json <script> blocks: ${jsonScriptCount}`);
+        console.log(`  visible text (first 1500 chars): ${visibleText.slice(0, 1500)}`);
       } catch (e) { /* best-effort only */ }
     }
     const result = parseNyraPicksHtml(html);
