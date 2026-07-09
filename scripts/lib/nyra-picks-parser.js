@@ -29,8 +29,17 @@ function parseNyraPicksHtml(html) {
   const fromPanel = tryExtractFromHandicapperPanel(html);
   if (fromPanel.length) return { picks: fromPanel, strategy: 'handicapper-panel' };
 
+  // Tried before race-number-list deliberately: this requires an explicit
+  // "#N"/"No. N" marker plus an actual horse name, which is more specific
+  // (and richer) than the bare-number pattern below -- trying it first
+  // means a page that DOES give real horse names doesn't lose them to the
+  // more generic strategy just because a number happens to follow shortly
+  // after a race heading too.
   const fromText = tryExtractFromVisibleText(html);
   if (fromText.length) return { picks: fromText, strategy: 'visible-text' };
+
+  const fromRaceList = tryExtractFromRaceNumberList(html);
+  if (fromRaceList.length) return { picks: fromRaceList, strategy: 'race-number-list' };
 
   return { picks: [], strategy: 'none', reason: 'no recognizable pick data found by any strategy' };
 }
@@ -158,7 +167,40 @@ function tryExtractFromHandicapperPanel(html) {
 }
 
 /**
- * Strategy 3 (fallback): strip tags down to visible text and look for
+ * Strategy 4 (tried after visible-text): single-handicapper pages that use
+ * the same "Race N {pp}-{pp}-{pp}" ranked-list shape as the Talking Horses
+ * panel, but
+ * without "{Name} | @{handle}" markers separating multiple contributors --
+ * e.g. NYRA Bets' DeSantis picks table ("MATTHEW'S FULL CARD PICKS...
+ * Race 1 ... 6-3") and the Spanish-language "Hablan Los Caballos" page
+ * (per Perplexity Computer's live check, 2026-07-09). The whole page is
+ * attributed to whichever `source.label` the caller configured for that
+ * URL, since there's only one implicit contributor. Reported per Perplexity
+ * as plain text / a plain HTML table -- tag-stripping handles both the same
+ * way. Not yet verified against this pipeline's own captured raw HTML (see
+ * SOURCES comment in fetch-nyra-expert-picks.js) -- confirm via a debug run
+ * before trusting on the schedule.
+ */
+function tryExtractFromRaceNumberList(html) {
+  const text = stripToVisibleText(html);
+  const picks = [];
+  // The trailing (?![A-Za-z]) matters: NYRA pages carry a "Race N - 0MTP"
+  // minutes-to-post nav widget (confirmed present on both Talking Horses
+  // and the dead TimeformUS page) that would otherwise false-positive as a
+  // pick of "0" -- rejecting a match immediately followed by a letter skips
+  // that specific false positive without needing to know the exact markup.
+  const raceRe = /\bRace\s+(\d{1,2})\b[^0-9]{0,20}?((?:\d{1,2}\s*-\s*)+\d{1,2}|\d{1,2})(?![A-Za-z])/g;
+  let m;
+  while ((m = raceRe.exec(text)) !== null) {
+    const raceNum = parseInt(m[1], 10);
+    const firstPick = parseInt(m[2].split('-')[0].trim(), 10);
+    picks.push({ race: raceNum, pick: firstPick, horseName: null });
+  }
+  return dedupePicks(picks);
+}
+
+/**
+ * Strategy 3: strip tags down to visible text and look for
  * "Race N" followed shortly by a "#N Horse Name" / "No. N Horse Name"
  * pattern -- a plain-text shape of a handicapper's top selection. Much more
  * fragile than strategies 1-2; only used when neither found anything.
@@ -196,4 +238,4 @@ function dedupePicks(picks) {
   return Array.from(byRace.values());
 }
 
-module.exports = { parseNyraPicksHtml, tryExtractFromEmbeddedJson, tryExtractFromHandicapperPanel, tryExtractFromVisibleText };
+module.exports = { parseNyraPicksHtml, tryExtractFromEmbeddedJson, tryExtractFromHandicapperPanel, tryExtractFromRaceNumberList, tryExtractFromVisibleText };

@@ -44,15 +44,29 @@ const WORKER_URL = process.env.RAILBIRD_WORKER_URL || 'https://cloudflare-worker
 //     own text says "David Aragona is no longer posting TimeformUS
 //     analysis on NYRA.com." Disabled below; re-enable only if NYRA starts
 //     publishing a replacement TimeformUS analysis page.
-//   - nyra-bets-picks/, nyra-picks/ : 404 on both. URLs from the original
-//     docs/SARATOGA_NYRA.md scaffolding are stale/wrong; the real current
-//     URLs need to be found (this script can't discover them itself).
-//     Disabled below rather than hitting a known 404 every scheduled run.
+//
+// Corrected 2026-07-09 (v2.49.28, via Perplexity Computer real-browser
+// check -- the two nyra.com/saratoga/racing/* URLs above 404 because both
+// pages moved/renamed, not because they don't exist):
+//   - DeSantis moved OFF nyra.com entirely, to the NYRA Bets subdomain
+//     (racing.nyrabets.com) -- a real HTML table, "MATTHEW'S FULL CARD
+//     PICKS - {DATE}", rows like "Race 1 ... 6-3".
+//   - Vizcaya's Spanish-language page was renamed "Hablan Los Caballos"
+//     (Spanish for "Talking Horses") and stayed on nyra.com -- plain text,
+//     same race-number-list shape, e.g. "Race 1 3", "Race 8 7 - 6 - 2 - 11".
+//   - There's also a central hub (nyra.com/saratoga/racing/expert-picks/)
+//     that links to all of NYRA's own handicappers -- not scraped yet, but
+//     worth using to auto-discover URLs if these move again.
+// Neither corrected URL's exact markup has been captured by this pipeline's
+// own diagnostic tooling yet (Perplexity described the shape, didn't hand
+// over raw HTML) -- run a debug workflow_dispatch after any parser change
+// here before trusting these on the schedule, same discipline as Talking
+// Horses.
 const SOURCES = [
   { label: 'NYRA Talking Horses', url: 'https://www.nyra.com/saratoga/racing/talking-horses/' },
+  { label: 'NYRA Bets - DeSantis', url: 'https://racing.nyrabets.com/handicapping/bet-saratoga' },
+  { label: 'Hablan Los Caballos - Vizcaya', url: 'https://www.nyra.com/saratoga/racing/hablan-los-caballos/' },
   // { label: 'NYRA - Aragona', url: 'https://www.nyra.com/saratoga/racing/timeformus/' }, // DEAD: discontinued per the page itself
-  // { label: 'NYRA - DeSantis', url: 'https://www.nyra.com/saratoga/racing/nyra-bets-picks/' }, // 404: needs correct URL
-  // { label: 'NYRA - Vizcaya', url: 'https://www.nyra.com/saratoga/racing/nyra-picks/' }, // 404: needs correct URL
 ];
 
 function parseArgs(argv) {

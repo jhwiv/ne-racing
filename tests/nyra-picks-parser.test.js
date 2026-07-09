@@ -69,6 +69,33 @@ test('parseNyraPicksHtml extracts every named panelist\'s picks from the real NY
   assert.equal(burgessRace2.pick, 7);
 });
 
+// v2.49.28: single-handicapper pages using the same "Race N num-num" shape
+// as Talking Horses but with no "{Name} | @{handle}" markers -- confirmed
+// live via Perplexity Computer (2026-07-09) for NYRA Bets' DeSantis picks
+// (a real HTML table) and the renamed Spanish-language "Hablan Los
+// Caballos" page. Perplexity described these, did not hand over raw HTML,
+// so these fixtures approximate the reported shape rather than reproduce
+// an exact capture -- flagged for a debug-run check before relying on the
+// schedule, same as Talking Horses was before it got its own real fixture.
+test('parseNyraPicksHtml extracts a single-handicapper "Race N num-num" table with no panelist markers', () => {
+  const html = `<html><body><table><tr><td>MATTHEW'S FULL CARD PICKS - THURSDAY, JULY 9</td></tr><tr><td>Race 1</td><td>6-3</td></tr><tr><td>Race 2</td><td>5-6-4-2</td></tr></table></body></html>`;
+  const result = parseNyraPicksHtml(html);
+  assert.equal(result.strategy, 'race-number-list');
+  assert.deepEqual(result.picks.find((p) => p.race === 1), { race: 1, pick: 6, horseName: null });
+  assert.deepEqual(result.picks.find((p) => p.race === 2), { race: 2, pick: 5, horseName: null });
+});
+
+test('parseNyraPicksHtml\'s race-number-list strategy rejects the "Race N - 0MTP" countdown widget as a false pick', () => {
+  // Confirmed present on multiple real NYRA pages (Talking Horses, the dead
+  // TimeformUS page) as site chrome, not a pick -- without a guard this
+  // would be misread as "race 7, pick 0".
+  const html = `<html><body><p>Log In Account Race 7 - 0MTP Log In Account Race 7 - 0MTP Hablan Los Caballos Race 1 3 Race 2 6 - 7</p></body></html>`;
+  const result = parseNyraPicksHtml(html);
+  assert.equal(result.picks.some((p) => p.race === 7), false, 'the MTP countdown widget must not be read as a race 7 pick');
+  assert.deepEqual(result.picks.find((p) => p.race === 1), { race: 1, pick: 3, horseName: null });
+  assert.deepEqual(result.picks.find((p) => p.race === 2), { race: 2, pick: 6, horseName: null });
+});
+
 test('parseNyraPicksHtml dedupes to one pick per race number (first match wins)', () => {
   const html = `<html><body>
     <script id="__NEXT_DATA__" type="application/json">${JSON.stringify({

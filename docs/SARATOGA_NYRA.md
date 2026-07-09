@@ -19,13 +19,20 @@ actually works, and not in the shape originally assumed:
 | Source | Status |
 |---|---|
 | Talking Horses (`talking-horses/`) | **Works.** Real page is a multi-panelist show (Serling + rotating guest handicappers like Megan Burgess), each giving ranked program numbers per race, no horse names. Each named panelist is now attributed independently — see CHANGELOG.md's v2.49.27 entry. |
-| TimeformUS (`timeformus/`) | **Confirmed dead**, not a scraping bug — the page's own text says "David Aragona is no longer posting TimeformUS analysis on NYRA.com." Disabled in `SOURCES`. |
-| NYRA Bets picks (`nyra-bets-picks/`) | **404.** URL is stale/wrong. Disabled in `SOURCES` pending the real URL. |
-| NYRA Picks / Spanish (`nyra-picks/`) | **404.** Same as above. |
+| TimeformUS (`timeformus/`) | **Confirmed dead**, not a scraping bug — the page's own text says "David Aragona is no longer posting TimeformUS analysis on NYRA.com." Disabled in `SOURCES`. No text-scrapable replacement exists (NYRA's TrackMaster Selections page is informational only; real selections are behind the NYRA Bets app). |
+| NYRA Bets picks (DeSantis) | **Found via Perplexity Computer (2026-07-09):** moved off nyra.com entirely, to `racing.nyrabets.com/handicapping/bet-saratoga`. Real HTML table, same "Race N num-num" shape as Talking Horses but single-handicapper (no panelist markers) — handled by the new `race-number-list` parser strategy (v2.49.28). Not yet verified against this pipeline's own captured raw HTML. |
+| NYRA Picks / Spanish (Vizcaya) | **Found via Perplexity Computer:** renamed to "Hablan Los Caballos" (Spanish for "Talking Horses"), still on nyra.com at `/saratoga/racing/hablan-los-caballos/`. Same shape as DeSantis's page. Also not yet verified against raw HTML. |
+| Central hub | `nyra.com/saratoga/racing/expert-picks/` links to all of NYRA's own handicappers — not scraped yet; would help auto-discover URLs if these move again. |
 
-Finding the correct current URLs for the two 404s is the one remaining
-open item, and isn't something this script (or this dev environment) can
-do on its own — no way to search/browse NYRA's site from here.
+Both newly-corrected URLs need a `workflow_dispatch` debug run (`debug:
+true`) to confirm the parser matches their real markup, same discipline
+Talking Horses already went through — Perplexity described the page shape
+but didn't hand over raw HTML to verify against directly.
+
+`nyra.com/robots.txt` doesn't functionally exist (redirects to a 404 SPA
+page, no disallow/crawl-delay rules). `racing.nyrabets.com/robots.txt`
+hasn't been checked yet since DeSantis's picks only just moved to that
+host.
 
 ## Design
 
@@ -39,12 +46,12 @@ This matches the pattern documented in `renderHandicapperProfiles()` / "How Cons
 
 | Handicapper | Role | Public URL |
 |---|---|---|
-| Andy Serling | NYRA Lead Analyst, Talking Horses host | https://www.nyra.com/saratoga/racing/talking-horses/ |
-| David Aragona | Morning Line Oddsmaker, TimeformUS on NYRA | https://www.nyra.com/saratoga/racing/timeformus/ |
-| Matthew DeSantis | NYRA Bets handicapper | https://www.nyra.com/saratoga/racing/nyra-bets-picks/ |
-| Darwin Vizcaya | NYRA Picks (Spanish-language) | https://www.nyra.com/saratoga/racing/nyra-picks/ |
+| Andy Serling (+ guest panelists) | NYRA Lead Analyst, Talking Horses host | https://www.nyra.com/saratoga/racing/talking-horses/ |
+| ~~David Aragona~~ | ~~Morning Line Oddsmaker, TimeformUS on NYRA~~ | **Discontinued** — no longer publishes here (confirmed on the page itself) |
+| Matthew DeSantis | NYRA Bets handicapper | https://racing.nyrabets.com/handicapping/bet-saratoga (moved off nyra.com — corrected 2026-07-09) |
+| Darwin Vizcaya | Hablan Los Caballos (Spanish-language) | https://www.nyra.com/saratoga/racing/hablan-los-caballos/ (renamed — corrected 2026-07-09) |
 
-All four are refreshed every race day during the meet. All four are free.
+Three of the four are live/scrapable (see the status table above); Aragona's is disabled. All are free.
 
 ## Worker wiring (already present)
 

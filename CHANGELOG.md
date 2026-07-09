@@ -1,5 +1,59 @@
 # NE Racing — Changelog
 
+## v2.49.28-brisnet — Correct the 2 dead NYRA source URLs; add a single-handicapper parser strategy (2026-07-09)
+
+Direct follow-up to v2.49.27. Asked Perplexity Computer (real browser
+access, not sandboxed) to find the current URLs for the two sources that
+404'd. Real findings:
+
+- **DeSantis (NYRA Bets) moved off nyra.com entirely**, to
+  `racing.nyrabets.com/handicapping/bet-saratoga` — a real HTML table,
+  "MATTHEW'S FULL CARD PICKS - {date}", rows like "Race 1 ... 6-3".
+- **Vizcaya's Spanish-language page was renamed** "Hablan Los Caballos"
+  (Spanish for "Talking Horses") and stayed on nyra.com at
+  `/saratoga/racing/hablan-los-caballos/` — same race-number-list shape,
+  e.g. "Race 1 3", "Race 8 7 - 6 - 2 - 11".
+- There's also a central hub (`/saratoga/racing/expert-picks/`) linking to
+  all of NYRA's own handicappers — not scraped yet, but noted for
+  auto-discovering URLs if these move again.
+- `nyra.com/robots.txt` doesn't functionally exist (redirects to a 404 SPA
+  page) — no crawl-delay/disallow rules published. `racing.nyrabets.com`
+  wasn't checked yet (new host, DeSantis's picks only just moved there).
+- Confirmed no native picks/selections endpoint exists in The Racing API's
+  North America add-on (checked their own docs) — scraping NYRA remains
+  the only option for this data.
+
+**Both corrected sources use the same shape as Talking Horses** ("Race N
+{pp}-{pp}-{pp}"), but as a *single* handicapper with no "{Name} | @{handle}"
+panelist markers. Added a new parser strategy,
+`tryExtractFromRaceNumberList` (`scripts/lib/nyra-picks-parser.js`), for
+this case — attributed to the whole page's configured source label rather
+than per-panelist.
+
+**Found and fixed a real conflict while wiring this in:** the new strategy
+was tried before the existing `visible-text` strategy and pre-empted it —
+a page phrased as "Race 4 ... Top selection: #7 Fancy Footwork" would get
+read as pick 7 with `horseName: null`, silently discarding the real horse
+name `visible-text` would have found. Reordered so the more specific,
+name-bearing pattern is tried first.
+
+**Also guarded against a known false positive:** NYRA pages carry a "Race
+N - 0MTP" minutes-to-post countdown widget (seen on both Talking Horses
+and the dead TimeformUS page) that would otherwise misread as "race N,
+pick 0". Added a negative lookahead rejecting a match immediately followed
+by a letter.
+
+**Honest caveat carried forward:** Perplexity described these two pages'
+shape, it didn't hand over raw HTML — these fixtures approximate the
+reported format rather than reproduce an exact capture. Run
+`workflow_dispatch` with `debug: true` to verify against the real pages
+(same discipline Talking Horses went through) before fully trusting these
+two on the unattended schedule.
+
+Tests: 2 new fixture tests in `tests/nyra-picks-parser.test.js` (the
+single-handicapper shape, and the MTP-widget false-positive rejection).
+Full suite: 258 pass / 1 known-fail / 1 skip.
+
 ## v2.49.27-brisnet — Fix NYRA parser against real live pages; drop confirmed-dead sources (2026-07-09)
 
 Direct follow-up to v2.49.26, which shipped the NYRA expert-picks scraper
