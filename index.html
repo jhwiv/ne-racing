@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260709-v2.49.24-brisnet';
+var NE_APP_VERSION = '20260709-v2.49.25-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260709-v2.49.24-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.24-brisnet';
+var RAILBIRD_VERSION = 'v2.49.25-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -18983,7 +18983,13 @@ function renderSparkline() {
 var EXOTIC_TYPE_DISPLAY_NAMES = { EX:'Exacta', TRI:'Trifecta', SUPER:'Superfecta', DD:'Daily Double', P3:'Pick 3', P4:'Pick 4', P5:'Pick 5', P6:'Pick 6' };
 
 function renderBetTypeBreakdown() {
-  const bets = getResultsBets();
+  // v2.49.25: scope to graded bets only, matching the Overall Advice Engine
+  // ROI / Your Bet ROI convention (v2.49.18). getResultsBets() returns every
+  // bet regardless of grading status; an ungraded bet's payout is undefined,
+  // which folded into `returned` as 0 — silently counting a still-pending
+  // bet as a loss and dragging down Win% / ROI for the whole row until the
+  // race actually posted results.
+  const bets = getResultsBets().filter(b => b.result);
   const byType = {};
   bets.forEach(b => {
     // v2.49.18: group exotics by their normalized code (already-shipped

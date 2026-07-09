@@ -385,6 +385,23 @@ test('v2.49.18 regression: renderBetTypeBreakdown merges a legacy "Exacta Box" b
   assert.match(tbody.innerHTML, /\$8\.00/, 'merged wagered total should be 4+4=8');
 });
 
+// ── v2.49.25: bet-type breakdown must exclude still-pending bets ───────────
+test('v2.49.25 regression: renderBetTypeBreakdown excludes ungraded bets instead of counting them as losses', () => {
+  const src = sliceBetween('var EXOTIC_TYPE_DISPLAY_NAMES', 'function renderResultsList');
+  const helpers = GRADING_HELPERS_SRC; // normalizeExoticTypeCode
+  const ctx = makeSandbox({
+    getResultsBets: () => ([
+      { type: 'Win', isExotic: false, amount: 2, result: null, payout: undefined }, // still pending
+      { type: 'Win', isExotic: false, amount: 2, result: 'win', payout: 8 },
+    ]),
+  });
+  vm.runInContext(helpers + '\n' + src + '\nrenderBetTypeBreakdown();', ctx);
+  const tbody = ctx.el('breakdown-body');
+  assert.match(tbody.innerHTML, /<td class="mono">1<\/td>/, 'count must be 1 (the pending bet excluded), not 2');
+  assert.match(tbody.innerHTML, /100%/, 'win% must reflect only the graded bet (1-for-1), not be diluted to 50%');
+  assert.match(tbody.innerHTML, /300\.0%/, 'ROI must be computed on the $2 graded wager only (300%), not diluted by the pending $2 stake to 100%');
+});
+
 // ── v2.49.19: "still pending" count must be scoped to today's bets ─────────
 test('v2.49.19 regression: fetchLiveResults\' pending count excludes ungraded bets from other dates', async () => {
   const helpers = GRADING_HELPERS_SRC; // fuzzyHorseMatch, _normalizeRaceResult

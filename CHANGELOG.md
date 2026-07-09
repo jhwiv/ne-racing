@@ -1,5 +1,29 @@
 # NE Racing — Changelog
 
+## v2.49.25-brisnet — Fix Bet Type Breakdown counting pending bets as losses (2026-07-09)
+
+Asked to sanity-check a live screenshot of the Results & Bankroll tab
+showing every tile at 0% win / -100% ROI (6 Win bets, 3 Exacta, all
+apparently losing). The report-card tiles that filter by `b.result`
+truthy (Your Bet ROI, Overall Advice Engine ROI — fixed for this exact
+class of bug in v2.49.18) were trustworthy. The **Bet Type Breakdown**
+table was not: `renderBetTypeBreakdown()` reads `getResultsBets()`, which
+returns every bet regardless of grading status, with no `b.result` filter
+of its own. A still-pending bet has no `payout` yet, which the reducer
+folds in as `0`, so an ungraded bet silently counts as a $0-return loss —
+inflating "Count" and dragging "Win%"/"ROI" down for the whole row until
+the race it's riding on actually posts results.
+
+Confirmed with a two-bet repro (1 pending $2 stake, 1 graded $2→$8 win):
+pre-fix the table showed Count 2 / Win% 50% / ROI 100.0%; the correct
+figures for the one bet that's actually settled are Count 1 / Win% 100% /
+ROI 300.0%.
+
+**Fix:** `renderBetTypeBreakdown()` now filters to `b.result` truthy
+bets only, before grouping — the same convention already used by Overall
+Advice Engine ROI and Your Bet ROI. A pending bet simply doesn't appear
+in this table until it's graded, instead of appearing early as a loss.
+
 ## v2.49.24-brisnet — Tightened results-poll cadence (2026-07-09)
 
 Reported live: races 1-3 on Saturday's card (post times 1:10 PM, 1:44 PM,
