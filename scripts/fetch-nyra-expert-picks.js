@@ -89,11 +89,27 @@ async function fetchSource(source) {
           .replace(/\s+/g, ' ')
           .trim();
         console.log(`\n  --- DEBUG: ${source.label} (${source.url}) ---`);
-        console.log(`  html length: ${html.length}`);
+        console.log(`  html length: ${html.length}, visible text length: ${visibleText.length}`);
         console.log(`  <title>: ${titleMatch ? titleMatch[1].trim() : '(none found)'}`);
         console.log(`  has __NEXT_DATA__: ${hasNextData}`);
         console.log(`  application/json <script> blocks: ${jsonScriptCount}`);
-        console.log(`  visible text (first 1500 chars): ${visibleText.slice(0, 1500)}`);
+        // Look for "Race N" ANYWHERE in the visible text, not just the start
+        // -- the page header/nav can run long before any real picks content.
+        const raceMentions = [];
+        const raceMentionRe = /\bRace\s*#?\s*\d{1,2}\b/gi;
+        let rm;
+        while ((rm = raceMentionRe.exec(visibleText)) !== null && raceMentions.length < 5) {
+          raceMentions.push(rm.index);
+        }
+        if (raceMentions.length) {
+          console.log(`  "Race N" mentions found at ${raceMentions.length} location(s) in visible text:`);
+          raceMentions.forEach((idx) => {
+            console.log(`    ...${visibleText.slice(Math.max(0, idx - 40), idx + 250)}...`);
+          });
+        } else {
+          console.log(`  no "Race N" mentions anywhere in visible text (checked all ${visibleText.length} chars) -- first 1500 chars shown below for context:`);
+          console.log(`  ${visibleText.slice(0, 1500)}`);
+        }
       } catch (e) { /* best-effort only */ }
     }
     const result = parseNyraPicksHtml(html);
