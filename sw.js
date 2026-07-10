@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260710-v2.49.32-brisnet'; // v2.49.32: post-race grading now cross-checks this device's own already-known scratched horses, not just the results feed's own scratches list               // bump on every ship
+const CACHE_VERSION = '20260710-v2.49.33-brisnet'; // v2.49.33: fixed Value Play ROI + Current Bankroll silently undercounting real cost of locked/graded exotic bets               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

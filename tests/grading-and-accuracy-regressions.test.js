@@ -812,3 +812,54 @@ test('v2.49.32 regression: resolveFromCachedResults (the app-reload grading path
   assert.equal(bet.result, 'scratch', 'the app-reload grading path must catch the same already-known-locally scratch that fetchLiveResults catches');
   assert.equal(bet.payout, 2);
 });
+
+// ── v2.49.32 sweep finding: Value Play ROI used bare b.amount for exotic bets ─
+// Found auditing every wager-summing tile for the same cost-vs-amount class
+// of bug already fixed once in v2.49.31 (renderAdviceReportCard). Value Plays
+// are placed as Exacta Box tickets (isExotic: true), where b.amount is only
+// the PER-COMBO base stake and b.cost is the real total outlay. This sibling
+// tile (fed by updateAccuracyTracking, not renderAdviceReportCard) was never
+// touched by the v2.49.31 fix and still used bare b.amount.
+test('v2.49.32 regression: updateAccuracyTracking\'s Value Play ROI uses the real cost of exotic bets, not the per-combo base amount', () => {
+  const ACC_SRC = sliceBetween('const ACCURACY_KEY', 'function renderAccuracyFromStorage');
+  const fakeStorage = new FakeLocalStorage();
+  const ctx = makeSandbox({
+    // $2/combo, 2-combo ($4 real cost) Exacta Box Value Play that wins $10.
+    getTrackData: () => ({ bets: [
+      { isValuePlay: true, isExotic: true, result: 'win', amount: 2, cost: 4, payout: 10 },
+    ] }),
+    getCachedResults: () => [],
+    fuzzyHorseMatch: () => false,
+    renderAdviceReportCard: () => {},
+    localStorage: fakeStorage,
+  });
+  vm.runInContext(ACC_SRC + '\nupdateAccuracyTracking();\nglobalThis.__acc = getAccuracyData();', ctx);
+  assert.equal(ctx.__acc.valuePlaysWagered, 4, 'wagered must be the real $4 ticket cost, not the $2 per-combo base (the bug: bare b.amount undercounted every multi-combo box)');
+  assert.equal(ctx.__acc.valuePlaysROI, 150, 'ROI on a $4 stake returning $10 is +150%, not the inflated +400% bare b.amount produced');
+});
+
+// ── v2.49.32 sweep finding: Current Bankroll used bare b.amount for locked exotics ─
+// Same class of bug in a third sibling location: updateBankrollBanner's
+// totalWagered (feeds the "Current Bankroll" figure) summed every locked
+// bet's bare b.amount regardless of isExotic, silently undercounting real
+// spend on any locked multi-combo box and overstating the displayed balance.
+test('v2.49.32 regression: updateBankrollBanner\'s Current Bankroll subtracts the real cost of locked exotic bets, not the per-combo base amount', () => {
+  const src = sliceFn('updateBankrollBanner', 'function checkBudgetWarning');
+  const elMap = new Map();
+  function el(id) {
+    if (!elMap.has(id)) elMap.set(id, { textContent: '', className: '' });
+    return elMap.get(id);
+  }
+  const ctx = makeSandbox({
+    el,
+    getStore: () => ({ settings: { startingBankroll: 1000 } }),
+    getStraightBetAmount: () => undefined,
+    getTrackData: () => ({
+      races: [],
+      // A single locked $2/combo, 2-combo ($4 real cost) exotic that lost.
+      bets: [{ isExotic: true, locked: true, amount: 2, cost: 4, payout: 0, date: TODAY }],
+    }),
+  });
+  vm.runInContext(src + '\nupdateBankrollBanner();', ctx);
+  assert.equal(el('bb-bankroll').textContent, '$996.00', 'a locked $4 exotic loss must reduce the bankroll by the real $4 cost, not the $2 per-combo base amount (previously showed $998.00)');
+});

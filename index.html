@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260710-v2.49.32-brisnet';
+var NE_APP_VERSION = '20260710-v2.49.33-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260710-v2.49.32-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.32-brisnet';
+var RAILBIRD_VERSION = 'v2.49.33-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -18017,7 +18017,13 @@ function updateBankrollBanner() {
   // before Lock All Bets was ever tapped.
   const locked = bets.filter(function(b) { return b.locked === true; });
   const totalPayout = locked.reduce((sum,b) => sum + (parseFloat(b.payout)||0), 0);
-  const totalWagered = locked.reduce((sum,b) => sum + (parseFloat(b.amount)||0), 0);
+  // v2.49.32: locked exotic bets store b.amount as the PER-COMBO base stake,
+  // not the real ticket cost (b.cost = combos × amount) -- same convention
+  // as the committed-total split just below. Bare b.amount here undercounted
+  // real spend on every multi-combo box, overstating Current Bankroll by the
+  // uncounted combo overhead (confirmed: a locked $2/combo, 2-combo $4 box
+  // that lost showed bankroll -$2 instead of the real -$4).
+  const totalWagered = locked.reduce((sum,b) => sum + (parseFloat(b.isExotic ? (b.cost || b.amount) : b.amount)||0), 0);
   const current = starting + totalPayout - totalWagered;
   const budget = starting * 0.2;
 
@@ -19316,8 +19322,15 @@ function updateAccuracyTracking() {
   accuracy.actionBetTotal = actionBets.length;
 
   // Value plays ROI
+  // v2.49.32: Value Plays are placed as Exacta Box tickets (isExotic), where
+  // b.amount is only the PER-COMBO base stake and b.cost is the real total
+  // outlay (combos × amount) -- same cost-aware convention as arc-overall-roi
+  // / arc-user-roi (v2.49.31). Bare b.amount here undercounted the true
+  // wager on every 2+-combo box, inflating this ROI (confirmed: a $2/combo,
+  // 2-combo $4 box that wins $10 showed +400% instead of the correct +150%).
   const valueBets = bets.filter(b => b.isValuePlay && b.result);
-  const vWag = valueBets.reduce((s, b) => s + (parseFloat(b.amount) || 0), 0);
+  const wagerOfValue = b => parseFloat(b.isExotic ? (b.cost || b.amount) : b.amount) || 0;
+  const vWag = valueBets.reduce((s, b) => s + wagerOfValue(b), 0);
   const vRet = valueBets.reduce((s, b) => s + (parseFloat(b.payout) || 0), 0);
   accuracy.valuePlaysWagered = vWag;
   accuracy.valuePlaysReturned = vRet;

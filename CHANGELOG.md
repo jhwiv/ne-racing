@@ -1,5 +1,48 @@
 # NE Racing — Changelog
 
+## v2.49.33-brisnet — Sweep: Value Play ROI + Current Bankroll silently undercounted exotic bet cost (2026-07-10)
+
+Direct follow-up to v2.49.32's "how do we know there aren't other bugs" ask.
+Asked to run a proactive sweep of every bet-construction call site and every
+wager/ROI-computing tile for more instances of the same bug classes found
+this session. `openBetAmountPicker(...)` call sites all check out (every
+non-exotic straight-bet button correctly passes one horse; the two exotic
+buttons — Value Play and Exotic of the Day — both correctly pass two). The
+four bugs already fixed under the "latent bugs" plan (wizard multi-race
+`leg_N` selections, `removeExoticBet` not refreshing the bankroll banner,
+missing `isActionBet` flag, Overall Advice Engine ROI pooling in untagged/
+ungraded bets) were confirmed already shipped in v2.49.15–19/25.
+
+Found two new instances of the exact bug class fixed in v2.49.31 (bare
+`b.amount` used where an exotic bet's real cost is `b.cost`, since
+`b.amount` is only the PER-COMBO base stake):
+
+- **`updateAccuracyTracking()`'s Value Play ROI** (feeds the `arc-value-roi`
+  tile) summed `b.amount` across all Value Play bets. Value Plays are placed
+  as Exacta Box tickets (`isExotic: true`) — v2.49.31 only fixed this
+  convention in `renderAdviceReportCard()`'s Overall Advice Engine ROI /
+  Your Bet ROI, never touching this sibling tile. Confirmed: a $2/combo,
+  2-combo ($4 real cost) box that wins $10 showed **+400%** instead of the
+  correct **+150%**.
+- **`updateBankrollBanner()`'s `totalWagered`** (feeds "Current Bankroll")
+  summed every *locked* bet's `b.amount` regardless of `isExotic`. Confirmed:
+  a locked $2/combo, 2-combo ($4 real cost) box that lost showed the
+  bankroll down only $2 instead of the real $4 — silently overstating cash
+  on hand by the uncounted combo overhead on every locked exotic.
+
+**Fix:** both now use the same `wagerOf`-style cost-aware helper
+(`b.isExotic ? (b.cost || b.amount) : b.amount`) already established in
+v2.49.31.
+
+Tests: `tests/grading-and-accuracy-regressions.test.js` adds two permanent
+regressions (Value Play ROI, Current Bankroll) proving each bug's exact
+inflated/understated figure and the corrected one. `tests/bets-tab-fix.test.js`'s
+pre-existing DEFECT A1 fixture had a locked exotic bet with no `amount`
+field (only `cost`) whose real $18 cost was silently read as $0 by the old
+code — its expected "Current Bankroll" value was quietly baking in this
+same bug; updated from $980.00 to the correct $962.00. Full suite: 271 pass
+/ 1 known-fail / 1 skip.
+
 ## v2.49.32-brisnet — Post-race grading now cross-checks this device's own already-known scratches (2026-07-10)
 
 Reported live: "Race one the app recommended 3-6 exacta. Finish order was

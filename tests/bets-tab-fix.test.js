@@ -76,8 +76,11 @@ test('DEFECT A: bankroll banner excludes unlocked straights from wagered/committ
   const current = ctx.el('bb-bankroll').textContent;
   const committed = ctx.el('bb-committed').textContent;
 
-  // starting(1000) + payout(0) - wagered(only the locked $20) = 980
-  assert.equal(current, '$980.00', 'current must only subtract LOCKED bets, not queued/unlocked ones (DEFECT A1)');
+  // starting(1000) + payout(0) - wagered(locked straight $20 + locked exotic's
+  // REAL cost $18, v2.49.32: previously read exotic wager via bare b.amount,
+  // which this fixture doesn't even set -- silently counting the exotic's
+  // true $18 outlay as $0 and overstating "current" by exactly that amount) = 962
+  assert.equal(current, '$962.00', 'current must subtract LOCKED bets using their real cost (b.cost for exotics, not bare b.amount), not just locked straights (DEFECT A1 + v2.49.32)');
   // committed = locked today straight ($20) ; no h.wps entries, yesterday exotic excluded (DEFECT A2/A3)
   assert.equal(committed, '$20.00', 'committed must include today\'s locked straight and exclude yesterday\'s exotic');
 });
