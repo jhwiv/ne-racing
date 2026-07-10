@@ -559,3 +559,76 @@ test('v2.49.23 regression: the ticket still shows "Pass -- Save bankroll" when t
   assert.match(ctx.html, /Save bankroll/, 'a genuinely thin race on a card that otherwise has real odds must keep the original "Pass" framing (no over-fix)');
   assert.doesNotMatch(ctx.html, /No Odds Yet/);
 });
+
+// ── v2.49.30: Value Play "Exacta Box" quick-bet button drops the partner
+// horse, silently placing an un-gradeable 1-horse "box" that can never win ──
+//
+// Reported live 2026-07-10: two of three exotic bets placed today ("Pauillac"
+// $2 R1, "Trust Fund" $2 R3) showed only ONE horse name despite being tagged
+// EXACTA BOX. Root cause: the Value Play card's bet button
+// (updateTopPicksCard, onclick="openBetAmountPicker(..., v.horse.name,
+// v.horse.pp, 'Exacta Box', 'value')") passes only the Value Play's own
+// horse -- never the paired partner horse the card visibly promises
+// ("$2 EX Box with #2"). handleTicketBetClick then splits horseName/horsePp
+// on '/' to build the exotic selections array; with no '/' present, that
+// array has exactly one entry. resolveExoticBet's box-mode logic requires
+// `boxSelections.length >= needed` (2 for an exacta) before it will even
+// attempt a match -- a 1-name box permanently fails that check and returns
+// {result:'loss'} unconditionally, regardless of the real finish. This is
+// not a bad pick; the bet was never capable of grading as a win.
+test('v2.49.30 regression: a 1-horse "Exacta Box" bet (the un-fixed Value Play button shape) can never win, even when that horse wins', () => {
+  const src = GRADING_HELPERS_SRC;
+  const ctx = makeSandbox({});
+  vm.runInContext(src, ctx);
+
+  // Exactly what handleTicketBetClick produces when horseName/horsePp arrive
+  // WITHOUT a slash-joined partner (today's live bug shape).
+  const brokenBet = { type: 'Exacta Box', mode: 'box', amount: 2, selections: ['Pauillac'] };
+  const raceResult = {
+    results: [
+      { position: 1, pp: 3, horseName: 'Pauillac' },   // the picked horse DID win
+      { position: 2, pp: 7, horseName: 'Sorrentino' },
+    ],
+    exotics: [{ type: 'exacta', payout: 42.50 }],
+  };
+  const result = vm.runInContext('resolveExoticBet(brokenBet, raceResult)', Object.assign(ctx, { brokenBet, raceResult }));
+  assert.equal(result.result, 'loss', 'a 1-name "box" must grade as a loss unconditionally -- there is no valid 2-horse combination to check, even though the one named horse actually won');
+  assert.equal(result.payout, 0);
+});
+
+test('v2.49.30 regression: the same bet correctly grades as a win once both horses are present (the fixed 2-horse shape)', () => {
+  const src = GRADING_HELPERS_SRC;
+  const ctx = makeSandbox({});
+  vm.runInContext(src, ctx);
+
+  // What handleTicketBetClick produces once the caller passes the slash-
+  // joined partner, matching the already-working "Exotic of the Day" button
+  // (app.html ~line 17236): 'Pauillac/Sorrentino'.split('/') -> 2 names.
+  const fixedBet = { type: 'Exacta Box', mode: 'box', amount: 2, selections: ['Pauillac', 'Sorrentino'] };
+  const raceResult = {
+    results: [
+      { position: 1, pp: 3, horseName: 'Pauillac' },
+      { position: 2, pp: 7, horseName: 'Sorrentino' },
+    ],
+    exotics: [{ type: 'exacta', payout: 42.50 }],
+  };
+  const result = vm.runInContext('resolveExoticBet(fixedBet, raceResult)', Object.assign(ctx, { fixedBet, raceResult }));
+  assert.equal(result.result, 'win', 'with both horses present, the exact same real outcome must grade as a win');
+  assert.ok(result.payout > 0);
+});
+
+// ── Confirms the actual bug site: the onclick template must include the
+// paired partner horse, mirroring the already-correct "Exotic of the Day"
+// button pattern (app.html ~line 17236), not just the Value Play's own horse.
+test('v2.49.30 regression: the Value Play bet button\'s onclick includes the paired partner horse (slash-joined), not just the Value Play\'s own horse', () => {
+  const start = INDEX.indexOf('// ── Value Plays ──');
+  assert.ok(start > -1, 'Value Plays section not found');
+  const end = INDEX.indexOf('// ── Action Bets', start);
+  assert.ok(end > -1, 'Action Bets section not found');
+  const block = INDEX.slice(start, end);
+  const onclickLineMatch = block.match(/onclick="openBetAmountPicker\(event, \$\{v\.race\.num\}, .*?'Exacta Box', 'value'\)"/);
+  assert.ok(onclickLineMatch, 'Value Play bet button onclick not found in expected shape');
+  const onclickLine = onclickLineMatch[0];
+  assert.match(onclickLine, /secondHorse\.horse\.name/, 'the horse-name argument must include the partner horse\'s name (the v2.49.30 bug: only v.horse.name -- the Value Play\'s own horse -- was ever passed, silently building a 1-horse "box" that can never win)');
+  assert.match(onclickLine, /secondHorse\.horse\.pp/, 'the pp argument must include the partner horse\'s pp for the same reason');
+});

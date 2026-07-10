@@ -1,5 +1,52 @@
 # NE Racing — Changelog
 
+## v2.49.30-brisnet — CRITICAL fix: Value Play "Exacta Box" quick-bet button placed an un-gradeable 1-horse box (2026-07-10)
+
+Asked to evaluate why today's exotic bets lost. Two of the three placed
+today ("Pauillac" $2 R1, "Trust Fund" $2 R3) showed only ONE horse name
+despite being tagged EXACTA BOX — a real exacta needs two selections to
+form any combination at all.
+
+**Root cause, traced precisely:** the Value Play card's bet button
+(`updateTopPicksCard`, app.html ~line 17136) visibly promises "$2 EX Box
+with #2" (computing a paired partner horse at render time), but its
+`onclick="openBetAmountPicker(...)"` call only ever passed the Value
+Play's OWN horse — the partner was computed for display only and never
+passed into the actual bet. `handleTicketBetClick` splits the incoming
+horseName/horsePp on `/` to build the exotic's selections array; with no
+`/` present, that array has exactly one entry.
+`resolveExoticBet`'s box-mode logic requires
+`boxSelections.length >= needed` (2 for an exacta) before it will even
+attempt a match against the real finish — a 1-name box permanently fails
+that check and returns `{result:'loss', payout:0}` **unconditionally**,
+independent of what actually happened in the race.
+
+**This was not a bad pick. It was structurally incapable of ever winning
+from the moment it was placed.** Confirmed directly: fed a race result
+where the picked horse (Pauillac) actually finished 1st, `resolveExoticBet`
+still returned a loss — the bug, not the horse, is what lost.
+
+Meanwhile the third exotic bet today ("Pauillac, Sorrentino" $4 R1, two
+horses correctly stored) was a real, valid exacta box that graded on its
+actual merits, unaffected by this bug — and the day's five Win bets went
+4-for-5 (Pros and Cons, Elnajd, Whatchatalkinabout wins; three more
+pending at review time), consistent with the "good results" the win side
+of the ticket was showing.
+
+**Fix:** the button's onclick now slash-joins the partner horse's name/pp
+into the arguments, mirroring the already-correct "Exotic of the Day"
+button (app.html ~line 17236), which has always included both horses
+correctly.
+
+Tests: `tests/grading-and-accuracy-regressions.test.js` adds three
+permanent regressions — (1) locks in that a 1-name box can never win, even
+when fed a result where that horse wins (documents the trap so nothing
+reintroduces it silently); (2) confirms the same real outcome grades as a
+win once both horses are present; (3) asserts the Value Play button's
+onclick template actually includes the partner horse. Confirmed (2) and
+(3) fail against the pre-fix code. Full suite: 263 pass / 1 known-fail /
+1 skip.
+
 ## v2.49.29-brisnet — Fix 3 real bugs surfaced by a debug run against the corrected URLs (2026-07-09)
 
 Direct follow-up to v2.49.28. Ran the debug workflow against the two

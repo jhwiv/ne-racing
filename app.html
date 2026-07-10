@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260709-v2.49.29-brisnet';
+var NE_APP_VERSION = '20260710-v2.49.30-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260709-v2.49.29-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.29-brisnet';
+var RAILBIRD_VERSION = 'v2.49.30-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -17133,7 +17133,7 @@ function updateTopPicksCard(allScores) {
       <div class="rec-bet-reason">"${reason}"</div>
       <div class="rec-bet-details"></div>
       ${buildBarnFollowChips(v.horse)}
-      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}', ${v.horse.pp}, 'Exacta Box', 'value')">${_betBtnLabel}</button>
+      <button class="btn-bet-sm" style="margin-top:0.35rem" onclick="openBetAmountPicker(event, ${v.race.num}, '${escHtml(v.horse.name).replace(/'/g,"\\'")}${secondHorse ? '/' + escHtml(secondHorse.horse.name).replace(/'/g,"\\'") : ''}', '${v.horse.pp}${secondHorse ? '/' + secondHorse.horse.pp : ''}', 'Exacta Box', 'value')">${_betBtnLabel}</button>
     </div>`;
     ticketLines.push(`VALUE — Race ${v.race.num}: #${v.horse.pp} ${v.horse.name} (${v.horse.ml}${overlayStr}) — $2 EX Box with ${exPartner || '#2'}${vpPayout ? ' (' + vpPayout + ')' : ''}`);
   });

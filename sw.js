@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260709-v2.49.29-brisnet'; // v2.49.29: fixed 3 real bugs found via live debug run — mislabeled panelist attribution, post-time digits breaking pick extraction, and a name bleeding onto unrelated earlier races               // bump on every ship
+const CACHE_VERSION = '20260710-v2.49.30-brisnet'; // v2.49.30: fixed Value Play "Exacta Box" quick-bet button silently placing an un-gradeable 1-horse box that could never win, regardless of the real result               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
