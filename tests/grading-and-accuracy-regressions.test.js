@@ -686,3 +686,129 @@ test('v2.49.30 regression: the Value Play bet button\'s onclick includes the pai
   assert.match(onclickLine, /secondHorse\.horse\.name/, 'the horse-name argument must include the partner horse\'s name (the v2.49.30 bug: only v.horse.name -- the Value Play\'s own horse -- was ever passed, silently building a 1-horse "box" that can never win)');
   assert.match(onclickLine, /secondHorse\.horse\.pp/, 'the pp argument must include the partner horse\'s pp for the same reason');
 });
+
+// ── v2.49.32: post-race grading missed scratches the app already knew about ─
+// Reported live 2026-07-10: Race 1 recommended a 3-6 exacta; finish order was
+// 4, 5, 3, 2 -- "no sign of the 6." The results feed's own `scratches` array
+// didn't separately repeat #6 even though the real-time scratch feed had
+// already marked it scratched locally (race.horses[].scratched). Both
+// post-race grading paths (fetchLiveResults, resolveFromCachedResults) only
+// ever checked raceResult.scratches, so a bet on a scratched horse graded as
+// a plain LOSS instead of a refunded 'scratch' whenever the two scratch
+// sources disagreed.
+test('v2.49.32 regression: combinedScratchNames merges the results feed\'s scratches with this device\'s own already-known scratched horses', () => {
+  const ctx = makeSandbox({});
+  vm.runInContext(GRADING_HELPERS_SRC, ctx);
+  const race = { num: 1, horses: [
+    { pp: 6, name: 'Horse Six', scratched: true },
+    { pp: 3, name: 'Horse Three', scratched: false },
+  ] };
+  const merged = vm.runInContext('JSON.stringify(combinedScratchNames(resultScratches, race))', Object.assign(ctx, { resultScratches: ['Some Other Scratch'], race }));
+  assert.equal(merged, JSON.stringify(['Some Other Scratch', 'Horse Six']),
+    'must include both the results feed\'s scratches AND this device\'s own locally-known scratched horse, not just one or the other');
+});
+
+test('v2.49.32 regression: combinedScratchNames falls back cleanly when there is no local race or no results-feed scratches', () => {
+  // Compared via JSON round-trip rather than assert.deepEqual: arrays built
+  // entirely inside the vm sandbox come from that context's own realm, and
+  // Node's strict deepEqual treats same-shape cross-realm arrays as unequal.
+  const ctx = makeSandbox({});
+  vm.runInContext(GRADING_HELPERS_SRC, ctx);
+  assert.equal(vm.runInContext('JSON.stringify(combinedScratchNames(null, null))', ctx), '[]');
+  assert.equal(vm.runInContext('JSON.stringify(combinedScratchNames(["A"], null))', ctx), '["A"]');
+  assert.equal(vm.runInContext('JSON.stringify(combinedScratchNames(null, race))', Object.assign(ctx, { race: { num: 1, horses: [{ pp: 1, name: 'B', scratched: true }] } })), '["B"]');
+});
+
+test('v2.49.32 regression: fetchLiveResults refunds an exotic bet whose leg was only known-scratched locally, not by the results feed', async () => {
+  const helpers = GRADING_HELPERS_SRC;
+  const src = sliceBetween('async function fetchLiveResults(isManual)', 'function hasUnresolvedBets');
+  const ctx = makeSandbox({
+    selectedCalendarDate: null,
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    showToast: () => {},
+    getCachedResults: () => [],
+    setCachedResults: () => {},
+    getTrackData: () => ctx.__data,
+    saveTrackData: (d) => { ctx.__data = d; },
+    renderResultsTab: () => {},
+    renderStraightBets: () => {},
+    updateAccuracyTracking: () => {},
+    showWinnerOverlay: () => {},
+    renderTodayTab: () => {},
+    refreshStatusTabIfActive: () => {},
+    fetch: async () => ({
+      ok: true,
+      // Exact reported shape: finish order 4, 5, 3, 2 -- no #6 anywhere,
+      // and the results feed's own scratches array is empty (doesn't
+      // separately confirm #6 was scratched).
+      json: async () => ({ races: [{
+        raceNumber: 1,
+        results: [
+          { position: 1, pp: 4, horseName: 'Horse Four' },
+          { position: 2, pp: 5, horseName: 'Horse Five' },
+          { position: 3, pp: 3, horseName: 'Horse Three' },
+          { position: 4, pp: 2, horseName: 'Horse Two' },
+        ],
+        scratches: [],
+      }] }),
+    }),
+  });
+  ctx.__data = {
+    bets: [
+      { id: 'exacta-36', date: TODAY, raceNum: 1, type: 'EX', mode: 'box', isExotic: true, amount: 2, cost: 2, selections: ['Horse Three', 'Horse Six'], result: null },
+    ],
+    // The app's own real-time scratch feed already marked #6 scratched.
+    races: [{ num: 1, horses: [{ pp: 6, name: 'Horse Six', scratched: true }, { pp: 3, name: 'Horse Three', scratched: false }] }],
+  };
+  await vm.runInContext(helpers + '\n' + src + '\nfetchLiveResults();', ctx);
+  const bet = ctx.__data.bets[0];
+  assert.equal(bet.result, 'scratch', 'a leg the app already knew was scratched must refund, not grade as a plain loss just because the results feed\'s own scratches array stayed silent on it (the exact "no sign of the 6" bug reported live)');
+  assert.equal(bet.payout, 2, 'refund must equal the real ticket cost');
+});
+
+test('v2.49.32 regression: resolveFromCachedResults (the app-reload grading path) applies the same combined-scratch check', () => {
+  // GRADING_HELPERS_SRC includes the real getCachedResults/setCachedResults
+  // (backed by localStorage under RESULTS_CACHE_KEY), so unlike other tests
+  // in this file we must seed FakeLocalStorage with the real cache shape
+  // rather than overriding getCachedResults -- the real function declared
+  // inside this slice would just shadow any override passed via the sandbox.
+  const helpers = GRADING_HELPERS_SRC;
+  const src = sliceBetween('function resolveFromCachedResults()', '\nfunction ');
+  const trackData = {
+    bets: [
+      { id: 'exacta-36', date: TODAY, raceNum: 1, type: 'EX', mode: 'box', isExotic: true, amount: 2, cost: 2, selections: ['Horse Three', 'Horse Six'], result: null },
+    ],
+    races: [{ num: 1, horses: [{ pp: 6, name: 'Horse Six', scratched: true }, { pp: 3, name: 'Horse Three', scratched: false }] }],
+  };
+  const fakeStorage = new FakeLocalStorage();
+  fakeStorage.setItem('ne-racing-results-cache', JSON.stringify({
+    ['SAR_' + TODAY]: {
+      races: [{
+        raceNumber: 1,
+        results: [
+          { position: 1, pp: 4, horseName: 'Horse Four' },
+          { position: 2, pp: 5, horseName: 'Horse Five' },
+          { position: 3, pp: 3, horseName: 'Horse Three' },
+          { position: 4, pp: 2, horseName: 'Horse Two' },
+        ],
+        scratches: [],
+      }],
+    },
+  }));
+  const ctx = makeSandbox({
+    localStorage: fakeStorage,
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => TODAY,
+    getTrackData: () => trackData,
+    saveTrackData: () => {},
+    renderResultsTab: () => {},
+    renderStraightBets: () => {},
+    updateAccuracyTracking: () => {},
+    renderTodayTab: () => {},
+    refreshStatusTabIfActive: () => {},
+  });
+  vm.runInContext(helpers + '\n' + src + '\nresolveFromCachedResults();', ctx);
+  const bet = trackData.bets[0];
+  assert.equal(bet.result, 'scratch', 'the app-reload grading path must catch the same already-known-locally scratch that fetchLiveResults catches');
+  assert.equal(bet.payout, 2);
+});

@@ -1,5 +1,44 @@
 # NE Racing — Changelog
 
+## v2.49.32-brisnet — Post-race grading now cross-checks this device's own already-known scratches (2026-07-10)
+
+Reported live: "Race one the app recommended 3-6 exacta. Finish order was
+4, 5, 3, 2. No sign of the 6." The horse never appeared in the finish, but
+the bet graded as a plain LOSS instead of a scratch/refund — the exact
+shape produced by a missed scratch.
+
+**Root cause:** the app has two entirely separate scratch-detection paths
+that never cross-check each other. The real-time path
+(`fetchLiveScratches` → `applyScratchToBetsAndData`) only fires while the
+app is open and polling, and marks `race.horses[].scratched = true`
+locally the moment it sees a scratch. The post-race grading paths
+(`fetchLiveResults()` and, on app reload, `resolveFromCachedResults()`)
+only ever checked `raceResult.scratches` — the paid results API's own
+scratches array — with no fallback to what the app already knew locally.
+If a scratch was caught by the real-time feed but the results API's own
+scratches array didn't separately repeat it (or the app was closed when
+the scratch happened), the post-race grader had no way to see it, and the
+bet graded as a straight loss instead of a refund.
+
+**Fix:** added `combinedScratchNames(resultScratches, race)`, which merges
+the results feed's scratches array with any horse already flagged
+`scratched: true` on the app's own local race data. Wired into all four
+scratch-check call sites: the straight-bet and exotic-bet checks inside
+both `fetchLiveResults()` and `resolveFromCachedResults()`. This is
+defensive and forward-looking only — it does not retroactively regrade
+bets that already have a `result` set (both functions early-return on an
+already-graded bet), so today's Race 1 exacta stays as previously graded.
+It closes the gap for every future scratch, regardless of which of the
+two scratch feeds catches it first.
+
+Tests: `tests/grading-and-accuracy-regressions.test.js` adds five permanent
+regressions — `combinedScratchNames`'s merge and fallback behavior, and
+one integration test per grading path (`fetchLiveResults`,
+`resolveFromCachedResults`) reproducing the exact reported shape (results
+feed's scratches empty, local `race.horses[].scratched` true, finish order
+with no sign of the scratched horse) and confirming both now refund
+instead of grading a loss. Full suite: 269 pass / 1 known-fail / 1 skip.
+
 ## v2.49.31-brisnet — CRITICAL fix: Overall Advice Engine ROI + Your Bet ROI silently excluded every exotic bet (2026-07-10)
 
 Direct follow-up to v2.49.30. Asked to verify a live screenshot of the

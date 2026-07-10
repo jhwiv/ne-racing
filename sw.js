@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260710-v2.49.31-brisnet'; // v2.49.31: fixed Overall Advice Engine ROI + Your Bet ROI silently excluding every exotic bet, hiding real losses from both tiles               // bump on every ship
+const CACHE_VERSION = '20260710-v2.49.32-brisnet'; // v2.49.32: post-race grading now cross-checks this device's own already-known scratched horses, not just the results feed's own scratches list               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

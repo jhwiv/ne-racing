@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260710-v2.49.31-brisnet';
+var NE_APP_VERSION = '20260710-v2.49.32-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260710-v2.49.31-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.31-brisnet';
+var RAILBIRD_VERSION = 'v2.49.32-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -21008,6 +21008,30 @@ function fuzzyHorseMatch(a, b) {
   return false;
 }
 
+// v2.49.32: the real-time scratch path (fetchLiveScratches -> toggleScratch
+// -> applyScratchToBetsAndData) only fires while the app is actively open
+// and polling. If a horse gets scratched while the app is closed, the ONLY
+// remaining check is this post-race grading path's `raceResult.scratches`
+// -- but that list comes from a single upstream feed (the paid results
+// API), which may not independently repeat every scratch the app already
+// knows about from the separate live Equibase scratches feed. Reported
+// live 2026-07-10: an exotic bet on a horse with no sign of it in the
+// finish order graded as a straight LOSS, not a scratch/refund -- exactly
+// the shape this gap would produce. Merges the results feed's own scratch
+// list with whatever this device has ALREADY marked scratched locally
+// (`race.horses[].scratched`, the same flag the real-time path already
+// trusts), so a scratch the app caught earlier is never lost just because
+// the results feed's own scratches array doesn't separately mention it.
+function combinedScratchNames(resultScratches, race) {
+  var names = (resultScratches || []).slice();
+  if (race && Array.isArray(race.horses)) {
+    race.horses.forEach(function(h) {
+      if (h && h.scratched && h.name) names.push(h.name);
+    });
+  }
+  return names;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // RESULTS CACHE — persist fetched results in localStorage by date+track
 // ═══════════════════════════════════════════════════════════════════════════
@@ -21360,11 +21384,16 @@ async function fetchLiveResults(isManual) {
       var raceNum = parseInt(bet.raceNum, 10);
       var raceResult = allRaces.find(function(r) { return r.raceNumber === raceNum; });
       if (!raceResult || !raceResult.results || !raceResult.results.length) return;
+      // v2.49.32: also check this device's own already-known scratched
+      // horses (see combinedScratchNames) so a scratch caught earlier by
+      // the real-time feed isn't lost if the results API's own scratches
+      // list doesn't separately repeat it.
+      var localRace = (data.races || []).find(function(r) { return r.num === raceNum; });
 
       // Check for scratched horse
       if (!bet.isExotic && Array.isArray(bet.selections) && bet.selections[0]) {
         var betHorseName = bet.selections[0];
-        var scratches = raceResult.scratches || [];
+        var scratches = combinedScratchNames(raceResult.scratches, localRace);
         var isScratch = scratches.some(function(s) { return fuzzyHorseMatch(s, betHorseName); });
         if (isScratch) {
           bet.result = 'scratch';
@@ -21378,7 +21407,7 @@ async function fetchLiveResults(isManual) {
       // Without this, the exotic bypassed scratch detection and stayed
       // perpetually pending after a late scratch.
       if (bet.isExotic && ['EX','TRI','SUPER'].indexOf(normalizeExoticTypeCode(bet.type)) >= 0) {
-        var exScratches = raceResult.scratches || [];
+        var exScratches = combinedScratchNames(raceResult.scratches, localRace);
         var legNames = [];
         if (Array.isArray(bet.selections)) {
           bet.selections.forEach(function(s){
@@ -21681,9 +21710,14 @@ function resolveFromCachedResults() {
     var raceNum = parseInt(bet.raceNum, 10);
     var raceResult = cached.find(function(r) { return r.raceNumber === raceNum; });
     if (!raceResult || !raceResult.results || !raceResult.results.length) return;
+    // v2.49.32: mirror of fetchLiveResults -- also check this device's own
+    // already-known scratched horses (see combinedScratchNames) so a scratch
+    // caught earlier by the real-time feed isn't lost if the cached results'
+    // own scratches list doesn't separately repeat it.
+    var localRace2 = (data.races || []).find(function(r) { return r.num === raceNum; });
 
     if (!bet.isExotic && Array.isArray(bet.selections) && bet.selections[0]) {
-      var scratches = raceResult.scratches || [];
+      var scratches = combinedScratchNames(raceResult.scratches, localRace2);
       var isScratch = scratches.some(function(s) { return fuzzyHorseMatch(s, bet.selections[0]); });
       if (isScratch) {
         bet.result = 'scratch';
@@ -21694,7 +21728,7 @@ function resolveFromCachedResults() {
     }
     // P0-4 (v2.48.6): exotic-bet scratch handling, mirror of fetchLiveResults
     if (bet.isExotic && ['EX','TRI','SUPER'].indexOf(normalizeExoticTypeCode(bet.type)) >= 0) {
-      var exScratches2 = raceResult.scratches || [];
+      var exScratches2 = combinedScratchNames(raceResult.scratches, localRace2);
       var legNames2 = [];
       if (Array.isArray(bet.selections)) {
         bet.selections.forEach(function(s){
