@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260710-v2.49.30-brisnet';
+var NE_APP_VERSION = '20260710-v2.49.31-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260710-v2.49.30-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.30-brisnet';
+var RAILBIRD_VERSION = 'v2.49.31-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -19211,7 +19211,15 @@ function deleteResultBet(betId) {
 
 function renderAdviceReportCard() {
   const data = getTrackData();
-  const bets = (data && data.bets) ? data.bets.filter(b=>!b.isExotic) : [];
+  // v2.49.31: was `data.bets.filter(b=>!b.isExotic)` -- silently excluded
+  // EVERY exotic bet from every tile below, including Overall Advice Engine
+  // ROI and Your Bet ROI. Your Bet ROI's own doc comment explicitly promises
+  // "Includes ALL bet types (win/place/show/exotics)"; this filter broke
+  // that promise outright. Confirmed live 2026-07-10: three real exotic bets
+  // ($8 wagered, $0 returned) were completely invisible to both ROI tiles.
+  // bestBets/valueBets below are otherwise unused in this function (dead
+  // code, unaffected either way).
+  const bets = (data && data.bets) ? data.bets : [];
   const bestBets = bets.filter(b=>b.isBestBet);
   const valueBets = bets.filter(b=>b.isValuePlay);
 
@@ -19244,9 +19252,18 @@ function renderAdviceReportCard() {
     // (payout treated as 0, silently dragging ROI down as if already lost)
     // — making it a near-duplicate of Your Bet ROI below rather than an
     // independent measure of the advice engine's own picks.
+    //
+    // v2.49.31: use the same cost-aware wagerOf() convention as Your Bet ROI
+    // below. Value Play bets are placed as Exacta Box tickets (isExotic),
+    // and b.amount is only the PER-COMBO base for those -- b.cost is the
+    // real total outlay (combos × amount). Using bare b.amount silently
+    // undercounted the true stake on every tagged exotic bet, inflating
+    // this ROI figure. Confirmed live 2026-07-10: a $2 win + a $4 (2-combo)
+    // exacta loss showed +50% here instead of the correct 0%.
     const engineBets = bets.filter(b => (b.isBestBet || b.isValuePlay || b.isActionBet) && b.result);
+    const wagerOf = b => parseFloat(b.isExotic ? (b.cost || b.amount) : b.amount) || 0;
     const ret = engineBets.reduce((s,b)=>s+(parseFloat(b.payout)||0),0);
-    const wag = engineBets.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
+    const wag = engineBets.reduce((s,b)=>s+wagerOf(b),0);
     el('arc-overall-roi').textContent = wag > 0 ? fmtPct((ret-wag)/wag*100) : '—';
   }
 

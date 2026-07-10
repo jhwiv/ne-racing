@@ -1,5 +1,40 @@
 # NE Racing — Changelog
 
+## v2.49.31-brisnet — CRITICAL fix: Overall Advice Engine ROI + Your Bet ROI silently excluded every exotic bet (2026-07-10)
+
+Direct follow-up to v2.49.30. Asked to verify a live screenshot of the
+Advice Report Card and Bet Type Breakdown against today's actual bets, and
+found something worse than the button bug: **today's three exotic bets
+($8 wagered, $0 returned) had zero effect on either "Overall Advice Engine
+ROI" or "Your Bet ROI"** — both displayed 108.7%, identical to each other,
+neither reflecting the real exotic losses at all.
+
+**Root cause:** `renderAdviceReportCard()`'s `bets` variable was
+`data.bets.filter(b=>!b.isExotic)` — stripping every exotic bet out before
+*any* tile in the function ever ran. This directly contradicted "Your Bet
+ROI"'s own doc comment, which explicitly promises: *"Includes ALL bet
+types (win/place/show/exotics)."* It didn't. `bestBets`/`valueBets`, the
+only other things derived from this `bets` variable, turned out to be
+unused dead code (referenced exactly once — their own declaration) — so
+removing the exotic filter was safe with no other side effects.
+
+**Also fixed while in there:** `arc-overall-roi`'s wager sum used bare
+`b.amount`, which for exotic bets is only the per-combo stake, not the
+real ticket cost (`b.cost` = combos × amount). Gave it the same
+cost-aware `wagerOf()` convention `arc-user-roi` already used, so a
+$4 (2-combo) exotic loss now correctly counts as -$4 wagered, not -$2.
+
+**Net effect:** a $2 win + a $4 exotic loss previously showed +50–200%
+depending on which bug dominated; correctly, it's 0%. Neither ROI tile can
+be trusted before this fix if the user has placed any exotic bet, ever —
+both were silently better-looking than reality.
+
+Tests: `tests/grading-and-accuracy-regressions.test.js` adds two
+permanent regressions — one confirming Overall Advice Engine ROI counts
+real exotic cost, one confirming Your Bet ROI actually includes exotics at
+all. Both confirmed failing against the pre-fix code (200%/50% instead of
+the correct 0%). Full suite: 265 pass / 1 known-fail / 1 skip.
+
 ## v2.49.30-brisnet — CRITICAL fix: Value Play "Exacta Box" quick-bet button placed an un-gradeable 1-horse box (2026-07-10)
 
 Asked to evaluate why today's exotic bets lost. Two of the three placed

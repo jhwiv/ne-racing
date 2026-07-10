@@ -367,6 +367,60 @@ test('v2.49.18 regression: renderAdviceReportCard\'s Overall Advice Engine ROI e
     'must reflect only graded, engine-flagged bets — the untagged $500 bet and the ungraded bet must not pool in (the v2.49.18 bug)');
 });
 
+// ── v2.49.31: exotic bets were invisible to the whole report card ─────────
+//
+// Found while double-checking a live screenshot 2026-07-10: three real
+// exotic bets today ($8 wagered, $0 returned -- all losses, two of them the
+// v2.49.30 un-gradeable-box bug, one a real 2-horse box that lost fairly)
+// had zero effect on "Overall Advice Engine ROI" or "Your Bet ROI", even
+// though "Your Bet ROI"'s own doc comment explicitly says it "Includes ALL
+// bet types (win/place/show/exotics)". Root cause: renderAdviceReportCard's
+// `bets` variable was `data.bets.filter(b=>!b.isExotic)` -- stripping every
+// exotic bet out before ANY tile below ever saw it. Fixed by removing that
+// filter (bestBets/valueBets, the only other things derived from `bets`,
+// are unused dead code either way) and giving arc-overall-roi a cost-aware
+// wagerOf() (Value Play bets are Exacta Box tickets where b.amount is only
+// the per-combo stake; b.cost is the real total outlay) matching the
+// convention arc-user-roi already used.
+test('v2.49.31 regression: renderAdviceReportCard\'s Overall Advice Engine ROI uses the real cost of exotic bets, not the per-combo base amount', () => {
+  const src = sliceFn('renderAdviceReportCard', 'function getAccuracyData');
+  const ctx = makeSandbox({
+    getTrackData: () => ({
+      bets: [
+        { isBestBet: true, result: 'win', amount: 2, payout: 6, isExotic: false },                       // +4, wagered 2
+        { isValuePlay: true, result: 'loss', amount: 2, cost: 4, combos: 2, payout: 0, isExotic: true },  // -4 (real cost), NOT -2
+      ],
+    }),
+    getAccuracyData: () => ({}),
+  });
+  vm.runInContext(src + '\nrenderAdviceReportCard();', ctx);
+  // Correct: wagered 2+4=6, returned 6+0=6 -> 0.0%.
+  // Bug (pre-fix): wagered 2+2=4 (exotic undercounted via bare amount),
+  // returned 6 -> (6-4)/4 = 50.0%, overstating performance.
+  assert.equal(ctx.el('arc-overall-roi').textContent, '0.0%',
+    'a $4 (2-combo) exotic loss must count as -$4 wagered, not -$2 -- using bare b.amount silently understates the real stake and inflates ROI (confirmed live: a $2 win + $4 exotic loss showed +50% instead of 0%)');
+});
+
+test('v2.49.31 regression: Your Bet ROI actually includes exotic bets, matching its own doc comment', () => {
+  const src = sliceFn('renderAdviceReportCard', 'function getAccuracyData');
+  const ctx = makeSandbox({
+    getTrackData: () => ({
+      bets: [
+        { result: 'win', amount: 2, payout: 6, isExotic: false },                      // +4, wagered 2
+        { result: 'loss', amount: 2, cost: 4, combos: 2, payout: 0, isExotic: true },   // -4, wagered 4
+      ],
+    }),
+    getAccuracyData: () => ({}),
+  });
+  vm.runInContext(src + '\nrenderAdviceReportCard();', ctx);
+  // Correct (exotics included): wagered 2+4=6, returned 6+0=6 -> 0.0%.
+  // Bug (pre-fix): the exotic loss was filtered out of `bets` entirely
+  // before this tile ever ran, so it would show wagered 2, returned 6 ->
+  // (6-2)/2 = 200.0%, hiding the real loss completely.
+  assert.equal(ctx.el('arc-user-roi').textContent, '0.0%',
+    'the $4 exotic loss must be included -- it was previously stripped out of `bets` before this tile ever saw it, contradicting this tile\'s own doc comment ("Includes ALL bet types...incl. exotics")');
+});
+
 // ── v2.49.18 (cosmetic): bet-type breakdown merges legacy/short-code exotics ─
 test('v2.49.18 regression: renderBetTypeBreakdown merges a legacy "Exacta Box" bet with a new "EX" bet into one row', () => {
   const src = sliceBetween('var EXOTIC_TYPE_DISPLAY_NAMES', 'function renderResultsList');
