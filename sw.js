@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260710-v2.49.33-brisnet'; // v2.49.33: fixed Value Play ROI + Current Bankroll silently undercounting real cost of locked/graded exotic bets               // bump on every ship
+const CACHE_VERSION = '20260710-v2.49.34-brisnet'; // v2.49.34: Value Play picks now logged/settled server-side as real 2-horse Exacta Boxes, not single-horse Win picks               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

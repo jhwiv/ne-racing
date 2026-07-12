@@ -274,6 +274,169 @@ test('v2.49.22 regression: settleEnginePicksForRace reports a losing pick with p
   assert.equal(fetchCalls[0].payout, 0, 'a non-winning pick must settle with payout 0, never the actual winner\'s payout');
 });
 
+// ── v2.49.34: Value Play picks are real 2-horse Exacta Boxes, not Win picks ─
+// A Value Play recommends a $2 Exacta Box with a paired partner horse (see
+// the "Exotic of the Day"/Value Play ticket UI), but the server-side
+// ENGINE_ACCURACY log (logPickToEngine/settleEnginePicksForRace) previously
+// hardcoded every pick as betType "Win" and graded it purely on whether
+// entry.horse.pp itself finished 1st -- there was no durable record of the
+// actual recommended pair, and a box that hit with its named horse in 2nd
+// (partner won) was recorded as a flat loss.
+test('v2.49.34 regression: logPickToEngine posts betType "Exacta Box" with the partner horse and a $4 real stake for a Value Play', async () => {
+  const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
+  const fetchCalls = [];
+  const ctx = makeSandbox({
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => '2026-07-06',
+    localStorage: makeFakeStorage(),
+    fetch: async (url, opts) => { fetchCalls.push(JSON.parse(opts.body)); return { ok: true }; },
+  });
+  ctx.window.RailbirdEngine = { currentEngine: () => 'v2', deviceId: () => 'd_test' };
+  ctx.loadedRaceDate = null;
+
+  // Shape produced by updateTopPicksCard's Value Play loop: the scored
+  // entry itself carries _exactaPartner (see the loop right before
+  // storeTicketPicks/logTicketPicksToEngine are called).
+  const valuePlay = {
+    race: { num: 2 }, horse: { pp: 4, name: 'Value Horse', ml: '9-2' }, score: 60, modelProb: 0.2,
+    _exactaPartner: { horse: { pp: 7, name: 'Partner Horse' } },
+  };
+  await vm.runInContext(src + '\nlogPickToEngine("value", valuePlay);', Object.assign(ctx, { valuePlay }));
+  await new Promise((r) => setTimeout(r, 10));
+
+  assert.equal(fetchCalls.length, 1);
+  const body = fetchCalls[0];
+  assert.equal(body.betType, 'Exacta Box', 'a Value Play with a partner horse must log as an Exacta Box, not a Win pick (the bug: this was always hardcoded "Win")');
+  assert.equal(body.partnerPp, 7, 'the recommended partner\'s pp must be recorded -- previously there was no record of the actual pair at all');
+  assert.equal(body.partnerName, 'Partner Horse');
+  assert.equal(body.amount, 4, 'the real 2-combo stake ($2/combo x 2) must be logged, not the flat $2 used for Win-type picks');
+});
+
+test('v2.49.34 regression: logPickToEngine still logs a plain "Win" pick with no partner for Best Bet / Action Bet (no over-fix)', async () => {
+  const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
+  const fetchCalls = [];
+  const ctx = makeSandbox({
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => '2026-07-06',
+    localStorage: makeFakeStorage(),
+    fetch: async (url, opts) => { fetchCalls.push(JSON.parse(opts.body)); return { ok: true }; },
+  });
+  ctx.window.RailbirdEngine = { currentEngine: () => 'v2', deviceId: () => 'd_test' };
+  ctx.loadedRaceDate = null;
+
+  const bestBet = { race: { num: 1 }, horse: { pp: 3, name: 'Best Bet Horse', ml: '5-2' }, score: 82, modelProb: 0.35 };
+  await vm.runInContext(src + '\nlogPickToEngine("best", bestBet);', Object.assign(ctx, { bestBet }));
+  await new Promise((r) => setTimeout(r, 10));
+
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls[0].betType, 'Win');
+  assert.equal(fetchCalls[0].partnerPp, null);
+  assert.equal(fetchCalls[0].amount, 2, 'a Best Bet / Action Bet pick with no exacta partner must keep the flat $2 Win-type stake');
+});
+
+test('v2.49.34 regression: settleEnginePicksForRace grades a Value Play\'s Exacta Box as a win when both horses land top-2 in EITHER order', () => {
+  const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
+  const fakeStorage = makeFakeStorage();
+  // Named horse (pp 4) finishes 2nd, partner (pp 7) finishes 1st -- the box
+  // still hits since order doesn't matter for a box, only "Win" bets care
+  // about exact position.
+  fakeStorage.setItem('ne-racing-ticket-SAR-2026-07-06', JSON.stringify({
+    date: '2026-07-06', track: 'SAR', engine: 'v2',
+    bestBet: null,
+    valuePlays: [{ race: 2, pp: 4, name: 'Value Horse', score: 60, partnerPp: 7, partnerName: 'Partner Horse' }],
+    actionBets: [],
+  }));
+  const fetchCalls = [];
+  const ctx = makeSandbox({
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => '2026-07-06',
+    localStorage: fakeStorage,
+    fetch: async (url, opts) => { fetchCalls.push(JSON.parse(opts.body)); return { ok: true }; },
+  });
+  ctx.loadedRaceDate = null;
+
+  const raceResult = { raceNumber: 2, results: [
+    { position: 1, pp: 7, horseName: 'Partner Horse' },
+    { position: 2, pp: 4, horseName: 'Value Horse' },
+    { position: 3, pp: 9, horseName: 'Third Choice' },
+  ], exotics: [{ type: 'exacta', payout: 22.4 }] };
+  vm.runInContext(src + '\nsettleEnginePicksForRace(2, raceResult);', Object.assign(ctx, { raceResult }));
+
+  assert.equal(fetchCalls.length, 1);
+  const body = fetchCalls[0];
+  assert.equal(body.betType, 'Exacta Box');
+  assert.equal(body.won, true, 'the box must be graded a win with the named horse in 2nd/partner in 1st -- a box does not care about order (the bug: this used to check p.pp === position 1 only)');
+  assert.equal(body.payout, 22.4, 'must pay the real exacta payout, not a win-bet payout');
+});
+
+test('v2.49.34 regression: settleEnginePicksForRace grades a Value Play\'s Exacta Box as a loss when only one of the two horses lands top-2', () => {
+  const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
+  const fakeStorage = makeFakeStorage();
+  fakeStorage.setItem('ne-racing-ticket-SAR-2026-07-06', JSON.stringify({
+    date: '2026-07-06', track: 'SAR', engine: 'v2',
+    bestBet: null,
+    valuePlays: [{ race: 2, pp: 4, name: 'Value Horse', score: 60, partnerPp: 7, partnerName: 'Partner Horse' }],
+    actionBets: [],
+  }));
+  const fetchCalls = [];
+  const ctx = makeSandbox({
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => '2026-07-06',
+    localStorage: fakeStorage,
+    fetch: async (url, opts) => { fetchCalls.push(JSON.parse(opts.body)); return { ok: true }; },
+  });
+  ctx.loadedRaceDate = null;
+
+  // Value Horse (pp 4) finishes 1st, but the partner (pp 7) finishes 3rd,
+  // not 2nd -- the box does NOT hit even though the named horse won outright.
+  const raceResult = { raceNumber: 2, results: [
+    { position: 1, pp: 4, horseName: 'Value Horse', winPayout: 5.2 },
+    { position: 2, pp: 9, horseName: 'Third Choice' },
+    { position: 3, pp: 7, horseName: 'Partner Horse' },
+  ], exotics: [{ type: 'exacta', payout: 30 }] };
+  vm.runInContext(src + '\nsettleEnginePicksForRace(2, raceResult);', Object.assign(ctx, { raceResult }));
+
+  assert.equal(fetchCalls.length, 1);
+  const body = fetchCalls[0];
+  assert.equal(body.won, false, 'the box must lose when the partner horse is not in the top two, even though the named horse won its own race outright');
+  assert.equal(body.payout, 0);
+});
+
+test('v2.49.34 regression: settleEnginePicksForRace keeps position-based Win/Loss grading unchanged for Best Bet / Action Bet (no partner field)', () => {
+  const src = sliceBetween('function storeTicketPicks', 'function updateAdviceRaceSelect');
+  const fakeStorage = makeFakeStorage();
+  fakeStorage.setItem('ne-racing-ticket-SAR-2026-07-06', JSON.stringify({
+    date: '2026-07-06', track: 'SAR', engine: 'v1',
+    bestBet: { race: 4, pp: 3, name: 'Best Bet Horse', score: 82 },
+    valuePlays: [], actionBets: [],
+  }));
+  const fetchCalls = [];
+  const ctx = makeSandbox({
+    getStore: () => ({ settings: { workerUrl: 'https://fake.test' } }),
+    getActiveTrack: () => 'SAR',
+    getTodayStr: () => '2026-07-06',
+    localStorage: fakeStorage,
+    fetch: async (url, opts) => { fetchCalls.push(JSON.parse(opts.body)); return { ok: true }; },
+  });
+  ctx.loadedRaceDate = null;
+
+  const raceResult = { raceNumber: 4, results: [
+    { position: 1, pp: 3, horseName: 'Best Bet Horse', winPayout: 6.4 },
+    { position: 2, pp: 5, horseName: 'Runner Up' },
+  ] };
+  vm.runInContext(src + '\nsettleEnginePicksForRace(4, raceResult);', Object.assign(ctx, { raceResult }));
+
+  assert.equal(fetchCalls.length, 1);
+  const body = fetchCalls[0];
+  assert.equal(body.betType, 'Win');
+  assert.equal(body.won, true);
+  assert.equal(body.payout, 6.4);
+});
+
 // ── Bet Evaluator verdict badge: base on ev sign, not a takeout-blind flag ─
 test('v2.49.20 regression: Bet Evaluator verdict shows "Underlay" (not "Fair") for a bet with positive isOverlay but negative EV', () => {
   const src = sliceFn('renderBetEvalResult', '// Expose for inline handlers');

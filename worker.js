@@ -3342,6 +3342,11 @@ async function handlePickLog(request, env, origin) {
     ml:        body.ml || null,
     deviceId:  body.deviceId || null,
     ts:        new Date().toISOString(),
+    // v2.49.34: a Value Play pick (betType "Exacta Box") is really a
+    // 2-horse recommendation -- record its partner so handlePickSettle can
+    // grade the actual box, not just this one horse's own finish.
+    partnerPp:   Number.isFinite(parseInt(body.partnerPp, 10)) ? parseInt(body.partnerPp, 10) : null,
+    partnerName: body.partnerName || null,
   };
   await env.ENGINE_ACCURACY.put(key, JSON.stringify(record), {
     expirationTtl: 60 * 60 * 24 * 365 * 2, // 2 years
@@ -3387,6 +3392,14 @@ async function handlePickSettle(request, env, origin) {
     engine, track, date, race, pp,
     position: parseInt(body.position, 10) || null,
     payout:   Number.isFinite(parseFloat(body.payout)) ? parseFloat(body.payout) : 0,
+    // v2.49.34: an explicit win/loss flag, decoupled from raw finishing
+    // position. Needed because "position === 1" only means "won" for a
+    // straight Win pick -- an Exacta Box pick can win with its named horse
+    // finishing 2nd (partner took 1st). The client computes the real
+    // per-bet-type verdict and sends it here; handlePickStats prefers this
+    // over re-deriving from position so exotic picks are counted correctly.
+    won:      typeof body.won === "boolean" ? body.won : null,
+    betType:  body.betType || null,
     settledAt: new Date().toISOString(),
   };
   await env.ENGINE_ACCURACY.put(key, JSON.stringify(record), {
@@ -3425,7 +3438,14 @@ async function handlePickStats(request, env, origin) {
     const outcome = await env.ENGINE_ACCURACY.get(name, "json");
     if (!outcome) continue;
     stats[eng].settled++;
-    if (outcome.position === 1) stats[eng].wins++;
+    // v2.49.34: prefer the explicit won flag (correct for Exacta Box picks,
+    // where "position === 1" is the wrong question -- a box wins whenever
+    // BOTH named horses land in the top two, in either order, regardless of
+    // which one this record's own pp finished). Legacy outcome records
+    // (settled before this field existed) have won === null and fall back
+    // to the original position-based check, unchanged.
+    const won = typeof outcome.won === "boolean" ? outcome.won : outcome.position === 1;
+    if (won) stats[eng].wins++;
     if (outcome.position <= 2 && outcome.position >= 1) stats[eng].places++;
     stats[eng].totalReturn += parseFloat(outcome.payout) || 0;
     // Stake reconstruction from the pick record

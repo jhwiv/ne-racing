@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260710-v2.49.33-brisnet';
+var NE_APP_VERSION = '20260710-v2.49.34-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260710-v2.49.33-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.33-brisnet';
+var RAILBIRD_VERSION = 'v2.49.34-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -17114,6 +17114,11 @@ function updateTopPicksCard(allScores) {
     const raceGroup = raceMap[v.race.id];
     const secondHorse = raceGroup && raceGroup.length > 1 ? raceGroup[v.rank === 1 ? 1 : 0] : null;
     const exPartner = secondHorse ? '#' + secondHorse.horse.pp : '';
+    // v2.49.34: stash the paired partner on the scored entry itself so
+    // storeTicketPicks()/logTicketPicksToEngine() downstream can log this
+    // Value Play as the real 2-horse Exacta Box it is, instead of silently
+    // treating it as a single-horse Win pick (see logPickToEngine below).
+    v._exactaPartner = secondHorse;
     totalBetCost += 4;
     let reason = buildTicketReason(v, v.race);
     const expertNames = getExpertNames(v.race, v.horse);
@@ -17340,7 +17345,14 @@ function storeTicketPicks(bestBet, valuePlays, actionBets) {
     // reload (the live A/B toggle state at settle time may differ from build time).
     engine: (window.RailbirdEngine && window.RailbirdEngine.currentEngine) ? window.RailbirdEngine.currentEngine() : 'v1',
     bestBet: bestBet ? { race: bestBet.race.num, pp: bestBet.horse.pp, name: bestBet.horse.name, score: bestBet.score } : null,
-    valuePlays: valuePlays.map(v => ({ race: v.race.num, pp: v.horse.pp, name: v.horse.name, score: v.score, ml: v.horse.ml })),
+    // v2.49.34: carry the paired Exacta Box partner (see _exactaPartner,
+    // stashed in updateTopPicksCard's Value Play loop) so settleEnginePicksForRace()
+    // can grade this pick as the real 2-horse box it is, not a single-horse Win.
+    valuePlays: valuePlays.map(v => ({
+      race: v.race.num, pp: v.horse.pp, name: v.horse.name, score: v.score, ml: v.horse.ml,
+      partnerPp: v._exactaPartner ? v._exactaPartner.horse.pp : null,
+      partnerName: v._exactaPartner ? v._exactaPartner.horse.name : null,
+    })),
     actionBet: topActionBet ? { race: topActionBet.entry.race.num, pp: topActionBet.entry.horse.pp, name: topActionBet.entry.horse.name, score: topActionBet.entry.score } : null,
     // v2.49.20: also store every displayed Action Bet (up to 5, per v2.40.2),
     // not just the #1-ranked one -- all render as equally-styled cards on
@@ -17394,16 +17406,29 @@ function logPickToEngine(pickTag, entry) {
   var cacheKey = track + ':' + date + ':' + race + ':' + engine + ':' + pp + ':' + pickTag;
   var sent = _engineAccuracyKeyCache('ne-racing-logged-picks');
   if (sent[cacheKey]) return;
+  // v2.49.34: a Value Play is a real 2-horse Exacta Box recommendation, not
+  // a single-horse Win pick. Previously every pick logged here (including
+  // Value Plays) was hardcoded betType 'Win' with only entry.horse.pp saved
+  // -- there was NO durable, cross-device record anywhere of which pair the
+  // engine actually recommended, or whether that specific box would have
+  // hit. entry._exactaPartner is stashed on the scored entry by
+  // updateTopPicksCard's Value Play loop; Best Bet/Action Bet entries never
+  // have it, so they keep logging as plain Win picks exactly as before.
+  var partnerPp = entry._exactaPartner ? entry._exactaPartner.horse.pp : null;
+  var partnerName = entry._exactaPartner ? entry._exactaPartner.horse.name : null;
+  var betType = partnerPp ? 'Exacta Box' : 'Win';
   fetch(workerUrl + '/api/picks/log', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       engine: engine, track: track, date: date, race: race, pp: pp,
-      horseName: entry.horse.name, betType: 'Win', betTag: pickTag,
-      // Flat $2 reference stake, independent of any bankroll-scaled suggested
+      horseName: entry.horse.name, betType: betType, betTag: pickTag,
+      partnerPp: partnerPp, partnerName: partnerName,
+      // Flat reference stake, independent of any bankroll-scaled suggested
       // amount on the ticket -- this is an engine-comparison record, not a
       // real wager, and must stay comparable across days/devices/users.
-      amount: 2,
+      // Exacta Box is 2 combos at $2/combo = $4 real total; Win-type stays $2.
+      amount: partnerPp ? 4 : 2,
       score: entry.score, prob: entry.modelProb, ml: entry.horse.ml,
       deviceId: (window.RailbirdEngine && window.RailbirdEngine.deviceId) ? window.RailbirdEngine.deviceId() : null,
     }),
@@ -17444,11 +17469,33 @@ function settleEnginePicksForRace(raceNum, raceResult) {
     var settled = _engineAccuracyKeyCache('ne-racing-settled-picks');
     if (settled[cacheKey]) return;
     var position = finisher.position;
-    var payout = (position === 1 && finisher.winPayout) ? parseFloat(finisher.winPayout) : 0;
+    var payout, won, betType;
+    if (p.partnerPp) {
+      // v2.49.34: a Value Play is a real 2-horse Exacta Box, not a single-
+      // horse Win pick -- grade it as one. Previously this settled purely
+      // on p.pp's own finishing position (won only if IT finished 1st),
+      // which is the wrong question for a box: a box wins whenever BOTH
+      // named horses occupy the top two spots, in EITHER order, and pays
+      // the real exacta payout, not the win payout.
+      betType = 'Exacta Box';
+      var partnerFinisher = raceResult.results.find(function(f) { return String(f.pp) === String(p.partnerPp); });
+      var top2 = raceResult.results.filter(function(f) { return f.position === 1 || f.position === 2; });
+      won = !!partnerFinisher && top2.length === 2 &&
+        top2.some(function(f) { return String(f.pp) === String(p.pp); }) &&
+        top2.some(function(f) { return String(f.pp) === String(p.partnerPp); });
+      var exoticPayout = won ? (raceResult.exotics || []).find(function(e) { return e.type === 'exacta'; }) : null;
+      // $2/combo reference stake (see logPickToEngine) matches Equibase's
+      // per-$2 exacta payout convention 1:1 -- no scaling needed.
+      payout = exoticPayout ? parseFloat(exoticPayout.payout) || 0 : 0;
+    } else {
+      betType = 'Win';
+      won = position === 1;
+      payout = (won && finisher.winPayout) ? parseFloat(finisher.winPayout) : 0;
+    }
     fetch(workerUrl + '/api/picks/settle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ engine: engine, track: track, date: date, race: raceNum, pp: p.pp, position: position, payout: payout }),
+      body: JSON.stringify({ engine: engine, track: track, date: date, race: raceNum, pp: p.pp, position: position, payout: payout, won: won, betType: betType }),
     }).then(function(res) {
       if (res && res.ok) _engineAccuracyMarkSent('ne-racing-settled-picks', cacheKey);
     }).catch(function() {});

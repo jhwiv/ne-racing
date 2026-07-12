@@ -1,5 +1,61 @@
 # NE Racing — Changelog
 
+## v2.49.34-brisnet — Value Play picks now logged/settled server-side as real Exacta Boxes (2026-07-10)
+
+Asked to evaluate exotic-bet performance as far back as possible (straight
+picks winning again today, +$300 on a Race 8 flyer, but exotics still 0-for-6
+over the last two days). Tried to pull the real cross-device history from the
+server-side `ENGINE_ACCURACY` KV log — the durable record that's supposed to
+answer exactly this question, independent of any one device's local bet log —
+and hit two walls:
+
+1. This sandbox's outbound network policy blocks the Cloudflare Worker
+   domain, so the live `/api/picks/stats` data couldn't be pulled directly
+   this session (a sandbox limitation, not an app bug).
+2. Worse, found the log itself couldn't have answered the question anyway:
+   `logPickToEngine()` hardcoded **every** logged pick — including Value
+   Plays, which are real 2-horse Exacta Box recommendations — as
+   `betType: "Win"`, storing only the primary horse's `pp`. There was no
+   durable record anywhere of which pair the engine actually recommended,
+   and `settleEnginePicksForRace()` graded every Value Play purely on
+   whether that one horse finished 1st — so a box that hit with its named
+   horse in 2nd (partner took 1st) was recorded as a flat loss, and a named
+   horse that won outright while its partner ran off the board was recorded
+   as a win. Both are wrong for a box bet, where only "are both named horses
+   in the top two, either order" matters.
+
+**Fix:**
+- `updateTopPicksCard()`'s Value Play loop now stashes the already-computed
+  paired partner horse onto the scored entry (`_exactaPartner`) instead of
+  using it for display only.
+- `storeTicketPicks()` carries `partnerPp`/`partnerName` into the persisted
+  ticket so settlement can see the pair after a reload.
+- `logPickToEngine()` logs Value Plays as `betType: "Exacta Box"` with the
+  partner horse and the real $4 (2-combo) stake, not the flat $2 Win-type
+  stake. Best Bet / Action Bet picks are unaffected — no partner, same as
+  before.
+- `settleEnginePicksForRace()` grades an Exacta-Box-tagged pick by whether
+  BOTH named horses land in the top two (either order), paying the race's
+  real exacta payout — not by the named horse's own finishing position.
+- `worker.js`: `handlePickLog`/`handlePickSettle` store the new
+  `partnerPp`/`partnerName`/`won`/`betType` fields (additive; existing
+  Win-type records unaffected). `handlePickStats` prefers the explicit `won`
+  flag when present, falling back to the old `position === 1` check for
+  legacy outcome records settled before this field existed.
+
+From today forward this gives a real, durable, cross-device record of exotic
+pick accuracy — the exact thing needed to tell "bad luck" from "a real
+pattern in how exacta partners get selected" the next time this comes up.
+Doesn't retroactively fix already-settled outcome records.
+
+Tests: `tests/pick-selection-and-bet-eval-regressions.test.js` adds five
+permanent regressions — Value Play picks log as Exacta Box with the correct
+partner/stake, Best Bet/Action Bet picks are unaffected, a box settles as a
+win with the named horse in 2nd/partner in 1st (order-independence), a box
+settles as a loss when only one horse lands top-2 (even if the named horse
+won outright), and Win-type settlement is unchanged. Full suite: 276 pass /
+1 known-fail / 1 skip.
+
 ## v2.49.33-brisnet — Sweep: Value Play ROI + Current Bankroll silently undercounted exotic bet cost (2026-07-10)
 
 Direct follow-up to v2.49.32's "how do we know there aren't other bugs" ask.
