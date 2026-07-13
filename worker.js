@@ -3426,23 +3426,40 @@ async function handlePickStats(request, env, origin) {
   const engineFilter = (searchParams.get("engine") || "").toLowerCase();
   const stats = {};
 
+  function ensureEngine(eng) {
+    if (!stats[eng]) stats[eng] = { picks: 0, settled: 0, wins: 0, places: 0, totalReturn: 0, totalStake: 0, byBetType: {} };
+    return stats[eng];
+  }
+  // v2.49.36: break out settled results by betType (Win vs. Exacta Box)
+  // within each engine. Without this, a Value Play's exacta-box outcomes
+  // were silently pooled into the same "v2" bucket as Best Bet/Action Bet
+  // straight-pick outcomes -- so this endpoint could never answer "is the
+  // exacta box heuristic itself actually beating chance," only "how did
+  // this engine's picks do overall," which conflates two very different
+  // bet shapes with very different expected hit rates.
+  function ensureBetType(eng, betType) {
+    const s = ensureEngine(eng);
+    const bt = betType || "Win";
+    if (!s.byBetType[bt]) s.byBetType[bt] = { settled: 0, wins: 0, totalReturn: 0, totalStake: 0 };
+    return s.byBetType[bt];
+  }
+
   // List picks (cap 1000 for now — sufficient through Saratoga meet).
   const pickList = await env.ENGINE_ACCURACY.list({ prefix: "pick:", limit: 1000 });
   for (const { name, metadata } of pickList.keys) {
     const eng = (metadata && metadata.engine) || name.split(":")[4] || "unknown";
     if (engineFilter && eng !== engineFilter) continue;
-    if (!stats[eng]) stats[eng] = { picks: 0, settled: 0, wins: 0, places: 0, totalReturn: 0, totalStake: 0 };
-    stats[eng].picks++;
+    ensureEngine(eng).picks++;
   }
   const outcomeList = await env.ENGINE_ACCURACY.list({ prefix: "outcome:", limit: 1000 });
   for (const { name } of outcomeList.keys) {
     const parts = name.split(":");
     const eng = parts[4] || "unknown";
     if (engineFilter && eng !== engineFilter) continue;
-    if (!stats[eng]) stats[eng] = { picks: 0, settled: 0, wins: 0, places: 0, totalReturn: 0, totalStake: 0 };
+    const s = ensureEngine(eng);
     const outcome = await env.ENGINE_ACCURACY.get(name, "json");
     if (!outcome) continue;
-    stats[eng].settled++;
+    s.settled++;
     // v2.49.34: prefer the explicit won flag (correct for Exacta Box picks,
     // where "position === 1" is the wrong question -- a box wins whenever
     // BOTH named horses land in the top two, in either order, regardless of
@@ -3450,13 +3467,22 @@ async function handlePickStats(request, env, origin) {
     // (settled before this field existed) have won === null and fall back
     // to the original position-based check, unchanged.
     const won = typeof outcome.won === "boolean" ? outcome.won : outcome.position === 1;
-    if (won) stats[eng].wins++;
-    if (outcome.position <= 2 && outcome.position >= 1) stats[eng].places++;
-    stats[eng].totalReturn += parseFloat(outcome.payout) || 0;
+    if (won) s.wins++;
+    if (outcome.position <= 2 && outcome.position >= 1) s.places++;
+    const payout = parseFloat(outcome.payout) || 0;
+    s.totalReturn += payout;
     // Stake reconstruction from the pick record
     const pickKey = name.replace(/^outcome:/, "pick:");
     const pick = await env.ENGINE_ACCURACY.get(pickKey, "json");
-    if (pick) stats[eng].totalStake += parseFloat(pick.amount) || 0;
+    const stake = pick ? (parseFloat(pick.amount) || 0) : 0;
+    s.totalStake += stake;
+
+    const betType = outcome.betType || (pick && pick.betType) || "Win";
+    const bts = ensureBetType(eng, betType);
+    bts.settled++;
+    if (won) bts.wins++;
+    bts.totalReturn += payout;
+    bts.totalStake += stake;
   }
   // Derived ROI
   for (const e of Object.keys(stats)) {
@@ -3464,6 +3490,11 @@ async function handlePickStats(request, env, origin) {
     s.winRate = s.settled > 0 ? s.wins / s.settled : null;
     s.placeRate = s.settled > 0 ? s.places / s.settled : null;
     s.roi = s.totalStake > 0 ? (s.totalReturn - s.totalStake) / s.totalStake : null;
+    for (const bt of Object.keys(s.byBetType)) {
+      const b = s.byBetType[bt];
+      b.winRate = b.settled > 0 ? b.wins / b.settled : null;
+      b.roi = b.totalStake > 0 ? (b.totalReturn - b.totalStake) / b.totalStake : null;
+    }
   }
   return jsonOk({ engines: stats, generatedAt: new Date().toISOString() }, origin, 300);
 }

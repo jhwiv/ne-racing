@@ -1,5 +1,33 @@
 # NE Racing — Changelog
 
+## v2.49.36-brisnet — Analytics: Exacta Box broken out from straight-pick performance (2026-07-13)
+
+Direct follow-up to v2.49.35. Asked whether the new Analytics tab changes
+anything about the exacta-box "no better than random" finding -- it
+doesn't, nothing was fixed in the actual pairing heuristic -- but flagged a
+real gap: `GET /api/picks/stats` pooled Value Play's Exacta Box outcomes
+into the same per-engine bucket as Best Bet/Action Bet's Win-type outcomes,
+so the endpoint could never answer "is the exacta box heuristic itself
+beating chance," only "how did this engine do overall" -- conflating two
+bet shapes with very different expected hit rates.
+
+**Fix:** `handlePickStats` (worker.js) now also aggregates settled results
+by `betType` within each engine (`byBetType: { Win: {...}, "Exacta Box":
+{...} }`), reusing data it already fetches per settled record -- no new KV
+reads. Legacy outcome records with no `betType` field fall back to the
+`Win` bucket, matching the same fallback convention as the `won` field
+(v2.49.34). The Analytics tab's "Pick Accuracy by Source" now shows an
+indented "↳ Exacta Box only" line under any engine with settled exacta-box
+picks, so its real win rate/ROI is visible on its own instead of blended
+into the engine's overall number.
+
+Tests: new tests/worker-pick-stats.test.js invokes the real worker.js
+`fetch` handler (dynamic import, no other worker.js test harness exists in
+this repo) against a fake in-memory ENGINE_ACCURACY KV -- establishes a
+reusable pattern for testing worker.js handlers directly going forward.
+Verified the UI change with a real Playwright render (not just source
+inspection). Full suite: 310 pass / 1 known-fail / 1 skip.
+
 ## v2.49.35-brisnet — New Analytics tab: real results + engine vs. market vs. crowd (2026-07-13)
 
 Asked for exotic bets to keep running (not suppressed) alongside a real,

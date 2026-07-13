@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260713-v2.49.35-brisnet';
+var NE_APP_VERSION = '20260713-v2.49.36-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260713-v2.49.35-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.35-brisnet';
+var RAILBIRD_VERSION = 'v2.49.36-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -18995,10 +18995,25 @@ function renderAnalyticsAccuracy() {
         var s = engines[e];
         var wl = s.wins + '-' + (s.settled - s.wins) + ' (' + (s.winRate * 100).toFixed(1) + '%)';
         var roi = s.roi != null ? fmtPct(s.roi * 100) : '—';
-        return '<div class="flex justify-between items-center mb-1">' +
+        var row = '<div class="flex justify-between items-center mb-1">' +
           '<span class="font-semibold text-sm">' + labels[e] + '</span>' +
           '<span class="mono text-sm">' + wl + ' · ROI ' + roi + ' · n=' + s.settled + '</span>' +
         '</div>';
+        // v2.49.36: surface the Exacta Box breakout specifically -- this is
+        // the one bet shape with a real, live open question ("does boxing
+        // the model's top-2 by score actually beat chance"), previously
+        // invisible because it was pooled into the same engine-wide number
+        // as straight Win-type picks.
+        var exBox = s.byBetType && s.byBetType['Exacta Box'];
+        if (exBox && exBox.settled > 0) {
+          var exWl = exBox.wins + '-' + (exBox.settled - exBox.wins) + ' (' + (exBox.winRate * 100).toFixed(1) + '%)';
+          var exRoi = exBox.roi != null ? fmtPct(exBox.roi * 100) : '—';
+          row += '<div class="flex justify-between items-center mb-1 text-muted" style="padding-left:1rem">' +
+            '<span class="text-xs">↳ Exacta Box only</span>' +
+            '<span class="mono text-xs">' + exWl + ' · ROI ' + exRoi + ' · n=' + exBox.settled + '</span>' +
+          '</div>';
+        }
+        return row;
       }).join('');
       // Simple auto-generated analysis: whichever tracked source has the
       // best real ROI so far, among sources with a non-trivial sample.
