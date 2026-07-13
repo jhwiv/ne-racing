@@ -1,0 +1,41 @@
+name: Daily Pick Log (ENGINE_ACCURACY)
+
+# Computes and logs the day's picks to the server-side ENGINE_ACCURACY
+# system, independent of whether any user opens the app that day. Previously
+# picks only got logged when a user's browser happened to render the Today
+# tab -- a day nobody opened the app was invisible to the server-side
+# tracker. Also logs two "peer review" alternatives for the day's Best Bet
+# (the market's own favorite, and the NYRA handicapper-consensus pick, when
+# either differs from the engine's pick) using the same pick/settle/stats
+# system, so their accuracy is tracked identically over time.
+#
+# GET /api/entries and /api/expert-picks require no auth from the caller --
+# the worker holds its own licensed credentials server-side.
+
+on:
+  schedule:
+    # Late morning ET, well after entries/morning-line odds are typically
+    # posted for the day's card, before the first race goes off.
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date to log picks for (YYYY-MM-DD). Omit for today.'
+        type: string
+        default: ''
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Log today's picks
+        run: |
+          node scripts/daily_pick_log.js --track SAR \
+            ${{ inputs.date && format('--date {0}', inputs.date) || '' }}

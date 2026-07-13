@@ -3155,7 +3155,12 @@ async function handleHistoryList(request, env, origin) {
 // Read via GET /api/picks/stats for the in-app accuracy display.
 //
 
-const PICK_ENGINES = new Set(["v1", "v2", "baseline_ml"]);
+// "crowd" logs the NYRA handicapper-consensus pick (the scraped
+// data/entries-{TRACK}-{DATE}.json expertPicks field, aggregated to the
+// single most-picked horse per race) through this exact same pick/settle
+// system, so its accuracy is tracked identically to the engine's own picks
+// and the market-favorite baseline -- no separate tracking system needed.
+const PICK_ENGINES = new Set(["v1", "v2", "baseline_ml", "crowd"]);
 
 // ── v2.37.0: D1 Equibase archive (RAILBIRD_DB) ──────────────────────────
 //
