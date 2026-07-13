@@ -1,0 +1,37 @@
+name: Daily Pick Settle (ENGINE_ACCURACY)
+
+# Settles the picks daily-pick-log.yml logged the previous day against the
+# real archived result (RACE_HISTORY), once available -- closing the loop
+# so server-side pick tracking works end to end without any user ever
+# opening the app. Re-derives the same picks deterministically rather than
+# needing a separate "list what was logged" query; idempotent (safe to
+# re-run for a date that's already settled, or one that isn't fully official
+# yet -- unsettleable races are skipped, not errored).
+
+on:
+  schedule:
+    # Late morning ET the day after, well after the previous day's card
+    # (including any late scratches/DNFs affecting result posting) is done.
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date to settle (YYYY-MM-DD). Omit for yesterday.'
+        type: string
+        default: ''
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Settle yesterday's picks
+        run: |
+          node scripts/daily_pick_settle.js --track SAR \
+            ${{ inputs.date && format('--date {0}', inputs.date) || '' }}
