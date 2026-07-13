@@ -46,6 +46,13 @@ async function main() {
   console.log(`Settling picks for track=${args.track} date=${args.date} ...`);
 
   const entriesRes = await fetch(`${args.workerUrl}/api/entries?track=${args.track}&date=${args.date}`);
+  if (entriesRes.status === 404) {
+    // handleEntries returns 404 with "No NA meet for {track} on {date}" when
+    // there's simply no race card scheduled that day (e.g. a dark day) --
+    // not a failure, same as the zero-races case below.
+    console.log(`No meet scheduled for ${args.track} on ${args.date} -- nothing to settle.`);
+    return;
+  }
   if (!entriesRes.ok) throw new Error(`GET /api/entries -> ${entriesRes.status}`);
   const entriesBody = await entriesRes.json();
   let races = transformEntriesToRaces(entriesBody, args.track, args.date);

@@ -193,3 +193,19 @@ test('daily_pick_log.js exits cleanly when there are no races for the date', asy
     server.close();
   }
 });
+
+test('daily_pick_log.js exits cleanly (not exit code 1) when /api/entries 404s -- a dark day with no meet scheduled', async () => {
+  // No handlers registered -- startMockWorker's catch-all returns 404 for
+  // any URL, exactly like the real worker's handleEntries does for
+  // "No NA meet for {track} on {date}" (e.g. Saratoga dark days).
+  const server = await startMockWorker([]);
+  const port = server.address().port;
+  try {
+    const { stdout } = await execFileAsync('node', [SCRIPT, '--track', 'SAR', '--date', '2026-07-14', '--worker-url', `http://localhost:${port}`], {
+      timeout: 10000,
+    });
+    assert.match(stdout, /No meet scheduled/);
+  } finally {
+    server.close();
+  }
+});

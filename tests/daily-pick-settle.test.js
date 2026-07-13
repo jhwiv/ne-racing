@@ -108,6 +108,21 @@ test('daily_pick_settle.js settles v2 as a loss and baseline_ml/crowd (Bravo) as
   }
 });
 
+test('daily_pick_settle.js exits cleanly (not exit code 1) when /api/entries 404s -- a dark day with no meet scheduled', async () => {
+  const server = await startMockWorker([
+    ['/api/entries', () => 404],
+  ]);
+  const port = server.address().port;
+  try {
+    const { stdout } = await execFileAsync('node', [SCRIPT, '--track', 'SAR', '--date', '2026-07-14', '--worker-url', `http://localhost:${port}`], {
+      timeout: 10000,
+    });
+    assert.match(stdout, /No meet scheduled/);
+  } finally {
+    server.close();
+  }
+});
+
 test('daily_pick_settle.js skips cleanly (no error) when the date has no archived results yet', async () => {
   const server = await startMockWorker([
     ['/api/entries', () => entriesFixture()],
