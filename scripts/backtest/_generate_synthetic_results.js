@@ -44,26 +44,51 @@ for (const race of doc.races) {
   if (sum <= 0) continue;
   const probs = implied.map(p => p / sum);
 
-  // Sample a winner. Inject 10% extra noise so it's not a perfect ML test.
-  const noise = probs.map(p => p + (rand() - 0.5) * 0.1);
-  const total = noise.reduce((a, b) => Math.max(a, 0) + b, 0);
-  const r = rand() * total;
-  let cum = 0, winner = live[0];
-  for (let i = 0; i < live.length; i++) {
-    cum += Math.max(0, noise[i]);
-    if (r <= cum) { winner = live[i]; break; }
+  // Sample a winner, then a 2nd-place finisher from the remaining field
+  // (same noisy-ML-implied draw, without replacement). No result source in
+  // this repo has ever recorded a 2nd-place finisher before -- this is what
+  // makes an Exacta Box hit-rate metric measurable at all, even only as a
+  // synthetic sanity check.
+  function drawFrom(pool, probs) {
+    const noise = probs.map(p => p + (rand() - 0.5) * 0.1);
+    const total = noise.reduce((a, b) => Math.max(a, 0) + b, 0);
+    const r = rand() * total;
+    let cum = 0, idx = 0;
+    for (let i = 0; i < pool.length; i++) {
+      cum += Math.max(0, noise[i]);
+      if (r <= cum) { idx = i; break; }
+    }
+    return idx;
   }
+
+  const winIdx = drawFrom(live, probs);
+  const winner = live[winIdx];
   const winOdds = parseOdds(winner.ml);
   const payout = isFinite(winOdds) ? Math.max(2.20, +(2 * (winOdds + 1)).toFixed(2)) : 6.40;
 
-  race.results = {
-    finish_positions: [{
-      pp: winner.pp,
-      horseName: winner.name,
-      position: 1,
-      win_payout: payout,
-    }],
-  };
+  const finish_positions = [{
+    pp: winner.pp,
+    horseName: winner.name,
+    position: 1,
+    win_payout: payout,
+  }];
+
+  if (live.length > 1) {
+    const remaining = live.filter((_, i) => i !== winIdx);
+    const remainingImplied = remaining.map(h => {
+      const o = parseOdds(h.ml);
+      return o > 0 ? 1 / (o + 1) : 0;
+    });
+    const remainingSum = remainingImplied.reduce((a, b) => a + b, 0);
+    if (remainingSum > 0) {
+      const remainingProbs = remainingImplied.map(p => p / remainingSum);
+      const secondIdx = drawFrom(remaining, remainingProbs);
+      const second = remaining[secondIdx];
+      finish_positions.push({ pp: second.pp, horseName: second.name, position: 2 });
+    }
+  }
+
+  race.results = { finish_positions };
   measurable++;
 }
 

@@ -45,6 +45,25 @@ function hasResults(race) {
     && race.results.finish_positions.length > 0);
 }
 
+/**
+ * Combine two records believed to represent the same real race, preferring
+ * whichever side has results for everything EXCEPT `horses` (pre-race field
+ * data). Result-only sources -- RACE_HISTORY chief among them, since it's
+ * built from /api/results and never sees the pre-race card -- would
+ * otherwise silently blank out horses data that only exists on an
+ * entries/normalized copy of the same race id, making it unscoreable even
+ * though we have everything needed to score it.
+ */
+function mergeRaceCopies(a, b) {
+  const withResult = a._hasResult ? a : (b._hasResult ? b : a);
+  const withoutResult = withResult === a ? b : a;
+  const horses = (withResult.horses && withResult.horses.length) ? withResult.horses
+    : (withoutResult.horses || []);
+  const merged = Object.assign({}, withoutResult, withResult, { horses });
+  merged._hasResult = hasResults(merged);
+  return merged;
+}
+
 function annotate(races, src) {
   return (races || []).map(r => Object.assign({}, r, {
     _src: src,
@@ -63,15 +82,47 @@ function loadNormalized() {
   return out;
 }
 
+/**
+ * Normalize one race object from a data/entries-{TRACK}-{DATE}.json file into
+ * the shape scoreRace()/run.js expect.
+ *
+ * Found while wiring real results into the backtest (2026-07): these files
+ * use `entries` (or, for dates after the daily-entries pipeline was
+ * disabled, nothing at all -- just `expertPicks`), never `horses`, and never
+ * stamp `track`/`date`/`num`/`id` onto the race object itself. scoreRace()
+ * reads `race.horses`; run.js's dedup keys on `race.id`. Neither ever
+ * matched, so any race loaded from an entries file silently scored zero
+ * horses and was dropped from every backtest run to date -- only the
+ * placeholder fixture corpus was ever actually measured.
+ */
+function normalizeEntriesRace(race, track, date) {
+  const num = race.race_number || race.num;
+  const horses = Array.isArray(race.horses) ? race.horses
+    : Array.isArray(race.entries) ? race.entries
+    : [];
+  return Object.assign({}, race, {
+    id: race.id || `${track}-${date.replace(/-/g, '')}-R${num}`,
+    track: race.track || track,
+    date: race.date || date,
+    num,
+    type: race.type || race.race_type_code || race.race_type || null,
+    horses,
+  });
+}
+
 function loadEntriesFiles() {
   const files = listFiles(DATA, n => /^entries-[A-Z]+-\d{4}-\d{2}-\d{2}\.json$/.test(n));
   const out = [];
   for (const f of files) {
     const doc = readJson(f);
     if (!doc) continue;
+    const m = path.basename(f).match(/^entries-([A-Z]+)-(\d{4}-\d{2}-\d{2})\.json$/);
+    const track = m ? m[1] : null;
+    const date = m ? m[2] : null;
     // Entries files are either { races: [...] } or a single card object.
-    if (Array.isArray(doc.races)) out.push(...annotate(doc.races, f));
-    else if (Array.isArray(doc)) out.push(...annotate(doc, f));
+    const races = Array.isArray(doc.races) ? doc.races : (Array.isArray(doc) ? doc : []);
+    const normalized = races.map(r => normalizeEntriesRace(r, track, date));
+    out.push(...annotate(normalized, f));
   }
   return out;
 }
@@ -113,9 +164,11 @@ function loadCorpus(opts) {
       const key = r.id || `${r.track}-${r.date}-R${r.num}`;
       const existing = byId.get(key);
       if (existing) {
-        // Replace only if the new copy has results and the existing one doesn't.
-        if (r._hasResult && !existing._hasResult) {
-          byId.set(key, r);
+        // Merge rather than replace -- see mergeRaceCopies(): a result-bearing
+        // copy (e.g. RACE_HISTORY) never carries pre-race horses data, so a
+        // blind replace would silently make the race unscoreable again.
+        if (r._hasResult !== existing._hasResult || (r.horses||[]).length || (existing.horses||[]).length) {
+          byId.set(key, mergeRaceCopies(existing, r));
         }
         dropDupes++;
         continue;
@@ -131,7 +184,7 @@ function loadCorpus(opts) {
     if (!r._hasResult) continue;
     const key = r.id || `${r.track}-${r.date}-R${r.num}`;
     const existing = byId.get(key);
-    if (existing && !existing._hasResult) byId.set(key, r);
+    if (existing && !existing._hasResult) byId.set(key, mergeRaceCopies(existing, r));
   }
 
   let races = Array.from(byId.values());
@@ -174,10 +227,46 @@ function loadCorpus(opts) {
 // Then merge with loadCorpus() by passing both to scripts/backtest/run.js.
 // We intentionally KEEP this separate from loadCorpus() (which is sync and
 // has no fetch dependency) so existing harness code keeps working unchanged.
+/**
+ * Normalize one race from a RACE_HISTORY-archived results payload (the shape
+ * worker.js's normaliseNaResults() produces: `finishOrder` instead of
+ * `results.finish_positions`, `payouts.exacta`/`trifecta`/`superfecta` as
+ * bare numbers instead of a `results.exotics` array) into the shape
+ * scoreRace()/the metrics module expect.
+ *
+ * RACE_HISTORY is built entirely from /api/results and never sees the
+ * pre-race card, so `horses` is always empty here -- this record is only
+ * ever useful merged with an entries/normalized copy of the same race id
+ * that actually has pre-race horses data (see mergeRaceCopies()).
+ */
+function normalizeWorkerRace(race, track, date) {
+  const num = race.raceNumber || race.num;
+  const finishOrder = Array.isArray(race.finishOrder) ? race.finishOrder : [];
+  const finish_positions = finishOrder.map(f => ({
+    pp: f.pp,
+    horseName: f.horseName,
+    position: f.position,
+    win_payout: f.winPayoff != null ? f.winPayoff : undefined,
+  }));
+  const payouts = race.payouts || {};
+  const exotics = [
+    { type: 'exacta', payout: payouts.exacta },
+    { type: 'trifecta', payout: payouts.trifecta },
+    { type: 'superfecta', payout: payouts.superfecta },
+  ].filter(e => e.payout != null);
+  return {
+    id: `${track}-${date.replace(/-/g, '')}-R${num}`,
+    track, date, num,
+    horses: [],
+    results: finish_positions.length ? { finish_positions, exotics } : undefined,
+  };
+}
+
 async function loadCorpusFromWorker(opts) {
   opts = opts || {};
   const base = String(opts.workerUrl || '').replace(/\/+$/, '');
   if (!base) throw new Error('loadCorpusFromWorker: workerUrl is required');
+  if (!opts.track) throw new Error('loadCorpusFromWorker: track is required (the worker\'s /api/history/list only returns race payloads when a track is given)');
 
   // Node 18+ has global fetch; allow callers to inject a polyfill for older runtimes.
   const fetchImpl = opts.fetch || (typeof fetch !== 'undefined' ? fetch : null);
@@ -185,11 +274,11 @@ async function loadCorpusFromWorker(opts) {
     throw new Error('loadCorpusFromWorker: global fetch not available; pass opts.fetch');
   }
 
-  // Step 1: list available (track,date) pairs the worker has archived.
   const listUrl = new URL(base + '/api/history/list');
-  if (opts.track) listUrl.searchParams.set('track', opts.track);
-  if (opts.from)  listUrl.searchParams.set('from', opts.from);
-  if (opts.to)    listUrl.searchParams.set('to', opts.to);
+  listUrl.searchParams.set('track', opts.track);
+  if (opts.from) listUrl.searchParams.set('from', opts.from);
+  if (opts.to)   listUrl.searchParams.set('to', opts.to);
+  if (opts.limit) listUrl.searchParams.set('limit', String(opts.limit));
 
   let listing;
   try {
@@ -200,22 +289,17 @@ async function loadCorpusFromWorker(opts) {
     return { races: [], stats: { total_loaded: 0, with_results: 0, without_results: 0, error: String(e) } };
   }
 
-  // Expected listing shape (from worker.js handleHistoryList):
-  //   { entries: [{ track: 'BEL', date: '2026-05-29' }, ...] }
-  const entries = (listing && Array.isArray(listing.entries)) ? listing.entries : [];
-
-  // Step 2: fetch each (track,date) record and accumulate races.
+  // Real shape (worker.js handleHistoryList, track given):
+  //   { track, from, to, count, races: [ <full results payload per date>, ... ] }
+  // Each payload is itself { date, races: [ {raceNumber, finishOrder, payouts, ...} ] }.
+  const payloads = (listing && Array.isArray(listing.races)) ? listing.races : [];
   const out = [];
-  for (const e of entries) {
-    if (!e || !e.track || !e.date) continue;
-    const url = base + '/api/history/' + encodeURIComponent(e.track) + '/' + encodeURIComponent(e.date);
-    try {
-      const res = await fetchImpl(url);
-      if (!res.ok) continue;
-      const doc = await res.json();
-      const races = Array.isArray(doc.races) ? doc.races : (Array.isArray(doc) ? doc : []);
-      out.push(...annotate(races, 'worker://' + e.track + '/' + e.date));
-    } catch (_) { /* skip individual failures, keep going */ }
+  for (const payload of payloads) {
+    if (!payload || !Array.isArray(payload.races)) continue;
+    const date = payload.date;
+    if (!date) continue;
+    const normalized = payload.races.map(r => normalizeWorkerRace(r, opts.track, date));
+    out.push(...annotate(normalized, 'worker://' + opts.track + '/' + date));
   }
 
   const withResults = out.filter(r => r._hasResult).length;
@@ -243,7 +327,9 @@ function mergeCorpora(...corpora) {
       const key = r.id || `${r.track}-${r.date}-R${r.num}`;
       const existing = byId.get(key);
       if (existing) {
-        if (r._hasResult && !existing._hasResult) byId.set(key, r);
+        if (r._hasResult !== existing._hasResult || (r.horses||[]).length || (existing.horses||[]).length) {
+          byId.set(key, mergeRaceCopies(existing, r));
+        }
         dropDupes++;
         continue;
       }
@@ -264,4 +350,4 @@ function mergeCorpora(...corpora) {
   };
 }
 
-module.exports = { loadCorpus, loadCorpusFromWorker, mergeCorpora, hasResults };
+module.exports = { loadCorpus, loadCorpusFromWorker, mergeCorpora, hasResults, mergeRaceCopies, normalizeEntriesRace, normalizeWorkerRace };

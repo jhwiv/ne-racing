@@ -89,6 +89,7 @@ function evaluateVersion(version, races) {
       row.top1     = M.top1Hit(scored, winnerPp);
       row.top3     = M.topKHit(scored, winnerPp, 3);
       row.top4     = M.topKHit(scored, winnerPp, 4);
+      row.exacta_box = M.exactaBoxHit(scored, race);
       row.flat_top_pick_roi = M.flatTopPickROI(scored, race);
       const overlay = M.flatOverlayROI(scored, race);
       row.overlay_bets = overlay;
@@ -114,6 +115,12 @@ function evaluateVersion(version, races) {
     top1_rate:     M.mean(measurableRows.map(r => r.top1)),
     top3_rate:     M.mean(measurableRows.map(r => r.top3)),
     top4_rate:     M.mean(measurableRows.map(r => r.top4)),
+    // exacta_box_rate is measured over races with a KNOWN 2nd-place finisher
+    // (exacta_n), a strict subset of races_measurable (which only requires
+    // a known winner) -- most result sources historically only carried the
+    // winner, so exacta_n is frequently 0 even when races_measurable isn't.
+    exacta_box_rate: M.mean(measurableRows.map(r => r.exacta_box)),
+    exacta_n:      measurableRows.filter(r => r.exacta_box != null).length,
     flat_top_pick_net: M.sum(measurableRows.map(r => r.flat_top_pick_roi)),
     flat_top_pick_roi_pct: (() => {
       const n = measurableRows.filter(r => r.flat_top_pick_roi != null).length;
@@ -213,6 +220,17 @@ function printReport(report) {
     console.log('    ingested (see scripts/ingest/theracingapi_adapter.js).');
   }
 
+  const exactaN = Math.max(0, ...report.versions.map(v => v.summary.exacta_n || 0));
+  if (s.with_results > 0 && exactaN === 0) {
+    console.log('');
+    console.log('  ⚠ Exacta Box rate unmeasurable: every result-bearing race here only');
+    console.log('    records the WINNER (position 1), never who finished 2nd. An exacta');
+    console.log('    box needs both. This has been true of every result source in this');
+    console.log('    repo to date -- the production "Value Play"/"Exotic of the Day"');
+    console.log('    pairing logic has never actually been checked against real or');
+    console.log('    synthetic 2nd-place data before today.');
+  }
+
   console.log('');
   console.log('  Summary by version');
   console.log('  ──────────────────');
@@ -227,6 +245,7 @@ function printReport(report) {
     { header: 'Brier',      key: 'brier_mean',    fmt: fmtNum },
     { header: 'Top-1',      key: 'top1_rate',     fmt: fmtPct },
     { header: 'Top-3',      key: 'top3_rate',     fmt: fmtPct },
+    { header: 'Exacta Box', key: 'exacta_box_rate', fmt: fmtPct },
     { header: 'Flat ROI',   key: 'flat_top_pick_roi_pct', fmt: v => v == null ? '—' : v.toFixed(1) + '%' },
     { header: 'Overlay net',key: 'overlay_net',   fmt: fmtMoney },
   ];

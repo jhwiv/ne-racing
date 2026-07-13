@@ -54,6 +54,30 @@ function topKHit(scored, winnerPp, k) {
 }
 
 /**
+ * 1 if the model's top-2-by-score pair (scored[0], scored[1]) are exactly
+ * the real top-2 finishers, in either order -- i.e. would this pairing have
+ * cashed as an Exacta Box. This is the exact same pairing rule production
+ * uses for both "Value Play" and "Exotic of the Day" (see index.html's
+ * updateTopPicksCard: `raceGroup[0]`/`raceGroup[1]`, `raceGroup` being
+ * scored horses sorted by score descending).
+ *
+ * Returns null (not measurable) unless both position 1 AND position 2 are
+ * present in results.finish_positions -- a plain win-only result (the shape
+ * every other metric in this file accepts) cannot answer an exacta question.
+ */
+function exactaBoxHit(scored, race) {
+  if (!scored || scored.length < 2) return null;
+  const fp = (race && race.results && race.results.finish_positions) || [];
+  const first = fp.find(x => x.position === 1);
+  const second = fp.find(x => x.position === 2);
+  if (!first || !second) return null;
+  const boxPps = new Set([scored[0].horse.pp, scored[1].horse.pp]);
+  const finishPps = new Set([first.pp, second.pp]);
+  if (boxPps.size !== 2 || finishPps.size !== 2) return null;
+  return (boxPps.has(first.pp) && boxPps.has(second.pp)) ? 1 : 0;
+}
+
+/**
  * ROI of a flat $2 win bet on the model's top pick.
  * Returns net profit per race in dollars. Requires `win_payout` on the
  * winning row of results.finish_positions (standard $2 payout, e.g. 8.40).
@@ -138,6 +162,7 @@ module.exports = {
   brierRace,
   top1Hit,
   topKHit,
+  exactaBoxHit,
   flatTopPickROI,
   flatOverlayROI,
   calibrationBuckets,

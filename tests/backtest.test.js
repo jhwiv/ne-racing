@@ -73,6 +73,42 @@ test('top1Hit & topKHit', () => {
   assert.equal(M.topKHit(scored, 4, 3), 0);
 });
 
+// ── exactaBoxHit: the model's top-2-by-score pair vs. real top-2 finishers ──
+test('exactaBoxHit: hits when the model\'s top-2 land 1st/2nd in the SAME order', () => {
+  const scored = [{ horse: { pp: 1 } }, { horse: { pp: 2 } }, { horse: { pp: 3 } }];
+  const race = { results: { finish_positions: [
+    { pp: 1, position: 1 }, { pp: 2, position: 2 },
+  ] } };
+  assert.equal(M.exactaBoxHit(scored, race), 1);
+});
+
+test('exactaBoxHit: hits when the model\'s top-2 land 1st/2nd in the OPPOSITE order (a box doesn\'t care)', () => {
+  const scored = [{ horse: { pp: 1 } }, { horse: { pp: 2 } }, { horse: { pp: 3 } }];
+  const race = { results: { finish_positions: [
+    { pp: 2, position: 1 }, { pp: 1, position: 2 },
+  ] } };
+  assert.equal(M.exactaBoxHit(scored, race), 1);
+});
+
+test('exactaBoxHit: misses when either named horse is outside the real top-2', () => {
+  const scored = [{ horse: { pp: 1 } }, { horse: { pp: 2 } }, { horse: { pp: 3 } }];
+  const race = { results: { finish_positions: [
+    { pp: 3, position: 1 }, { pp: 1, position: 2 }, // pp 2 (model's #2) finished off the board
+  ] } };
+  assert.equal(M.exactaBoxHit(scored, race), 0);
+});
+
+test('exactaBoxHit: unmeasurable (null) without a known 2nd-place finisher', () => {
+  const scored = [{ horse: { pp: 1 } }, { horse: { pp: 2 } }];
+  const race = { results: { finish_positions: [{ pp: 1, position: 1 }] } }; // winner only, no 2nd
+  assert.equal(M.exactaBoxHit(scored, race), null);
+});
+
+test('exactaBoxHit: unmeasurable (null) with fewer than 2 scored horses', () => {
+  const race = { results: { finish_positions: [{ pp: 1, position: 1 }, { pp: 2, position: 2 }] } };
+  assert.equal(M.exactaBoxHit([{ horse: { pp: 1 } }], race), null);
+});
+
 test('flatTopPickROI: top pick wins → payout-2', () => {
   const scored = [{ horse: { pp: 1 } }];
   const race = { results: { finish_positions: [{ pp: 1, position: 1, win_payout: 6.40 }] } };
@@ -120,6 +156,27 @@ test('evaluateVersion: produces summary metrics on synthetic data', () => {
   assert.ok(out.summary.brier_mean != null);
   assert.equal(out.summary.top1_rate, 0.5, 'pp=1 wins 5/10 → top-1 rate 50%');
   assert.ok(out.summary.top3_rate >= out.summary.top1_rate, 'top-3 should ≥ top-1');
+});
+
+test('evaluateVersion: exacta_box_rate/exacta_n stay null/0 on plain winner-only results (the historical status quo)', () => {
+  // syntheticRace() only ever sets a position-1 winner -- exactly the shape
+  // every result source in this repo produced before this metric existed.
+  const races = [syntheticRace(1), syntheticRace(2), syntheticRace(3)];
+  races.forEach((r, i) => { r.id = `E-${i}`; });
+  const out = evaluateVersion('v2', races);
+  assert.equal(out.summary.exacta_n, 0, 'no race here has a known 2nd-place finisher, so the metric must report zero measurable races');
+  assert.equal(out.summary.exacta_box_rate, null);
+});
+
+test('evaluateVersion: exacta_box_rate reflects real box hits once 2nd-place data exists', () => {
+  const race = syntheticRace(1); // pp=1 (Alpha) has the best speed figs -> model's #1
+  race.id = 'F-0';
+  // Model's #2-by-score in this 5-horse field is pp=2 (Bravo, next-best figs).
+  // Give it a real 2nd-place finish so the box (pp 1 + pp 2) hits.
+  race.results.finish_positions.push({ pp: 2, position: 2 });
+  const out = evaluateVersion('v2', [race]);
+  assert.equal(out.summary.exacta_n, 1);
+  assert.equal(out.summary.exacta_box_rate, 1);
 });
 
 test('evaluateVersion: degrades gracefully without results', () => {

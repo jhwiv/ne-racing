@@ -1,0 +1,61 @@
+name: Pull Race History (RACE_HISTORY archive)
+
+# Pulls the worker's already-archived real race results (RACE_HISTORY KV,
+# written automatically by worker.js whenever any client checks live results
+# for an official race) into data/normalized/{year}/{track}/{date}.json --
+# the exact shape scripts/backtest/load_corpus.js reads as its highest-
+# priority source. This repo has never had a durable, committed archive of
+# real race results before; RACE_HISTORY has been accumulating them
+# server-side the whole time, but nothing ever pulled them down.
+#
+# Where local data/entries-{TRACK}-{DATE}.json files have real pre-race
+# field data (horses), pull_race_history.js merges it in so the race is
+# fully scoreable by the backtest, not just results-only.
+#
+# GET /api/history/* requires no auth -- see worker.js's route dispatch.
+
+on:
+  schedule:
+    # Once daily, well after Saratoga's card is normally complete.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      from:
+        description: 'Start date (YYYY-MM-DD). Omit to pull everything archived.'
+        type: string
+        default: ''
+      to:
+        description: 'End date (YYYY-MM-DD). Omit for no upper bound.'
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Pull RACE_HISTORY into data/normalized/
+        run: |
+          node scripts/backtest/pull_race_history.js --track SAR \
+            ${{ inputs.from && format('--from {0}', inputs.from) || '' }} \
+            ${{ inputs.to && format('--to {0}', inputs.to) || '' }}
+
+      - name: Commit updated normalized corpus
+        run: |
+          git config user.name "railbird-bot"
+          git config user.email "actions@users.noreply.github.com"
+          # -f: .gitignore blanket-ignores data/normalized/ (protects against
+          # accidentally committing ad-hoc local test pulls) -- same gotcha
+          # as nyra-expert-picks.yml's data/entries-SAR-*.json rule.
+          git add -f data/normalized/
+          git diff --cached --quiet || git commit -m "chore: pull real race history from RACE_HISTORY archive"
+          git push
