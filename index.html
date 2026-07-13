@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260710-v2.49.34-brisnet';
+var NE_APP_VERSION = '20260713-v2.49.35-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260710-v2.49.34-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.34-brisnet';
+var RAILBIRD_VERSION = 'v2.49.35-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10731,6 +10731,41 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
       </div>
     </section>
 
+    <!-- ===== TAB: ANALYTICS ===== -->
+    <!-- v2.49.35: server-tracked, cross-device analytics -- real archived
+         race results (RACE_HISTORY), the engine's own picks, and two "peer
+         review" alternatives (the market favorite, the NYRA handicapper
+         consensus) tracked identically via the same ENGINE_ACCURACY
+         pick/settle system. Independent of any one device's local data. -->
+    <section id="tab-analytics" class="tab-panel" role="tabpanel" aria-label="Analytics">
+      <h2 class="section-title">Analytics</h2>
+      <p class="text-muted text-sm mb-2">Real, server-tracked history — race results, the engine's own picks, and how they compare to the market favorite and the NYRA handicapper consensus.</p>
+
+      <div class="card mb-2">
+        <div class="card-header">
+          <h3>Pick Accuracy by Source</h3>
+        </div>
+        <div class="card-body">
+          <div id="analytics-accuracy-body">
+            <p class="text-muted text-sm">Loading…</p>
+          </div>
+          <button class="btn btn-ghost btn-sm mt-1" onclick="renderAnalyticsAccuracy()">Refresh</button>
+        </div>
+      </div>
+
+      <div class="card mb-2">
+        <div class="card-header">
+          <h3>Race Results History</h3>
+        </div>
+        <div class="card-body">
+          <div id="analytics-history-dates">
+            <p class="text-muted text-sm">Loading…</p>
+          </div>
+          <div id="analytics-history-detail"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== TAB 5: REFERENCE ===== -->
     <section id="tab-reference" class="tab-panel" role="tabpanel" aria-label="Reference">
       <h2 class="section-title" id="ref-heading">Track Reference</h2>
@@ -11209,6 +11244,19 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <span class="more-item-body">
           <span class="more-item-title">Results &amp; Bankroll</span>
           <span class="more-item-sub">P&amp;L, ROI, bet history</span>
+        </span>
+        <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="more-item" onclick="goMore('analytics')">
+        <span class="more-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/>
+            <path d="M18 9l-5 5-3-3-4 4"/>
+          </svg>
+        </span>
+        <span class="more-item-body">
+          <span class="more-item-title">Analytics</span>
+          <span class="more-item-sub">Real race results, engine vs. market vs. crowd</span>
         </span>
         <svg class="more-item-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
@@ -14632,7 +14680,7 @@ function switchTab(name) {
 
   // v2.26.0: when the active tab lives behind the "More" sheet (barn / results /
   // reference), light up the More button so the user has a visible anchor.
-  if (['barn', 'results', 'reference'].indexOf(name) !== -1) {
+  if (['barn', 'results', 'reference', 'analytics'].indexOf(name) !== -1) {
     var moreBtn = el('tab-btn-more');
     if (moreBtn) { moreBtn.classList.add('active'); moreBtn.setAttribute('aria-selected', 'true'); }
     var dMoreBtn = el('dnav-more');
@@ -14667,6 +14715,7 @@ function renderTabContent(name) {
     case 'handicap': renderHandicapTab(); break;
     case 'results': renderResultsTab(); break;
     case 'reference': renderReferenceTab(); break;
+    case 'analytics': renderAnalyticsTab(); break;
   }
 }
 
@@ -18888,8 +18937,12 @@ function refreshEngineAccuracy() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var engines = (data && data.engines) || {};
-      var order = ['v2', 'v1', 'baseline_ml'];
-      var labels = { v2: 'v2 engine (current)', v1: 'v1 engine (legacy)', baseline_ml: 'Morning-line favorite' };
+      // v2.49.35: "crowd" (NYRA handicapper consensus) is now a real,
+      // server-tracked engine value (see daily_pick_log.js) -- was missing
+      // from this list entirely, so it silently never showed here even
+      // once picks started being logged under it.
+      var order = ['v2', 'v1', 'baseline_ml', 'crowd'];
+      var labels = { v2: 'v2 engine (current)', v1: 'v1 engine (legacy)', baseline_ml: 'Morning-line favorite', crowd: 'NYRA handicapper consensus' };
       var rows = order.filter(function(e) { return engines[e]; }).map(function(e) {
         var s = engines[e];
         var wl = s.settled ? (s.wins + '-' + (s.settled - s.wins) + ' (' + (s.winRate * 100).toFixed(1) + '%)') : '— (—%)';
@@ -18903,6 +18956,127 @@ function refreshEngineAccuracy() {
     })
     .catch(function() {
       body.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable, or this endpoint isn’t deployed yet).</p>';
+    });
+}
+
+/* =============================================================
+   ANALYTICS TAB (v2.49.35) — server-tracked, cross-device: real archived
+   race results (RACE_HISTORY), the engine's own picks, and two "peer
+   review" alternatives (market favorite, NYRA handicapper consensus),
+   all tracked via the same ENGINE_ACCURACY pick/settle system.
+   ============================================================= */
+function renderAnalyticsTab() {
+  renderAnalyticsAccuracy();
+  renderAnalyticsHistory();
+}
+
+function renderAnalyticsAccuracy() {
+  var body = el('analytics-accuracy-body');
+  if (!body) return;
+  var store = getStore();
+  var workerUrl = store && store.settings.workerUrl;
+  if (!workerUrl) {
+    body.innerHTML = '<p class="text-muted text-sm">Set a Worker URL in Settings to enable this.</p>';
+    return;
+  }
+  body.innerHTML = '<p class="text-muted text-sm">Loading…</p>';
+  fetch(workerUrl + '/api/picks/stats')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var engines = (data && data.engines) || {};
+      var order = ['v2', 'v1', 'baseline_ml', 'crowd'];
+      var labels = { v2: 'Engine (v2, current)', v1: 'Engine (v1, legacy)', baseline_ml: 'Market favorite', crowd: 'NYRA handicapper consensus' };
+      var present = order.filter(function(e) { return engines[e] && engines[e].settled > 0; });
+      if (!present.length) {
+        body.innerHTML = '<p class="text-muted text-sm">No settled picks yet — check back after today’s races finish.</p>';
+        return;
+      }
+      var rows = present.map(function(e) {
+        var s = engines[e];
+        var wl = s.wins + '-' + (s.settled - s.wins) + ' (' + (s.winRate * 100).toFixed(1) + '%)';
+        var roi = s.roi != null ? fmtPct(s.roi * 100) : '—';
+        return '<div class="flex justify-between items-center mb-1">' +
+          '<span class="font-semibold text-sm">' + labels[e] + '</span>' +
+          '<span class="mono text-sm">' + wl + ' · ROI ' + roi + ' · n=' + s.settled + '</span>' +
+        '</div>';
+      }).join('');
+      // Simple auto-generated analysis: whichever tracked source has the
+      // best real ROI so far, among sources with a non-trivial sample.
+      var ranked = present.filter(function(e) { return engines[e].settled >= 3 && engines[e].roi != null; })
+        .sort(function(a, b) { return engines[b].roi - engines[a].roi; });
+      var headline = '';
+      if (ranked.length >= 2) {
+        var others = ranked.length - 1;
+        headline = '<p class="text-sm mb-2"><strong>' + labels[ranked[0]] + '</strong> currently leads on ROI (' +
+          fmtPct(engines[ranked[0]].roi * 100) + ') over ' + others + ' other tracked source' + (others === 1 ? '' : 's') + '.</p>';
+      }
+      body.innerHTML = headline + rows;
+    })
+    .catch(function() {
+      body.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable, or this endpoint isn’t deployed yet).</p>';
+    });
+}
+
+function renderAnalyticsHistory() {
+  var container = el('analytics-history-dates');
+  if (!container) return;
+  var store = getStore();
+  var workerUrl = store && store.settings.workerUrl;
+  if (!workerUrl) {
+    container.innerHTML = '<p class="text-muted text-sm">Set a Worker URL in Settings to enable this.</p>';
+    return;
+  }
+  var code = getActiveTrack();
+  container.innerHTML = '<p class="text-muted text-sm">Loading…</p>';
+  fetch(workerUrl + '/api/history/dates?track=' + code)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var dates = (data && data.dates) || [];
+      if (!dates.length) {
+        container.innerHTML = '<p class="text-muted text-sm">No archived results yet for ' + escHtml(code) + '.</p>';
+        return;
+      }
+      var sorted = dates.slice().sort().reverse();
+      container.innerHTML = sorted.map(function(d) {
+        var safeD = escHtml(d).replace(/'/g, "\\'");
+        return '<button class="btn btn-ghost btn-sm" style="margin:0.2rem 0.3rem 0.2rem 0" onclick="renderAnalyticsHistoryDetail(\'' + safeD + '\')">' + escHtml(d) + '</button>';
+      }).join('');
+    })
+    .catch(function() {
+      container.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable).</p>';
+    });
+}
+
+function renderAnalyticsHistoryDetail(date) {
+  var detail = el('analytics-history-detail');
+  if (!detail) return;
+  var store = getStore();
+  var workerUrl = store && store.settings.workerUrl;
+  if (!workerUrl) return;
+  var code = getActiveTrack();
+  detail.innerHTML = '<p class="text-muted text-sm">Loading ' + escHtml(date) + '…</p>';
+  fetch(workerUrl + '/api/history/' + encodeURIComponent(code) + '/' + encodeURIComponent(date))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var races = (data && data.races) || [];
+      if (!races.length) {
+        detail.innerHTML = '<p class="text-muted text-sm">No races found for ' + escHtml(date) + '.</p>';
+        return;
+      }
+      var rows = races.map(function(r) {
+        var winner = (r.finishOrder || []).find(function(f) { return f.position === 1; });
+        var winTxt = winner
+          ? ('#' + winner.pp + ' ' + escHtml(winner.horseName) + (winner.winPayoff ? ' ($' + Number(winner.winPayoff).toFixed(2) + ')' : ''))
+          : '—';
+        return '<div class="flex justify-between items-center mb-1">' +
+          '<span class="text-sm">Race ' + r.raceNumber + '</span>' +
+          '<span class="mono text-sm">' + winTxt + '</span>' +
+        '</div>';
+      }).join('');
+      detail.innerHTML = '<div class="section-title" style="margin-top:0.5rem">' + escHtml(date) + '</div>' + rows;
+    })
+    .catch(function() {
+      detail.innerHTML = '<p class="text-muted text-sm">Could not load.</p>';
     });
 }
 

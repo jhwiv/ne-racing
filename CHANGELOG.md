@@ -1,5 +1,52 @@
 # NE Racing — Changelog
 
+## v2.49.35-brisnet — New Analytics tab: real results + engine vs. market vs. crowd (2026-07-13)
+
+Asked for exotic bets to keep running (not suppressed) alongside a real,
+durable answer to "is the model actually better than the market or the
+crowd" -- an area in the More sheet storing real race results and both
+expert (engine) and crowd-sourced picks, with analyses built from them.
+
+This is the culmination of a five-part build:
+1. Pulled the worker's already-archived real race results (RACE_HISTORY --
+   full finish order + real exacta/trifecta/superfecta payouts, quietly
+   accumulating server-side this whole time) into the backtest corpus for
+   the first time (scripts/backtest/pull_race_history.js +
+   .github/workflows/pull-race-history.yml). Found and fixed two real,
+   pre-existing bugs along the way: entries files were never actually
+   scoreable (key mismatch: `entries`/`race_number`, not `horses`/`id`/
+   `num`), and loadCorpusFromWorker() assumed a listing shape the real
+   endpoint never returns.
+2. Extracted the engine's Best Bet / Value Play / Action Bet / Exotic of
+   the Day selection logic into a headless module
+   (scripts/lib/pick_selection.js), verified byte-identical to the live
+   client via vm-sandbox comparison, so a scheduled job can compute the
+   day's real picks without a browser open.
+3. New daily jobs (.github/workflows/daily-pick-log.yml +
+   daily-pick-settle.yml) log and settle picks server-side every day,
+   independent of whether any user opens the app -- closing the gap where
+   a day nobody opened the app was invisible to the tracker. Also logs two
+   "peer review" alternatives for the day's Best Bet: the market's own
+   favorite (`baseline_ml`) and the NYRA handicapper consensus (`crowd`),
+   using engine values worker.js's PICK_ENGINES already anticipated --
+   genuinely independent opinions, unlike comparing hand-tuned v1 vs v2
+   which likely share the same blind spots.
+4. New **Analytics** section in the More sheet: "Pick Accuracy by Source"
+   (engine vs. market favorite vs. crowd consensus, with an auto-generated
+   headline on whichever currently leads on real ROI) and "Race Results
+   History" (real archived results, browsable by date). Verified with a
+   real Playwright click-through (More -> Analytics -> a history date),
+   not just source inspection.
+5. Also fixed a small pre-existing gap while in there: the existing Engine
+   Accuracy tile (Results & Bankroll) never listed "crowd" in its display
+   order, so even after picks started logging under that engine, they'd
+   have silently never shown there.
+
+Tests: scripts/lib/pick_selection.js and pick_settlement.js are covered by
+unit + integration tests, including an end-to-end run of each daily-job
+script against a real local HTTP server. Full suite: 307 pass / 1
+known-fail / 1 skip.
+
 ## v2.49.34-brisnet — Value Play picks now logged/settled server-side as real Exacta Boxes (2026-07-10)
 
 Asked to evaluate exotic-bet performance as far back as possible (straight
