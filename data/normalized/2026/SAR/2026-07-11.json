@@ -2,9 +2,48 @@
   "track": "SAR",
   "date": "2026-07-11",
   "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
-  "pulled_at": "2026-07-13T14:34:00.548Z",
+  "pulled_at": "2026-07-14T06:47:42.596Z",
   "races": [
     {
+      "id": "SAR-20260711-R1",
+      "track": "SAR",
+      "date": "2026-07-11",
+      "num": 1,
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Midnight Still",
+            "position": 1,
+            "win_payout": 3.48
+          },
+          {
+            "pp": 3,
+            "horseName": "Decimation",
+            "position": 2
+          },
+          {
+            "pp": 2,
+            "horseName": "Motawaali",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 3.5
+          },
+          {
+            "type": "trifecta",
+            "payout": 7.45
+          },
+          {
+            "type": "superfecta",
+            "payout": 5.29
+          }
+        ]
+      },
       "race_number": 1,
       "expertPicks": [
         {
@@ -44,48 +83,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260711-R1",
+      "type": null
+    },
+    {
+      "id": "SAR-20260711-R2",
       "track": "SAR",
       "date": "2026-07-11",
-      "num": 1,
-      "type": null,
+      "num": 2,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 1,
-            "horseName": "Midnight Still",
+            "pp": 5,
+            "horseName": "Angel of Kirk",
             "position": 1,
-            "win_payout": 3.48
+            "win_payout": 4.66
           },
           {
-            "pp": 3,
-            "horseName": "Decimation",
+            "pp": 4,
+            "horseName": "Rum Twist",
             "position": 2
           },
           {
-            "pp": 2,
-            "horseName": "Motawaali",
+            "pp": 7,
+            "horseName": "Aerial Affair",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 3.5
+            "payout": 26.25
           },
           {
             "type": "trifecta",
-            "payout": 7.45
+            "payout": 57.5
           },
           {
             "type": "superfecta",
-            "payout": 5.29
+            "payout": 69.6
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 2,
       "expertPicks": [
         {
@@ -125,48 +164,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260711-R2",
+      "type": null
+    },
+    {
+      "id": "SAR-20260711-R3",
       "track": "SAR",
       "date": "2026-07-11",
-      "num": 2,
-      "type": null,
+      "num": 3,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 5,
-            "horseName": "Angel of Kirk",
+            "pp": 1,
+            "horseName": "Next On Stage",
             "position": 1,
-            "win_payout": 4.66
+            "win_payout": 10
           },
           {
-            "pp": 4,
-            "horseName": "Rum Twist",
+            "pp": 6,
+            "horseName": "Speightful Lily",
             "position": 2
           },
           {
-            "pp": 7,
-            "horseName": "Aerial Affair",
+            "pp": 5,
+            "horseName": "Army Gal",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 26.25
+            "payout": 11.8
           },
           {
             "type": "trifecta",
-            "payout": 57.5
+            "payout": 10
           },
           {
             "type": "superfecta",
-            "payout": 69.6
+            "payout": 9.45
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 3,
       "expertPicks": [
         {
@@ -206,48 +245,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260711-R3",
+      "type": null
+    },
+    {
+      "id": "SAR-20260711-R4",
       "track": "SAR",
       "date": "2026-07-11",
-      "num": 3,
-      "type": null,
+      "num": 4,
       "horses": [],
       "results": {
         "finish_positions": [
           {
             "pp": 1,
-            "horseName": "Next On Stage",
+            "horseName": "Sounds Like a Plan",
             "position": 1,
-            "win_payout": 10
+            "win_payout": 5.6
           },
           {
-            "pp": 6,
-            "horseName": "Speightful Lily",
+            "pp": 4,
+            "horseName": "Intellect (FR)",
             "position": 2
           },
           {
-            "pp": 5,
-            "horseName": "Army Gal",
+            "pp": 7,
+            "horseName": "Life and Times",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 11.8
+            "payout": 6.69
           },
           {
             "type": "trifecta",
-            "payout": 10
+            "payout": 15.29
           },
           {
             "type": "superfecta",
-            "payout": 9.45
+            "payout": 17.44
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 4,
       "expertPicks": [
         {
@@ -287,48 +326,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260711-R4",
+      "type": null
+    },
+    {
+      "id": "SAR-20260711-R5",
       "track": "SAR",
       "date": "2026-07-11",
-      "num": 4,
-      "type": null,
+      "num": 5,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 1,
-            "horseName": "Sounds Like a Plan",
+            "pp": 2,
+            "horseName": "Movin' On Up",
             "position": 1,
-            "win_payout": 5.6
+            "win_payout": 12.62
           },
           {
-            "pp": 4,
-            "horseName": "Intellect (FR)",
+            "pp": 1,
+            "horseName": "Zeitlos",
             "position": 2
           },
           {
-            "pp": 7,
-            "horseName": "Life and Times",
+            "pp": 6,
+            "horseName": "In Our Time",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 6.69
+            "payout": 23.67
           },
           {
             "type": "trifecta",
-            "payout": 15.29
+            "payout": 22.31
           },
           {
             "type": "superfecta",
-            "payout": 17.44
+            "payout": 19.85
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 5,
       "expertPicks": [
         {
@@ -368,48 +407,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260711-R5",
+      "type": null
+    },
+    {
+      "id": "SAR-20260711-R6",
       "track": "SAR",
       "date": "2026-07-11",
-      "num": 5,
-      "type": null,
+      "num": 6,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 2,
-            "horseName": "Movin' On Up",
+            "pp": 9,
+            "horseName": "B Yutiful Carly",
             "position": 1,
-            "win_payout": 12.62
+            "win_payout": 73.04
           },
           {
-            "pp": 1,
-            "horseName": "Zeitlos",
+            "pp": 7,
+            "horseName": "D'muehl",
             "position": 2
           },
           {
-            "pp": 6,
-            "horseName": "In Our Time",
+            "pp": 10,
+            "horseName": "Lady Azul",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 23.67
+            "payout": 281.81
           },
           {
             "type": "trifecta",
-            "payout": 22.31
+            "payout": 2287.92
           },
           {
             "type": "superfecta",
-            "payout": 19.85
+            "payout": 5398.13
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 6,
       "expertPicks": [
         {
@@ -449,48 +488,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260711-R6",
+      "type": null
+    },
+    {
+      "id": "SAR-20260711-R7",
       "track": "SAR",
       "date": "2026-07-11",
-      "num": 6,
-      "type": null,
+      "num": 7,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 9,
-            "horseName": "B Yutiful Carly",
+            "pp": 4,
+            "horseName": "Yinzer",
             "position": 1,
-            "win_payout": 73.04
+            "win_payout": 8.48
           },
           {
-            "pp": 7,
-            "horseName": "D'muehl",
+            "pp": 1,
+            "horseName": "Starship Titan",
             "position": 2
           },
           {
-            "pp": 10,
-            "horseName": "Lady Azul",
+            "pp": 3,
+            "horseName": "Walley World",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 281.81
+            "payout": 26.9
           },
           {
             "type": "trifecta",
-            "payout": 2287.92
+            "payout": 53.54
           },
           {
             "type": "superfecta",
-            "payout": 5398.13
+            "payout": 62
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 7,
       "expertPicks": [
         {
@@ -530,48 +569,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260711-R7",
+      "type": null
+    },
+    {
+      "id": "SAR-20260711-R8",
       "track": "SAR",
       "date": "2026-07-11",
-      "num": 7,
-      "type": null,
+      "num": 8,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 4,
-            "horseName": "Yinzer",
+            "pp": 9,
+            "horseName": "No Evidence",
             "position": 1,
-            "win_payout": 8.48
+            "win_payout": 15.32
           },
           {
-            "pp": 1,
-            "horseName": "Starship Titan",
+            "pp": 2,
+            "horseName": "Bosun",
             "position": 2
           },
           {
-            "pp": 3,
-            "horseName": "Walley World",
+            "pp": 7,
+            "horseName": "Grunge",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 26.9
+            "payout": 38.04
           },
           {
             "type": "trifecta",
-            "payout": 53.54
+            "payout": 203.76
           },
           {
             "type": "superfecta",
-            "payout": 62
+            "payout": 255.77
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 8,
       "expertPicks": [
         {
@@ -611,48 +650,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260711-R8",
+      "type": null
+    },
+    {
+      "id": "SAR-20260711-R9",
       "track": "SAR",
       "date": "2026-07-11",
-      "num": 8,
-      "type": null,
+      "num": 9,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 9,
-            "horseName": "No Evidence",
+            "pp": 6,
+            "horseName": "Sunday Boy",
             "position": 1,
-            "win_payout": 15.32
-          },
-          {
-            "pp": 2,
-            "horseName": "Bosun",
-            "position": 2
+            "win_payout": 10.5
           },
           {
             "pp": 7,
-            "horseName": "Grunge",
+            "horseName": "Judge Boushay",
+            "position": 2
+          },
+          {
+            "pp": 5,
+            "horseName": "King Farro",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 38.04
+            "payout": 42.5
           },
           {
             "type": "trifecta",
-            "payout": 203.76
+            "payout": 62.9
           },
           {
             "type": "superfecta",
-            "payout": 255.77
+            "payout": 75.3
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 9,
       "expertPicks": [
         {
@@ -692,86 +731,13 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260711-R9",
-      "track": "SAR",
-      "date": "2026-07-11",
-      "num": 9,
-      "type": null,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 6,
-            "horseName": "Sunday Boy",
-            "position": 1,
-            "win_payout": 10.5
-          },
-          {
-            "pp": 7,
-            "horseName": "Judge Boushay",
-            "position": 2
-          },
-          {
-            "pp": 5,
-            "horseName": "King Farro",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 42.5
-          },
-          {
-            "type": "trifecta",
-            "payout": 62.9
-          },
-          {
-            "type": "superfecta",
-            "payout": 75.3
-          }
-        ]
-      }
+      "type": null
     },
     {
-      "race_number": 10,
-      "expertPicks": [
-        {
-          "source": "NYRA Talking Horses - Jackson Muniz",
-          "pick": 1,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 1,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Greg Wolf",
-          "pick": 8,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 4,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 4,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
       "id": "SAR-20260711-R10",
       "track": "SAR",
       "date": "2026-07-11",
       "num": 10,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -806,41 +772,47 @@
             "payout": 4.94
           }
         ]
-      }
-    },
-    {
-      "race_number": 11,
+      },
+      "race_number": 10,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Jackson Muniz",
-          "pick": 10,
+          "pick": 1,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 10,
+          "pick": 1,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Greg Wolf",
+          "pick": 8,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 5,
+          "pick": 4,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 5,
+          "pick": 4,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
+      "type": null
+    },
+    {
       "id": "SAR-20260711-R11",
       "track": "SAR",
       "date": "2026-07-11",
       "num": 11,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -875,7 +847,35 @@
             "payout": 315.58
           }
         ]
-      }
+      },
+      "race_number": 11,
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Jackson Muniz",
+          "pick": 10,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 10,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 5,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 5,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "type": null
     }
   ]
 }
