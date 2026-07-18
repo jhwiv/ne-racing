@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260718-v2.49.39-brisnet';
+var NE_APP_VERSION = '20260718-v2.49.41-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260718-v2.49.39-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.39-brisnet';
+var RAILBIRD_VERSION = 'v2.49.41-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -17556,12 +17556,11 @@ function settleEnginePicksForRace(raceNum, raceResult) {
   if (!picks.length) return;
 
   picks.forEach(function(p) {
-    var finisher = raceResult.results.find(function(f) { return String(f.pp) === String(p.pp); });
-    if (!finisher) return;
     var cacheKey = track + ':' + date + ':' + raceNum + ':' + engine + ':' + p.pp;
     var settled = _engineAccuracyKeyCache('ne-racing-settled-picks');
     if (settled[cacheKey]) return;
-    var position = finisher.position;
+    var finisher = raceResult.results.find(function(f) { return String(f.pp) === String(p.pp); });
+    var position = finisher ? finisher.position : null;
     var payout, won, betType;
     if (p.partnerPp) {
       // v2.49.34: a Value Play is a real 2-horse Exacta Box, not a single-
@@ -17571,9 +17570,8 @@ function settleEnginePicksForRace(raceNum, raceResult) {
       // named horses occupy the top two spots, in EITHER order, and pays
       // the real exacta payout, not the win payout.
       betType = 'Exacta Box';
-      var partnerFinisher = raceResult.results.find(function(f) { return String(f.pp) === String(p.partnerPp); });
       var top2 = raceResult.results.filter(function(f) { return f.position === 1 || f.position === 2; });
-      won = !!partnerFinisher && top2.length === 2 &&
+      won = top2.length === 2 &&
         top2.some(function(f) { return String(f.pp) === String(p.pp); }) &&
         top2.some(function(f) { return String(f.pp) === String(p.partnerPp); });
       var exoticPayout = won ? (raceResult.exotics || []).find(function(e) { return e.type === 'exacta'; }) : null;
@@ -17582,7 +17580,13 @@ function settleEnginePicksForRace(raceNum, raceResult) {
       payout = exoticPayout ? parseFloat(exoticPayout.payout) || 0 : 0;
     } else {
       betType = 'Win';
-      won = position === 1;
+      // v2.49.41: if this horse isn't among the recorded finishers, the
+      // race IS official (raceResult.results is non-empty, guarded above)
+      // so it definitively did NOT win -- grade as a confirmed loss
+      // instead of silently skipping (previously `if (!finisher) return;`
+      // bailed before this whole block ran, discarding every real loss
+      // for a horse that finished out of the recorded spots).
+      won = finisher ? position === 1 : false;
       payout = (won && finisher.winPayout) ? parseFloat(finisher.winPayout) : 0;
     }
     fetch(workerUrl + '/api/picks/settle', {

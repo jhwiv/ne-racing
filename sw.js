@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260718-v2.49.39-brisnet'; // v2.49.39: Today/All Time toggle, hero ROI figure, rank badges on Pick Accuracy card               // bump on every ship
+const CACHE_VERSION = '20260718-v2.49.41-brisnet'; // v2.49.41: fixed grading bug that silently discarded real losses for out-of-the-money finishes               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

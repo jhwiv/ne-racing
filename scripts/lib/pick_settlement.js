@@ -17,14 +17,16 @@
  * @param {{pp: number, partnerPp?: number|null}} payload - a logged pick (or
  *   the payload about to be logged -- same shape either way).
  * @param {{finish_positions: Array<{pp:number,position:number,win_payout?:number}>, exotics?: Array<{type:string,payout:number}>}} raceResult
- * @returns {{position:number, won:boolean, payout:number, betType:string}|null}
- *   null if the named horse doesn't appear in the result at all (unsettleable).
+ * @returns {{position:number|null, won:boolean, payout:number, betType:string}|null}
+ *   null only if there's no result at all yet (race not official). Once a
+ *   race IS official, a horse absent from finish_positions is graded as a
+ *   confirmed loss (see v2.49.41 note below), never returned as null.
  */
 function gradePick(payload, raceResult) {
-  if (!raceResult || !Array.isArray(raceResult.finish_positions)) return null;
+  if (!raceResult || !Array.isArray(raceResult.finish_positions) || !raceResult.finish_positions.length) return null;
+
   const finisher = raceResult.finish_positions.find(f => f.pp === payload.pp);
-  if (!finisher) return null;
-  const position = finisher.position;
+  const position = finisher ? finisher.position : null;
 
   if (payload.partnerPp) {
     const top2 = raceResult.finish_positions.filter(f => f.position === 1 || f.position === 2);
@@ -35,6 +37,15 @@ function gradePick(payload, raceResult) {
     return { position, won, payout: exoticPayout ? (parseFloat(exoticPayout.payout) || 0) : 0, betType: 'Exacta Box' };
   }
 
+  // v2.49.41: if this horse isn't among the recorded finishers, the race
+  // IS official (finish_positions is non-empty, so the winner is known
+  // for certain) -- so this horse definitively did NOT win. Previously
+  // this returned null ("can't grade") whenever a pick's horse wasn't
+  // found, which silently discarded every real loss for a horse that
+  // finished out of the recorded spots -- the vast majority of losses,
+  // since typically only the top few finishers get recorded at all. That
+  // inflated every tracked source's reported win rate/ROI, since only
+  // wins (and rare recorded near-misses) ever counted as settled.
   const won = position === 1;
   const payout = (won && finisher.win_payout != null) ? (parseFloat(finisher.win_payout) || 0) : 0;
   return { position, won, payout, betType: 'Win' };

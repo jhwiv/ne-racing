@@ -47,9 +47,16 @@ test('gradePick: Exacta Box loses when the partner isn\'t in the top-2, even if 
   assert.deepEqual(result, { position: 1, won: false, payout: 0, betType: 'Exacta Box' });
 });
 
-test('gradePick: returns null (unsettleable) when the named horse never appears in the result', () => {
-  const raceResult = { finish_positions: [{ pp: 1, position: 1 }, { pp: 2, position: 2 }] };
-  assert.equal(gradePick({ pp: 9 }, raceResult), null);
+test('gradePick v2.49.41: grades a confirmed LOSS (not null) when the named horse finished out of the recorded spots -- the race is official, so absence means it didn\'t win', () => {
+  const raceResult = { finish_positions: [{ pp: 1, position: 1, win_payout: 5.0 }, { pp: 2, position: 2 }] };
+  const result = gradePick({ pp: 9 }, raceResult);
+  assert.deepEqual(result, { position: null, won: false, payout: 0, betType: 'Win' });
+});
+
+test('gradePick v2.49.41: Exacta Box also grades a confirmed LOSS (not null) when the named horse never even appears in the result', () => {
+  const raceResult = { finish_positions: [{ pp: 1, position: 1, win_payout: 5.0 }, { pp: 2, position: 2 }] };
+  const result = gradePick({ pp: 9, partnerPp: 2 }, raceResult);
+  assert.deepEqual(result, { position: null, won: false, payout: 0, betType: 'Exacta Box' });
 });
 
 test('gradePick: returns null when there is no result at all yet', () => {
