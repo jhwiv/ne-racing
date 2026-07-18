@@ -2,35 +2,13 @@
   "track": "SAR",
   "date": "2026-07-16",
   "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
-  "pulled_at": "2026-07-17T06:50:35.922Z",
+  "pulled_at": "2026-07-18T06:41:54.612Z",
   "races": [
     {
-      "race_number": 1,
-      "expertPicks": [
-        {
-          "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 7,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 6,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
       "id": "SAR-20260716-R1",
       "track": "SAR",
       "date": "2026-07-16",
       "num": 1,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -65,41 +43,35 @@
             "payout": 37.37
           }
         ]
-      }
-    },
-    {
-      "race_number": 2,
+      },
+      "race_number": 1,
       "expertPicks": [
         {
-          "source": "NYRA Talking Horses - Acacia Clement",
-          "pick": 6,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 6,
+          "pick": 2,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 4,
+          "pick": 7,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 2,
+          "pick": 6,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
+      "type": null
+    },
+    {
       "id": "SAR-20260716-R2",
       "track": "SAR",
       "date": "2026-07-16",
       "num": 2,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -134,14 +106,12 @@
             "payout": 60.53
           }
         ]
-      }
-    },
-    {
-      "race_number": 3,
+      },
+      "race_number": 2,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Acacia Clement",
-          "pick": 5,
+          "pick": 6,
           "horseName": null,
           "_nyraPipeline": true
         },
@@ -153,22 +123,24 @@
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 5,
+          "pick": 4,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 5,
+          "pick": 2,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
+      "type": null
+    },
+    {
       "id": "SAR-20260716-R3",
       "track": "SAR",
       "date": "2026-07-16",
       "num": 3,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -203,10 +175,8 @@
             "payout": 231.21
           }
         ]
-      }
-    },
-    {
-      "race_number": 4,
+      },
+      "race_number": 3,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Acacia Clement",
@@ -222,22 +192,24 @@
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 1,
+          "pick": 5,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 1,
+          "pick": 5,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
+      "type": null
+    },
+    {
       "id": "SAR-20260716-R4",
       "track": "SAR",
       "date": "2026-07-16",
       "num": 4,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -272,26 +244,24 @@
             "payout": 319.85
           }
         ]
-      }
-    },
-    {
-      "race_number": 5,
+      },
+      "race_number": 4,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Acacia Clement",
-          "pick": 4,
+          "pick": 5,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 3,
+          "pick": 6,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 4,
+          "pick": 1,
           "horseName": null,
           "_nyraPipeline": true
         },
@@ -302,11 +272,13 @@
           "_nyraPipeline": true
         }
       ],
+      "type": null
+    },
+    {
       "id": "SAR-20260716-R5",
       "track": "SAR",
       "date": "2026-07-16",
       "num": 5,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -341,41 +313,41 @@
             "payout": 21.29
           }
         ]
-      }
-    },
-    {
-      "race_number": 6,
+      },
+      "race_number": 5,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Acacia Clement",
-          "pick": 6,
+          "pick": 4,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 7,
+          "pick": 3,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 7,
+          "pick": 4,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 6,
+          "pick": 1,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
+      "type": null
+    },
+    {
       "id": "SAR-20260716-R6",
       "track": "SAR",
       "date": "2026-07-16",
       "num": 6,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -410,7 +382,35 @@
             "payout": 5.0200000000000005
           }
         ]
-      }
+      },
+      "race_number": 6,
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 6,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 7,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 7,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 6,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "type": null
     },
     {
       "race_number": 7,
