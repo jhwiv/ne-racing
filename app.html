@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260713-v2.49.36-brisnet';
+var NE_APP_VERSION = '20260716-v2.49.37-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260713-v2.49.36-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.36-brisnet';
+var RAILBIRD_VERSION = 'v2.49.37-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -2867,6 +2867,15 @@ function neForceUpdate(newVersion) {
   --color-amber-light: #FDEBD0;
   --color-emerald: #10B981;
   --color-emerald-light: #D1FAE5;
+  /* v2.49.37: Analytics "Pick Accuracy by Source" bar chart -- categorical
+     identity colors (validated: lightness/chroma/CVD-separation all pass
+     against the lux-navy #1B2E4B card surface; contrast WARN mitigated by
+     always pairing these with a direct text label, never color alone). */
+  --chart-picks: #A67821;
+  --chart-market: #3B6EA5;
+  --chart-crowd: #B33A3A;
+  --chart-legacy: #6B7280;
+  --chart-track: rgba(255,255,255,0.14);
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08);
   --shadow-lg: 0 12px 36px rgba(0,0,0,0.18), 0 6px 12px rgba(0,0,0,0.1);
@@ -3247,6 +3256,16 @@ html[data-ios="true"] .stage-sheet {
 .card-header h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-racing-green); }
 .card-body { padding: 1rem; }
 .card-section { border-top: 1px solid rgba(0,0,0,0.06); padding: 0.75rem 1rem; }
+
+/* v2.49.37: Analytics accuracy bar chart -- see dataviz mark spec (thin bar,
+   rounded data-end, square baseline, track = lighter step of the surface). */
+.aa-legend-dot { display:inline-block; width:10px; height:10px; border-radius:50%; flex:none; }
+.aa-bar-track { height:14px; border-radius:7px; background:var(--chart-track); overflow:hidden; }
+.aa-bar-fill { height:100%; border-radius:0 6px 6px 0; min-width:6px; }
+.aa-bar-track.aa-bar-track-sm { height:8px; border-radius:4px; }
+.aa-bar-fill.aa-bar-fill-sm { border-radius:0 4px 4px 0; opacity:0.55; }
+.aa-roi-pos { color: var(--color-positive); font-weight:600; }
+.aa-roi-neg { color: var(--color-negative); font-weight:600; }
 
 /* Race card variant */
 .race-card { border-left: 4px solid var(--color-gold); }
@@ -18985,48 +19004,85 @@ function renderAnalyticsAccuracy() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var engines = (data && data.engines) || {};
-      var order = ['v2', 'v1', 'baseline_ml', 'crowd'];
-      var labels = { v2: 'Engine (v2, current)', v1: 'Engine (v1, legacy)', baseline_ml: 'Market favorite', crowd: 'NYRA handicapper consensus' };
+      // v2.49.37: plain-language names + a fixed categorical color per
+      // source (never reassigned/cycled) so the bar chart's color always
+      // means the same thing.
+      var order = ['v2', 'baseline_ml', 'crowd', 'v1'];
+      var meta = {
+        v2:          { label: 'Our Picks',                color: 'var(--chart-picks)' },
+        baseline_ml: { label: 'Market Favorite',          color: 'var(--chart-market)' },
+        crowd:       { label: 'Handicapper Consensus',    color: 'var(--chart-crowd)' },
+        v1:          { label: 'Engine (legacy)',          color: 'var(--chart-legacy)' },
+      };
       var present = order.filter(function(e) { return engines[e] && engines[e].settled > 0; });
       if (!present.length) {
         body.innerHTML = '<p class="text-muted text-sm">No settled picks yet — check back after today’s races finish.</p>';
         return;
       }
-      var rows = present.map(function(e) {
-        var s = engines[e];
-        var wl = s.wins + '-' + (s.settled - s.wins) + ' (' + (s.winRate * 100).toFixed(1) + '%)';
-        var roi = s.roi != null ? fmtPct(s.roi * 100) : '—';
-        var row = '<div class="flex justify-between items-center mb-1">' +
-          '<span class="font-semibold text-sm">' + labels[e] + '</span>' +
-          '<span class="mono text-sm">' + wl + ' · ROI ' + roi + ' · n=' + s.settled + '</span>' +
-        '</div>';
-        // v2.49.36: surface the Exacta Box breakout specifically -- this is
-        // the one bet shape with a real, live open question ("does boxing
-        // the model's top-2 by score actually beat chance"), previously
-        // invisible because it was pooled into the same engine-wide number
-        // as straight Win-type picks.
-        var exBox = s.byBetType && s.byBetType['Exacta Box'];
-        if (exBox && exBox.settled > 0) {
-          var exWl = exBox.wins + '-' + (exBox.settled - exBox.wins) + ' (' + (exBox.winRate * 100).toFixed(1) + '%)';
-          var exRoi = exBox.roi != null ? fmtPct(exBox.roi * 100) : '—';
-          row += '<div class="flex justify-between items-center mb-1 text-muted" style="padding-left:1rem">' +
-            '<span class="text-xs">↳ Exacta Box only</span>' +
-            '<span class="mono text-xs">' + exWl + ' · ROI ' + exRoi + ' · n=' + exBox.settled + '</span>' +
-          '</div>';
-        }
-        return row;
-      }).join('');
-      // Simple auto-generated analysis: whichever tracked source has the
-      // best real ROI so far, among sources with a non-trivial sample.
+
+      // Plain-language headline: whichever tracked source has the best real
+      // ROI so far, among sources with a non-trivial sample.
       var ranked = present.filter(function(e) { return engines[e].settled >= 3 && engines[e].roi != null; })
         .sort(function(a, b) { return engines[b].roi - engines[a].roi; });
       var headline = '';
       if (ranked.length >= 2) {
-        var others = ranked.length - 1;
-        headline = '<p class="text-sm mb-2"><strong>' + labels[ranked[0]] + '</strong> currently leads on ROI (' +
-          fmtPct(engines[ranked[0]].roi * 100) + ') over ' + others + ' other tracked source' + (others === 1 ? '' : 's') + '.</p>';
+        var lead = engines[ranked[0]];
+        headline = '<p class="text-sm mb-3"><strong>' + meta[ranked[0]].label + '</strong> is the most profitable tracked source so far, averaging ' +
+          '<strong class="' + (lead.roi >= 0 ? 'aa-roi-pos' : 'aa-roi-neg') + '">' + fmtPct(lead.roi * 100) + ' ROI</strong> per pick.</p>';
       }
-      body.innerHTML = headline + rows;
+
+      // Legend -- a fixed color always names the same source, so the
+      // reader never has to guess which bar is which (dataviz: legend
+      // required for 2+ series, on top of the direct labels each bar has).
+      var legend = '<div class="flex items-center mb-3" style="gap:1rem;flex-wrap:wrap">' +
+        present.map(function(e) {
+          return '<span class="flex items-center text-xs text-muted" style="gap:0.35rem">' +
+            '<span class="aa-legend-dot" style="background:' + meta[e].color + '"></span>' + meta[e].label + '</span>';
+        }).join('') +
+      '</div>';
+
+      var rows = present.map(function(e) {
+        var s = engines[e];
+        var pct = Math.max(0, Math.min(100, s.winRate * 100));
+        var roiStr = s.roi != null ? fmtPct(s.roi * 100) : '—';
+        var roiClass = s.roi == null ? 'text-muted' : (s.roi >= 0 ? 'aa-roi-pos' : 'aa-roi-neg');
+        var losses = s.settled - s.wins;
+        var row = '<div class="mb-3">' +
+          '<div class="flex justify-between items-baseline mb-1">' +
+            '<span class="font-semibold text-sm">' + meta[e].label + '</span>' +
+            '<span class="text-xs ' + roiClass + '">' + roiStr + ' ROI</span>' +
+          '</div>' +
+          '<div class="aa-bar-track"><div class="aa-bar-fill" style="width:' + pct + '%;background:' + meta[e].color + '"></div></div>' +
+          '<div class="text-xs text-muted mt-1">' + s.wins + ' win' + (s.wins === 1 ? '' : 's') + ', ' + losses + ' loss' + (losses === 1 ? '' : 'es') +
+            ' — ' + pct.toFixed(1) + '% win rate on ' + s.settled + ' graded pick' + (s.settled === 1 ? '' : 's') + '</div>';
+        // v2.49.36: Exacta Box breakout, carried over from the original
+        // build -- the one bet shape with a real open question ("does
+        // boxing the model's top-2 by score beat chance"), previously
+        // invisible when pooled into the same engine-wide number as
+        // straight Win-type picks. Now a smaller, lighter, indented bar
+        // directly under its parent instead of a same-weight text row.
+        var exBox = s.byBetType && s.byBetType['Exacta Box'];
+        if (exBox && exBox.settled > 0) {
+          var exPct = Math.max(0, Math.min(100, exBox.winRate * 100));
+          var exRoi = exBox.roi != null ? fmtPct(exBox.roi * 100) : '—';
+          var exLosses = exBox.settled - exBox.wins;
+          row += '<div class="mt-2" style="padding-left:1rem">' +
+            '<div class="flex justify-between items-baseline mb-1">' +
+              '<span class="text-xs text-muted">↳ Exacta Box bets only</span>' +
+              '<span class="text-xs text-muted">' + exRoi + ' ROI</span>' +
+            '</div>' +
+            '<div class="aa-bar-track aa-bar-track-sm"><div class="aa-bar-fill aa-bar-fill-sm" style="width:' + exPct + '%;background:' + meta[e].color + '"></div></div>' +
+            '<div class="text-xs text-muted mt-1">' + exBox.wins + '-' + exLosses + ' (' + exPct.toFixed(1) + '%) on ' + exBox.settled + ' exacta box pick' + (exBox.settled === 1 ? '' : 's') + '</div>' +
+          '</div>';
+        }
+        row += '</div>';
+        return row;
+      }).join('');
+
+      var glossary = '<p class="text-xs text-muted mt-1"><strong>Win rate</strong> is how often that pick’s horse actually finished 1st. ' +
+        '<strong>ROI</strong> is profit or loss per $2 wagered, averaged across every graded pick.</p>';
+
+      body.innerHTML = headline + legend + rows + glossary;
     })
     .catch(function() {
       body.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable, or this endpoint isn’t deployed yet).</p>';

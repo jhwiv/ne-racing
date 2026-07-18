@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260713-v2.49.36-brisnet'; // v2.49.36: Analytics tab now breaks out Exacta Box performance separately from straight-pick performance per engine               // bump on every ship
+const CACHE_VERSION = '20260716-v2.49.37-brisnet'; // v2.49.37: Pick Accuracy by Source redesigned as a bar-chart infographic with plain-language labels               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
