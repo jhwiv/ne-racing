@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260716-v2.49.38-brisnet';
+var NE_APP_VERSION = '20260718-v2.49.39-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260716-v2.49.38-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.38-brisnet';
+var RAILBIRD_VERSION = 'v2.49.39-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -3266,6 +3266,13 @@ html[data-ios="true"] .stage-sheet {
 .aa-bar-fill.aa-bar-fill-sm { border-radius:0 4px 4px 0; opacity:0.55; }
 .aa-roi-pos { color: var(--color-positive); font-weight:600; }
 .aa-roi-neg { color: var(--color-negative); font-weight:600; }
+/* v2.49.39: Today/All Time toggle + hero ROI figure + rank badges */
+.aa-toggle { display:flex; gap:0.5rem; margin-bottom:0.85rem; }
+.aa-toggle-btn { flex:1 1 0; padding:0.45rem 0.6rem; border-radius:var(--radius-sm); border:1px solid rgba(0,0,0,0.14); background:transparent; font-family:var(--font-body); font-size:0.82rem; font-weight:600; color:var(--color-muted); cursor:pointer; }
+.aa-toggle-btn.active { background:var(--color-gold); color:var(--color-racing-green); border-color:var(--color-gold); }
+.aa-hero-roi { font-family:var(--font-mono); font-size:2.1rem; font-weight:700; line-height:1; }
+.aa-rank-badge { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--color-muted); color:var(--color-white); font-size:0.68rem; font-weight:700; flex:none; margin-right:0.4rem; }
+.aa-rank-badge.aa-rank-1 { background:var(--color-gold); color:var(--color-racing-green); }
 
 /* Race card variant */
 .race-card { border-left: 4px solid var(--color-gold); }
@@ -10770,6 +10777,11 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <h3>Pick Accuracy by Source</h3>
         </div>
         <div class="card-body">
+          <!-- v2.49.39: Today vs. All Time toggle -->
+          <div class="aa-toggle" role="tablist" aria-label="Time range">
+            <button class="aa-toggle-btn" id="aa-toggle-today" onclick="setAnalyticsRange('today')" role="tab" aria-selected="false">Today</button>
+            <button class="aa-toggle-btn active" id="aa-toggle-all" onclick="setAnalyticsRange('all')" role="tab" aria-selected="true">All Time</button>
+          </div>
           <div id="analytics-accuracy-body">
             <p class="text-muted text-sm">Loading…</p>
           </div>
@@ -19004,6 +19016,18 @@ function renderAnalyticsTab() {
   renderAnalyticsHistory();
 }
 
+// v2.49.39: Today vs. All Time toggle state for the accuracy card.
+var analyticsRange = 'all';
+
+function setAnalyticsRange(range) {
+  analyticsRange = range;
+  var todayBtn = el('aa-toggle-today');
+  var allBtn = el('aa-toggle-all');
+  if (todayBtn) { todayBtn.classList.toggle('active', range === 'today'); todayBtn.setAttribute('aria-selected', range === 'today' ? 'true' : 'false'); }
+  if (allBtn) { allBtn.classList.toggle('active', range === 'all'); allBtn.setAttribute('aria-selected', range === 'all' ? 'true' : 'false'); }
+  renderAnalyticsAccuracy();
+}
+
 function renderAnalyticsAccuracy() {
   var body = el('analytics-accuracy-body');
   if (!body) return;
@@ -19014,9 +19038,17 @@ function renderAnalyticsAccuracy() {
     return;
   }
   body.innerHTML = '<p class="text-muted text-sm">Loading…</p>';
-  fetch(workerUrl + '/api/picks/stats')
+  var todayStr = new Date().toISOString().slice(0, 10);
+  var url = workerUrl + '/api/picks/stats' + (analyticsRange === 'today' ? ('?date=' + todayStr) : '');
+  fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(data) {
+      // v2.49.39: if "Today" was requested but this deployed Worker
+      // doesn't echo back a matching appliedDateFilter, the date filter
+      // hasn't shipped yet server-side -- the payload is actually
+      // all-time data. Never silently relabel that as "Today".
+      var todayNotHonored = analyticsRange === 'today' && data.appliedDateFilter !== todayStr;
+
       var engines = (data && data.engines) || {};
       // v2.49.37: plain-language names + a fixed categorical color per
       // source (never reassigned/cycled) so the bar chart's color always
@@ -19029,20 +19061,40 @@ function renderAnalyticsAccuracy() {
         v1:          { label: 'Engine (legacy)',          color: 'var(--chart-legacy)' },
       };
       var present = order.filter(function(e) { return engines[e] && engines[e].settled > 0; });
+
+      var notice = todayNotHonored
+        ? '<p class="text-xs mb-2" style="color:var(--color-amber)">Today-only view needs a small server update that hasn’t shipped yet — showing all-time results below instead.</p>'
+        : '';
+
       if (!present.length) {
-        body.innerHTML = '<p class="text-muted text-sm">No settled picks yet — check back after today’s races finish.</p>';
+        body.innerHTML = notice + '<p class="text-muted text-sm">' +
+          (analyticsRange === 'today' && !todayNotHonored
+            ? 'No settled picks yet today — check back after today’s races finish.'
+            : 'No settled picks yet — check back after today’s races finish.') +
+          '</p>';
         return;
       }
 
-      // Plain-language headline: whichever tracked source has the best real
-      // ROI so far, among sources with a non-trivial sample.
+      // Rank by ROI (min 3 settled for a non-trivial sample) -- drives both
+      // the rank badges on each row and the hero figure up top.
       var ranked = present.filter(function(e) { return engines[e].settled >= 3 && engines[e].roi != null; })
         .sort(function(a, b) { return engines[b].roi - engines[a].roi; });
-      var headline = '';
-      if (ranked.length >= 2) {
+      var rankOf = {};
+      ranked.forEach(function(e, i) { rankOf[e] = i + 1; });
+
+      // Hero figure -- the single biggest, most-legible number on the
+      // card, replacing the old buried text sentence.
+      var hero = '';
+      if (ranked.length) {
         var lead = engines[ranked[0]];
-        headline = '<p class="text-sm mb-3"><strong>' + meta[ranked[0]].label + '</strong> is the most profitable tracked source so far, averaging ' +
-          '<strong class="' + (lead.roi >= 0 ? 'aa-roi-pos' : 'aa-roi-neg') + '">' + fmtPct(lead.roi * 100) + ' ROI</strong> per pick.</p>';
+        var heroScope = todayNotHonored ? ', all time' : (analyticsRange === 'today' ? ' today' : ', all time');
+        hero = '<div class="mb-3">' +
+          '<div class="text-xs text-muted mb-1">Leading source' + heroScope + '</div>' +
+          '<div class="flex items-baseline" style="gap:0.6rem">' +
+            '<span class="aa-hero-roi ' + (lead.roi >= 0 ? 'aa-roi-pos' : 'aa-roi-neg') + '">' + fmtPct(lead.roi * 100) + '</span>' +
+            '<span class="font-semibold text-sm">' + meta[ranked[0]].label + '</span>' +
+          '</div>' +
+        '</div>';
       }
 
       // Legend -- a fixed color always names the same source, so the
@@ -19061,9 +19113,10 @@ function renderAnalyticsAccuracy() {
         var roiStr = s.roi != null ? fmtPct(s.roi * 100) : '—';
         var roiClass = s.roi == null ? 'text-muted' : (s.roi >= 0 ? 'aa-roi-pos' : 'aa-roi-neg');
         var losses = s.settled - s.wins;
+        var rankBadge = rankOf[e] ? '<span class="aa-rank-badge' + (rankOf[e] === 1 ? ' aa-rank-1' : '') + '">' + rankOf[e] + '</span>' : '';
         var row = '<div class="mb-3">' +
           '<div class="flex justify-between items-baseline mb-1">' +
-            '<span class="font-semibold text-sm">' + meta[e].label + '</span>' +
+            '<span class="flex items-center font-semibold text-sm">' + rankBadge + meta[e].label + '</span>' +
             '<span class="text-xs ' + roiClass + '">' + roiStr + ' ROI</span>' +
           '</div>' +
           '<div class="aa-bar-track"><div class="aa-bar-fill" style="width:' + pct + '%;background:' + meta[e].color + '"></div></div>' +
@@ -19096,7 +19149,7 @@ function renderAnalyticsAccuracy() {
       var glossary = '<p class="text-xs text-muted mt-1"><strong>Win rate</strong> is how often that pick’s horse actually finished 1st. ' +
         '<strong>ROI</strong> is profit or loss per $2 wagered, averaged across every graded pick.</p>';
 
-      body.innerHTML = headline + legend + rows + glossary;
+      body.innerHTML = notice + hero + legend + rows + glossary;
     })
     .catch(function() {
       body.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable, or this endpoint isn’t deployed yet).</p>';

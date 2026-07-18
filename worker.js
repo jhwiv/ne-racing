@@ -3424,6 +3424,12 @@ async function handlePickStats(request, env, origin) {
   }
   const { searchParams } = new URL(request.url);
   const engineFilter = (searchParams.get("engine") || "").toLowerCase();
+  // v2.49.39: optional single-date scope (YYYY-MM-DD) for the "Today" vs.
+  // "All Time" toggle in the Analytics tab. Every pick:/outcome: KV key
+  // already embeds its date as the 3rd colon-delimited segment (e.g.
+  // "pick:SAR:2026-07-13:1:v2:3"), so this is a pure additive filter --
+  // omitting the param preserves the exact prior all-time behavior.
+  const dateFilter = searchParams.get("date") || null;
   const stats = {};
 
   function ensureEngine(eng) {
@@ -3447,12 +3453,14 @@ async function handlePickStats(request, env, origin) {
   // List picks (cap 1000 for now — sufficient through Saratoga meet).
   const pickList = await env.ENGINE_ACCURACY.list({ prefix: "pick:", limit: 1000 });
   for (const { name, metadata } of pickList.keys) {
+    if (dateFilter && name.split(":")[2] !== dateFilter) continue;
     const eng = (metadata && metadata.engine) || name.split(":")[4] || "unknown";
     if (engineFilter && eng !== engineFilter) continue;
     ensureEngine(eng).picks++;
   }
   const outcomeList = await env.ENGINE_ACCURACY.list({ prefix: "outcome:", limit: 1000 });
   for (const { name } of outcomeList.keys) {
+    if (dateFilter && name.split(":")[2] !== dateFilter) continue;
     const parts = name.split(":");
     const eng = parts[4] || "unknown";
     if (engineFilter && eng !== engineFilter) continue;
@@ -3496,7 +3504,11 @@ async function handlePickStats(request, env, origin) {
       b.roi = b.totalStake > 0 ? (b.totalReturn - b.totalStake) / b.totalStake : null;
     }
   }
-  return jsonOk({ engines: stats, generatedAt: new Date().toISOString() }, origin, 300);
+  // appliedDateFilter echoes back whatever dateFilter this exact deployed
+  // version actually used (null if none requested) -- lets an older,
+  // not-yet-redeployed client detect that a requested date scope was
+  // silently ignored, instead of mislabeling all-time totals as "Today".
+  return jsonOk({ engines: stats, generatedAt: new Date().toISOString(), appliedDateFilter: dateFilter }, origin, dateFilter ? 60 : 300);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

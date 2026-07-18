@@ -105,3 +105,26 @@ test('GET /api/picks/stats: engine filter still scopes byBetType correctly', asy
   assert.ok(body.engines.v2);
   assert.equal(body.engines.baseline_ml, undefined, 'engine filter must exclude other engines entirely');
 });
+
+test('GET /api/picks/stats: date filter (v2.49.39) scopes to a single day for the Today/All Time toggle', async () => {
+  const kv = makeFakeKv();
+  await kv.put('pick:SAR:2026-07-12:1:v2:3', JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win' }), { metadata: { engine: 'v2' } });
+  await kv.put('outcome:SAR:2026-07-12:1:v2:3', JSON.stringify({ won: true, payout: 6.4, betType: 'Win', position: 1 }));
+  await kv.put('pick:SAR:2026-07-13:1:v2:5', JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win' }), { metadata: { engine: 'v2' } });
+  await kv.put('outcome:SAR:2026-07-13:1:v2:5', JSON.stringify({ won: false, payout: 0, betType: 'Win', position: 3 }));
+
+  const env = { ENGINE_ACCURACY: kv };
+
+  const all = await callPickStats(env);
+  assert.equal(all.engines.v2.settled, 2, 'no date param must still return the full all-time total (no regression)');
+  assert.equal(all.appliedDateFilter, null);
+
+  const today = await callPickStats(env, '?date=2026-07-13');
+  assert.equal(today.engines.v2.settled, 1, 'date filter must exclude the other day\'s pick/outcome entirely');
+  assert.equal(today.engines.v2.wins, 0);
+  assert.equal(today.appliedDateFilter, '2026-07-13', 'the applied filter must be echoed back so an older client can detect it was honored');
+
+  const otherDay = await callPickStats(env, '?date=2026-07-12');
+  assert.equal(otherDay.engines.v2.settled, 1);
+  assert.equal(otherDay.engines.v2.wins, 1);
+});
