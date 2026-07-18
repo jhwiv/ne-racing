@@ -76,7 +76,7 @@ test('computeMlFavorite picks the lowest odds and skips scratched horses', () =>
   assert.equal(fav.horse.pp, 2);
 });
 
-test('buildLogPayloads logs v2 for every slot, and baseline_ml/crowd only for Best Bet when they differ', () => {
+test('buildLogPayloads logs v2 for every slot, and baseline_ml/crowd for Best Bet when they differ from it', () => {
   function race(num, size) {
     return { id: `SAR-20260713-R${num}`, track: 'SAR', date: '2026-07-13', num, horses: new Array(size).fill(0).map((_, i) => ({ pp: i + 1 })), expertPicks: [] };
   }
@@ -96,13 +96,13 @@ test('buildLogPayloads logs v2 for every slot, and baseline_ml/crowd only for Be
   payloads.forEach(p => { (byEngine[p.engine] = byEngine[p.engine] || []).push(p); });
 
   assert.ok(byEngine.v2 && byEngine.v2.length >= 1, 'the engine\'s own pick(s) must always be logged');
-  assert.ok(byEngine.baseline_ml, 'the market favorite must be logged since it differs from the engine\'s Best Bet pick');
+  assert.ok(byEngine.baseline_ml, 'the market favorite must be logged');
   assert.equal(byEngine.baseline_ml[0].pp, 2, 'baseline_ml must be the actual ML favorite (Bravo, pp 2)');
-  assert.ok(byEngine.crowd, 'the crowd consensus must be logged since 2 handicappers agree and it differs from the engine\'s pick');
+  assert.ok(byEngine.crowd, 'the crowd consensus must be logged since 2 handicappers agree');
   assert.equal(byEngine.crowd[0].pp, 2);
 });
 
-test('buildLogPayloads logs no baseline_ml/crowd row when they agree with the engine\'s pick (no redundant noise)', () => {
+test('buildLogPayloads v2.49.40: DOES log baseline_ml/crowd even when they agree with the engine\'s pick (control group needs full coverage, not just disagreement cases)', () => {
   const r1 = {
     id: 'SAR-20260713-R1', track: 'SAR', date: '2026-07-13', num: 1,
     horses: [
@@ -111,12 +111,17 @@ test('buildLogPayloads logs no baseline_ml/crowd row when they agree with the en
       { pp: 3, name: 'Charlie', ml: '8-1', speedFigs: [55, 55, 55], runningStyle: 'S', jockeyPct: 8, trainerPct: 8, lastClass: 'ALW' },
       { pp: 4, name: 'Delta', ml: '10-1', speedFigs: [50, 50, 50], runningStyle: 'S', jockeyPct: 5, trainerPct: 5, lastClass: 'ALW' },
     ],
-    // Alpha is both the shortest price AND the (2-source) crowd consensus.
+    // Alpha is both the shortest price AND the (2-source) crowd consensus --
+    // i.e. every source agrees with the engine's own pick this race.
     expertPicks: [{ source: 'A', pick: 1 }, { source: 'B', pick: 1 }],
   };
   const payloads = buildLogPayloads([r1], 'SAR', '2026-07-13');
-  assert.equal(payloads.filter(p => p.engine === 'baseline_ml').length, 0);
-  assert.equal(payloads.filter(p => p.engine === 'crowd').length, 0);
+  const baselineMl = payloads.filter(p => p.engine === 'baseline_ml');
+  const crowd = payloads.filter(p => p.engine === 'crowd');
+  assert.equal(baselineMl.length, 1, 'baseline_ml must still be logged even though it agrees with the engine -- a control group needs every race, not just the disagreements');
+  assert.equal(baselineMl[0].pp, 1);
+  assert.equal(crowd.length, 1, 'crowd must still be logged even though it agrees with the engine, for the same reason');
+  assert.equal(crowd[0].pp, 1);
 });
 
 // ── End-to-end against a real local HTTP server ─────────────────────────────
