@@ -2,47 +2,13 @@
   "track": "SAR",
   "date": "2026-07-17",
   "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
-  "pulled_at": "2026-07-18T06:41:54.612Z",
+  "pulled_at": "2026-07-19T06:54:01.398Z",
   "races": [
     {
-      "race_number": 1,
-      "expertPicks": [
-        {
-          "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Megan Burgess",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - David Aragona",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 3,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
       "id": "SAR-20260717-R1",
       "track": "SAR",
       "date": "2026-07-17",
       "num": 1,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -77,9 +43,82 @@
             "payout": 83.81
           }
         ]
-      }
+      },
+      "race_number": 1,
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - David Aragona",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 3,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "type": null
     },
     {
+      "id": "SAR-20260717-R2",
+      "track": "SAR",
+      "date": "2026-07-17",
+      "num": 2,
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": -1,
+            "horseName": "Discotheque",
+            "position": 1,
+            "win_payout": 6.9
+          },
+          {
+            "pp": -1,
+            "horseName": "The Standard",
+            "position": 2
+          },
+          {
+            "pp": -1,
+            "horseName": "Old Time Rocknroll",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 32.94
+          },
+          {
+            "type": "trifecta",
+            "payout": 37.35
+          },
+          {
+            "type": "superfecta",
+            "payout": 25.1
+          }
+        ]
+      },
       "race_number": 2,
       "expertPicks": [
         {
@@ -119,46 +158,7 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260717-R2",
-      "track": "SAR",
-      "date": "2026-07-17",
-      "num": 2,
-      "type": null,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": -1,
-            "horseName": "Discotheque",
-            "position": 1,
-            "win_payout": 6.9
-          },
-          {
-            "pp": -1,
-            "horseName": "The Standard",
-            "position": 2
-          },
-          {
-            "pp": -1,
-            "horseName": "Old Time Rocknroll",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 32.94
-          },
-          {
-            "type": "trifecta",
-            "payout": 37.35
-          },
-          {
-            "type": "superfecta",
-            "payout": 25.1
-          }
-        ]
-      }
+      "type": null
     },
     {
       "race_number": 3,
