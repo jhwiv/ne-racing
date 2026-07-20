@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260718-v2.49.41-brisnet';
+var NE_APP_VERSION = '20260718-v2.49.42-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260718-v2.49.41-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.41-brisnet';
+var RAILBIRD_VERSION = 'v2.49.42-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -17077,29 +17077,41 @@ function updateTopPicksCard(allScores) {
   //   3. If no Medium exists, any non-PASS race — pick the one with the
   //      biggest gap (this is the "always populate Best Bet" behavior).
   // Only when the entire card is True PASS do we leave bestBetEntry null.
+  //
+  // v2.49.42: within each tier, prefer a race where the model disagrees
+  // profitably with the market (overlay = modelProb - impliedProb > 0)
+  // over a same-tier race the market already prices fairly. Confidence
+  // alone (how much the top score beats the field) says nothing about
+  // whether there's an actual betting edge -- a model can be very
+  // confident about a horse the market already prices exactly that
+  // generously, in which case there's no analytical edge over just
+  // betting the board favorite. This mirrors the same overlay-based value
+  // check Value Play already uses, applied as a tie-break within Best
+  // Bet's existing tiers -- it never changes WHICH tier wins, and never
+  // leaves Best Bet unpicked when a same-tier candidate exists: if no
+  // candidate in a tier has positive overlay, that tier's plain
+  // best-by-gap choice still wins, unchanged from before.
   let bestBetEntry = null;
   let bestGap = -1;
-  // Pass 1: High only.
-  Object.entries(raceMap).forEach(([raceId, group]) => {
-    const info = raceInfo[raceId];
-    if (info.truePass) return;
-    if (info.confidence === 'high' && info.gap > bestGap) { bestGap = info.gap; bestBetEntry = group[0]; }
-  });
-  // Pass 2: Medium fallback.
-  if (!bestBetEntry) {
+  function scanBestBetTier(matchesTier, requireOverlay) {
     Object.entries(raceMap).forEach(([raceId, group]) => {
       const info = raceInfo[raceId];
       if (info.truePass) return;
-      if (info.confidence === 'medium' && info.gap > bestGap) { bestGap = info.gap; bestBetEntry = group[0]; }
-    });
-  }
-  // Pass 3: any non-pass race.
-  if (!bestBetEntry) {
-    Object.entries(raceMap).forEach(([raceId, group]) => {
-      const info = raceInfo[raceId];
-      if (info.truePass) return;
+      if (!matchesTier(info)) return;
+      if (requireOverlay && (group[0].overlay || 0) <= 0) return;
       if (info.gap > bestGap) { bestGap = info.gap; bestBetEntry = group[0]; }
     });
+  }
+  // Pass 1: High only, value-preferred then value-agnostic fallback.
+  scanBestBetTier(function(info) { return info.confidence === 'high'; }, true);
+  if (!bestBetEntry) scanBestBetTier(function(info) { return info.confidence === 'high'; }, false);
+  // Pass 2: Medium fallback, same value-preferred-then-any order.
+  if (!bestBetEntry) scanBestBetTier(function(info) { return info.confidence === 'medium'; }, true);
+  if (!bestBetEntry) scanBestBetTier(function(info) { return info.confidence === 'medium'; }, false);
+  // Pass 3: any non-pass race, same order.
+  if (!bestBetEntry) scanBestBetTier(function() { return true; }, true);
+  if (!bestBetEntry) {
+    scanBestBetTier(function() { return true; }, false);
   }
 
   // Value Plays: overlay > 0.08 AND score >= 55 (upgraded from simple ML >= 5 check)

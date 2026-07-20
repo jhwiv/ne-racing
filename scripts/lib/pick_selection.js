@@ -104,27 +104,29 @@ function selectPicks(allScores) {
   });
 
   // Best Bet: High conviction wins; else Medium; else any non-Pass, by gap.
+  // v2.49.42: within each tier, prefer a race where the model disagrees
+  // profitably with the market (overlay > 0) over a same-tier race the
+  // market already prices fairly -- see the matching comment in
+  // updateTopPicksCard() (app.html/index.html) for the full rationale.
+  // Never changes which tier wins, and never leaves Best Bet unpicked
+  // when a same-tier candidate exists.
   let bestBetEntry = null;
   let bestGap = -1;
-  Object.entries(raceMap).forEach(([raceId, group]) => {
-    const info = raceInfo[raceId];
-    if (info.truePass) return;
-    if (info.confidence === 'high' && info.gap > bestGap) { bestGap = info.gap; bestBetEntry = group[0]; }
-  });
-  if (!bestBetEntry) {
+  function scanBestBetTier(matchesTier, requireOverlay) {
     Object.entries(raceMap).forEach(([raceId, group]) => {
       const info = raceInfo[raceId];
       if (info.truePass) return;
-      if (info.confidence === 'medium' && info.gap > bestGap) { bestGap = info.gap; bestBetEntry = group[0]; }
-    });
-  }
-  if (!bestBetEntry) {
-    Object.entries(raceMap).forEach(([raceId, group]) => {
-      const info = raceInfo[raceId];
-      if (info.truePass) return;
+      if (!matchesTier(info)) return;
+      if (requireOverlay && (group[0].overlay || 0) <= 0) return;
       if (info.gap > bestGap) { bestGap = info.gap; bestBetEntry = group[0]; }
     });
   }
+  scanBestBetTier(info => info.confidence === 'high', true);
+  if (!bestBetEntry) scanBestBetTier(info => info.confidence === 'high', false);
+  if (!bestBetEntry) scanBestBetTier(info => info.confidence === 'medium', true);
+  if (!bestBetEntry) scanBestBetTier(info => info.confidence === 'medium', false);
+  if (!bestBetEntry) scanBestBetTier(() => true, true);
+  if (!bestBetEntry) scanBestBetTier(() => true, false);
 
   // Value Plays: overlay > 0.08 AND score >= 55, one per race, top 2 by overlay.
   const bestBetRaceId = bestBetEntry ? bestBetEntry.race.id : null;

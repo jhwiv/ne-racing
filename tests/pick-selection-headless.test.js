@@ -61,11 +61,16 @@ function makeCard() {
   const r4 = race('R4', 4, 2); // <=3 live runners -> True Pass
 
   const allScores = [
-    // Race 1: big, clear gap -> High confidence -> Best Bet.
+    // Race 1: big, clear gap, 5 scored runners -> High confidence (needs
+    // fieldSize >= 5) -> Best Bet. Zero overlay throughout, so v2.49.42's
+    // value-preferred pass correctly falls back to this tier's plain
+    // best-by-gap choice (there's no positive-overlay alternative in the
+    // High tier to prefer instead).
     { race: r1, rank: 1, score: 90, overlay: 0, modelProb: 0.5, horse: { pp: 1, ml: '2-1' }, completeness: 0.9 },
     { race: r1, rank: 2, score: 60, overlay: 0, modelProb: 0.1, horse: { pp: 2, ml: '5-1' }, completeness: 0.8 },
     { race: r1, rank: 3, score: 55, overlay: 0, modelProb: 0.05, horse: { pp: 3, ml: '8-1' }, completeness: 0.7 },
     { race: r1, rank: 4, score: 50, overlay: 0, modelProb: 0.05, horse: { pp: 4, ml: '10-1' }, completeness: 0.6 },
+    { race: r1, rank: 5, score: 45, overlay: 0, modelProb: 0.05, horse: { pp: 5, ml: '12-1' }, completeness: 0.6 },
 
     // Race 2: real overlay + score >= 55 -> Value Play. (>=4 scored horses so
     // isTruePass's "<=3 live runners" rule doesn't auto-Pass it.)
@@ -147,6 +152,61 @@ test('selectPicks: Value Play carries the same Exacta Box partner the client wou
   // Race 2's Value Play is rank 1 (pp 1) -> partner should be raceGroup[1] (pp 2), per
   // the exact same rule the live "Value Plays" ticket loop uses.
   assert.equal(vp._exactaPartner.horse.pp, 2);
+});
+
+test('selectPicks v2.49.42: Best Bet prefers a same-tier race with real market overlay over a bigger-gap race the market already prices fairly', () => {
+  function race(id, num, size) {
+    return { id, num, horses: new Array(size).fill(0).map((_, i) => ({ pp: i + 1 })) };
+  }
+  // Both races land in the same confidence tier (fieldSize 4 -> at best
+  // 'medium', per relativeConfidence's fieldSize>=5 gate for 'high').
+  // rA has the bigger raw score gap (would have won under the old,
+  // overlay-blind logic) but zero market disagreement (overlay 0) --
+  // the model isn't spotting anything the market hasn't already priced.
+  // rB has a smaller gap but real overlay (0.15) -- genuine value.
+  const rA = race('RA', 1, 4);
+  const rB = race('RB', 2, 4);
+  const allScores = [
+    { race: rA, rank: 1, score: 90, overlay: 0, modelProb: 0.5, horse: { pp: 1, ml: '2-1' }, completeness: 0.9 },
+    { race: rA, rank: 2, score: 60, overlay: 0, modelProb: 0.1, horse: { pp: 2, ml: '5-1' }, completeness: 0.8 },
+    { race: rA, rank: 3, score: 55, overlay: 0, modelProb: 0.05, horse: { pp: 3, ml: '8-1' }, completeness: 0.7 },
+    { race: rA, rank: 4, score: 50, overlay: 0, modelProb: 0.05, horse: { pp: 4, ml: '10-1' }, completeness: 0.6 },
+
+    { race: rB, rank: 1, score: 70, overlay: 0.15, modelProb: 0.35, horse: { pp: 1, ml: '9-2' }, completeness: 0.8 },
+    { race: rB, rank: 2, score: 65, overlay: 0.02, modelProb: 0.2, horse: { pp: 2, ml: '3-1' }, completeness: 0.7 },
+    { race: rB, rank: 3, score: 40, overlay: 0, modelProb: 0.1, horse: { pp: 3, ml: '6-1' }, completeness: 0.5 },
+    { race: rB, rank: 4, score: 35, overlay: 0, modelProb: 0.05, horse: { pp: 4, ml: '12-1' }, completeness: 0.5 },
+  ];
+
+  const ported = selectPicks(allScores);
+  assert.equal(ported.bestBet.race.id, 'RB', 'the race with real market overlay must win Best Bet, not the bigger-gap race with no edge');
+  assert.equal(ported.bestBet.horse.pp, 1);
+
+  // Cross-check against the actual live client logic, not just the port.
+  const live = runLiveSelection(allScores);
+  assert.equal(live.bestBetEntry.race.id, 'RB', 'the live client must make the identical choice');
+  assert.equal(ported.bestBet.race.id, live.bestBetEntry.race.id);
+});
+
+test('selectPicks v2.49.42: falls back to plain best-by-gap when NO same-tier candidate has positive overlay (no regression)', () => {
+  function race(id, num, size) {
+    return { id, num, horses: new Array(size).fill(0).map((_, i) => ({ pp: i + 1 })) };
+  }
+  const rA = race('RA', 1, 4);
+  const rB = race('RB', 2, 4);
+  const allScores = [
+    { race: rA, rank: 1, score: 90, overlay: 0, modelProb: 0.5, horse: { pp: 1, ml: '2-1' }, completeness: 0.9 },
+    { race: rA, rank: 2, score: 60, overlay: 0, modelProb: 0.1, horse: { pp: 2, ml: '5-1' }, completeness: 0.8 },
+    { race: rA, rank: 3, score: 55, overlay: 0, modelProb: 0.05, horse: { pp: 3, ml: '8-1' }, completeness: 0.7 },
+    { race: rA, rank: 4, score: 50, overlay: 0, modelProb: 0.05, horse: { pp: 4, ml: '10-1' }, completeness: 0.6 },
+
+    { race: rB, rank: 1, score: 70, overlay: 0, modelProb: 0.35, horse: { pp: 1, ml: '9-2' }, completeness: 0.8 },
+    { race: rB, rank: 2, score: 65, overlay: 0, modelProb: 0.2, horse: { pp: 2, ml: '3-1' }, completeness: 0.7 },
+    { race: rB, rank: 3, score: 40, overlay: 0, modelProb: 0.1, horse: { pp: 3, ml: '6-1' }, completeness: 0.5 },
+    { race: rB, rank: 4, score: 35, overlay: 0, modelProb: 0.05, horse: { pp: 4, ml: '12-1' }, completeness: 0.5 },
+  ];
+  const ported = selectPicks(allScores);
+  assert.equal(ported.bestBet.race.id, 'RA', 'with no overlay anywhere in the tier, the biggest-gap race must still win, unchanged from before');
 });
 
 test('selectPicks: an all-True-Pass card yields no Best Bet, no Value Plays, all Pass', () => {
