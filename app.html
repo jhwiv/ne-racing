@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260718-v2.49.43-brisnet';
+var NE_APP_VERSION = '20260718-v2.49.44-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260718-v2.49.43-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.43-brisnet';
+var RAILBIRD_VERSION = 'v2.49.44-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -19084,7 +19084,14 @@ function renderAnalyticsAccuracy() {
   var todayStr = new Date().toISOString().slice(0, 10);
   var url = workerUrl + '/api/picks/stats' + (analyticsRange === 'today' ? ('?date=' + todayStr) : '');
   fetch(url)
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+      // v2.49.43 QA pass: same defensive check as the pick-history fetch
+      // below -- fetch() doesn't reject on a non-2xx status, so an actual
+      // error response would otherwise get parsed as if it were valid
+      // stats data.
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
     .then(function(data) {
       // v2.49.39: if "Today" was requested but this deployed Worker
       // doesn't echo back a matching appliedDateFilter, the date filter
@@ -19267,7 +19274,17 @@ function fetchAnalyticsPickHistory() {
     return;
   }
   fetch(workerUrl + '/api/picks/history?limit=' + analyticsPickHistoryLimit)
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+      // v2.49.43 QA fix: fetch() doesn't reject on a 404 -- and this
+      // endpoint's 404 (from the currently-deployed Worker not having it
+      // yet) is still valid JSON matching this app's own jsonError shape,
+      // so .json() would succeed and silently read as "zero picks logged"
+      // instead of "this feature isn't deployed yet". Must check r.ok
+      // BEFORE parsing, same discipline as the Today/All-Time toggle's
+      // appliedDateFilter check.
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
     .then(function(data) {
       var picks = (data && data.picks) || [];
       var total = (data && data.total) || 0;
