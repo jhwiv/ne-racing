@@ -2,7 +2,7 @@
 
 **Live site:** https://www.railbirdai.com
 **Repo:** `jhwiv/ne-racing`
-**Last verified:** 2026-07-05, against production, not assumed.
+**Last verified:** 2026-07-20, against production, not assumed.
 
 This supersedes any prior handoff doc that circulated outside this repo. A
 few things in earlier notes were wrong (branch name, hosting provider, a
@@ -10,7 +10,12 @@ GitHub Pages "dead" claim) — this version corrects those and documents only
 what was actually confirmed working end-to-end on 2026-07-04/05. See §5 for
 everything shipped in the v2.49.x wave (2026-07-05): the Pages deploy
 watchdog, post-position colors, the new Today's Results tab, the live-data
-staleness fix, and real-time bet recalculation on scratch.
+staleness fix, and real-time bet recalculation on scratch. See §6 for
+everything shipped between v2.49.7 and v2.49.45 (2026-07-06 → 2026-07-20):
+a batch of critical bet-grading/accuracy bugs (wrong-graded exotics,
+dead accuracy tiles), an audited handicapping engine, the live NYRA
+expert-picks scraper, and the new Analytics tab with real per-pick,
+per-source history.
 
 ---
 
@@ -39,7 +44,7 @@ staleness fix, and real-time bet recalculation on scratch.
 │  automatically, but does NOT touch the WORKER. If the     │
 │  Worker's behavior doesn't match what's in worker.js,      │
 │  check whether anyone has actually run `wrangler deploy`   │
-│  recently — see §4.                                        │
+│  recently — see §2.                                        │
 │  ├─ /api/entries, /api/scratches, /api/odds, /api/results  │
 │  ├─ mergeBrisnetIntoEntries() — overlays Brisnet PP data   │
 │  │  fetched from railbirdai.com/data/brisnet-*.json onto  │
@@ -115,6 +120,15 @@ live-card critical path — don't confuse it with `cloudflare-worker`.
   generic `{"error":"Not found"}`, which nothing in this repo's routing
   logic produces). If `/api/entries` misbehaves, checking "does the deployed
   code even match git" is a legitimate first move, not paranoia.
+- **Confirmed current as of 2026-07-20**: owner ran `npx wrangler deploy`
+  from a checkout at `HEAD` (`58973e8`, v2.49.45), matching this repo's
+  `worker.js` byte-for-byte (SHA256 `bd0bb3a8…8a2bb95`, verified both sides
+  before deploying). Deploy output showed all 8 bindings resolved (6 KV +
+  1 D1 + 1 R2) and all 3 cron triggers registered, version ID
+  `c3687dd5-460b-429c-9d8d-668f872ed39f`. Live-verified post-deploy: `GET
+  /api/picks/history?limit=1` returned real `200` pick data. This closes
+  out the `/api/picks/history` endpoint added in v2.49.43 (see §6), which
+  had been sitting deployed-in-git-but-not-on-Worker until this deploy.
 
 ---
 
@@ -256,13 +270,150 @@ assert on the resulting DOM — never "read the diff and assume it works").
 
 ---
 
-## 6. Test suite
+## 6. v2.49.7 → v2.49.45 wave (2026-07-06 → 2026-07-20)
+
+Two weeks of daily releases. Grouped by theme rather than listed
+version-by-version; every fix below was verified against a reproduced
+failure first, not fixed on read-through alone (same discipline as §5).
+The many `chore: refresh NYRA expert picks` commits interleaved in git log
+across this whole range are the scheduled scraper job running on its own
+cadence (§6.3) — not manual work, skip them when scanning history.
+
+### 6.1 Critical bet-grading and accuracy bugs (v2.49.13 → v2.49.19, v2.49.25, v2.49.30 → v2.49.33, v2.49.41)
+
+A concentrated bug-hunt after the owner asked directly whether the app was
+"working or infected with bugs." All fall into one of three shapes: a
+value written with one key/type and read with another so the two never
+connect; a tile that measures the wrong thing (e.g. "did the user
+personally bet and win" instead of "did the real outcome happen"); or a
+mutation that doesn't refresh every dependent view. Confirmed fixes:
+
+- **Exacta Box bets could never resolve** (v2.49.13) — `bet.type` stored
+  as `"Exacta Box"`, grading code checked short codes (`EX`/`TRI`/`SUPER`).
+  Every exacta-box bet sat permanently pending.
+- **Wizard-built Daily Double / Pick 3–6 bets always graded a loss**
+  (v2.49.15, CRITICAL) — the multi-race wizard writes per-leg picks under
+  `leg_N` keys; the resolver never read that key shape, so every leg's
+  lookup fell through to empty and the bet graded `loss` even when every
+  leg won. Worse than the Exacta Box bug: this one actively told users
+  they lost when they may have won, with no visible sign anything was off.
+- **"Expert Consensus" accuracy tile** (v2.49.14) was measuring "did the
+  user also bet on and win this" instead of "did the pick actually happen"
+  — fixed to track the real outcome.
+- **Stale bankroll banner after removing an exotic bet** (v2.49.16) —
+  `removeExoticBet` never called `updateBankrollBanner()`, unlike its two
+  sibling remove functions.
+- **"Action Bet Record" tile was a dead metric** (v2.49.17) — `isActionBet`
+  was read in the accuracy tracker but never assigned at either
+  bet-construction site; the tile permanently showed `— (—%)`.
+- **"Overall Advice Engine ROI" pooled every non-exotic bet** (v2.49.18),
+  tagged or not, graded or not — effectively a duplicate of "Your Bet ROI."
+  Rescoped to graded, engine-flagged (`isBestBet`/`isValuePlay`/
+  `isActionBet`) bets only.
+- **"Still pending" count included stale bets from other days** (v2.49.19).
+- **Bet Type Breakdown counted still-pending bets as $0-return losses**
+  (v2.49.25) — same shape as v2.49.18, different tile.
+- **Value Play Exacta Box button placed an un-gradeable 1-horse box**
+  (v2.49.30, CRITICAL).
+- **"Overall Advice Engine ROI" + "Your Bet ROI" silently excluded every
+  exotic bet** (v2.49.31, CRITICAL) — the v2.49.18 rescope had been too
+  aggressive.
+- **Post-race grading now cross-checks this device's own known scratches**
+  (v2.49.32).
+- **Value Play ROI and Current Bankroll undercounted exotic bet cost**
+  (v2.49.33).
+- **Grading silently discarded real losses** (v2.49.41, CRITICAL) — The
+  Racing API's NA results only return structured finish data for
+  win/place/show. `gradePick()`/`settleEnginePicksForRace()` treated "horse
+  not in that list" as "can't grade yet" (`null`) instead of a confirmed
+  loss, even on an official race where absence is fully determined. Every
+  tracked source's win rate/ROI had been counting almost only wins. Known
+  accepted tradeoff: an unlogged late scratch now also grades as a loss
+  rather than a void (indistinguishable in this data) — net improvement
+  since real losses vastly outnumber that edge case.
+
+`tests/bets-tab-fix.test.js` and a permanent regression suite added
+straight after this batch (commit `443b9c1`) now cover v2.49.13–19
+specifically, so these can't silently regress.
+
+### 6.2 Handicapping engine audit (v2.49.20 → v2.49.23)
+
+Full audit of the True-Pass confidence gate, ticket tracking, and the Bet
+Evaluator. Found and fixed: Prime Power scoring never actually matched its
+own documented calibration (v2.49.21); the server-side Engine Accuracy
+system (worker.js endpoints from earlier work) was built but never wired
+up to anything live until v2.49.22; a scroll glitch on future dates plus
+misleading "Pass" copy (v2.49.23).
+
+### 6.3 NYRA expert-picks pipeline (v2.49.26 → v2.49.33)
+
+Activated with the owner's explicit OK to scrape NYRA's own public pages
+(v2.49.26). Took several rounds of real fixes against the *actual* live
+pages rather than assumptions: workflow file-add/gitignore bug, debug
+diagnostics, parser fixes against real live HTML, two corrected dead
+source URLs (found via Perplexity), a single-handicapper parser strategy,
+three more real bugs found via debug runs (v2.49.27–29). `.github/workflows/
+nyra-expert-picks.yml` now runs on its own schedule and commits
+`chore: refresh NYRA expert picks` — expected, not noise.
+
+### 6.4 Analytics tab (v2.49.34 → v2.49.45)
+
+Built up over two weeks into the app's real answer to "is the engine
+actually better than the market or the crowd":
+
+- **v2.49.34** — Value Play picks logged/settled server-side as real
+  Exacta Boxes (previously logged as if they were Win bets).
+- **v2.49.35/36** — New Analytics tab: real settled results tracked
+  per-engine (`v2` "Our Picks" vs `baseline_ml` "Market Favorite" vs
+  `crowd` "Handicapper Consensus"), Exacta Box performance broken out from
+  straight-pick performance so the exacta heuristic's real hit rate isn't
+  blended into the engine's overall number.
+- **v2.49.37** — Pick Accuracy by Source redesigned as a bar-chart
+  infographic (plain-language source names, color-keyed legend, contrast
+  validated against the live card surface with the dataviz skill).
+- **v2.49.38** — Analytics promoted to its own bottom-bar tab; Handicap
+  demoted into More (same pattern as Barn/Results/Reference earlier).
+- **v2.49.39** — Today/All Time toggle (`/api/picks/stats?date=`). Notable
+  pattern repeated across several of these: the client detects when the
+  requested Worker version isn't actually deployed yet (`appliedDateFilter`
+  echoed back doesn't match what was asked for) and shows an explicit
+  "needs a server update" notice instead of silently mislabeling data —
+  worth reusing this pattern for any future worker.js-dependent client change.
+- **v2.49.42** — Best Bet now requires real market edge (`overlay =
+  modelProb − impliedProb`, the Benter-style signal Value Play already
+  used), not confidence alone, within each confidence tier.
+- **v2.49.43** — New `GET /api/picks/history` endpoint exposes real
+  per-pick detail (not just aggregates); sources with logged-but-unsettled
+  picks now show "N logged, pending" instead of vanishing entirely; new
+  "Recent Picks" card with real per-bet WON/LOST/PENDING history.
+- **v2.49.44** — QA pass caught `fetch()` not rejecting on the 404 this
+  app's own `jsonError()` returns for an undeployed endpoint — the picks-
+  history fetch was silently reading that 404 body as "no picks logged."
+  Fixed by checking `r.ok` before parsing.
+- **v2.49.45** — Recent Picks gets per-source filter chips (All / Our
+  Picks / Market Favorite / Handicapper Consensus), reusing the `engine`
+  filter `/api/picks/history` already supported server-side.
+
+**Known gap:** `CHANGELOG.md`'s newest entry is v2.49.36 — it was not kept
+up to date through v2.49.37–45. This handoff section is the more current
+record for that range; reconcile `CHANGELOG.md` if it's ever load-bearing
+for something (e.g. release notes).
+
+---
+
+## 7. Test suite
 
 `node --test tests/*.test.js` (**not** `node --test tests/` — that form
 doesn't glob correctly on this Node version). Baseline as of 2026-07-04
 (v2.48.17): 206 passing, 1 failing, 1 skipped. Reconfirmed unchanged through
 every v2.49.x release on 2026-07-05 (see §5) — the 1 known failure below,
-nothing else.
+nothing else. **Updated 2026-07-20:** 321 total — 319 passing, 1 failing
+(the same known-intentional failure below), 1 skipped. The growth from 206
+→ 321 is real added coverage from §6's work, principally the permanent
+regression suite for the v2.49.13–19 bet-grading fixes (commit `443b9c1`)
+and new worker.js handler tests (`tests/worker-pick-stats.test.js`,
+`tests/worker-pick-history.test.js`) that invoke the real `worker.js`
+`fetch` handler against a fake in-memory KV.
 
 The 1 remaining failure — `index.html scoring block is in sync with
 scripts/lib/scoring.js` (`tests/inline-scoring-sync.test.js`) — is failing
@@ -298,7 +449,7 @@ the first coverage of that code path.
 
 ---
 
-## 7. Saratoga meet dates (confirmed live via Racing API, 2026-07-04)
+## 8. Saratoga meet dates (confirmed live via Racing API, 2026-07-04)
 
 - Meet running now through 2026-09-07 per in-app copy.
 - Opening day 2026-07-09 confirmed provisioned with real entries (9 races)
@@ -306,12 +457,12 @@ the first coverage of that code path.
 
 ---
 
-## 8. Future options (deferred, not scheduled)
+## 9. Future options (deferred, not scheduled)
 
 Ideas raised and explicitly deferred — not bugs, not committed work. Pick
 these up only if asked.
 
-### 8.1 Engine Accuracy card: split "engine picks" vs. "your placed bets" (2026-07-06)
+### 9.1 Engine Accuracy card: split "engine picks" vs. "your placed bets" (2026-07-06)
 
 Shipped in v2.49.22, the Engine Accuracy card (`refreshEngineAccuracy()`,
 worker's `/api/picks/stats`) currently shows **only** the engine's own
