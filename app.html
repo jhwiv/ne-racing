@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260718-v2.49.44-brisnet';
+var NE_APP_VERSION = '20260720-v2.49.45-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260718-v2.49.44-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.44-brisnet';
+var RAILBIRD_VERSION = 'v2.49.45-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -3283,6 +3283,10 @@ html[data-ios="true"] .stage-sheet {
 .ph-badge-lost { background:var(--color-burgundy-light); color:var(--color-negative); }
 .ph-badge-pending { background:rgba(0,0,0,0.08); color:var(--color-muted); }
 .ph-row-payout { flex:none; font-family:var(--font-mono); font-size:0.82rem; font-weight:600; white-space:nowrap; }
+/* v2.49.45: per-source filter chips above Recent Picks */
+.ph-filter { display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.85rem; }
+.ph-filter-btn { padding:0.3rem 0.65rem; border-radius:999px; border:1px solid rgba(0,0,0,0.14); background:transparent; font-family:var(--font-body); font-size:0.76rem; font-weight:600; color:var(--color-muted); cursor:pointer; }
+.ph-filter-btn.active { background:var(--color-gold); color:var(--color-racing-green); border-color:var(--color-gold); }
 
 /* Race card variant */
 .race-card { border-left: 4px solid var(--color-gold); }
@@ -10809,6 +10813,15 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
           <h3>Recent Picks</h3>
         </div>
         <div class="card-body">
+          <!-- v2.49.45: per-source filter -- previously this list only ever
+               showed everything mixed together, with no way to look at just
+               Market Favorite's or Handicapper Consensus's own history. -->
+          <div class="ph-filter" role="tablist" aria-label="Filter by source">
+            <button class="ph-filter-btn active" data-engine="" onclick="setAnalyticsPickHistoryEngine('')" role="tab" aria-selected="true">All</button>
+            <button class="ph-filter-btn" data-engine="v2" onclick="setAnalyticsPickHistoryEngine('v2')" role="tab" aria-selected="false">Our Picks</button>
+            <button class="ph-filter-btn" data-engine="baseline_ml" onclick="setAnalyticsPickHistoryEngine('baseline_ml')" role="tab" aria-selected="false">Market Favorite</button>
+            <button class="ph-filter-btn" data-engine="crowd" onclick="setAnalyticsPickHistoryEngine('crowd')" role="tab" aria-selected="false">Handicapper Consensus</button>
+          </div>
           <div id="analytics-pick-history-summary"><p class="text-muted text-sm">Loading…</p></div>
           <div id="analytics-pick-history-list"></div>
           <button class="btn btn-ghost btn-sm mt-1" id="analytics-pick-history-more" onclick="loadMoreAnalyticsPickHistory()" style="display:none">Load more</button>
@@ -19251,9 +19264,31 @@ function renderAnalyticsAccuracy() {
 // records, not aggregates) so the actual volume of tracked bets is visible,
 // not just a single win-rate percentage.
 var analyticsPickHistoryLimit = 25;
+// v2.49.45: which source's history to show -- '' means all sources mixed
+// together (the original behavior); otherwise scoped to one engine so
+// Market Favorite's or Handicapper Consensus's own history can actually
+// be inspected on its own, not buried in a combined feed.
+var analyticsPickHistoryEngine = '';
 
 function renderAnalyticsPickHistory() {
   analyticsPickHistoryLimit = 25;
+  analyticsPickHistoryEngine = '';
+  document.querySelectorAll('.ph-filter-btn').forEach(function(btn) {
+    var active = btn.getAttribute('data-engine') === '';
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  fetchAnalyticsPickHistory();
+}
+
+function setAnalyticsPickHistoryEngine(engine) {
+  analyticsPickHistoryEngine = engine;
+  analyticsPickHistoryLimit = 25;
+  document.querySelectorAll('.ph-filter-btn').forEach(function(btn) {
+    var active = btn.getAttribute('data-engine') === engine;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
   fetchAnalyticsPickHistory();
 }
 
@@ -19273,7 +19308,8 @@ function fetchAnalyticsPickHistory() {
     summaryEl.innerHTML = '<p class="text-muted text-sm">Set a Worker URL in Settings to enable this.</p>';
     return;
   }
-  fetch(workerUrl + '/api/picks/history?limit=' + analyticsPickHistoryLimit)
+  var engineParam = analyticsPickHistoryEngine ? ('&engine=' + encodeURIComponent(analyticsPickHistoryEngine)) : '';
+  fetch(workerUrl + '/api/picks/history?limit=' + analyticsPickHistoryLimit + engineParam)
     .then(function(r) {
       // v2.49.43 QA fix: fetch() doesn't reject on a 404 -- and this
       // endpoint's 404 (from the currently-deployed Worker not having it
@@ -19288,18 +19324,19 @@ function fetchAnalyticsPickHistory() {
     .then(function(data) {
       var picks = (data && data.picks) || [];
       var total = (data && data.total) || 0;
-      if (!picks.length) {
-        summaryEl.innerHTML = '<p class="text-muted text-sm">No picks logged yet.</p>';
-        listEl.innerHTML = '';
-        if (moreBtn) moreBtn.style.display = 'none';
-        return;
-      }
       var meta = {
         v2:          { label: 'Our Picks',              color: 'var(--chart-picks)' },
         baseline_ml: { label: 'Market Favorite',        color: 'var(--chart-market)' },
         crowd:       { label: 'Handicapper Consensus',  color: 'var(--chart-crowd)' },
         v1:          { label: 'Engine (legacy)',        color: 'var(--chart-legacy)' },
       };
+      if (!picks.length) {
+        var filterLabel = analyticsPickHistoryEngine ? (meta[analyticsPickHistoryEngine] || {}).label : null;
+        summaryEl.innerHTML = '<p class="text-muted text-sm">No ' + (filterLabel ? escHtml(filterLabel) + ' ' : '') + 'picks logged yet.</p>';
+        listEl.innerHTML = '';
+        if (moreBtn) moreBtn.style.display = 'none';
+        return;
+      }
       summaryEl.innerHTML = '<p class="text-xs text-muted mb-2">Showing ' + picks.length + ' of ' + total + ' logged picks, most recent first.</p>';
       listEl.innerHTML = picks.map(function(p) {
         var m = meta[p.engine] || { label: p.engine, color: 'var(--color-muted)' };
