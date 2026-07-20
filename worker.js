@@ -3511,6 +3511,47 @@ async function handlePickStats(request, env, origin) {
   return jsonOk({ engines: stats, generatedAt: new Date().toISOString(), appliedDateFilter: dateFilter }, origin, dateFilter ? 60 : 300);
 }
 
+/**
+ * GET /api/picks/history?engine=v2&limit=200
+ * Returns individual pick records, newest first, each joined with its
+ * outcome if one has been settled. v2.49.43: /api/picks/stats only ever
+ * returns aggregated per-engine sums -- every individual pick's real
+ * detail (horse name, race, bet type, whether it's even been graded yet)
+ * gets computed and then thrown away. This is the same underlying data,
+ * exposed at the record level, for the Analytics tab's real pick history
+ * list (and so a source that HAS logged picks but zero settled ones yet
+ * shows up as "pending", not as if it were never tracked at all).
+ */
+async function handlePickHistory(request, env, origin) {
+  if (!env.ENGINE_ACCURACY) {
+    return jsonOk({ picks: [], total: 0 }, origin, 0);
+  }
+  const { searchParams } = new URL(request.url);
+  const engineFilter = (searchParams.get("engine") || "").toLowerCase();
+  const limit = Math.min(parseInt(searchParams.get("limit"), 10) || 200, 500);
+
+  const pickList = await env.ENGINE_ACCURACY.list({ prefix: "pick:", limit: 1000 });
+  const picks = [];
+  for (const { name, metadata } of pickList.keys) {
+    const eng = (metadata && metadata.engine) || name.split(":")[4] || "unknown";
+    if (engineFilter && eng !== engineFilter) continue;
+    const pick = await env.ENGINE_ACCURACY.get(name, "json");
+    if (!pick) continue;
+    const outcome = await env.ENGINE_ACCURACY.get(name.replace(/^pick:/, "outcome:"), "json");
+    const won = outcome ? (typeof outcome.won === "boolean" ? outcome.won : outcome.position === 1) : null;
+    picks.push({
+      engine: pick.engine, track: pick.track, date: pick.date, race: pick.race, pp: pick.pp,
+      horseName: pick.horseName, betType: pick.betType || "Win", betTag: pick.betTag,
+      amount: pick.amount, partnerPp: pick.partnerPp || null, partnerName: pick.partnerName || null,
+      settled: !!outcome,
+      won, position: outcome ? outcome.position : null, payout: outcome ? outcome.payout : null,
+    });
+  }
+  // Newest first: date string sorts correctly since it's ISO (YYYY-MM-DD).
+  picks.sort((a, b) => (b.date + String(b.race).padStart(2, "0")).localeCompare(a.date + String(a.race).padStart(2, "0")));
+  return jsonOk({ picks: picks.slice(0, limit), total: picks.length }, origin, 120);
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // EXPERT PICKS
 // ═════════════════════════════════════════════════════════════════════════════
@@ -4518,6 +4559,8 @@ export default {
         return handlePickSettle(request, env, origin);
       case "/api/picks/stats":
         return handlePickStats(request, env, origin);
+      case "/api/picks/history":
+        return handlePickHistory(request, env, origin);
 
       // ── Health check / root ───────────────────────────────────────────
       case "/":

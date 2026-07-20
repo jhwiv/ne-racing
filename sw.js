@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260718-v2.49.42-brisnet'; // v2.49.42: Best Bet now prefers real market overlay over raw confidence gap within its own tier               // bump on every ship
+const CACHE_VERSION = '20260718-v2.49.43-brisnet'; // v2.49.43: real per-pick history list; pending sources no longer vanish from Analytics               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
