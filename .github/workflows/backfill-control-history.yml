@@ -1,0 +1,53 @@
+name: Backfill Control History (ENGINE_ACCURACY)
+
+# One-time (re-runnable) backfill for the baseline_ml/crowd control-group
+# picks that predate the every-race fix in daily_pick_log.js. Real production
+# data showed the engine's own picks had 35 graded samples while the two
+# controls had 1 and 2 -- nowhere near enough for a real comparison. This
+# re-derives what baseline_ml/crowd would have logged on every past day
+# since entries data is available (live API or the R2 mirror the scheduled
+# pre-warmer has been writing since 2026-06-05) and settles each one
+# immediately against the real archived result. See
+# scripts/backfill_control_history.js for the full design rationale.
+#
+# Manual trigger only -- this is a backfill, not a recurring job. Re-running
+# for an already-backfilled range is safe (deterministic KV keys, same as
+# the daily scripts).
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Track code'
+        type: string
+        default: 'SAR'
+      from:
+        description: 'Start date (YYYY-MM-DD). Defaults to the earliest possible R2 mirror date.'
+        type: string
+        default: ''
+      to:
+        description: 'End date (YYYY-MM-DD). Defaults to today.'
+        type: string
+        default: ''
+      dry_run:
+        description: 'Dry run -- compute and log what would be backfilled, without writing anything'
+        type: boolean
+        default: true
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run backfill
+        run: |
+          node scripts/backfill_control_history.js --track ${{ inputs.track }} \
+            ${{ inputs.from && format('--from {0}', inputs.from) || '' }} \
+            ${{ inputs.to && format('--to {0}', inputs.to) || '' }} \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
