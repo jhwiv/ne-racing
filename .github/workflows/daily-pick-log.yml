@@ -4,10 +4,11 @@ name: Daily Pick Log (ENGINE_ACCURACY)
 # system, independent of whether any user opens the app that day. Previously
 # picks only got logged when a user's browser happened to render the Today
 # tab -- a day nobody opened the app was invisible to the server-side
-# tracker. Also logs two "peer review" alternatives for the day's Best Bet
-# (the market's own favorite, and the NYRA handicapper-consensus pick, when
-# either differs from the engine's pick) using the same pick/settle/stats
-# system, so their accuracy is tracked identically over time.
+# tracker. Also logs two "peer review" control groups (the market's own
+# favorite, and the NYRA handicapper-consensus pick) for EVERY race on the
+# card, using the same pick/settle/stats system, so their accuracy is
+# tracked identically over time and at full-card volume, not just whichever
+# one race the engine's own Best Bet happened to land on.
 #
 # GET /api/entries and /api/expert-picks require no auth from the caller --
 # the worker holds its own licensed credentials server-side.

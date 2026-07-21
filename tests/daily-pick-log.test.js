@@ -124,6 +124,42 @@ test('buildLogPayloads v2.49.40: DOES log baseline_ml/crowd even when they agree
   assert.equal(crowd[0].pp, 1);
 });
 
+test('buildLogPayloads logs baseline_ml/crowd for EVERY race on the card, not just the engine\'s Best Bet race', () => {
+  // Two races. The engine's Best Bet can only land on one of them, but both
+  // races have a valid market-favorite and crowd-consensus signal -- both
+  // must get a control-group entry, otherwise the control group is still
+  // throttled to ~1 pick/day exactly like the bug this fixes.
+  const r1 = {
+    id: 'SAR-20260721-R1', track: 'SAR', date: '2026-07-21', num: 1,
+    horses: [
+      { pp: 1, name: 'Alpha', ml: '9-2', speedFigs: [70, 70, 70], runningStyle: 'E', jockeyPct: 10, trainerPct: 10, lastClass: 'ALW' },
+      { pp: 2, name: 'Bravo', ml: '3-1', speedFigs: [65, 65, 65], runningStyle: 'P', jockeyPct: 8, trainerPct: 8, lastClass: 'ALW' },
+      { pp: 3, name: 'Charlie', ml: '8-1', speedFigs: [55, 55, 55], runningStyle: 'S', jockeyPct: 6, trainerPct: 6, lastClass: 'ALW' },
+    ],
+    expertPicks: [{ source: 'A', pick: 2 }, { source: 'B', pick: 2 }],
+  };
+  const r2 = {
+    id: 'SAR-20260721-R2', track: 'SAR', date: '2026-07-21', num: 2,
+    horses: [
+      { pp: 1, name: 'Delta', ml: '2-1', speedFigs: [95, 95, 95], runningStyle: 'E', jockeyPct: 25, trainerPct: 22, lastClass: 'ALW' },
+      { pp: 2, name: 'Echo', ml: '5-1', speedFigs: [60, 60, 60], runningStyle: 'P', jockeyPct: 10, trainerPct: 10, lastClass: 'ALW' },
+      { pp: 3, name: 'Foxtrot', ml: '6-1', speedFigs: [58, 58, 58], runningStyle: 'S', jockeyPct: 8, trainerPct: 8, lastClass: 'ALW' },
+    ],
+    expertPicks: [{ source: 'A', pick: 1 }, { source: 'B', pick: 1 }],
+  };
+
+  const payloads = buildLogPayloads([r1, r2], 'SAR', '2026-07-21');
+  const baselineMl = payloads.filter(p => p.engine === 'baseline_ml');
+  const crowd = payloads.filter(p => p.engine === 'crowd');
+  const v2BestBet = payloads.filter(p => p.engine === 'v2' && p.betTag === 'best');
+
+  assert.ok(v2BestBet.length <= 1, 'at most one race can be the engine\'s single Best Bet slot');
+  assert.equal(baselineMl.length, 2, 'baseline_ml must log the market favorite for BOTH races, not just the Best Bet\'s race');
+  assert.deepEqual(baselineMl.map(p => p.race).sort(), [1, 2]);
+  assert.equal(crowd.length, 2, 'crowd must log the consensus pick for BOTH races, not just the Best Bet\'s race');
+  assert.deepEqual(crowd.map(p => p.race).sort(), [1, 2]);
+});
+
 // ── End-to-end against a real local HTTP server ─────────────────────────────
 function startMockWorker(handlers) {
   return new Promise((resolve) => {

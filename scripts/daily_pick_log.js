@@ -9,26 +9,33 @@
  * logTicketPicksToEngine, index.html), so a day nobody opened the app was
  * invisible to the server-side tracker.
  *
- * Also logs two control-group alternatives for the day's Best Bet, using
- * the SAME already-built pick/settle/stats system (worker.js's PICK_ENGINES
- * already includes "baseline_ml" and "crowd" for exactly this):
+ * Also logs two control-group alternatives, using the SAME already-built
+ * pick/settle/stats system (worker.js's PICK_ENGINES already includes
+ * "baseline_ml" and "crowd" for exactly this):
  *   - baseline_ml: the market's own favorite in that race -- a genuinely
  *     independent opinion (unlike comparing v1 vs v2, which are both
  *     hand-tuned heuristics built with the same reasoning and likely share
  *     the same blind spots).
  *   - crowd: the NYRA handicapper-consensus pick (data/entries-*.json's
  *     scraped expertPicks), when at least 2 handicappers agree.
- * v2.49.40: logged on EVERY race with a valid signal, regardless of
- * whether it matches the engine's own pick. The original version only
- * logged these when they DIFFERED from our pick ("avoiding redundant
- * noise") -- but that silently discards every race where they agreed with
- * us, leaving a tiny, biased sample that can't fairly answer "does our
- * engine actually add value." A control group has to track the full
- * population, not just the disagreement cases.
- * Scoped to the Best Bet slot only (the headline recommendation) -- not
- * every Value Play/Action Bet -- to keep this comparison focused and the
- * script's surface area manageable; the engine's own picks are still fully
- * logged for every slot, matching what a user opening the app would see.
+ * Logged on EVERY race with a valid signal, regardless of whether it
+ * matches the engine's own pick. Logging these only when they DIFFERED from
+ * our pick ("avoiding redundant noise") was tried and reverted: it silently
+ * discards every race where they agreed with us, leaving a tiny, biased
+ * sample that can't fairly answer "does our engine actually add value."
+ *
+ * Both controls were ALSO scoped to the Best Bet slot's race only -- one
+ * shot per day -- while the engine's own picks log every slot (Best Bet +
+ * every Value Play + every Action Bet), several times a day. Real production
+ * data showed exactly the damage this did: after enough days to give the
+ * engine 35 graded picks, baseline_ml had 1 and crowd had 2 -- nowhere near
+ * enough to support any real comparison, and crowd's stricter >=2-consensus
+ * gate only made it worse by getting a single chance/day to clear that bar.
+ * Fixed by logging a control pick for EVERY race on the card, every day, not
+ * just whichever one race the engine's Best Bet happened to land on. This
+ * doesn't touch crowd's consensus threshold (that gate is real and shouldn't
+ * be loosened to inflate volume) -- it just gives it ~9x more races/day to
+ * clear it, same as baseline_ml.
  *
  * Real network access required (calls the worker's already-licensed
  * /api/entries, /api/expert-picks, /api/picks/log) -- run from
@@ -123,8 +130,9 @@ function computeMlFavorite(race) {
 /**
  * Build the full set of /api/picks/log payloads for a scored, picked card.
  * Engine picks (v2) are logged for every slot, matching what a live user
- * would generate; baseline_ml/crowd alternatives are scoped to Best Bet only
- * (see file header).
+ * would generate. baseline_ml/crowd alternatives are logged for every race
+ * on the card (not just whichever race the engine picked) -- see file
+ * header for why the two controls need full-card coverage to be meaningful.
  */
 function buildLogPayloads(races, track, date) {
   const cardResults = scoreCard(races, { version: 'v2', today: date });
@@ -145,21 +153,6 @@ function buildLogPayloads(races, track, date) {
 
   if (picks.bestBet) {
     push('v2', 'best', picks.bestBet);
-    // v2.49.40: log baseline_ml/crowd on EVERY race with a valid signal,
-    // regardless of whether it matches our own pick. These exist to act as
-    // an independent control group -- only logging them when they DIFFER
-    // from our pick (the original v2.49.34 design) silently throws away
-    // every race where they agreed with us, leaving a tiny, biased sample
-    // that can't fairly answer "does our engine actually add value over
-    // the market/crowd." A control has to track the full population.
-    const mlFav = computeMlFavorite(picks.bestBet.race);
-    if (mlFav) {
-      push('baseline_ml', 'best', { race: picks.bestBet.race, horse: mlFav.horse });
-    }
-    const crowd = computeCrowdPick(picks.bestBet.race);
-    if (crowd) {
-      push('crowd', 'best', { race: picks.bestBet.race, horse: crowd.horse });
-    }
   }
   picks.valuePlays.forEach(v => {
     const partner = v._exactaPartner;
@@ -168,6 +161,19 @@ function buildLogPayloads(races, track, date) {
     } : {});
   });
   picks.actionBets.forEach(a => push('v2', 'action', a.entry));
+
+  // Control groups: one baseline_ml + one crowd pick per race, for every
+  // race on the card -- not just the Best Bet's race (see file header).
+  races.forEach(race => {
+    const mlFav = computeMlFavorite(race);
+    if (mlFav) {
+      push('baseline_ml', 'best', { race, horse: mlFav.horse });
+    }
+    const crowd = computeCrowdPick(race);
+    if (crowd) {
+      push('crowd', 'best', { race, horse: crowd.horse });
+    }
+  });
 
   return payloads;
 }
