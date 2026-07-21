@@ -3364,6 +3364,20 @@ async function handlePickLog(request, env, origin) {
  * POST /api/picks/settle
  * Body: { engine, track, date, race, pp, position, payout }
  * Records the outcome for a previously-logged pick. Idempotent.
+ *
+ * `position` is intentionally NOT in the required-fields list below.
+ * gradePick() (scripts/lib/pick_settlement.js, v2.49.41) deliberately
+ * returns `position: null` for a horse absent from an official race's
+ * recorded finishers -- that's a CONFIRMED LOSS, not an unknown outcome,
+ * and the entire point of v2.49.41 was to stop treating that case as
+ * ungradeable. Requiring `position` here silently defeated that fix at
+ * the API boundary: every real caller (daily_pick_settle.js, the
+ * one-time control-group backfill) sends exactly this shape for a
+ * confirmed loss, and this validation rejected every one of them with a
+ * 400, leaving the pick permanently "pending" instead of settled --
+ * confirmed live in production: a real backfill run hit this on 72 of
+ * 189 settle calls before this fix. `won` (always a real boolean once
+ * gradePick returns a non-null grade) is the field that actually matters.
  */
 async function handlePickSettle(request, env, origin) {
   if (!env.ENGINE_ACCURACY) {
@@ -3378,7 +3392,7 @@ async function handlePickSettle(request, env, origin) {
   } catch (_) {
     return jsonError("Invalid JSON body", 400, origin);
   }
-  const required = ["engine", "track", "date", "race", "pp", "position"];
+  const required = ["engine", "track", "date", "race", "pp"];
   for (const k of required) {
     if (body[k] === undefined || body[k] === null || body[k] === "") {
       return jsonError(`Missing field: ${k}`, 400, origin);
