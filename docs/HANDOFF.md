@@ -2,7 +2,7 @@
 
 **Live site:** https://www.railbirdai.com
 **Repo:** `jhwiv/ne-racing`
-**Last verified:** 2026-07-20, against production, not assumed.
+**Last verified:** 2026-07-22, against production, not assumed.
 
 This supersedes any prior handoff doc that circulated outside this repo. A
 few things in earlier notes were wrong (branch name, hosting provider, a
@@ -15,7 +15,10 @@ everything shipped between v2.49.7 and v2.49.45 (2026-07-06 → 2026-07-20):
 a batch of critical bet-grading/accuracy bugs (wrong-graded exotics,
 dead accuracy tiles), an audited handicapping engine, the live NYRA
 expert-picks scraper, and the new Analytics tab with real per-pick,
-per-source history.
+per-source history. See §7 for the control-group sample-size fix and
+backfill (2026-07-21/22), plus a CRITICAL settle-endpoint bug found while
+running it that had likely been silently dropping real losses for every
+tracked source since v2.49.41.
 
 ---
 
@@ -129,6 +132,22 @@ live-card critical path — don't confuse it with `cloudflare-worker`.
   /api/picks/history?limit=1` returned real `200` pick data. This closes
   out the `/api/picks/history` endpoint added in v2.49.43 (see §6), which
   had been sitting deployed-in-git-but-not-on-Worker until this deploy.
+- **Confirmed current again as of 2026-07-22** (`740ad8c`, the
+  `/api/picks/settle` fix — see §7): worth flagging exactly how this deploy
+  went, since it's a real example of the drift this section warns about.
+  The owner's first `wrangler deploy` attempt uploaded **119.32 KiB /
+  gzip 28.10 KiB — byte-identical to the 2026-07-20 deploy** — because the
+  local `worker.js` in the deploy folder had never been refreshed from
+  `master`. Caught by comparing upload sizes and re-checking the file hash
+  (still `bd0bb3a8…`, the pre-fix version) before assuming the fix was
+  live. Re-fetched `worker.js` from `master` (hash now
+  `514ff296…5d33469`), redeployed — upload size changed (119.31 KiB) and
+  version ID `364c40e3-bb0c-46ba-970e-8ecf6fec147f` confirmed a real, new
+  deploy. **Lesson for next time:** a deploy folder outside the repo
+  checkout (e.g. `C:\railbird-deploy`) is exactly the drift trap §2 already
+  warns about — always diff the upload size or hash against what's
+  actually on `master` before trusting a deploy went out, even when
+  `wrangler deploy` itself reports success with no errors.
 
 ---
 
@@ -330,7 +349,11 @@ mutation that doesn't refresh every dependent view. Confirmed fixes:
   tracked source's win rate/ROI had been counting almost only wins. Known
   accepted tradeoff: an unlogged late scratch now also grades as a loss
   rather than a void (indistinguishable in this data) — net improvement
-  since real losses vastly outnumber that edge case.
+  since real losses vastly outnumber that edge case. **Follow-up (2026-07-22,
+  §7.2):** this fix was itself silently defeated at the API boundary --
+  `/api/picks/settle` rejected every `position: null` confirmed-loss record
+  this produces. Fixed in §7.2; if `gradePick()`/`settleEnginePicksForRace()`
+  are touched again, re-check that fix is still intact.
 
 `tests/bets-tab-fix.test.js` and a permanent regression suite added
 straight after this batch (commit `443b9c1`) now cover v2.49.13–19
@@ -401,19 +424,119 @@ for something (e.g. release notes).
 
 ---
 
-## 7. Test suite
+## 7. Control-group backfill + a CRITICAL settle-endpoint bug (2026-07-21/22)
+
+Owner pushed back hard on the Analytics tab's control groups: Market
+Favorite (`baseline_ml`) and Handicapper Consensus (`crowd`) had only 1 and
+2 graded picks respectively, against 35 for the engine's own picks (`v2`) —
+nowhere near enough sample to answer "does our engine actually add value
+over the market/crowd," the entire point of tracking them. Asked directly
+to evaluate the app and its picks' real value; this section is that
+evaluation.
+
+### 7.1 Every-race control logging (no longer just Best Bet's race)
+
+Root cause: `daily_pick_log.js` only computed a `baseline_ml`/`crowd` pick
+for the Best Bet slot's single race per day, while the engine's own picks
+log every slot (Best Bet + every Value Play + every Action Bet) — several
+times a day. `buildLogPayloads()` now computes both controls for **every
+race on the card, every day**, independent of which race the engine's own
+Best Bet lands on. Deliberately did NOT loosen crowd's ≥2-handicapper
+consensus gate (that's a real bar, not an artifact) — it just gets ~9x more
+races/day to clear it, the same structural boost baseline_ml gets since a
+market favorite exists in nearly every race. `daily_pick_settle.js`
+re-derives from the same `buildLogPayloads()`, so it picked up this fix
+with zero changes of its own.
+
+### 7.2 CRITICAL: `/api/picks/settle` was rejecting confirmed losses
+
+Found by actually running the backfill below, not by code review: **72 of
+189** settle POSTs failed with HTTP 400. Root cause: `handlePickSettle()`
+hard-required a `position` field, but `gradePick()` (the v2.49.41 fix, §6.1)
+deliberately sends `position: null` for a horse absent from an official
+race's recorded finishers — a CONFIRMED LOSS, not a missing/unknown value.
+This validation silently defeated v2.49.41 at the network layer: those
+picks got rejected instead of settled and stayed "pending" forever, which
+looks identical to the exact bug v2.49.41 was built to fix, just moved one
+layer down.
+
+**This was never backfill-specific.** `daily_pick_settle.js` posts this
+exact shape every single day for every engine, including `v2` — so this
+had likely been silently dropping a real fraction of losses across every
+tracked source since v2.49.41 shipped (2026-07-19ish per version cadence).
+No way to quantify exactly how much without re-scanning historical
+settle attempts (not logged anywhere the failures would be visible).
+
+Fixed by removing `position` from the required-fields list (the record
+already tolerantly parses it to `null` when absent — no other behavior
+change). `won` (always a real boolean once `gradePick()` returns a grade)
+is the field that actually matters and was never the problem. New
+`tests/worker-pick-settle.test.js` exercises the real `handlePickSettle`
+against a fake KV — the existing `daily-pick-settle.test.js` never could
+have caught this because its mock worker unconditionally returns
+`{ok:true}` regardless of payload, the same class of gap as the
+`/api/picks/history` filter chips (§6.4) before their own worker-level
+tests existed.
+
+**Deploy gotcha hit live** — see §2's "Confirmed current again as of
+2026-07-22" entry: the owner's first deploy attempt silently redeployed the
+stale pre-fix `worker.js` because the local deploy folder hadn't been
+refreshed from `master`. Caught by comparing wrangler's reported upload
+size against the prior deploy (byte-identical — a real tell) before
+trusting a clean `wrangler deploy` exit actually shipped anything.
+
+### 7.3 Backfill (`scripts/backfill_control_history.js`, one-time, re-runnable)
+
+Real historical odds data turned out to already exist: the scheduled
+pre-warmer has mirrored one `/api/entries` snapshot per (track, date) to
+the `ENTRIES_R2` bucket since v2.47.0 shipped (2026-06-05), and nothing in
+the code ever deletes old ones. New script re-derives what `baseline_ml`/
+`crowd` would have logged on every past day (live `/api/entries` first,
+falling back to `/api/entries/r2` for historical dates), then settles each
+immediately against the real archived result via `/api/history/{TRACK}/
+{DATE}` — turning weeks of dead time into real sample size immediately
+instead of waiting. `v2`'s own picks are deliberately excluded — this
+fixes the control-group gap, not the engine's own coverage. New companion
+workflow (`.github/workflows/backfill-control-history.yml`, manual
+dispatch, defaults to `--dry-run`) since backfilling means writing real
+historical records into production `ENGINE_ACCURACY` — a one-way data
+change, sanity-checked in dry-run first.
+
+**Confirmed backfilled as of 2026-07-22:** 189 picks logged and settled (0
+failed, after §7.2's fix), covering `baseline_ml` from 2026-06-05 and
+`crowd` from 2026-07-09 (the date the NYRA scraper pipeline actually went
+live — no expert-picks data exists before that, so no crowd consensus is
+computable for earlier dates, working as intended, not a gap). 34 dates
+had no entries source available (dark days, or older than R2's coverage),
+1 date had no archived results yet, 22 individual picks were skipped for
+lack of a grade (race not official / horse genuinely ungradeable).
+**Note:** `RACE_HISTORY` (the results archive) does NOT store morning-line
+odds — confirmed by reading `normaliseNaResults()` — so a `baseline_ml`
+backfill is only possible because of the separate `ENTRIES_R2` mirror; if
+that R2 bucket is ever cleared, this exact backfill can't be re-derived
+for dates before whenever it's re-populated.
+
+Re-run this script (idempotent, deterministic KV keys) any time a gap is
+suspected — safe to simply re-run the full range.
+
+---
+
+## 8. Test suite
 
 `node --test tests/*.test.js` (**not** `node --test tests/` — that form
 doesn't glob correctly on this Node version). Baseline as of 2026-07-04
 (v2.48.17): 206 passing, 1 failing, 1 skipped. Reconfirmed unchanged through
 every v2.49.x release on 2026-07-05 (see §5) — the 1 known failure below,
-nothing else. **Updated 2026-07-20:** 321 total — 319 passing, 1 failing
-(the same known-intentional failure below), 1 skipped. The growth from 206
-→ 321 is real added coverage from §6's work, principally the permanent
-regression suite for the v2.49.13–19 bet-grading fixes (commit `443b9c1`)
-and new worker.js handler tests (`tests/worker-pick-stats.test.js`,
-`tests/worker-pick-history.test.js`) that invoke the real `worker.js`
-`fetch` handler against a fake in-memory KV.
+nothing else. Grew to 321 total (319 pass/1 fail/1 skip) by 2026-07-20 from
+§6's work, principally the permanent regression suite for the v2.49.13–19
+bet-grading fixes (commit `443b9c1`) and new worker.js handler tests
+(`tests/worker-pick-stats.test.js`, `tests/worker-pick-history.test.js`)
+that invoke the real `worker.js` `fetch` handler against a fake in-memory
+KV. **Updated 2026-07-22:** 333 total — 331 passing, 1 failing (the same
+known-intentional failure below), 1 skipped. The growth from 321 → 333 is
+§7's work: `tests/backfill-control-history.test.js` (7 tests) and
+`tests/worker-pick-settle.test.js` (4 tests, including the exact
+`position: null` regression from §7.2).
 
 The 1 remaining failure — `index.html scoring block is in sync with
 scripts/lib/scoring.js` (`tests/inline-scoring-sync.test.js`) — is failing
@@ -449,7 +572,7 @@ the first coverage of that code path.
 
 ---
 
-## 8. Saratoga meet dates (confirmed live via Racing API, 2026-07-04)
+## 9. Saratoga meet dates (confirmed live via Racing API, 2026-07-04)
 
 - Meet running now through 2026-09-07 per in-app copy.
 - Opening day 2026-07-09 confirmed provisioned with real entries (9 races)
@@ -457,12 +580,12 @@ the first coverage of that code path.
 
 ---
 
-## 9. Future options (deferred, not scheduled)
+## 10. Future options (deferred, not scheduled)
 
 Ideas raised and explicitly deferred — not bugs, not committed work. Pick
 these up only if asked.
 
-### 9.1 Engine Accuracy card: split "engine picks" vs. "your placed bets" (2026-07-06)
+### 10.1 Engine Accuracy card: split "engine picks" vs. "your placed bets" (2026-07-06)
 
 Shipped in v2.49.22, the Engine Accuracy card (`refreshEngineAccuracy()`,
 worker's `/api/picks/stats`) currently shows **only** the engine's own
