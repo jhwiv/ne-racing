@@ -99,6 +99,21 @@ live-card critical path — don't confuse it with `cloudflare-worker`.
   If it's still failing after 3 attempts, the watchdog job itself fails —
   which surfaces as a normal GitHub Actions failure notification, so a
   stuck deploy is never silent even when auto-retry can't fix it.
+- **Worse variant hit 2026-07-23** (`3f846904`, the v2.49.47 Analytics hero
+  fix): the watchdog's "wait up to 5 minutes for the deployment run to even
+  appear" step failed twice in a row (once automatically, once after an
+  explicit manual re-run) — no `pages build and deployment` run showed up
+  for this commit **at all**, not a failed run to retry. Confirmed via the
+  Actions API, not assumed. This is the harder failure mode the watchdog's
+  design doc already anticipated but can't fully solve on its own (it can
+  only retry a run it can find). Resolved the same way HANDOFF already
+  documents: this doc update is itself a new push, which triggers a fresh
+  deploy attempt for the current tree (Pages deploys the full tree, not a
+  diff) — confirm the *next* push's `pages build and deployment` +
+  `Pages Deploy Watchdog` runs both show `success` before trusting the
+  live site reflects v2.49.47. If this pattern (run never appears, not just
+  fails) recurs often, the watchdog's `find_run_id` polling window may need
+  to grow past 5 minutes.
 - Version discipline: `NE_APP_VERSION` (in both HTML files), `CACHE_VERSION`
   (sw.js), and `version.json`'s `version` field must all match exactly, or
   the client's boot-time version check force-reloads in a loop. Bump all
