@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260723-v2.49.48-brisnet';
+var NE_APP_VERSION = '20260723-v2.49.49-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260723-v2.49.48-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.48-brisnet';
+var RAILBIRD_VERSION = 'v2.49.49-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -19172,6 +19172,23 @@ function renderAnalyticsAccuracy() {
       var rankOf = {};
       ranked.forEach(function(e, i) { rankOf[e] = i + 1; });
 
+      // v2.49.49: explain the ROI basis BEFORE any ROI number appears, not
+      // after (a "big number first, context after" layout has already
+      // caused two real misreads on this card -- hero ROI vs. win rate in
+      // v2.49.47, and this ROI-vs-suggested-bet-amount question directly).
+      // The $2/$4 split is real: logPickToEngine() stakes Win picks at a
+      // flat $2 and Exacta Box (Value Play) picks at $4 (2 combos), and the
+      // bottom glossary previously said "$2" unconditionally, which was
+      // simply wrong for Exacta Box entries. Because ROI is a percentage,
+      // it is stake-size-invariant for a straight Win bet, so this same
+      // percentage applies to whatever a user actually bets (e.g. the
+      // bankroll-scaled amount suggested on an Action Bet card), as long as
+      // they bet consistently across every pick in that group.
+      var roiNote = '<p class="text-xs text-muted mb-3">ROI below uses a flat reference stake ($2 for Win bets, ' +
+        '$4 for Exacta Box combos) to compare sources fairly — not a literal bet size. Since ROI is a percentage, ' +
+        'the same return applies to whatever you actually bet (e.g. your suggested Action Bet amount), as long as ' +
+        'you bet it consistently across every pick in that group.</p>';
+
       // Hero figure -- the single biggest, most-legible number on the
       // card, replacing the old buried text sentence.
       //
@@ -19285,9 +19302,9 @@ function renderAnalyticsAccuracy() {
       }).join('');
 
       var glossary = '<p class="text-xs text-muted mt-1"><strong>Win rate</strong> is how often that pick’s horse actually finished 1st. ' +
-        '<strong>ROI</strong> is profit or loss per $2 wagered, averaged across every graded pick.</p>';
+        '<strong>ROI</strong> is profit or loss against that reference stake ($2 Win / $4 Exacta Box, see note above), averaged across every graded pick.</p>';
 
-      body.innerHTML = notice + volumeLine + hero + legend + rows + pendingRows + glossary;
+      body.innerHTML = notice + volumeLine + roiNote + hero + legend + rows + pendingRows + glossary;
     })
     .catch(function() {
       body.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable, or this endpoint isn’t deployed yet).</p>';

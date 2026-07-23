@@ -11,6 +11,48 @@ again.
 
 ---
 
+## 2026-07-23 (v2.49.49) — Full QA/peer-review pass: ROI basis explained BEFORE the numbers, not after
+
+Triggered by a direct question ("does betting the suggested Action Bet
+dollar amount actually yield 87.8%?") and an explicit "this is misleading,
+do a real QA and peer review" request. Full audit of the whole "Pick
+Accuracy by Source" card, not a one-line patch. Findings, in priority
+order:
+
+1. **Root cause:** the only explanation that "ROI" uses a flat reference
+   stake (not a literal bet size) lived in one sentence at the *bottom* of
+   the card — after every ROI number a reader would already have formed an
+   impression from. This is the second time a "flashy number first,
+   context after" layout has caused a real misread on this exact card
+   (first hero ROI vs. win rate, v2.49.47).
+2. **Found while auditing, not asked for:** the existing glossary sentence
+   said ROI was "per $2 wagered" unconditionally. False — `logPickToEngine()`
+   stakes Exacta Box (Value Play) picks at $4 (2 combos), not $2. The one
+   piece of explanation that existed was itself wrong for a third of what
+   it described.
+3. Confirmed the underlying math is fine: ROI as a percentage is
+   stake-size-invariant for a straight Win bet, so the reference-stake %
+   really does apply to whatever a user actually bets, as long as they bet
+   it consistently. The problem was disclosure (placement + accuracy), not
+   the arithmetic.
+
+**Fix:** new explanatory note now renders at the very top of the card,
+before the hero figure or any row: "ROI below uses a flat reference stake
+($2 for Win bets, $4 for Exacta Box combos) to compare sources fairly —
+not a literal bet size. Since ROI is a percentage, the same return applies
+to whatever you actually bet (e.g. your suggested Action Bet amount), as
+long as you bet it consistently across every pick in that group." Bottom
+glossary corrected to state the $2/$4 split accurately (was previously
+just wrong) instead of removed, so the two don't contradict each other.
+Deliberately kept the "ROI" label as-is (standard handicapping vocabulary
+for this audience) — renaming it wasn't the actual problem.
+
+Verified via a real Playwright screenshot with the real confirmed numbers
+— note renders first, no layout regression, no console errors. Pure
+client-side copy/markup change; no worker.js touch, no redeploy needed.
+
+---
+
 ## 2026-07-23 (v2.49.48) — By-conviction (betTag) ROI breakdown added
 
 Follow-up: what would the math look like if only high-conviction (Best Bet)

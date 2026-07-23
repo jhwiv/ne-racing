@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260723-v2.49.48-brisnet'; // v2.49.48: Analytics -- by-conviction (Best Bet/Value Play/Action Bet) ROI breakdown under Our Picks               // bump on every ship
+const CACHE_VERSION = '20260723-v2.49.49-brisnet'; // v2.49.49: Analytics -- ROI reference-stake explainer moved to top of card, fixed inaccurate $2-only glossary text               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

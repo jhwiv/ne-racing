@@ -1,5 +1,40 @@
 # NE Racing — Changelog
 
+## v2.49.49-brisnet — Analytics: ROI reference-stake explainer moved to top of card (2026-07-23)
+
+Owner asked whether the Action Bet +87.8% ROI figure meant "bet the app's
+suggested dollar amount and get 87.8% back," and called the current
+Analytics card genuinely misleading. Full QA/peer-review pass on the whole
+"Pick Accuracy by Source" card rather than a one-line patch:
+
+- **Root problem:** the only explanation of what "ROI" means (a flat
+  reference stake, not a literal bet size) lived in one sentence at the
+  very *bottom* of the card, after every ROI number a reader would already
+  have seen and formed an impression from. Second instance of this same
+  "flashy number first, correction after" structural mistake (first hero
+  ROI vs. win rate in v2.49.47, now this).
+- **Found a real factual error while auditing:** the bottom glossary said
+  ROI was "per $2 wagered" unconditionally, but `logPickToEngine()` stakes
+  Exacta Box (Value Play) picks at $4 (2 combos), not $2 — the one existing
+  explanation was itself wrong for a third of what it described.
+
+Fix: new `roiNote` renders at the very top of the card, before the hero
+figure or any row — states the real $2/$4 reference-stake basis in plain
+language and explicitly ties it to the actual question asked: "the same
+return applies to whatever you actually bet (e.g. your suggested Action
+Bet amount), as long as you bet it consistently across every pick in that
+group." Bottom glossary corrected to state the $2/$4 split accurately
+instead of removed, so it's now consistent with the top note rather than
+contradicting it.
+
+Kept "ROI" as the label (standard handicapping vocabulary for this
+audience) rather than renaming it — the fix is disclosure placement and
+accuracy, not terminology. Verified via a real Playwright screenshot with
+the actual confirmed live numbers: note renders first, no layout
+regression, no console errors. Full suite: 340 total, 338 pass, 1
+known-intentional fail, 1 skipped (unchanged — pure client copy/markup,
+no worker.js change, no redeploy needed).
+
 ## v2.49.48-brisnet — Analytics: by-conviction (Best Bet/Value Play/Action Bet) ROI breakdown (2026-07-23)
 
 Direct follow-up: asked what the math looks like if only high-conviction
