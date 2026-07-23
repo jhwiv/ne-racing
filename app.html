@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260723-v2.49.46-brisnet';
+var NE_APP_VERSION = '20260723-v2.49.47-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260723-v2.49.46-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.46-brisnet';
+var RAILBIRD_VERSION = 'v2.49.47-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -19174,16 +19174,28 @@ function renderAnalyticsAccuracy() {
 
       // Hero figure -- the single biggest, most-legible number on the
       // card, replacing the old buried text sentence.
+      //
+      // v2.49.47: ROI alone here reads as "this source is way more
+      // effective," but ROI and win rate can (and often do) diverge a lot --
+      // a source can have a near-identical win rate to the others and still
+      // show a wildly different ROI just because its wins happened to pay
+      // more, especially with a small settled count. Now pairs the ROI with
+      // the leading source's own win rate/sample size right underneath, plus
+      // one fixed explanatory line, so the hero number can't be misread as
+      // "picks winners much better" on its own.
       var hero = '';
       if (ranked.length) {
         var lead = engines[ranked[0]];
         var heroScope = todayNotHonored ? ', all time' : (analyticsRange === 'today' ? ' today' : ', all time');
+        var leadWinPct = Math.max(0, Math.min(100, (lead.winRate || 0) * 100));
         hero = '<div class="mb-3">' +
           '<div class="text-xs text-muted mb-1">Leading source' + heroScope + '</div>' +
           '<div class="flex items-baseline" style="gap:0.6rem">' +
             '<span class="aa-hero-roi ' + (lead.roi >= 0 ? 'aa-roi-pos' : 'aa-roi-neg') + '">' + fmtPct(lead.roi * 100) + '</span>' +
             '<span class="font-semibold text-sm">' + meta[ranked[0]].label + '</span>' +
           '</div>' +
+          '<div class="text-xs text-muted mt-1">' + leadWinPct.toFixed(1) + '% win rate on ' + lead.settled + ' graded pick' + (lead.settled === 1 ? '' : 's') + '</div>' +
+          '<div class="text-xs text-muted mt-1">ROI reflects how big the payouts were on wins, not how often a source’s picks actually won — compare win rates directly, especially with fewer picks settled.</div>' +
         '</div>';
       }
 

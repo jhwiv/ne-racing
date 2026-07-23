@@ -1,5 +1,24 @@
 # NE Racing — Changelog
 
+## v2.49.47-brisnet — Hero ROI figure paired with win rate, so it can't read as "way more effective" (2026-07-23)
+
+Direct follow-up to v2.49.46. Asked directly whether it's misleading that
+the "Leading source" hero shows Our Picks at +30.1% ROI with nothing else
+next to it, when its win rate (22.9%) is nearly identical to Market
+Favorite's (21.9%) and Handicapper Consensus's (21.3%). It is: ROI is
+driven mostly by payout size on wins, not pick accuracy, and Our Picks'
+figure is built from only 8 wins (vs. 28 and 13 for the other two) so it's
+also the least statistically stable of the three -- yet it gets the
+biggest, boldest visual treatment on the card.
+
+Fix: the hero now shows the leading source's win rate and settled-pick
+count directly under its ROI figure, plus one fixed sentence: "ROI reflects
+how big the payouts were on wins, not how often a source's picks actually
+won — compare win rates directly, especially with fewer picks settled."
+Verified via a real Playwright screenshot with the actual verified numbers
+(see docs/ANALYTICS_QA.md) -- renders as three tight, readable lines under
+the hero number, no layout regression.
+
 ## v2.49.46-brisnet — Pick Accuracy card: fix rank-order mismatch, missing row spacing, remove Exacta Box footer (2026-07-23)
 
 Reported via screenshot after repeated prior attempts to get this exact

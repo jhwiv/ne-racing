@@ -11,6 +11,27 @@ again.
 
 ---
 
+## 2026-07-23 (v2.49.47) — Hero ROI figure could read as "way more effective" than the win rates support
+
+Direct follow-up question after the fixes below: is it misleading that the
+"Leading source" hero shows Our Picks at +30.1% ROI with no other context,
+when its win rate (22.9%) is barely different from Market Favorite's
+(21.9%) and Handicapper Consensus's (21.3%)? Yes — confirmed, not assumed:
+ROI is driven mostly by payout size on wins, not pick accuracy, and Our
+Picks' ROI is built from only 8 wins (vs. 28 and 13 for the others), making
+it the *least* statistically stable of the three despite getting the
+biggest visual treatment.
+
+**Fix:** the hero now shows the leading source's own win rate and settled
+count directly beneath its ROI figure, plus one fixed sentence: "ROI
+reflects how big the payouts were on wins, not how often a source's picks
+actually won — compare win rates directly, especially with fewer picks
+settled." Verified via a real Playwright screenshot (not code-read-only) —
+renders as three clean lines under the hero, no layout regression, no new
+console errors.
+
+---
+
 ## 2026-07-23 — Three real, confirmed bugs found and fixed
 
 Reported via a screenshot: rows crammed together, rank badges (1st/2nd/3rd)
