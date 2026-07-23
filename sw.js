@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260720-v2.49.45-brisnet'; // v2.49.45: Recent Picks gets per-source filter chips -- inspect Market Favorite/Handicapper Consensus history in isolation               // bump on every ship
+const CACHE_VERSION = '20260723-v2.49.46-brisnet'; // v2.49.46: Analytics card -- fix rank/row-order mismatch, missing mb-3 spacing, remove Exacta Box footer               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

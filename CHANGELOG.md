@@ -1,5 +1,41 @@
 # NE Racing — Changelog
 
+## v2.49.46-brisnet — Pick Accuracy card: fix rank-order mismatch, missing row spacing, remove Exacta Box footer (2026-07-23)
+
+Reported via screenshot after repeated prior attempts to get this exact
+card right: rows crammed together, and rank badges (1st/2nd/3rd) visually
+out of order relative to the rows they labeled. Also asked to remove the
+"Exacta Box bets only" sub-line, and whether it's plausible for Market
+Favorite/Handicapper Consensus to be deep in the negative while Our Picks
+is strongly positive.
+
+Verified the ROI numbers first, independently, before touching any code:
+new `scripts/qa/verify_analytics_numbers.js` pulls every raw pick record
+from `/api/picks/history` and recomputes wins/losses/stake/return/ROI from
+scratch, diffed against `/api/picks/stats` — zero discrepancies. The
+disparity is real: all three sources have similar ~21-23% win rates, but
+Our Picks' 8 winners averaged $12.03/$2-stake vs. Market Favorite's $5.37
+and Handicapper Consensus' $6.66 — similar hit rate, very different payout
+profile, not a bug.
+
+Two real bugs found and fixed:
+- **Rank badges rendered out of visual order.** Badges came from a
+  ROI-sorted `ranked` array; rows were rendered from a separately-ordered
+  `present` array in fixed engine order. Rows now render in actual rank
+  order.
+- **Missing `.mb-3` CSS class** — used 4 times in this card's render
+  function (all 4 uses confined to this one function), never defined
+  anywhere in the stylesheet, so every intended 1.5rem row gap silently
+  collapsed to zero. Added the missing rule next to its already-defined
+  `.mb-1`/`.mb-2` siblings.
+
+Exacta Box breakout sub-line removed per explicit request.
+
+New `docs/ANALYTICS_QA.md` records the verified baseline and incident
+history; new `.claude/skills/analytics-qa/SKILL.md` makes the
+verify-before-and-after process mandatory for any future touch of this
+card. Full suite: 337 total, 335 pass, 1 known-intentional fail, 1 skipped.
+
 ## v2.49.36-brisnet — Analytics: Exacta Box broken out from straight-pick performance (2026-07-13)
 
 Direct follow-up to v2.49.35. Asked whether the new Analytics tab changes

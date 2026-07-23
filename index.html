@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260720-v2.49.45-brisnet';
+var NE_APP_VERSION = '20260723-v2.49.46-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260720-v2.49.45-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.45-brisnet';
+var RAILBIRD_VERSION = 'v2.49.46-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -5543,7 +5543,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 .section-title::after { content: ''; flex: 1; height: 1px; background: rgba(0,0,0,0.1); }
 .divider { height: 1px; background: rgba(0,0,0,0.08); margin: 1rem 0; }
 .mt-1 { margin-top: 0.5rem; } .mt-2 { margin-top: 1rem; } .mt-3 { margin-top: 1.5rem; }
-.mb-1 { margin-bottom: 0.5rem; } .mb-2 { margin-bottom: 1rem; }
+.mb-1 { margin-bottom: 0.5rem; } .mb-2 { margin-bottom: 1rem; } .mb-3 { margin-bottom: 1.5rem; }
 .flex { display: flex; } .items-center { align-items: center; } .gap-1 { gap: 0.5rem; } .gap-2 { gap: 1rem; }
 .justify-between { justify-content: space-between; }
 .flex-wrap { flex-wrap: wrap; }
@@ -19198,7 +19198,16 @@ function renderAnalyticsAccuracy() {
         }).join('') +
       '</div>';
 
-      var rows = present.map(function(e) {
+      // Render order MUST match rank-badge order -- previously rows were
+      // rendered in a fixed engine order (`present`, e.g. v2/baseline_ml/
+      // crowd) while badges were assigned by a separately ROI-sorted
+      // `ranked` array, so a row visually in 2nd position could carry a
+      // "3" badge and vice versa. Ranked sources (settled >= 3) now render
+      // in their actual rank order; any present-but-unranked sources
+      // (settled 1-2, no badge) follow after, in their original order.
+      var rowOrder = ranked.concat(present.filter(function(e) { return rankOf[e] === undefined; }));
+
+      var rows = rowOrder.map(function(e) {
         var s = engines[e];
         var pct = Math.max(0, Math.min(100, s.winRate * 100));
         var roiStr = s.roi != null ? fmtPct(s.roi * 100) : '—';
@@ -19213,26 +19222,6 @@ function renderAnalyticsAccuracy() {
           '<div class="aa-bar-track"><div class="aa-bar-fill" style="width:' + pct + '%;background:' + meta[e].color + '"></div></div>' +
           '<div class="text-xs text-muted mt-1">' + s.wins + ' win' + (s.wins === 1 ? '' : 's') + ', ' + losses + ' loss' + (losses === 1 ? '' : 'es') +
             ' — ' + pct.toFixed(1) + '% win rate on ' + s.settled + ' graded pick' + (s.settled === 1 ? '' : 's') + '</div>';
-        // v2.49.36: Exacta Box breakout, carried over from the original
-        // build -- the one bet shape with a real open question ("does
-        // boxing the model's top-2 by score beat chance"), previously
-        // invisible when pooled into the same engine-wide number as
-        // straight Win-type picks. Now a smaller, lighter, indented bar
-        // directly under its parent instead of a same-weight text row.
-        var exBox = s.byBetType && s.byBetType['Exacta Box'];
-        if (exBox && exBox.settled > 0) {
-          var exPct = Math.max(0, Math.min(100, exBox.winRate * 100));
-          var exRoi = exBox.roi != null ? fmtPct(exBox.roi * 100) : '—';
-          var exLosses = exBox.settled - exBox.wins;
-          row += '<div class="mt-2" style="padding-left:1rem">' +
-            '<div class="flex justify-between items-baseline mb-1">' +
-              '<span class="text-xs text-muted">↳ Exacta Box bets only</span>' +
-              '<span class="text-xs text-muted">' + exRoi + ' ROI</span>' +
-            '</div>' +
-            '<div class="aa-bar-track aa-bar-track-sm"><div class="aa-bar-fill aa-bar-fill-sm" style="width:' + exPct + '%;background:' + meta[e].color + '"></div></div>' +
-            '<div class="text-xs text-muted mt-1">' + exBox.wins + '-' + exLosses + ' (' + exPct.toFixed(1) + '%) on ' + exBox.settled + ' exacta box pick' + (exBox.settled === 1 ? '' : 's') + '</div>' +
-          '</div>';
-        }
         row += '</div>';
         return row;
       }).join('');
