@@ -3447,7 +3447,7 @@ async function handlePickStats(request, env, origin) {
   const stats = {};
 
   function ensureEngine(eng) {
-    if (!stats[eng]) stats[eng] = { picks: 0, settled: 0, wins: 0, places: 0, totalReturn: 0, totalStake: 0, byBetType: {} };
+    if (!stats[eng]) stats[eng] = { picks: 0, settled: 0, wins: 0, places: 0, totalReturn: 0, totalStake: 0, byBetType: {}, byBetTag: {} };
     return stats[eng];
   }
   // v2.49.36: break out settled results by betType (Win vs. Exacta Box)
@@ -3462,6 +3462,19 @@ async function handlePickStats(request, env, origin) {
     const bt = betType || "Win";
     if (!s.byBetType[bt]) s.byBetType[bt] = { settled: 0, wins: 0, totalReturn: 0, totalStake: 0 };
     return s.byBetType[bt];
+  }
+  // v2.49.48: break out settled results by betTag (best/value/action) --
+  // this is the engine's own conviction level, distinct from betType (bet
+  // shape). Only meaningful for v2: baseline_ml/crowd always log
+  // betTag="best" as a leftover label regardless of race (see
+  // daily_pick_log.js), not a real conviction signal for those two.
+  // Requested directly, to watch how "high conviction only" ROI moves as
+  // more picks settle instead of computing it as a one-off.
+  function ensureBetTag(eng, betTag) {
+    const s = ensureEngine(eng);
+    const tag = betTag || "unknown";
+    if (!s.byBetTag[tag]) s.byBetTag[tag] = { settled: 0, wins: 0, totalReturn: 0, totalStake: 0 };
+    return s.byBetTag[tag];
   }
 
   // List picks (cap 1000 for now — sufficient through Saratoga meet).
@@ -3505,6 +3518,13 @@ async function handlePickStats(request, env, origin) {
     if (won) bts.wins++;
     bts.totalReturn += payout;
     bts.totalStake += stake;
+
+    const betTag = (pick && pick.betTag) || "unknown";
+    const btag = ensureBetTag(eng, betTag);
+    btag.settled++;
+    if (won) btag.wins++;
+    btag.totalReturn += payout;
+    btag.totalStake += stake;
   }
   // Derived ROI
   for (const e of Object.keys(stats)) {
@@ -3514,6 +3534,11 @@ async function handlePickStats(request, env, origin) {
     s.roi = s.totalStake > 0 ? (s.totalReturn - s.totalStake) / s.totalStake : null;
     for (const bt of Object.keys(s.byBetType)) {
       const b = s.byBetType[bt];
+      b.winRate = b.settled > 0 ? b.wins / b.settled : null;
+      b.roi = b.totalStake > 0 ? (b.totalReturn - b.totalStake) / b.totalStake : null;
+    }
+    for (const tag of Object.keys(s.byBetTag)) {
+      const b = s.byBetTag[tag];
       b.winRate = b.settled > 0 ? b.wins / b.settled : null;
       b.roi = b.totalStake > 0 ? (b.totalReturn - b.totalStake) / b.totalStake : null;
     }

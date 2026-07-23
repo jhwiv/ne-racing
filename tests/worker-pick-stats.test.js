@@ -92,6 +92,38 @@ test('GET /api/picks/stats: byBetType falls back to "Win" for legacy outcome rec
   assert.equal(v1.byBetType.Win.wins, 1, 'legacy record must still use the position===1 fallback for won');
 });
 
+test('GET /api/picks/stats breaks out settled results by betTag (conviction level) within v2', async () => {
+  // Best Bet (highest conviction) wins; Action Bet (lower conviction) loses.
+  const kv = makeFakeKv();
+  await kv.put('pick:SAR:2026-07-13:1:v2:3', JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win', betTag: 'best' }), { metadata: { engine: 'v2' } });
+  await kv.put('outcome:SAR:2026-07-13:1:v2:3', JSON.stringify({ won: true, payout: 6.4, betType: 'Win', position: 1 }));
+
+  await kv.put('pick:SAR:2026-07-13:2:v2:5', JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win', betTag: 'action' }), { metadata: { engine: 'v2' } });
+  await kv.put('outcome:SAR:2026-07-13:2:v2:5', JSON.stringify({ won: false, payout: 0, betType: 'Win', position: 4 }));
+
+  const env = { ENGINE_ACCURACY: kv };
+  const body = await callPickStats(env);
+  const v2 = body.engines.v2;
+
+  assert.ok(v2.byBetTag, 'byBetTag breakdown must be present');
+  assert.equal(v2.byBetTag.best.settled, 1);
+  assert.equal(v2.byBetTag.best.wins, 1);
+  assert.equal(v2.byBetTag.best.roi, 2.2, '(6.4 - 2) / 2 = 2.2');
+  assert.equal(v2.byBetTag.action.settled, 1);
+  assert.equal(v2.byBetTag.action.wins, 0);
+  assert.equal(v2.byBetTag.action.roi, -1);
+});
+
+test('GET /api/picks/stats: byBetTag falls back to "unknown" for a pick record missing betTag entirely', async () => {
+  const kv = makeFakeKv();
+  await kv.put('pick:SAR:2026-07-13:1:v2:3', JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win' }), { metadata: { engine: 'v2' } });
+  await kv.put('outcome:SAR:2026-07-13:1:v2:3', JSON.stringify({ won: true, payout: 6.4, betType: 'Win', position: 1 }));
+
+  const env = { ENGINE_ACCURACY: kv };
+  const body = await callPickStats(env);
+  assert.equal(body.engines.v2.byBetTag.unknown.settled, 1);
+});
+
 test('GET /api/picks/stats: engine filter still scopes byBetType correctly', async () => {
   const kv = makeFakeKv();
   await kv.put('pick:SAR:2026-07-13:1:v2:3', JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win' }), { metadata: { engine: 'v2' } });

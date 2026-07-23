@@ -1,5 +1,36 @@
 # NE Racing — Changelog
 
+## v2.49.48-brisnet — Analytics: by-conviction (Best Bet/Value Play/Action Bet) ROI breakdown (2026-07-23)
+
+Direct follow-up: asked what the math looks like if only high-conviction
+(Best Bet) picks were followed. Pulled real data via
+scripts/qa/verify_analytics_numbers.js's new betTag breakdown (previous
+commit) and found the opposite of the intuitive answer -- Best Bet
+(highest conviction) is the worst-performing slice at -49.0% ROI (1-5,
+n=6), Value Play is -100.0% (0-5, n=5), and Action Bet alone carries the
+engine's entire +30.1% overall ROI at +87.8% (7-17, n=24). Asked to add
+this to the app so it can be watched as more picks settle, rather than
+being a one-off answer.
+
+worker.js: `/api/picks/stats` now also returns `byBetTag` per engine
+(alongside the existing `byBetType`), computed from each pick's real
+`betTag` field. Only meaningful for `v2` -- `baseline_ml`/`crowd` always
+log `betTag="best"` as a leftover label regardless of race, not a real
+conviction signal for those two.
+
+app.html/index.html: `renderAnalyticsAccuracy()` now shows an indented "By
+conviction" breakdown (Best Bet / Value Play / Action Bet, each with
+win-loss, win rate, and ROI) under Our Picks only -- flags "(small sample)"
+under 10 settled picks so this can't be misread as a settled verdict the
+same way the unqualified hero ROI was before v2.49.47.
+
+New worker.js tests cover the byBetTag aggregation directly. Verified via
+a real Playwright screenshot with the actual confirmed numbers -- renders
+cleanly under Our Picks only, no layout regression, no console errors.
+Full suite: 340 total, 338 pass, 1 known-intentional fail, 1 skipped (was
+338/336/1/1). **Requires a manual `wrangler deploy`** for the new
+`byBetTag` field to actually appear (worker.js change).
+
 ## v2.49.47-brisnet — Hero ROI figure paired with win rate, so it can't read as "way more effective" (2026-07-23)
 
 Direct follow-up to v2.49.46. Asked directly whether it's misleading that

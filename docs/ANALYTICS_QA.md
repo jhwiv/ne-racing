@@ -11,6 +11,36 @@ again.
 
 ---
 
+## 2026-07-23 (v2.49.48) — By-conviction (betTag) ROI breakdown added
+
+Follow-up: what would the math look like if only high-conviction (Best Bet)
+picks were followed? Pulled real data — the answer is the opposite of the
+intuitive one:
+
+| Conviction (betTag) | Settled | W-L | Win rate | ROI |
+|---|---|---|---|---|
+| Best Bet (highest conviction) | 6 | 1-5 | 16.7% | **-49.0%** |
+| Value Play | 5 | 0-5 | 0.0% | **-100.0%** |
+| Action Bet (lower conviction) | 24 | 7-17 | 29.2% | **+87.8%** |
+
+Our Picks' entire +30.1% overall ROI is carried by Action Bet, the largest
+and lowest-conviction bucket — the headline "high conviction" Best Bet
+picks are actually losing. Both Best Bet (n=6) and Value Play (n=5) are
+single-digit samples, genuinely too small to treat as a settled verdict —
+flagged as such in the UI, not stated as fact.
+
+**Added:** `worker.js`'s `/api/picks/stats` now returns `byBetTag` per
+engine (mirrors the existing `byBetType`); the client renders an indented
+"By conviction" breakdown under Our Picks only (not meaningful for
+baseline_ml/crowd — see below), with a "(small sample)" flag under 10
+settled picks. Re-run `scripts/qa/verify_analytics_numbers.js` periodically
+to watch these three numbers move as more picks settle — that was the
+explicit point of adding this rather than treating it as a one-off answer.
+
+**Requires a manual `wrangler deploy`** — this touches `worker.js`.
+
+---
+
 ## 2026-07-23 (v2.49.47) — Hero ROI figure could read as "way more effective" than the win rates support
 
 Direct follow-up question after the fixes below: is it misleading that the
