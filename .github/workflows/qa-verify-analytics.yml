@@ -1,0 +1,29 @@
+name: QA - Verify Analytics Numbers
+
+# On-demand cross-check of every number the Analytics tab's "Pick Accuracy
+# by Source" card displays. Independently recomputes wins/losses/stake/
+# return/ROI from raw /api/picks/history records and diffs against what
+# /api/picks/stats reports -- never trusts the aggregation without a
+# from-scratch recomputation. See docs/ANALYTICS_QA.md for the mandatory
+# process this is part of, and scripts/qa/verify_analytics_numbers.js for
+# the script itself.
+#
+# Manual trigger only -- this is a verification tool, not a scheduled job.
+# Fails the run (non-zero exit) if any discrepancy is found.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify Analytics numbers against the live worker
+        run: node scripts/qa/verify_analytics_numbers.js
