@@ -10,6 +10,22 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { recomputeFromHistory, almostEqual } = require('../scripts/qa/verify_analytics_numbers');
 
+test('recomputeFromHistory: byBetTag breaks out conviction level (best/value/action) separately', () => {
+  const picks = [
+    { settled: true, won: true, amount: 2, payout: 12, betType: 'Win', betTag: 'best' },
+    { settled: true, won: false, amount: 2, payout: 0, betType: 'Win', betTag: 'best' },
+    { settled: true, won: false, amount: 4, payout: 0, betType: 'Exacta Box', betTag: 'value' },
+    { settled: true, won: false, amount: 2, payout: 0, betType: 'Win', betTag: 'action' },
+    { settled: false, won: null, amount: 2, payout: null, betType: 'Win', betTag: 'best' }, // pending, excluded
+  ];
+  const r = recomputeFromHistory(picks);
+  assert.equal(r.byBetTag.best.settled, 2, 'only the 2 settled best-tagged picks count, not the pending one');
+  assert.equal(r.byBetTag.best.wins, 1);
+  assert.ok(almostEqual(r.byBetTag.best.roi, (12 - 4) / 4), 'high-conviction (best) slice ROI: $12 returned on $4 staked');
+  assert.equal(r.byBetTag.value.settled, 1);
+  assert.equal(r.byBetTag.action.settled, 1);
+});
+
 test('recomputeFromHistory: basic wins/losses/ROI arithmetic', () => {
   const picks = [
     { settled: true, won: true, amount: 2, payout: 8.4, betType: 'Win' },

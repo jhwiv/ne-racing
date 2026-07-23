@@ -44,8 +44,12 @@ function almostEqual(a, b, eps) {
   return Math.abs(a - b) <= (eps || 0.0006); // 0.06 percentage points
 }
 
-/** Recompute settled/wins/losses/stake/return/roi from raw history records. */
-function recomputeFromHistory(picks) {
+/**
+ * Recompute settled/wins/losses/stake/return/roi for an arbitrary subset of
+ * history records -- used both for the whole-engine numbers and for a
+ * betTag slice (e.g. "what if we only followed betTag === 'best'").
+ */
+function recomputeSlice(picks) {
   const settledPicks = picks.filter(p => p.settled);
   const wins = settledPicks.filter(p => p.won === true).length;
   const losses = settledPicks.length - wins;
@@ -53,29 +57,37 @@ function recomputeFromHistory(picks) {
   const totalReturn = settledPicks.reduce((s, p) => s + (parseFloat(p.payout) || 0), 0);
   const winRate = settledPicks.length > 0 ? wins / settledPicks.length : null;
   const roi = totalStake > 0 ? (totalReturn - totalStake) / totalStake : null;
+  return { picksLogged: picks.length, settled: settledPicks.length, wins, losses, winRate, roi, totalStake, totalReturn };
+}
 
-  const byBetType = {};
+/** Groups settled picks by keyFn(pick) and recomputes each group's slice. */
+function groupBy(settledPicks, keyFn) {
+  const groups = {};
   settledPicks.forEach(p => {
-    const bt = p.betType || 'Win';
-    if (!byBetType[bt]) byBetType[bt] = { settled: 0, wins: 0, totalStake: 0, totalReturn: 0 };
-    const b = byBetType[bt];
-    b.settled++;
-    if (p.won === true) b.wins++;
-    b.totalStake += parseFloat(p.amount) || 0;
-    b.totalReturn += parseFloat(p.payout) || 0;
+    const key = keyFn(p);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p);
   });
-  Object.keys(byBetType).forEach(bt => {
-    const b = byBetType[bt];
-    b.winRate = b.settled > 0 ? b.wins / b.settled : null;
-    b.roi = b.totalStake > 0 ? (b.totalReturn - b.totalStake) / b.totalStake : null;
-  });
+  const out = {};
+  Object.keys(groups).forEach(key => { out[key] = recomputeSlice(groups[key]); });
+  return out;
+}
 
-  return {
-    picksLogged: picks.length,
-    settled: settledPicks.length,
-    wins, losses, winRate, roi, totalStake, totalReturn,
-    byBetType,
-  };
+/** Recompute settled/wins/losses/stake/return/roi from raw history records. */
+function recomputeFromHistory(picks) {
+  const whole = recomputeSlice(picks);
+  const settledPicks = picks.filter(p => p.settled);
+  const byBetType = groupBy(settledPicks, p => p.betType || 'Win');
+  // betTag distinguishes conviction level for the engine's OWN picks (v2):
+  // 'best' = the single headline Best Bet (highest conviction), 'value' =
+  // Value Play, 'action' = Action Bet (lower-conviction supplementary
+  // picks). For baseline_ml/crowd, betTag is always the literal string
+  // 'best' regardless of race -- it is NOT a conviction signal for those
+  // two, just a leftover label; do not read anything into their betTag
+  // breakdown.
+  const byBetTag = groupBy(settledPicks, p => p.betTag || 'unknown');
+
+  return Object.assign({}, whole, { byBetType, byBetTag });
 }
 
 async function fetchAllHistory(workerUrl, engine) {
@@ -144,6 +156,15 @@ async function main() {
         if (!almostEqual(sb.roi, b.roi, 0.002)) problems.push(`${engine}/${bt}: ROI mismatch -- stats=${fmtPct(sb.roi)} recomputed=${fmtPct(b.roi)}`);
       }
     });
+
+    if (engine === 'v2') {
+      console.log('  --- by conviction (betTag) -- only meaningful for v2; baseline_ml/crowd always log betTag="best" regardless of race, it is not a conviction signal for them ---');
+      ['best', 'value', 'action'].forEach(tag => {
+        const b = r.byBetTag[tag];
+        if (!b) { console.log(`  [${tag}] no settled picks`); return; }
+        console.log(`  [${tag}] settled=${b.settled} wins=${b.wins} losses=${b.losses} winRate=${fmtPct(b.winRate)} roi=${fmtPct(b.roi)} stake=$${b.totalStake.toFixed(2)} return=$${b.totalReturn.toFixed(2)}`);
+      });
+    }
     console.log('');
   }
 
@@ -176,4 +197,4 @@ if (require.main === module) {
   main().catch(e => { console.error(e); process.exit(1); });
 }
 
-module.exports = { recomputeFromHistory, almostEqual, fmtPct };
+module.exports = { recomputeFromHistory, recomputeSlice, groupBy, almostEqual, fmtPct };
