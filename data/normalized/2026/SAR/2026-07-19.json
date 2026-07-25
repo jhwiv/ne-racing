@@ -1,50 +1,153 @@
 {
   "track": "SAR",
   "date": "2026-07-19",
-  "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
-  "pulled_at": "2026-07-25T06:49:49.884Z",
+  "source": "RACE_HISTORY + ENTRIES_R2 (worker.js), merged by pull_entries_history.js",
+  "pulled_at": "2026-07-25T15:43:29.244Z",
   "races": [
     {
       "id": "SAR-20260719-R1",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 1,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 6,
-            "horseName": "Sturdy",
-            "position": 1,
-            "win_payout": 6.56
-          },
-          {
-            "pp": 4,
-            "horseName": "American Grant",
-            "position": 2
-          },
-          {
-            "pp": 3,
-            "horseName": "McDiesel",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 29.1
-          },
-          {
-            "type": "trifecta",
-            "payout": 47.71
-          },
-          {
-            "type": "superfecta",
-            "payout": 11.39
-          }
-        ]
-      },
-      "race_number": 1,
+      "type": null,
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Thorsness",
+          "ml": "8-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "CLAIMING($20,000)",
+          "scratched": true
+        },
+        {
+          "pp": 8,
+          "name": "Notfanutin",
+          "ml": "30-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 2,
+          "name": "Airborne Elite",
+          "ml": "12-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "CLAIMING($20,000)",
+          "scratched": true
+        },
+        {
+          "pp": 3,
+          "name": "McDiesel",
+          "ml": "6-1",
+          "jockey": "Zayas E J",
+          "trainer": "R. Rodriguez",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 12,
+          "trainerPct": 18,
+          "lastClass": "ALLOWANCE",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "American Grant",
+          "ml": "12-1",
+          "jockey": "Santana R Jr",
+          "trainer": "B. Brown",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 17,
+          "trainerPct": 27,
+          "lastClass": "STARTER OPTIONAL CLAIMING($55,000)",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Natural Hunk",
+          "ml": "15-1",
+          "jockey": "Rodriguez J",
+          "trainer": "Ferraro James W",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 9,
+          "trainerPct": 9,
+          "lastClass": "CLAIMING($20,000)",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Sturdy",
+          "ml": "7-5",
+          "jockey": "Franco M",
+          "trainer": "Weaver George",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "lastClass": "ALLOWANCE OPTIONAL CLAIMING($50,000)",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Curvino",
+          "ml": "9-5",
+          "jockey": "Ortiz I Jr",
+          "trainer": "Rice Linda",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 24,
+          "trainerPct": 10,
+          "lastClass": "CLAIMING($55,000)",
+          "scratched": false
+        }
+      ],
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -83,49 +186,322 @@
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260719-R2",
-      "track": "SAR",
-      "date": "2026-07-19",
-      "num": 2,
-      "horses": [],
+      "race_number": 1,
       "results": {
         "finish_positions": [
           {
-            "pp": 2,
-            "horseName": "Emergency Nine",
+            "pp": 6,
+            "horseName": "Sturdy",
             "position": 1,
-            "win_payout": 8.3
-          },
-          {
-            "pp": 12,
-            "horseName": "Waitin'onapromise",
-            "position": 2
+            "win_payout": 6.56
           },
           {
             "pp": 4,
-            "horseName": "Froghollowsummer",
+            "horseName": "American Grant",
+            "position": 2
+          },
+          {
+            "pp": 3,
+            "horseName": "McDiesel",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 16.76
+            "payout": 29.1
           },
           {
             "type": "trifecta",
-            "payout": 242.83
+            "payout": 47.71
           },
           {
             "type": "superfecta",
-            "payout": 186.22
+            "payout": 11.39
           }
         ]
-      },
-      "race_number": 2,
+      }
+    },
+    {
+      "id": "SAR-20260719-R2",
+      "track": "SAR",
+      "date": "2026-07-19",
+      "num": 2,
+      "type": null,
+      "horses": [
+        {
+          "pp": 16,
+          "name": "Mischievous Jo",
+          "ml": "15-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 15,
+          "name": "Avery's Wonderland",
+          "ml": "12-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 13,
+          "name": "Stella Fortuna",
+          "ml": "15-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 14,
+          "name": "Garden of Grace",
+          "ml": "6-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": true
+        },
+        {
+          "pp": 1,
+          "name": "Iwokeuplikethis",
+          "ml": "12-1",
+          "jockey": "Lezcano J",
+          "trainer": "M. Nevin",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 15,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Emergency Nine",
+          "ml": "8-1",
+          "jockey": "Santana R Jr",
+          "trainer": "M. Clement",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 17,
+          "trainerPct": 8,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Montevertine",
+          "ml": "15-1",
+          "jockey": "Zayas E J",
+          "trainer": "Bond Harold James",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 12,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Froghollowsummer",
+          "ml": "15-1",
+          "jockey": "Silvera R",
+          "trainer": "Martin Carlos F",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 8,
+          "trainerPct": 11,
+          "lastClass": "MAIDEN CLAIMING($50,000)",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Raynham Hall",
+          "ml": "8-1",
+          "jockey": "Elliott C",
+          "trainer": "R. Rodriguez",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 7,
+          "trainerPct": 18,
+          "lastClass": "MAIDEN CLAIMING($50,000)",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Dreamy Girl",
+          "ml": "15-1",
+          "jockey": "Davis D",
+          "trainer": "J. Antonucci",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 16,
+          "trainerPct": 12,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Battle Rifle",
+          "ml": "50-1",
+          "jockey": "Harkie H K",
+          "trainer": "R. Davis",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 6,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "All Bright",
+          "ml": "10-1",
+          "jockey": "Davis K",
+          "trainer": "D. Duggan",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 8,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "Forever to Go",
+          "ml": "6-1",
+          "jockey": "Carmouche K",
+          "trainer": "Hennig Mark",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 14,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 10,
+          "name": "Ticket to Ride",
+          "ml": "7-2",
+          "jockey": "Ortiz I Jr",
+          "trainer": "S. Joseph, Jr.",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 24,
+          "trainerPct": 16,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 11,
+          "name": "Mizty Fog",
+          "ml": "15-1",
+          "jockey": "Saez L",
+          "trainer": "R. Falcone, Jr.",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 19,
+          "trainerPct": 8,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 12,
+          "name": "Waitin'onapromise",
+          "ml": "3-1",
+          "jockey": "Ortiz J L",
+          "trainer": "A. Rice",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 22,
+          "trainerPct": 20,
+          "lastClass": null,
+          "scratched": false
+        }
+      ],
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -170,14 +546,265 @@
           "_nyraPipeline": true
         }
       ],
-      "type": null
+      "race_number": 2,
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 2,
+            "horseName": "Emergency Nine",
+            "position": 1,
+            "win_payout": 8.3
+          },
+          {
+            "pp": 12,
+            "horseName": "Waitin'onapromise",
+            "position": 2
+          },
+          {
+            "pp": 4,
+            "horseName": "Froghollowsummer",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 16.76
+          },
+          {
+            "type": "trifecta",
+            "payout": 242.83
+          },
+          {
+            "type": "superfecta",
+            "payout": 186.22
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20260719-R3",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 3,
-      "horses": [],
+      "type": null,
+      "horses": [
+        {
+          "pp": 10,
+          "name": "Trail Blaze",
+          "ml": "8-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 1,
+          "name": "Bargain Purchase",
+          "ml": "3-1",
+          "jockey": "Franco M",
+          "trainer": "C. Brown",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 18,
+          "trainerPct": 27,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Baby Meanie",
+          "ml": "10-1",
+          "jockey": "Santana R Jr",
+          "trainer": "Ferraro James W",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 17,
+          "trainerPct": 9,
+          "lastClass": "MAIDEN CLAIMING($20,000)",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Bootsy's a Rascal",
+          "ml": "15-1",
+          "jockey": "Rodriguez J",
+          "trainer": "Schettino Dominick A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 9,
+          "trainerPct": 9,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Start the Day",
+          "ml": "8-1",
+          "jockey": "Davis D",
+          "trainer": "Donk David",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 16,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Mr R T",
+          "ml": "5-1",
+          "jockey": "Prat F",
+          "trainer": "Jimenez Jose M",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 23,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN CLAIMING($55,000)",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Inherent Promise",
+          "ml": "8-1",
+          "jockey": "Gaffalione T",
+          "trainer": "Lewis Lisa L",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 17,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Big Brooklyn",
+          "ml": "15-1",
+          "jockey": "Davis K",
+          "trainer": "Martin Carlos F",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 8,
+          "trainerPct": 11,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Sfumato",
+          "ml": "5-2",
+          "jockey": "Alvarado J",
+          "trainer": "Mott William I",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 14,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "Yahearmenow",
+          "ml": "30-1",
+          "jockey": "Gonzalez C",
+          "trainer": "J. Hooper",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        }
+      ],
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 1,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Maggie Wolfendale",
+          "pick": 5,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - David Aragona",
+          "pick": 8,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 4,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 5,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 8,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 8,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "race_number": 3,
       "results": {
         "finish_positions": [
           {
@@ -211,30 +838,174 @@
             "payout": 122.42
           }
         ]
-      },
-      "race_number": 3,
+      }
+    },
+    {
+      "id": "SAR-20260719-R4",
+      "track": "SAR",
+      "date": "2026-07-19",
+      "num": 4,
+      "type": null,
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Celestial Body",
+          "ml": "15-1",
+          "jockey": "Saez L",
+          "trainer": "L. Bartkowski",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 19,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN OPTIONAL CLAIMING($75,000)",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Spitfire",
+          "ml": "2-1",
+          "jockey": "Zayas E J",
+          "trainer": "McPeek Kenneth G",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 12,
+          "trainerPct": 10,
+          "lastClass": "CLAIMING($10,000)",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Quality of Essence",
+          "ml": "12-1",
+          "jockey": "Davis D",
+          "trainer": "Margotta Anthony Jr",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 16,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN CLAIMING($30,000)",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Killa Sally",
+          "ml": "3-1",
+          "jockey": "Ortiz J L",
+          "trainer": "McPeek Kenneth G",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 22,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN OPTIONAL CLAIMING($50,000)",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Hot Gossip",
+          "ml": "8-1",
+          "jockey": "Franco M",
+          "trainer": "Rice Linda",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "lastClass": "ALLOWANCE OPTIONAL CLAIMING($100,000)",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Ubique",
+          "ml": "5-1",
+          "jockey": "Ortiz I Jr",
+          "trainer": "S. Joseph, Jr.",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 24,
+          "trainerPct": 16,
+          "lastClass": "MAIDEN OPTIONAL CLAIMING($75,000)",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Ur Desire",
+          "ml": "8-1",
+          "jockey": "Rodriguez J",
+          "trainer": "L. Schultz",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "lastClass": "ALLOWANCE OPTIONAL CLAIMING($125,000)",
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Sparkling Mama",
+          "ml": "5-1",
+          "jockey": "Prat F",
+          "trainer": "Schettino Dominick A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 23,
+          "trainerPct": 9,
+          "lastClass": "STARTER OPTIONAL CLAIMING($75,000)",
+          "scratched": false
+        }
+      ],
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 1,
+          "pick": 7,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Talking Horses - Maggie Wolfendale",
-          "pick": 5,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - David Aragona",
           "pick": 8,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
+          "source": "NYRA Talking Horses - David Aragona",
+          "pick": 9,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
           "source": "NYRA Talking Horses - Megan Burgess",
-          "pick": 4,
+          "pick": 9,
           "horseName": null,
           "_nyraPipeline": true
         },
@@ -246,7 +1017,7 @@
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 8,
+          "pick": 6,
           "horseName": null,
           "_nyraPipeline": true
         },
@@ -257,14 +1028,7 @@
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260719-R4",
-      "track": "SAR",
-      "date": "2026-07-19",
-      "num": 4,
-      "horses": [],
+      "race_number": 4,
       "results": {
         "finish_positions": [
           {
@@ -298,60 +1062,299 @@
             "payout": 161.76
           }
         ]
-      },
-      "race_number": 4,
-      "expertPicks": [
-        {
-          "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 7,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Maggie Wolfendale",
-          "pick": 8,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - David Aragona",
-          "pick": 9,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Megan Burgess",
-          "pick": 9,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Acacia Clement",
-          "pick": 5,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 6,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 8,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
-      "type": null
+      }
     },
     {
       "id": "SAR-20260719-R5",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 5,
-      "horses": [],
+      "type": null,
+      "horses": [
+        {
+          "pp": 14,
+          "name": "Suited Connectors",
+          "ml": "9-2",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 13,
+          "name": "Promise Me Amelody",
+          "ml": "5-2",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 1,
+          "name": "Factory Setting",
+          "ml": "3-1",
+          "jockey": "Prat F",
+          "trainer": "C. Brown",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 23,
+          "trainerPct": 27,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Little Finch",
+          "ml": "15-1",
+          "jockey": "Alvarado J",
+          "trainer": "Bond Harold James",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 14,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Amazing Gracer",
+          "ml": "4-1",
+          "jockey": "Franco M",
+          "trainer": "Bond Harold James",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Adroit",
+          "ml": "30-1",
+          "jockey": "Davis K",
+          "trainer": "Ferraro James W",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 8,
+          "trainerPct": 9,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Magic in My Eyes",
+          "ml": "20-1",
+          "jockey": "Rodriguez J",
+          "trainer": "A. Green",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "No Tide",
+          "ml": "10-1",
+          "jockey": "Gaffalione T",
+          "trainer": "P. Antonacci",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 17,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Okay Annie",
+          "ml": "5-1",
+          "jockey": "Davis D",
+          "trainer": "D. Duggan",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 16,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Saratoga Daisy",
+          "ml": "12-1",
+          "jockey": "Carmouche K",
+          "trainer": "Donk David",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 14,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "Rizz",
+          "ml": "8-1",
+          "jockey": "Ortiz I Jr",
+          "trainer": "A. Rice",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 24,
+          "trainerPct": 20,
+          "lastClass": "MAIDEN CLAIMING($10,000)",
+          "scratched": false
+        },
+        {
+          "pp": 10,
+          "name": "Ganderella",
+          "ml": "12-1",
+          "jockey": "Zayas E J",
+          "trainer": "Terranova John P II",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 12,
+          "trainerPct": 12,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 11,
+          "name": "Axis Point",
+          "ml": "20-1",
+          "jockey": "Saez L",
+          "trainer": "L. Bartkowski",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 19,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN OPTIONAL CLAIMING($75,000)",
+          "scratched": false
+        },
+        {
+          "pp": 12,
+          "name": "Pelican Pride",
+          "ml": "8-1",
+          "jockey": "Ortiz J L",
+          "trainer": "C. DeVaux",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 22,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        }
+      ],
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 3,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Maggie Wolfendale",
+          "pick": 7,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - David Aragona",
+          "pick": 4,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 5,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 4,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 1,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 6,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "race_number": 5,
       "results": {
         "finish_positions": [
           {
@@ -385,12 +1388,258 @@
             "payout": 510.16
           }
         ]
-      },
-      "race_number": 5,
+      }
+    },
+    {
+      "id": "SAR-20260719-R6",
+      "track": "SAR",
+      "date": "2026-07-19",
+      "num": 6,
+      "type": null,
+      "horses": [
+        {
+          "pp": 14,
+          "name": "Nodin",
+          "ml": "30-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 13,
+          "name": "Knee High",
+          "ml": "12-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 12,
+          "name": "Blackjack",
+          "ml": "5-2",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "ALLOWANCE",
+          "scratched": true
+        },
+        {
+          "pp": 11,
+          "name": "Hurricane Mo",
+          "ml": "7-2",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 1,
+          "name": "Ed Charles",
+          "ml": "8-1",
+          "jockey": "Alvarado J",
+          "trainer": "Englehart Chris",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 14,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Vapor Trail",
+          "ml": "12-1",
+          "jockey": "Silvera R",
+          "trainer": "Friedman Mitchell",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 8,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Bet Bold",
+          "ml": "12-1",
+          "jockey": "Lezcano J",
+          "trainer": "O. Barrera III",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 15,
+          "trainerPct": 9,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "George St.",
+          "ml": "7-2",
+          "jockey": "Ortiz I Jr",
+          "trainer": "B. Cox",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 24,
+          "trainerPct": 21,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Diamond Juan",
+          "ml": "15-1",
+          "jockey": "Gutierrez R",
+          "trainer": "Jimenez Jose M",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 13,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Braums Run",
+          "ml": "4-1",
+          "jockey": "Davis D",
+          "trainer": "Casse Mark",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 16,
+          "trainerPct": 10,
+          "lastClass": "Royal Palm Juvenile S.",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Crypto King",
+          "ml": "3-1",
+          "jockey": "Franco M",
+          "trainer": "R. Mott",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 18,
+          "trainerPct": 23,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Tonja's Treasure",
+          "ml": "6-1",
+          "jockey": "Prat F",
+          "trainer": "Terranova John P II",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 23,
+          "trainerPct": 12,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "Tutto a Posto",
+          "ml": "15-1",
+          "jockey": "Zayas E J",
+          "trainer": "Hennig Mark",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 12,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 10,
+          "name": "Covered Option",
+          "ml": "15-1",
+          "jockey": "Saez L",
+          "trainer": "L. Bartkowski",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 19,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        }
+      ],
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 3,
+          "pick": 8,
           "horseName": null,
           "_nyraPipeline": true
         },
@@ -402,43 +1651,36 @@
         },
         {
           "source": "NYRA Talking Horses - David Aragona",
-          "pick": 4,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Megan Burgess",
           "pick": 5,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
           "source": "NYRA Talking Horses - Acacia Clement",
-          "pick": 4,
+          "pick": 6,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 1,
+          "pick": 4,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 6,
+          "pick": 7,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260719-R6",
-      "track": "SAR",
-      "date": "2026-07-19",
-      "num": 6,
-      "horses": [],
+      "race_number": 6,
       "results": {
         "finish_positions": [
           {
@@ -472,95 +1714,186 @@
             "payout": 264.88
           }
         ]
-      },
-      "race_number": 6,
-      "expertPicks": [
-        {
-          "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 8,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Maggie Wolfendale",
-          "pick": 7,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - David Aragona",
-          "pick": 5,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Megan Burgess",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Acacia Clement",
-          "pick": 6,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 4,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 7,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
-      "type": null
+      }
     },
     {
       "id": "SAR-20260719-R7",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 7,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 1,
-            "horseName": "Silvology",
-            "position": 1,
-            "win_payout": 13.68
-          },
-          {
-            "pp": 7,
-            "horseName": "Vronti (GB)",
-            "position": 2
-          },
-          {
-            "pp": 5,
-            "horseName": "Snipsnippitysnip",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 24.46
-          },
-          {
-            "type": "trifecta",
-            "payout": 101.89
-          },
-          {
-            "type": "superfecta",
-            "payout": 67.79
-          }
-        ]
-      },
-      "race_number": 7,
+      "type": null,
+      "horses": [
+        {
+          "pp": 10,
+          "name": "Domino Vitali",
+          "ml": "9-5",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 9,
+          "name": "Concurrently",
+          "ml": "2-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 1,
+          "name": "Silvology",
+          "ml": "5-1",
+          "jockey": "Davis D",
+          "trainer": "McGaughey III Claude R",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 16,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Agia Marina",
+          "ml": "6-1",
+          "jockey": "Rodriguez J",
+          "trainer": "A. Green",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "lastClass": "ALLOWANCE",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "National Archive",
+          "ml": "9-2",
+          "jockey": "Prat F",
+          "trainer": "M. Clement",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 23,
+          "trainerPct": 8,
+          "lastClass": "ALLOWANCE OPTIONAL CLAIMING($45,000)",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Sailaway",
+          "ml": "20-1",
+          "jockey": "Santana R Jr",
+          "trainer": "G. Rodriguez",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 17,
+          "trainerPct": 18,
+          "lastClass": "ALLOWANCE OPTIONAL CLAIMING($50,000)",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Snipsnippitysnip",
+          "ml": "8-1",
+          "jockey": "Gaffalione T",
+          "trainer": "B. Walsh",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 17,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Don't Jinx It",
+          "ml": "9-2",
+          "jockey": "Franco M",
+          "trainer": "M. Clement",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 18,
+          "trainerPct": 8,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Vronti (GB)",
+          "ml": "5-2",
+          "jockey": "Ortiz I Jr",
+          "trainer": "Motion H Graham",
+          "speedFigs": [
+            104,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 24,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Sol d'Oro",
+          "ml": "5-1",
+          "jockey": "Ortiz J L",
+          "trainer": "J. Sharp",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 22,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        }
+      ],
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -605,49 +1938,169 @@
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260719-R8",
-      "track": "SAR",
-      "date": "2026-07-19",
-      "num": 8,
-      "horses": [],
+      "race_number": 7,
       "results": {
         "finish_positions": [
           {
             "pp": 1,
-            "horseName": "Georgia Magic",
+            "horseName": "Silvology",
             "position": 1,
-            "win_payout": 13.28
+            "win_payout": 13.68
           },
           {
-            "pp": 4,
-            "horseName": "Iron Dome",
+            "pp": 7,
+            "horseName": "Vronti (GB)",
             "position": 2
           },
           {
-            "pp": 6,
-            "horseName": "Freddie B",
+            "pp": 5,
+            "horseName": "Snipsnippitysnip",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 15.15
+            "payout": 24.46
           },
           {
             "type": "trifecta",
-            "payout": 47.51
+            "payout": 101.89
           },
           {
             "type": "superfecta",
-            "payout": 16.81
+            "payout": 67.79
           }
         ]
-      },
-      "race_number": 8,
+      }
+    },
+    {
+      "id": "SAR-20260719-R8",
+      "track": "SAR",
+      "date": "2026-07-19",
+      "num": 8,
+      "type": null,
+      "horses": [
+        {
+          "pp": 3,
+          "name": "Envision",
+          "ml": "8-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 1,
+          "name": "Georgia Magic",
+          "ml": "3-1",
+          "jockey": "Rodriguez J",
+          "trainer": "S. Schauer",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "lastClass": "ALLOWANCE",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Playa Del Mar",
+          "ml": "2-1",
+          "jockey": "Franco M",
+          "trainer": "Rice Linda",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "lastClass": "STARTER ALLOWANCE",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Iron Dome",
+          "ml": "9-5",
+          "jockey": "Saez L",
+          "trainer": "Asmussen Steven M",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 19,
+          "trainerPct": 17,
+          "lastClass": "ALLOWANCE",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Thrilla",
+          "ml": "10-1",
+          "jockey": "Alvarado J",
+          "trainer": "Romans Dale",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 14,
+          "trainerPct": 10,
+          "lastClass": "STARTER ALLOWANCE",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Freddie B",
+          "ml": "12-1",
+          "jockey": "Elliott C",
+          "trainer": "McPeek Kenneth G",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 7,
+          "trainerPct": 10,
+          "lastClass": "ALLOWANCE",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Forever Man",
+          "ml": "15-1",
+          "jockey": "Davis K",
+          "trainer": "Proctor Thomas F",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 8,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        }
+      ],
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -692,49 +2145,288 @@
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260719-R9",
-      "track": "SAR",
-      "date": "2026-07-19",
-      "num": 9,
-      "horses": [],
+      "race_number": 8,
       "results": {
         "finish_positions": [
           {
-            "pp": 2,
-            "horseName": "Learntodiscover (GB)",
+            "pp": 1,
+            "horseName": "Georgia Magic",
             "position": 1,
-            "win_payout": 49.96
+            "win_payout": 13.28
           },
           {
-            "pp": 3,
-            "horseName": "Throckmorton",
+            "pp": 4,
+            "horseName": "Iron Dome",
             "position": 2
           },
           {
-            "pp": 5,
-            "horseName": "Monster",
+            "pp": 6,
+            "horseName": "Freddie B",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 175.57
+            "payout": 15.15
           },
           {
             "type": "trifecta",
-            "payout": 881.61
+            "payout": 47.51
           },
           {
             "type": "superfecta",
-            "payout": 2806.48
+            "payout": 16.81
           }
         ]
-      },
-      "race_number": 9,
+      }
+    },
+    {
+      "id": "SAR-20260719-R9",
+      "track": "SAR",
+      "date": "2026-07-19",
+      "num": 9,
+      "type": null,
+      "horses": [
+        {
+          "pp": 14,
+          "name": "Oscar's Hope",
+          "ml": "4-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 8,
+          "name": "Cy Fair",
+          "ml": "9-5",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 1,
+          "name": "Ewing",
+          "ml": "6-1",
+          "jockey": "Ortiz J L",
+          "trainer": "Casse Mark",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 22,
+          "trainerPct": 10,
+          "lastClass": "STARTER ALLOWANCE",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Learntodiscover (GB)",
+          "ml": "20-1",
+          "jockey": "Gaffalione T",
+          "trainer": "B. Walsh",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 17,
+          "trainerPct": 10,
+          "lastClass": "Cutler Bay S.",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Throckmorton",
+          "ml": "10-1",
+          "jockey": "Saez L",
+          "trainer": "C. Summers",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 19,
+          "trainerPct": 10,
+          "lastClass": "William Walker S.",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Intricate Spirit",
+          "ml": "12-1",
+          "jockey": "Franco M",
+          "trainer": "M. Clement",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 18,
+          "trainerPct": 8,
+          "lastClass": "Paradise Creek S.",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Monster",
+          "ml": "20-1",
+          "jockey": "Zayas E J",
+          "trainer": "J. D'Angelo",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 12,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Unwritten Rule",
+          "ml": "12-1",
+          "jockey": "Lezcano J",
+          "trainer": "Proctor Thomas F",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 15,
+          "trainerPct": 10,
+          "lastClass": "ALLOWANCE OPTIONAL CLAIMING($75,000)",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Longshoreman",
+          "ml": "12-1",
+          "jockey": "Rodriguez J",
+          "trainer": "Ward Wesley A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "lastClass": "Woodhaven S.",
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "Stradale",
+          "ml": "12-1",
+          "jockey": "Santana R Jr",
+          "trainer": "Asmussen Steven M",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 17,
+          "trainerPct": 17,
+          "lastClass": "Bachelor S.",
+          "scratched": false
+        },
+        {
+          "pp": 10,
+          "name": "Johnny's Red Storm",
+          "ml": "5-1",
+          "jockey": "Prat F",
+          "trainer": "Weaver George",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 23,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 11,
+          "name": "Rockies Balboa",
+          "ml": "30-1",
+          "jockey": "Davis D",
+          "trainer": "Romans Dale",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 16,
+          "trainerPct": 10,
+          "lastClass": "ALLOWANCE OPTIONAL CLAIMING($125,000)",
+          "scratched": false
+        },
+        {
+          "pp": 12,
+          "name": "Bobrovsky",
+          "ml": "10-1",
+          "jockey": "Alvarado J",
+          "trainer": "Romans Dale",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 14,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 13,
+          "name": "El Magnate",
+          "ml": "8-1",
+          "jockey": "Ortiz I Jr",
+          "trainer": "Casse Mark",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 24,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        }
+      ],
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -779,49 +2471,271 @@
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260719-R10",
-      "track": "SAR",
-      "date": "2026-07-19",
-      "num": 10,
-      "horses": [],
+      "race_number": 9,
       "results": {
         "finish_positions": [
           {
             "pp": 2,
-            "horseName": "Roagna",
+            "horseName": "Learntodiscover (GB)",
             "position": 1,
-            "win_payout": 10.7
+            "win_payout": 49.96
           },
           {
             "pp": 3,
-            "horseName": "Mermaid",
+            "horseName": "Throckmorton",
             "position": 2
           },
           {
-            "pp": 10,
-            "horseName": "Greyjoy",
+            "pp": 5,
+            "horseName": "Monster",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 29.27
+            "payout": 175.57
           },
           {
             "type": "trifecta",
-            "payout": 88.07
+            "payout": 881.61
           },
           {
             "type": "superfecta",
-            "payout": 50.67
+            "payout": 2806.48
           }
         ]
-      },
-      "race_number": 10,
+      }
+    },
+    {
+      "id": "SAR-20260719-R10",
+      "track": "SAR",
+      "date": "2026-07-19",
+      "num": 10,
+      "type": null,
+      "horses": [
+        {
+          "pp": 11,
+          "name": "So Vain",
+          "ml": "4-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "CLAIMING($20,000)",
+          "scratched": true
+        },
+        {
+          "pp": 12,
+          "name": "Tahila",
+          "ml": "5-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "CLAIMING($20,000)",
+          "scratched": true
+        },
+        {
+          "pp": 7,
+          "name": "Bossy Dish",
+          "ml": "15-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "STARTER ALLOWANCE",
+          "scratched": true
+        },
+        {
+          "pp": 13,
+          "name": "Here'syourtrouble",
+          "ml": "8-1",
+          "jockey": "SCRATCHED",
+          "trainer": "N/A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": true
+        },
+        {
+          "pp": 1,
+          "name": "Twirly",
+          "ml": "6-1",
+          "jockey": "Lezcano J",
+          "trainer": "Mott William I",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 15,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Roagna",
+          "ml": "7-2",
+          "jockey": "Zayas E J",
+          "trainer": "Bond Harold James",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 12,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Mermaid",
+          "ml": "4-1",
+          "jockey": "Santana R Jr",
+          "trainer": "Dutrow Anthony W",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 17,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN CLAIMING($12,500)",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Luckforyou",
+          "ml": "20-1",
+          "jockey": "Davis K",
+          "trainer": "J. Romero",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 8,
+          "trainerPct": 10,
+          "lastClass": "CLAIMING($55,000)",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Artistic Success",
+          "ml": "5-2",
+          "jockey": "Ortiz I Jr",
+          "trainer": "J. Sharp",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 24,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Leslie's Star",
+          "ml": "8-1",
+          "jockey": "Alvarado J",
+          "trainer": "W. Potts",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 14,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Doppio Espresso",
+          "ml": "12-1",
+          "jockey": "Prat F",
+          "trainer": "R. Handal",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 23,
+          "trainerPct": 10,
+          "lastClass": "CLAIMING($30,000)",
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "Roseberns Dream",
+          "ml": "20-1",
+          "jockey": "Rodriguez J",
+          "trainer": "Schettino Dominick A",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 9,
+          "trainerPct": 9,
+          "lastClass": "MAIDEN CLAIMING($50,000)",
+          "scratched": false
+        },
+        {
+          "pp": 10,
+          "name": "Greyjoy",
+          "ml": "10-1",
+          "jockey": "Davis D",
+          "trainer": "Terranova John P II",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 16,
+          "trainerPct": 12,
+          "lastClass": "ALLOWANCE",
+          "scratched": false
+        }
+      ],
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -860,7 +2774,41 @@
           "_nyraPipeline": true
         }
       ],
-      "type": null
+      "race_number": 10,
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 2,
+            "horseName": "Roagna",
+            "position": 1,
+            "win_payout": 10.7
+          },
+          {
+            "pp": 3,
+            "horseName": "Mermaid",
+            "position": 2
+          },
+          {
+            "pp": 10,
+            "horseName": "Greyjoy",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 29.27
+          },
+          {
+            "type": "trifecta",
+            "payout": 88.07
+          },
+          {
+            "type": "superfecta",
+            "payout": 50.67
+          }
+        ]
+      }
     },
     {
       "race_number": 11,

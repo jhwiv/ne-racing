@@ -1,15 +1,154 @@
 {
   "track": "SAR",
   "date": "2026-07-05",
-  "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
-  "pulled_at": "2026-07-25T06:49:49.883Z",
+  "source": "RACE_HISTORY + ENTRIES_R2 (worker.js), merged by pull_entries_history.js",
+  "pulled_at": "2026-07-25T15:43:29.242Z",
   "races": [
     {
       "id": "SAR-20260705-R1",
       "track": "SAR",
       "date": "2026-07-05",
       "num": 1,
-      "horses": [],
+      "type": "STK",
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Merry Maker (IRE)",
+          "ml": "5-2",
+          "jockey": "Procter F",
+          "trainer": "Kingsley Archibald Jr",
+          "speedFigs": [
+            127,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 0,
+          "trainerPct": 10,
+          "lastClass": "G1",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Lynches Knock (IRE)",
+          "ml": "10-1",
+          "jockey": "Tierney C",
+          "trainer": "Hendriks Richard J",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "Speedy Smithwick Memorial S.",
+          "scratched": true
+        },
+        {
+          "pp": 3,
+          "name": "St James the Great",
+          "ml": "15-1",
+          "jockey": "Mulqueen S",
+          "trainer": "K. Brion",
+          "speedFigs": [
+            null,
+            null,
+            92
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 100,
+          "trainerPct": 14,
+          "lastClass": "Green Pastures S.",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Take Your Seats (IRE)",
+          "ml": "8-1",
+          "jockey": "Dwan E",
+          "trainer": "T. Garner",
+          "speedFigs": [
+            null,
+            82,
+            85
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "Green Pastures S.",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Sweet Will (IRE)",
+          "ml": "12-1",
+          "jockey": "Nevin D",
+          "trainer": "Kingsley Archibald Jr",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "G1 Calvin Houghland Iroquois S.",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "McTigue (IRE)",
+          "ml": "9-2",
+          "jockey": "Watters G",
+          "trainer": "C. Murphy",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 10,
+          "trainerPct": 0,
+          "lastClass": "G1",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Fil Dor (FR)",
+          "ml": "7-2",
+          "jockey": "Coen J",
+          "trainer": "Hendriks Richard J",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "G1",
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Rocket One",
+          "ml": "3-1",
+          "jockey": "Bargary J",
+          "trainer": "Fisher Jack",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "G1",
+          "scratched": false
+        }
+      ],
+      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -50,7 +189,112 @@
       "track": "SAR",
       "date": "2026-07-05",
       "num": 2,
-      "horses": [],
+      "type": "MSW",
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Recurring Revenue",
+          "ml": "7-2",
+          "jockey": "Franco M",
+          "trainer": "C. Brown",
+          "speedFigs": [
+            null,
+            null,
+            86
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 18,
+          "trainerPct": 20,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Isthereanormalwife",
+          "ml": "6-1",
+          "jockey": "Velazquez J R",
+          "trainer": "Donk David",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 4,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Happy Go More",
+          "ml": "3-1",
+          "jockey": "Castellano J J",
+          "trainer": "J. Antonucci",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 20,
+          "trainerPct": 25,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Onebigbeautfulbill",
+          "ml": "5-2",
+          "jockey": "Prat F",
+          "trainer": "B. Cox",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 21,
+          "trainerPct": 21,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Bye for Now",
+          "ml": "7-2",
+          "jockey": "Davis D",
+          "trainer": "R. Handal",
+          "speedFigs": [
+            null,
+            null,
+            88
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 8,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Music in Motion",
+          "ml": "6-1",
+          "jockey": "Ortiz J L",
+          "trainer": "Rice Linda",
+          "speedFigs": [
+            84,
+            83,
+            85
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 11,
+          "trainerPct": 25,
+          "lastClass": "MSW",
+          "scratched": false
+        }
+      ],
+      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -91,7 +335,129 @@
       "track": "SAR",
       "date": "2026-07-05",
       "num": 3,
-      "horses": [],
+      "type": "CLM",
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Pistol Liz Ablazen",
+          "ml": "9-2",
+          "jockey": "Silvera R",
+          "trainer": "G. Rodriguez",
+          "speedFigs": [
+            92,
+            87,
+            87
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Pens Street",
+          "ml": "3-1",
+          "jockey": "Santana R Jr",
+          "trainer": "Rice Linda",
+          "speedFigs": [
+            91,
+            92,
+            87
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 9,
+          "trainerPct": 25,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Kyle's Mom",
+          "ml": "9-2",
+          "jockey": "Lezcano J",
+          "trainer": "J. Englehart",
+          "speedFigs": [
+            80,
+            81,
+            85
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "ALW",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Always Angels",
+          "ml": "2-1",
+          "jockey": "Rodriguez J",
+          "trainer": "R. Atras",
+          "speedFigs": [
+            95,
+            84,
+            84
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 11,
+          "trainerPct": 0,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Shezanarcticqueen",
+          "ml": "30-1",
+          "jockey": "Gutierrez R",
+          "trainer": "E. Jones",
+          "speedFigs": [
+            79,
+            87,
+            79
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 0,
+          "trainerPct": 10,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Princess Becca",
+          "ml": "4-1",
+          "jockey": "Ortiz J L",
+          "trainer": "O. Noda",
+          "speedFigs": [
+            84,
+            90,
+            83
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 11,
+          "trainerPct": 0,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Moon Gate",
+          "ml": "10-1",
+          "jockey": "Davis D",
+          "trainer": "Friedman Mitchell",
+          "speedFigs": [
+            79,
+            82,
+            79
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 8,
+          "trainerPct": 10,
+          "lastClass": "CLM",
+          "scratched": true
+        }
+      ],
+      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -132,7 +498,129 @@
       "track": "SAR",
       "date": "2026-07-05",
       "num": 4,
-      "horses": [],
+      "type": "MSW",
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Spherical",
+          "ml": "8-1",
+          "jockey": "Davis D",
+          "trainer": "C. Summers",
+          "speedFigs": [
+            null,
+            81,
+            78
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 8,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Sidearm",
+          "ml": "5-1",
+          "jockey": "Franco M",
+          "trainer": "Barker Edward R",
+          "speedFigs": [
+            77,
+            87,
+            82
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 18,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Commitment Fund",
+          "ml": "5-2",
+          "jockey": "Prat F",
+          "trainer": "C. Brown",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 21,
+          "trainerPct": 20,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Implacable",
+          "ml": "10-1",
+          "jockey": "Gaffalione T",
+          "trainer": "C. Summers",
+          "speedFigs": [
+            89,
+            89,
+            86
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 17,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": true
+        },
+        {
+          "pp": 5,
+          "name": "Neigh Baby",
+          "ml": "12-1",
+          "jockey": "Rodriguez J",
+          "trainer": "J. Englehart",
+          "speedFigs": [
+            81,
+            85,
+            91
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 11,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Party Animal",
+          "ml": "7-2",
+          "jockey": "Zayas E J",
+          "trainer": "J. Antonucci",
+          "speedFigs": [
+            83,
+            92,
+            94
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 0,
+          "trainerPct": 25,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Holy Seven",
+          "ml": "2-1",
+          "jockey": "Ortiz J L",
+          "trainer": "Asmussen Steven M",
+          "speedFigs": [
+            null,
+            null,
+            84
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 11,
+          "trainerPct": 20,
+          "lastClass": "MSW",
+          "scratched": false
+        }
+      ],
+      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -173,7 +661,163 @@
       "track": "SAR",
       "date": "2026-07-05",
       "num": 5,
-      "horses": [],
+      "type": "MCL",
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Big Braciole",
+          "ml": "15-1",
+          "jockey": "Castellano J J",
+          "trainer": "W. Potts",
+          "speedFigs": [
+            null,
+            74,
+            89
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 20,
+          "trainerPct": 10,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": true
+        },
+        {
+          "pp": 2,
+          "name": "Dynadee",
+          "ml": "5-1",
+          "jockey": "Lezcano J",
+          "trainer": "Dini Mike",
+          "speedFigs": [
+            78,
+            82,
+            82
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Dixie Hex",
+          "ml": "20-1",
+          "jockey": "Davis D",
+          "trainer": "R. Handal",
+          "speedFigs": [
+            85,
+            76,
+            80
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 8,
+          "trainerPct": 0,
+          "lastClass": "MAIDEN CLAIMING($20,000)",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Harrier",
+          "ml": "10-1",
+          "jockey": "Kingsley T",
+          "trainer": "Kingsley Archibald Jr",
+          "speedFigs": [
+            null,
+            null,
+            74
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Languid",
+          "ml": "8-1",
+          "jockey": "Velazquez J R",
+          "trainer": "Dutrow Richard E Jr",
+          "speedFigs": [
+            83,
+            82,
+            90
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 4,
+          "trainerPct": 100,
+          "lastClass": "MAIDEN CLAIMING($75,000)",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Crowned Moment (GB)",
+          "ml": "6-1",
+          "jockey": "Franco M",
+          "trainer": "M. Clement",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "SS",
+          "jockeyPct": 18,
+          "trainerPct": 13,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Inherent Promise",
+          "ml": "7-2",
+          "jockey": "Gaffalione T",
+          "trainer": "Lewis Lisa L",
+          "speedFigs": [
+            80,
+            79,
+            78
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 17,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Capricious Outcome",
+          "ml": "8-5",
+          "jockey": "Prat F",
+          "trainer": "C. Brown",
+          "speedFigs": [
+            88,
+            85,
+            82
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 21,
+          "trainerPct": 20,
+          "lastClass": "MAIDEN SPECIAL WEIGHT",
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "No Filter",
+          "ml": "20-1",
+          "jockey": "Silvera R",
+          "trainer": "Englehart Chris",
+          "speedFigs": [
+            79,
+            76,
+            81
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": null,
+          "scratched": false
+        }
+      ],
+      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -214,7 +858,248 @@
       "track": "SAR",
       "date": "2026-07-05",
       "num": 6,
-      "horses": [],
+      "type": "STK",
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Zulu Kingdom (IRE)",
+          "ml": "5-2",
+          "jockey": "Prat F",
+          "trainer": "C. Brown",
+          "speedFigs": [
+            92,
+            99,
+            95
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 21,
+          "trainerPct": 20,
+          "lastClass": "G3",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Maycocks Bay",
+          "ml": "15-1",
+          "jockey": "Rosario J",
+          "trainer": "Stidham Michael",
+          "speedFigs": [
+            95,
+            89,
+            96
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 21,
+          "trainerPct": 0,
+          "lastClass": "G2",
+          "scratched": true
+        },
+        {
+          "pp": 3,
+          "name": "My Boy Prince",
+          "ml": "9-2",
+          "jockey": "Davis D",
+          "trainer": "Casse Mark",
+          "speedFigs": [
+            96,
+            97,
+            100
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 8,
+          "trainerPct": 24,
+          "lastClass": "G1",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Neat",
+          "ml": "15-1",
+          "jockey": "Gutierrez R",
+          "trainer": "R. Atras",
+          "speedFigs": [
+            89,
+            90,
+            91
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "Cliff Hanger S.",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Pass the Hat",
+          "ml": "6-1",
+          "jockey": "Velazquez J R",
+          "trainer": "Mott William I",
+          "speedFigs": [
+            89,
+            91,
+            95
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 4,
+          "trainerPct": 10,
+          "lastClass": "G3",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Cruise the Nile",
+          "ml": "8-1",
+          "jockey": "Ruiz J",
+          "trainer": "Motion H Graham",
+          "speedFigs": [
+            92,
+            90,
+            95
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 10,
+          "trainerPct": 17,
+          "lastClass": "G3",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Itsallcomintogetha",
+          "ml": "30-1",
+          "jockey": "Rodriguez J",
+          "trainer": "L. Bartkowski",
+          "speedFigs": [
+            92,
+            89,
+            91
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 11,
+          "trainerPct": 50,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Mi Bago",
+          "ml": "12-1",
+          "jockey": "Ortiz J L",
+          "trainer": "Casse Mark",
+          "speedFigs": [
+            96,
+            96,
+            93
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 11,
+          "trainerPct": 24,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "Cosmic Year (GB)",
+          "ml": "6-1",
+          "jockey": "Franco M",
+          "trainer": "C. Brown",
+          "speedFigs": [
+            null,
+            null,
+            91
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 18,
+          "trainerPct": 20,
+          "lastClass": "Cliff Hanger S.",
+          "scratched": false
+        },
+        {
+          "pp": 10,
+          "name": "Tiz Dashing",
+          "ml": "10-1",
+          "jockey": "Castellano J J",
+          "trainer": "Tagg Barclay",
+          "speedFigs": [
+            95,
+            99,
+            99
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 20,
+          "trainerPct": 0,
+          "lastClass": "G1",
+          "scratched": false
+        },
+        {
+          "pp": 11,
+          "name": "Capitol Hill",
+          "ml": "10-1",
+          "jockey": "Alvarado J",
+          "trainer": "Mott William I",
+          "speedFigs": [
+            89,
+            87,
+            95
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 12,
+          "trainerPct": 10,
+          "lastClass": "G3",
+          "scratched": false
+        },
+        {
+          "pp": 12,
+          "name": "Castle Chaos",
+          "ml": "8-1",
+          "jockey": "No Rider",
+          "trainer": "I. Kantarmaci",
+          "speedFigs": [
+            92,
+            91,
+            87
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 10,
+          "trainerPct": 14,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 13,
+          "name": "Kinetic",
+          "ml": "5-1",
+          "jockey": "Franco M",
+          "trainer": "I. Kantarmaci",
+          "speedFigs": [
+            95,
+            91,
+            96
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 18,
+          "trainerPct": 14,
+          "lastClass": "ALLOWANCE OPTIONAL CLAIMING($80,000)",
+          "scratched": false
+        },
+        {
+          "pp": 14,
+          "name": "Dr. Kraft",
+          "ml": "4-1",
+          "jockey": "Gonzalez S",
+          "trainer": "I. Kantarmaci",
+          "speedFigs": [
+            94,
+            93,
+            93
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 0,
+          "trainerPct": 14,
+          "lastClass": null,
+          "scratched": false
+        }
+      ],
+      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -256,7 +1141,163 @@
       "track": "SAR",
       "date": "2026-07-05",
       "num": 7,
-      "horses": [],
+      "type": "MSW",
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Midnight Honor",
+          "ml": "5-1",
+          "jockey": "Gutierrez R",
+          "trainer": "Tagg Barclay",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Luckbeourlady",
+          "ml": "4-1",
+          "jockey": "Franco M",
+          "trainer": "M. Clement",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 18,
+          "trainerPct": 13,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Liberty's Secret",
+          "ml": "5-1",
+          "jockey": "Davis D",
+          "trainer": "Quick Patrick J",
+          "speedFigs": [
+            null,
+            null,
+            81
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 8,
+          "trainerPct": 50,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Lively Pal",
+          "ml": "8-1",
+          "jockey": "Lezcano J",
+          "trainer": "Englehart Chris",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "EP",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Carmen Amalia",
+          "ml": "15-1",
+          "jockey": "Velazquez J R",
+          "trainer": "Donk David",
+          "speedFigs": [
+            null,
+            null,
+            87
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 4,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Garden of Grace",
+          "ml": "6-1",
+          "jockey": "Castellano J J",
+          "trainer": "W. Potts",
+          "speedFigs": [
+            80,
+            81,
+            77
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 20,
+          "trainerPct": 10,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Run On States",
+          "ml": "8-1",
+          "jockey": "Gaffalione T",
+          "trainer": "R. Medina",
+          "speedFigs": [
+            79,
+            81,
+            84
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 17,
+          "trainerPct": 0,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Liberty's Advance",
+          "ml": "5-2",
+          "jockey": "Alvarado J",
+          "trainer": "Mott William I",
+          "speedFigs": [
+            80,
+            80,
+            83
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 12,
+          "trainerPct": 10,
+          "lastClass": "MSW",
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "Run Flat",
+          "ml": "30-1",
+          "jockey": "Villa Pino F",
+          "trainer": "C. Goberdhan",
+          "speedFigs": [
+            null,
+            null,
+            null
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 10,
+          "lastClass": "MSW",
+          "scratched": false
+        }
+      ],
+      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -297,7 +1338,265 @@
       "track": "SAR",
       "date": "2026-07-05",
       "num": 8,
-      "horses": [],
+      "type": "STK",
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Bring Theband Home",
+          "ml": "7-2",
+          "jockey": "Castellano J J",
+          "trainer": "Casse Mark",
+          "speedFigs": [
+            97,
+            93,
+            98
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 20,
+          "trainerPct": 24,
+          "lastClass": "G1",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Boss Sully",
+          "ml": "5-1",
+          "jockey": "Rosario J",
+          "trainer": "Koriner Brian",
+          "speedFigs": [
+            95,
+            96,
+            97
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 21,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Possiblemente",
+          "ml": "4-1",
+          "jockey": "Ortiz J L",
+          "trainer": "J. Sharp",
+          "speedFigs": [
+            95,
+            97,
+            96
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 11,
+          "trainerPct": 10,
+          "lastClass": "G3",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Twenty Six Black",
+          "ml": "3-1",
+          "jockey": "Franco M",
+          "trainer": "H. De Paz",
+          "speedFigs": [
+            92,
+            95,
+            100
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 18,
+          "trainerPct": 25,
+          "lastClass": "G1",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Jean Valjean",
+          "ml": "15-1",
+          "jockey": "Rodriguez J",
+          "trainer": "E. Merryman",
+          "speedFigs": [
+            92,
+            89,
+            91
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 11,
+          "trainerPct": 10,
+          "lastClass": "Jim McKay Turf Sprint S.",
+          "scratched": true
+        },
+        {
+          "pp": 6,
+          "name": "Coppola",
+          "ml": "30-1",
+          "jockey": "Zayas E J",
+          "trainer": "T. Moubarak",
+          "speedFigs": [
+            95,
+            96,
+            89
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 0,
+          "trainerPct": 10,
+          "lastClass": "Silks Run S.",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Chasing Liberty",
+          "ml": "8-1",
+          "jockey": "Davis D",
+          "trainer": "R. Atras",
+          "speedFigs": [
+            97,
+            92,
+            91
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 8,
+          "trainerPct": 0,
+          "lastClass": "Jim McKay Turf Sprint S.",
+          "scratched": false
+        },
+        {
+          "pp": 8,
+          "name": "Outlaw Kid",
+          "ml": "10-1",
+          "jockey": "Ruiz J",
+          "trainer": "Weaver George",
+          "speedFigs": [
+            92,
+            91,
+            93
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 14,
+          "lastClass": "G2",
+          "scratched": true
+        },
+        {
+          "pp": 9,
+          "name": "Full Disclosure",
+          "ml": "15-1",
+          "jockey": "Gaffalione T",
+          "trainer": "A. Jehaludi",
+          "speedFigs": [
+            94,
+            95,
+            97
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 17,
+          "trainerPct": 10,
+          "lastClass": "G2",
+          "scratched": false
+        },
+        {
+          "pp": 10,
+          "name": "We're in Trouble",
+          "ml": "12-1",
+          "jockey": "Prat F",
+          "trainer": "M. McCarthy",
+          "speedFigs": [
+            98,
+            91,
+            91
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 21,
+          "trainerPct": 0,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 11,
+          "name": "Damon's Mound",
+          "ml": "8-5",
+          "jockey": "Alvarado J",
+          "trainer": "Mott William I",
+          "speedFigs": [
+            98,
+            93,
+            93
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 12,
+          "trainerPct": 10,
+          "lastClass": null,
+          "scratched": false
+        },
+        {
+          "pp": 12,
+          "name": "Acoustic Ave",
+          "ml": "3-1",
+          "jockey": "Franco M",
+          "trainer": "Rice Linda",
+          "speedFigs": [
+            102,
+            100,
+            95
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 18,
+          "trainerPct": 25,
+          "lastClass": "G3 John A. Nerud S.",
+          "scratched": false
+        },
+        {
+          "pp": 13,
+          "name": "Paradise Valley",
+          "ml": "20-1",
+          "jockey": "No Rider",
+          "trainer": "I. Kantarmaci",
+          "speedFigs": [
+            91,
+            92,
+            95
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 10,
+          "trainerPct": 14,
+          "lastClass": "CLAIMING($55,000)",
+          "scratched": false
+        },
+        {
+          "pp": 14,
+          "name": "Mischievous M",
+          "ml": "20-1",
+          "jockey": "No Rider",
+          "trainer": "I. Kantarmaci",
+          "speedFigs": [
+            89,
+            93,
+            91
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 10,
+          "trainerPct": 14,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 15,
+          "name": "New York Scrappy",
+          "ml": "20-1",
+          "jockey": "Gonzalez S",
+          "trainer": "I. Kantarmaci",
+          "speedFigs": [
+            88,
+            81,
+            86
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 0,
+          "trainerPct": 14,
+          "lastClass": "ALW",
+          "scratched": false
+        }
+      ],
+      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -338,7 +1637,265 @@
       "track": "SAR",
       "date": "2026-07-05",
       "num": 9,
-      "horses": [],
+      "type": "AOC",
+      "horses": [
+        {
+          "pp": 1,
+          "name": "Miztertonic",
+          "ml": "4-1",
+          "jockey": "Castellano J J",
+          "trainer": "K. Brion",
+          "speedFigs": [
+            89,
+            89,
+            96
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 20,
+          "trainerPct": 14,
+          "lastClass": "G2",
+          "scratched": false
+        },
+        {
+          "pp": 2,
+          "name": "Complex Agenda",
+          "ml": "12-1",
+          "jockey": "Santana R Jr",
+          "trainer": "T. Morley",
+          "speedFigs": [
+            89,
+            82,
+            87
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 9,
+          "trainerPct": 10,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 3,
+          "name": "Bettrluckythangood",
+          "ml": "6-1",
+          "jockey": "Prat F",
+          "trainer": "M. Clement",
+          "speedFigs": [
+            91,
+            89,
+            93
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 21,
+          "trainerPct": 13,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 4,
+          "name": "Fort Thomas",
+          "ml": "8-1",
+          "jockey": "Ortiz J L",
+          "trainer": "Arnold George R II",
+          "speedFigs": [
+            90,
+            90,
+            90
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 11,
+          "trainerPct": 0,
+          "lastClass": "ALW",
+          "scratched": false
+        },
+        {
+          "pp": 5,
+          "name": "Alakan",
+          "ml": "10-1",
+          "jockey": "Ruiz J",
+          "trainer": "Motion H Graham",
+          "speedFigs": [
+            89,
+            85,
+            88
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 10,
+          "trainerPct": 17,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 6,
+          "name": "Blue Pill",
+          "ml": "50-1",
+          "jockey": "Villa Pino F",
+          "trainer": "Ferraro James W",
+          "speedFigs": [
+            79,
+            79,
+            83
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 10,
+          "trainerPct": 9,
+          "lastClass": "ALW",
+          "scratched": false
+        },
+        {
+          "pp": 7,
+          "name": "Presider",
+          "ml": "20-1",
+          "jockey": "Gonzalez S",
+          "trainer": "M. Kantarmaci",
+          "speedFigs": [
+            97,
+            92,
+            88
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 0,
+          "trainerPct": 6,
+          "lastClass": "CLM",
+          "scratched": true
+        },
+        {
+          "pp": 8,
+          "name": "Offlee Naughty",
+          "ml": "10-1",
+          "jockey": "Franco M",
+          "trainer": "J. Sharp",
+          "speedFigs": [
+            95,
+            89,
+            88
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 18,
+          "trainerPct": 10,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 9,
+          "name": "Versailles Road",
+          "ml": "10-1",
+          "jockey": "Gaffalione T",
+          "trainer": "Pletcher Todd A",
+          "speedFigs": [
+            85,
+            87,
+            82
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 17,
+          "trainerPct": 0,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 10,
+          "name": "Noble Dynasty",
+          "ml": "5-2",
+          "jockey": "Alvarado J",
+          "trainer": "Mott William I",
+          "speedFigs": [
+            84,
+            92,
+            92
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 12,
+          "trainerPct": 10,
+          "lastClass": "G3",
+          "scratched": false
+        },
+        {
+          "pp": 11,
+          "name": "Greystone",
+          "ml": "15-1",
+          "jockey": "Zayas E J",
+          "trainer": "Maker Michael J",
+          "speedFigs": [
+            91,
+            92,
+            91
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 0,
+          "trainerPct": 0,
+          "lastClass": "CLM",
+          "scratched": true
+        },
+        {
+          "pp": 12,
+          "name": "Noble Factor",
+          "ml": "15-1",
+          "jockey": "Rosario J",
+          "trainer": "K. Brion",
+          "speedFigs": [
+            88,
+            87,
+            89
+          ],
+          "runningStyle": "P",
+          "jockeyPct": 21,
+          "trainerPct": 14,
+          "lastClass": "ALW",
+          "scratched": false
+        },
+        {
+          "pp": 13,
+          "name": "Write Off Jerry",
+          "ml": "8-1",
+          "jockey": "Velazquez J R",
+          "trainer": "Maker Michael J",
+          "speedFigs": [
+            88,
+            88,
+            90
+          ],
+          "runningStyle": "S",
+          "jockeyPct": 4,
+          "trainerPct": 0,
+          "lastClass": "ALW",
+          "scratched": false
+        },
+        {
+          "pp": 14,
+          "name": "Power Seeker",
+          "ml": "7-2",
+          "jockey": "No Rider",
+          "trainer": "R. Rodriguez",
+          "speedFigs": [
+            91,
+            96,
+            95
+          ],
+          "runningStyle": "E/P",
+          "jockeyPct": 10,
+          "trainerPct": 0,
+          "lastClass": "CLM",
+          "scratched": false
+        },
+        {
+          "pp": 15,
+          "name": "Le Gris",
+          "ml": "6-5",
+          "jockey": "Prat F",
+          "trainer": "R. Rodriguez",
+          "speedFigs": [
+            95,
+            96,
+            96
+          ],
+          "runningStyle": "E",
+          "jockeyPct": 21,
+          "trainerPct": 0,
+          "lastClass": "CLM",
+          "scratched": false
+        }
+      ],
+      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
