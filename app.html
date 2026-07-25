@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260723-v2.49.49-brisnet';
+var NE_APP_VERSION = '20260725-v2.49.50-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260723-v2.49.49-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.49-brisnet';
+var RAILBIRD_VERSION = 'v2.49.50-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -3273,6 +3273,16 @@ html[data-ios="true"] .stage-sheet {
 .aa-hero-roi { font-family:var(--font-mono); font-size:2.1rem; font-weight:700; line-height:1; }
 .aa-rank-badge { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--color-muted); color:var(--color-white); font-size:0.68rem; font-weight:700; flex:none; margin-right:0.4rem; }
 .aa-rank-badge.aa-rank-1 { background:var(--color-gold); color:var(--color-racing-green); }
+/* v2.49.50: click a source's row to expand its own additional analytics
+   (raw $ stake/return, by-bet-type breakdown) and jump to its filtered
+   Recent Picks -- previously each row was static, with no way to drill
+   into a specific source's own data from the chart itself. */
+.aa-row-header-btn { display:flex; align-items:baseline; justify-content:space-between; width:100%; background:none; border:none; padding:0; margin:0; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.aa-row-header-btn:focus-visible { outline:2px solid var(--color-gold); outline-offset:2px; }
+.aa-expand-caret { transition: transform 0.15s ease; flex:none; margin-left:0.4rem; color:var(--color-muted); }
+.aa-row-header-btn.expanded .aa-expand-caret { transform: rotate(180deg); }
+.aa-row-detail { padding:0.6rem 0.7rem; margin-top:0.5rem; background:rgba(0,0,0,0.03); border-radius:var(--radius-sm); }
+.aa-row-detail-grid { display:flex; justify-content:space-between; gap:0.5rem; flex-wrap:wrap; }
 /* v2.49.43: Recent Picks (real per-pick history) list */
 .ph-row { display:flex; align-items:flex-start; gap:0.5rem; padding:0.55rem 0; border-bottom:1px solid rgba(0,0,0,0.06); }
 .ph-row:last-child { border-bottom:none; }
@@ -19244,11 +19254,18 @@ function renderAnalyticsAccuracy() {
         var roiClass = s.roi == null ? 'text-muted' : (s.roi >= 0 ? 'aa-roi-pos' : 'aa-roi-neg');
         var losses = s.settled - s.wins;
         var rankBadge = rankOf[e] ? '<span class="aa-rank-badge' + (rankOf[e] === 1 ? ' aa-rank-1' : '') + '">' + rankOf[e] + '</span>' : '';
+        // v2.49.50: the row header is now a real button -- clicking (or
+        // Enter/Space, for free via <button>) toggles the detail panel
+        // built below, so the source's own name/pill in this chart
+        // actually does something instead of being purely decorative.
         var row = '<div class="mb-3">' +
-          '<div class="flex justify-between items-baseline mb-1">' +
+          '<button type="button" class="aa-row-header-btn mb-1" id="aa-row-header-' + e + '" aria-expanded="false" aria-controls="aa-source-detail-' + e + '" onclick="toggleAnalyticsSourceDetail(\'' + e + '\')">' +
             '<span class="flex items-center font-semibold text-sm">' + rankBadge + meta[e].label + '</span>' +
-            '<span class="text-xs ' + roiClass + '">' + roiStr + ' ROI</span>' +
-          '</div>' +
+            '<span class="flex items-center" style="gap:0.4rem">' +
+              '<span class="text-xs ' + roiClass + '">' + roiStr + ' ROI</span>' +
+              '<svg class="aa-expand-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px"><polyline points="6 9 12 15 18 9"/></svg>' +
+            '</span>' +
+          '</button>' +
           '<div class="aa-bar-track"><div class="aa-bar-fill" style="width:' + pct + '%;background:' + meta[e].color + '"></div></div>' +
           '<div class="text-xs text-muted mt-1">' + s.wins + ' win' + (s.wins === 1 ? '' : 's') + ', ' + losses + ' loss' + (losses === 1 ? '' : 'es') +
             ' — ' + pct.toFixed(1) + '% win rate on ' + s.settled + ' graded pick' + (s.settled === 1 ? '' : 's') + '</div>';
@@ -19285,6 +19302,47 @@ function renderAnalyticsAccuracy() {
             '</div>';
           }
         }
+        // v2.49.50: expandable detail panel (hidden until the row header
+        // above is clicked) -- volume/dollar figures and the by-bet-type
+        // split were already computed server-side (byBetType) but never
+        // surfaced anywhere in this card. "View recent picks" hands off to
+        // the existing Recent Picks card/filter rather than duplicating
+        // its list here.
+        var pendingCount = Math.max(0, (engines[e].picks || 0) - s.settled);
+        var net = s.totalReturn - s.totalStake;
+        var netClass = net >= 0 ? 'aa-roi-pos' : 'aa-roi-neg';
+        var netStr = (net >= 0 ? '+$' : '−$') + Math.abs(net).toFixed(2);
+        var settledTypes = Object.keys(s.byBetType || {}).filter(function(bt) { return s.byBetType[bt] && s.byBetType[bt].settled > 0; });
+        var typeRows = '';
+        if (settledTypes.length > 1) {
+          typeRows = settledTypes.sort(function(a, b) {
+            if (a === 'Win') return -1;
+            if (b === 'Win') return 1;
+            return a.localeCompare(b);
+          }).map(function(bt) {
+            var b = s.byBetType[bt];
+            var bPct = Math.max(0, Math.min(100, (b.winRate || 0) * 100));
+            var bRoiStr = b.roi != null ? fmtPct(b.roi * 100) : '—';
+            var bRoiClass = b.roi == null ? 'text-muted' : (b.roi >= 0 ? 'aa-roi-pos' : 'aa-roi-neg');
+            var bLosses = b.settled - b.wins;
+            return '<div class="flex justify-between items-baseline mt-1">' +
+                '<span class="text-xs text-muted">' + escHtml(bt) + '</span>' +
+                '<span class="text-xs ' + bRoiClass + '">' + bRoiStr + ' ROI</span>' +
+              '</div>' +
+              '<div class="text-xs text-muted">' + b.wins + '-' + bLosses + ' (' + bPct.toFixed(1) + '%) on ' + b.settled + ' pick' + (b.settled === 1 ? '' : 's') + '</div>';
+          }).join('');
+        }
+        row += '<div class="hidden aa-row-detail" id="aa-source-detail-' + e + '">' +
+          '<div class="aa-row-detail-grid text-xs text-muted">' +
+            '<span>' + (engines[e].picks || 0) + ' logged, ' + s.settled + ' graded, ' + pendingCount + ' pending</span>' +
+          '</div>' +
+          '<div class="aa-row-detail-grid text-xs mt-1">' +
+            '<span class="text-muted">Staked $' + s.totalStake.toFixed(2) + ' → returned $' + s.totalReturn.toFixed(2) + '</span>' +
+            '<span class="' + netClass + '">' + netStr + '</span>' +
+          '</div>' +
+          (typeRows ? ('<div class="mt-2"><div class="text-xs text-muted mb-1">↳ By bet type</div>' + typeRows + '</div>') : '') +
+          '<button type="button" class="btn btn-ghost btn-sm mt-2" onclick="viewSourceRecentPicks(\'' + e + '\')">View recent picks for ' + escHtml(meta[e].label) + ' →</button>' +
+        '</div>';
         row += '</div>';
         return row;
       }).join('');
@@ -19309,6 +19367,29 @@ function renderAnalyticsAccuracy() {
     .catch(function() {
       body.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable, or this endpoint isn’t deployed yet).</p>';
     });
+}
+
+// v2.49.50: expand/collapse a single source's detail panel inside "Pick
+// Accuracy by Source" -- the row header button built in renderAnalyticsAccuracy
+// calls this directly by engine id.
+function toggleAnalyticsSourceDetail(engine) {
+  var detail = el('aa-source-detail-' + engine);
+  var header = el('aa-row-header-' + engine);
+  if (!detail || !header) return;
+  var nowHidden = detail.classList.toggle('hidden');
+  header.classList.toggle('expanded', !nowHidden);
+  header.setAttribute('aria-expanded', nowHidden ? 'false' : 'true');
+}
+
+// v2.49.50: "View recent picks" inside a source's expanded detail panel --
+// reuses the existing Recent Picks card/filter instead of duplicating its
+// list, and scrolls it into view so the click has a visible effect even
+// when that card is off-screen below the fold.
+function viewSourceRecentPicks(engine) {
+  setAnalyticsPickHistoryEngine(engine);
+  var summary = el('analytics-pick-history-summary');
+  var card = summary && summary.closest ? summary.closest('.card') : null;
+  if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // v2.49.43: real per-pick history -- reads /api/picks/history (individual

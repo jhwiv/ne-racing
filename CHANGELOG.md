@@ -1,5 +1,44 @@
 # NE Racing — Changelog
 
+## v2.49.50-brisnet — Analytics: source rows in Pick Accuracy are now clickable (2026-07-25)
+
+Reported directly: clicking the Our Picks / Market Favorite / Handicapper
+Consensus pills does nothing in the info graphic — should open up to that
+source's own data or additional analytics. Confirmed by reading the code
+before touching it: the `ph-filter-btn` pills under "Recent Picks" already
+filtered that list correctly (unchanged here), but the "Pick Accuracy by
+Source" card itself — the actual chart/info graphic — had zero
+interactivity on its rows. `byBetType` (Win vs. Exacta Box) has been
+computed server-side by `/api/picks/stats` since v2.49.36, and raw dollar
+stake/return totals have always been in the payload, but neither was ever
+surfaced in the UI.
+
+**Fix, scoped only to this:** each source's row header in "Pick Accuracy by
+Source" is now a real `<button>` (native keyboard support, no new
+handlers needed). Clicking it toggles an inline detail panel showing:
+logged/graded/pending counts, raw $ staked vs. returned (and net), a
+by-bet-type breakdown when a source has more than one bet type settled,
+and a "View recent picks for [source] →" button that sets the existing
+Recent Picks filter to that engine and scrolls it into view. No new
+worker.js endpoint or data — every field rendered was already being
+computed and returned, just never displayed.
+
+Did not touch: the `ph-filter-btn` pills, their filtering behavior, the
+Today/All Time toggle, the hero figure, the by-conviction breakdown, or
+anything outside this one card, per explicit instruction to change nothing
+else.
+
+Verified with a real Playwright run (mocked `/api/picks/stats` with
+distinguishable per-engine data): detail panel starts hidden, click
+expands it with the correct numbers and correct chevron/aria-expanded
+state, "View recent picks" correctly filters + scrolls, re-click
+collapses it, and a single-bet-type source (Market Favorite) correctly
+omits the "By bet type" block instead of showing a redundant one-line
+breakdown. Zero console errors. Full suite: 340 total, 338 pass, 1
+known-intentional fail (`inline-scoring-sync.test.js`), 1 skipped —
+unchanged baseline. Pure client-side markup/JS change; no worker.js touch,
+no redeploy needed.
+
 ## v2.49.49-brisnet — Analytics: ROI reference-stake explainer moved to top of card (2026-07-23)
 
 Owner asked whether the Action Bet +87.8% ROI figure meant "bet the app's
