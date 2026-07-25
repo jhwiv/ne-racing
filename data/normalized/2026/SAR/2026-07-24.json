@@ -1,192 +1,171 @@
 {
   "track": "SAR",
-  "date": "2026-07-23",
+  "date": "2026-07-24",
   "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
   "pulled_at": "2026-07-25T06:49:49.884Z",
   "races": [
     {
-      "id": "SAR-20260723-R1",
-      "track": "SAR",
-      "date": "2026-07-23",
-      "num": 1,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 5,
-            "horseName": "Credit Risk",
-            "position": 1,
-            "win_payout": 12.92
-          },
-          {
-            "pp": 7,
-            "horseName": "Noisetomakenoise",
-            "position": 2
-          },
-          {
-            "pp": 1,
-            "horseName": "That's Amore",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 42.23
-          },
-          {
-            "type": "trifecta",
-            "payout": 301.42
-          },
-          {
-            "type": "superfecta",
-            "payout": 429.71
-          }
-        ]
-      },
       "race_number": 1,
       "expertPicks": [
         {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
           "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
           "pick": 7,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
-          "source": "NYRA Talking Horses - Megan Burgess",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 9,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 9,
+          "pick": 2,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260723-R2",
+      "id": "SAR-20260724-R1",
       "track": "SAR",
-      "date": "2026-07-23",
-      "num": 2,
+      "date": "2026-07-24",
+      "num": 1,
+      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
-          {
-            "pp": 8,
-            "horseName": "Gun Barrel City",
-            "position": 1,
-            "win_payout": 23.48
-          },
-          {
-            "pp": 7,
-            "horseName": "Middle Market",
-            "position": 2
-          },
           {
             "pp": 2,
-            "horseName": "Maximum Promise",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 247.49
-          },
-          {
-            "type": "trifecta",
-            "payout": 621.51
-          },
-          {
-            "type": "superfecta",
-            "payout": 238.33
-          }
-        ]
-      },
-      "race_number": 2,
-      "expertPicks": [
-        {
-          "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 5,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Megan Burgess",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 5,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 8,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260723-R3",
-      "track": "SAR",
-      "date": "2026-07-23",
-      "num": 3,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 1,
-            "horseName": "Normandy Coast",
+            "horseName": "Babcie",
             "position": 1,
-            "win_payout": 5.94
+            "win_payout": 10.44
           },
           {
             "pp": 3,
-            "horseName": "Norwich",
+            "horseName": "Hanna's Hideaway",
             "position": 2
           },
           {
-            "pp": 7,
-            "horseName": "Mr Skylight",
+            "pp": 4,
+            "horseName": "Ms Nikki D",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 6.95
+            "payout": 38.18
           },
           {
             "type": "trifecta",
-            "payout": 13.34
+            "payout": 211.68
           },
           {
             "type": "superfecta",
-            "payout": 6
+            "payout": 174.43
           }
         ]
-      },
+      }
+    },
+    {
+      "race_number": 2,
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 3,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 4,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 3,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "id": "SAR-20260724-R2",
+      "track": "SAR",
+      "date": "2026-07-24",
+      "num": 2,
+      "type": null,
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 3,
+            "horseName": "Conflict",
+            "position": 1,
+            "win_payout": 10.06
+          },
+          {
+            "pp": 7,
+            "horseName": "Just Peachy",
+            "position": 2
+          },
+          {
+            "pp": 2,
+            "horseName": "Mandy Steph",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 20.24
+          },
+          {
+            "type": "trifecta",
+            "payout": 56.82
+          },
+          {
+            "type": "superfecta",
+            "payout": 49.25
+          }
+        ]
+      }
+    },
+    {
       "race_number": 3,
       "expertPicks": [
         {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 6,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 8,
+          "pick": 6,
           "horseName": null,
           "_nyraPipeline": true
         },
@@ -198,139 +177,76 @@
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 1,
-          "horseName": "Normandy Coast",
+          "pick": 6,
+          "horseName": "My Gun",
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 3,
+          "pick": 6,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260723-R4",
+      "id": "SAR-20260724-R3",
       "track": "SAR",
-      "date": "2026-07-23",
-      "num": 4,
+      "date": "2026-07-24",
+      "num": 3,
+      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 5,
-            "horseName": "Salamis",
+            "pp": 6,
+            "horseName": "My Gun's Loaded",
             "position": 1,
-            "win_payout": 4.72
+            "win_payout": 2.6
           },
           {
-            "pp": 7,
-            "horseName": "Sand Pipes",
+            "pp": 5,
+            "horseName": "Krissys Star",
             "position": 2
           },
           {
-            "pp": 2,
-            "horseName": "Spirit of St Louis",
+            "pp": 8,
+            "horseName": "Bow Draw",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 11.25
+            "payout": 6.63
           },
           {
             "type": "trifecta",
-            "payout": 9.1
+            "payout": 11.15
           },
           {
             "type": "superfecta",
-            "payout": 7.22
+            "payout": 8.55
           }
         ]
-      },
+      }
+    },
+    {
       "race_number": 4,
       "expertPicks": [
         {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 4,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 2,
+          "pick": 7,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Talking Horses - Megan Burgess",
           "pick": 5,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 7,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260723-R5",
-      "track": "SAR",
-      "date": "2026-07-23",
-      "num": 5,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 9,
-            "horseName": "Side Quest",
-            "position": 1,
-            "win_payout": 6.28
-          },
-          {
-            "pp": 6,
-            "horseName": "All Show",
-            "position": 2
-          },
-          {
-            "pp": 2,
-            "horseName": "Quoted",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 31.83
-          },
-          {
-            "type": "trifecta",
-            "payout": 111.54
-          },
-          {
-            "type": "superfecta",
-            "payout": 187.01
-          }
-        ]
-      },
-      "race_number": 5,
-      "expertPicks": [
-        {
-          "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 1,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Megan Burgess",
-          "pick": 3,
           "horseName": null,
           "_nyraPipeline": true
         },
@@ -342,55 +258,136 @@
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 1,
+          "pick": 4,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260723-R6",
+      "id": "SAR-20260724-R4",
       "track": "SAR",
-      "date": "2026-07-23",
-      "num": 6,
+      "date": "2026-07-24",
+      "num": 4,
+      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 1,
-            "horseName": "Ancient World",
+            "pp": 3,
+            "horseName": "Get a Job",
             "position": 1,
-            "win_payout": 3.64
+            "win_payout": 17.88
           },
           {
-            "pp": 7,
-            "horseName": "Epitaph",
+            "pp": 6,
+            "horseName": "Hours in a Day",
             "position": 2
           },
           {
-            "pp": 9,
-            "horseName": "Schlomo",
+            "pp": 4,
+            "horseName": "Awesome Empire",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 19.23
+            "payout": 43.41
           },
           {
             "type": "trifecta",
-            "payout": 56.31
+            "payout": 90.07
           },
           {
             "type": "superfecta",
-            "payout": 103.13
+            "payout": 44.2
           }
         ]
-      },
+      }
+    },
+    {
+      "race_number": 5,
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 10,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 7,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 3,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 11,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 10,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "id": "SAR-20260724-R5",
+      "track": "SAR",
+      "date": "2026-07-24",
+      "num": 5,
+      "type": null,
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Salming",
+            "position": 1,
+            "win_payout": 9.04
+          },
+          {
+            "pp": 3,
+            "horseName": "Majestic Arc",
+            "position": 2
+          },
+          {
+            "pp": 10,
+            "horseName": "Swaging",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 54.8
+          },
+          {
+            "type": "trifecta",
+            "payout": 103.62
+          },
+          {
+            "type": "superfecta",
+            "payout": 216.35
+          }
+        ]
+      }
+    },
+    {
       "race_number": 6,
       "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 7,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
         {
           "source": "NYRA Talking Horses - Andy Serling",
           "pick": 2,
@@ -405,145 +402,232 @@
         },
         {
           "source": "NYRA Bets - DeSantis",
-          "pick": 2,
-          "horseName": null,
+          "pick": 5,
+          "horseName": "Red Coats Coming",
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 1,
+          "pick": 2,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260723-R7",
+      "id": "SAR-20260724-R6",
       "track": "SAR",
-      "date": "2026-07-23",
-      "num": 7,
+      "date": "2026-07-24",
+      "num": 6,
+      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
           {
             "pp": 7,
-            "horseName": "Cosmic Candy Girl",
+            "horseName": "Runaway Bride",
             "position": 1,
-            "win_payout": 55.62
+            "win_payout": 29.12
           },
           {
-            "pp": 8,
-            "horseName": "Considerate City",
+            "pp": 5,
+            "horseName": "Red Coats Coming",
             "position": 2
           },
           {
-            "pp": 1,
-            "horseName": "New York Special",
+            "pp": 8,
+            "horseName": "Sound of Madness",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 181.43
+            "payout": 143.92
           },
           {
             "type": "trifecta",
-            "payout": 347.28
+            "payout": 353.31
           },
           {
             "type": "superfecta",
-            "payout": 309.95
+            "payout": 533.71
           }
         ]
-      },
+      }
+    },
+    {
       "race_number": 7,
       "expertPicks": [
         {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 8,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
           "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 7,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 3,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 8,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 8,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "id": "SAR-20260724-R7",
+      "track": "SAR",
+      "date": "2026-07-24",
+      "num": 7,
+      "type": null,
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 4,
+            "horseName": "Nonna Lynne",
+            "position": 1,
+            "win_payout": 8.7
+          },
+          {
+            "pp": 3,
+            "horseName": "Sweet Anniversary",
+            "position": 2
+          },
+          {
+            "pp": 8,
+            "horseName": "Mommy's Turn",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 69.47
+          },
+          {
+            "type": "trifecta",
+            "payout": 132.71
+          },
+          {
+            "type": "superfecta",
+            "payout": 77.76
+          }
+        ]
+      }
+    },
+    {
+      "race_number": 8,
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 4,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 3,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 7,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 4,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 4,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "id": "SAR-20260724-R8",
+      "track": "SAR",
+      "date": "2026-07-24",
+      "num": 8,
+      "type": null,
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 3,
+            "horseName": "Fully Subscribed",
+            "position": 1,
+            "win_payout": 5.44
+          },
+          {
+            "pp": 4,
+            "horseName": "Scottish Lassie",
+            "position": 2
+          },
+          {
+            "pp": 1,
+            "horseName": "Snowyte",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 6.2
+          },
+          {
+            "type": "trifecta",
+            "payout": 18.56
+          },
+          {
+            "type": "superfecta",
+            "payout": 4.77
+          }
+        ]
+      }
+    },
+    {
+      "race_number": 9,
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Acacia Clement",
           "pick": 6,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
-          "source": "NYRA Talking Horses - Megan Burgess",
-          "pick": 3,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 3,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 5,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260723-R8",
-      "track": "SAR",
-      "date": "2026-07-23",
-      "num": 8,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 4,
-            "horseName": "Beauty Reigns",
-            "position": 1,
-            "win_payout": 10.06
-          },
-          {
-            "pp": 2,
-            "horseName": "Senza Parole",
-            "position": 2
-          },
-          {
-            "pp": 1,
-            "horseName": "Munnings Express",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 15.37
-          },
-          {
-            "type": "trifecta",
-            "payout": 23.69
-          },
-          {
-            "type": "superfecta",
-            "payout": 26.38
-          }
-        ]
-      },
-      "race_number": 8,
-      "expertPicks": [
-        {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 1,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Megan Burgess",
           "pick": 7,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
+          "source": "NYRA Talking Horses - Megan Burgess",
+          "pick": 10,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
           "source": "NYRA Bets - DeSantis",
-          "pick": 1,
+          "pick": 7,
           "horseName": null,
           "_nyraPipeline": true
         },
@@ -554,93 +638,115 @@
           "_nyraPipeline": true
         }
       ],
-      "type": null
-    },
-    {
-      "id": "SAR-20260723-R9",
+      "id": "SAR-20260724-R9",
       "track": "SAR",
-      "date": "2026-07-23",
+      "date": "2026-07-24",
       "num": 9,
+      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 7,
-            "horseName": "Garden of Grace",
+            "pp": 5,
+            "horseName": "Chummers",
             "position": 1,
-            "win_payout": 14.74
+            "win_payout": 16.4
           },
           {
-            "pp": 4,
-            "horseName": "Avery's Wonderland",
+            "pp": 7,
+            "horseName": "Caroline St. Beat",
             "position": 2
           },
           {
-            "pp": 3,
-            "horseName": "Midtown Mischief",
+            "pp": 6,
+            "horseName": "A Little At First",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 56.6
+            "payout": 34.95
           },
           {
             "type": "trifecta",
-            "payout": 92.98
+            "payout": 46.54
           },
           {
             "type": "superfecta",
-            "payout": 169.91
+            "payout": 57.94
           }
         ]
-      },
-      "race_number": 9,
-      "expertPicks": [
-        {
-          "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 3,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Megan Burgess",
-          "pick": 10,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 10,
-          "horseName": "Anna Brocknana",
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 1,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
-      "type": null
+      }
     },
     {
       "race_number": 10,
       "expertPicks": [
         {
+          "source": "NYRA Talking Horses - Acacia Clement",
+          "pick": 7,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
           "source": "NYRA Talking Horses - Andy Serling",
           "pick": 7,
           "horseName": null,
           "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 5,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260723-R10",
+      "id": "SAR-20260724-R10",
       "track": "SAR",
-      "date": "2026-07-23",
+      "date": "2026-07-24",
       "num": 10,
       "type": null,
-      "horses": []
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 2,
+            "horseName": "Limited Edition",
+            "position": 1,
+            "win_payout": 18.76
+          },
+          {
+            "pp": 6,
+            "horseName": "Donnadoyawanna",
+            "position": 2
+          },
+          {
+            "pp": 4,
+            "horseName": "Gold Sovereign",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 191.63
+          },
+          {
+            "type": "trifecta",
+            "payout": 386.27
+          },
+          {
+            "type": "superfecta",
+            "payout": 458.76
+          }
+        ]
+      }
     },
     {
       "race_number": 11,
@@ -652,9 +758,9 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260723-R11",
+      "id": "SAR-20260724-R11",
       "track": "SAR",
-      "date": "2026-07-23",
+      "date": "2026-07-24",
       "num": 11,
       "type": null,
       "horses": []
@@ -669,9 +775,9 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260723-R12",
+      "id": "SAR-20260724-R12",
       "track": "SAR",
-      "date": "2026-07-23",
+      "date": "2026-07-24",
       "num": 12,
       "type": null,
       "horses": []
