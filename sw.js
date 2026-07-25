@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260725-v2.49.50-brisnet'; // v2.49.50: Analytics -- Pick Accuracy rows are now clickable, expanding per-source $ stake/return + by-bet-type detail and a jump to that source's Recent Picks               // bump on every ship
+const CACHE_VERSION = '20260725-v2.49.51-brisnet'; // v2.49.51: Analytics -- win-rate comparison strip added before the ROI hero figure, so similar hit rates read correctly against very different ROI               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

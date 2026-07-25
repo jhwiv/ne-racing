@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260725-v2.49.50-brisnet';
+var NE_APP_VERSION = '20260725-v2.49.51-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260725-v2.49.50-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.50-brisnet';
+var RAILBIRD_VERSION = 'v2.49.51-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -19199,6 +19199,37 @@ function renderAnalyticsAccuracy() {
         'the same return applies to whatever you actually bet (e.g. your suggested Action Bet amount), as long as ' +
         'you bet it consistently across every pick in that group.</p>';
 
+      // v2.49.51: win-rate comparison strip, rendered BEFORE the ROI hero
+      // figure -- direct response to "our picks look wildly better than the
+      // others, that doesn't make sense." It doesn't: independently
+      // recomputed win rates for all three sources cluster within a few
+      // points of each other (e.g. 21.2% / 21.9% / 18.6%), and the huge ROI
+      // spread is real but comes entirely from average payout size on wins,
+      // not from one source getting picked winners more often. The prior
+      // fix for this same confusion (v2.49.47) only added a text sentence
+      // *under* the hero ROI figure -- reading order still hit the giant
+      // colored ROI number first. This puts an equal-scale visual (not just
+      // a sentence) showing win rates side by side ahead of any ROI number
+      // at all, so the "similar hit rate" fact is seen before the "very
+      // different ROI" fact, not after.
+      var winRateCompare = '';
+      if (present.length > 1) {
+        var wrRows = present.map(function(e) {
+          var s = engines[e];
+          var wrPct = Math.max(0, Math.min(100, (s.winRate || 0) * 100));
+          return '<div class="flex items-center mb-1" style="gap:0.5rem">' +
+              '<span class="aa-legend-dot" style="background:' + meta[e].color + '"></span>' +
+              '<span class="text-xs" style="width:8.5rem;flex:none">' + meta[e].label + '</span>' +
+              '<div class="aa-bar-track aa-bar-track-sm" style="flex:1"><div class="aa-bar-fill aa-bar-fill-sm" style="width:' + wrPct + '%;background:' + meta[e].color + '"></div></div>' +
+              '<span class="text-xs font-semibold" style="width:2.8rem;text-align:right;flex:none">' + wrPct.toFixed(1) + '%</span>' +
+            '</div>';
+        }).join('');
+        winRateCompare = '<div class="mb-3">' +
+          '<div class="text-xs text-muted mb-1">Win rate by source, all time — how often that source’s pick actually finished 1st (compare this to the ROI figures below, which measure payout size, not hit rate)</div>' +
+          wrRows +
+        '</div>';
+      }
+
       // Hero figure -- the single biggest, most-legible number on the
       // card, replacing the old buried text sentence.
       //
@@ -19362,7 +19393,7 @@ function renderAnalyticsAccuracy() {
       var glossary = '<p class="text-xs text-muted mt-1"><strong>Win rate</strong> is how often that pick’s horse actually finished 1st. ' +
         '<strong>ROI</strong> is profit or loss against that reference stake ($2 Win / $4 Exacta Box, see note above), averaged across every graded pick.</p>';
 
-      body.innerHTML = notice + volumeLine + roiNote + hero + legend + rows + pendingRows + glossary;
+      body.innerHTML = notice + volumeLine + roiNote + winRateCompare + hero + legend + rows + pendingRows + glossary;
     })
     .catch(function() {
       body.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable, or this endpoint isn’t deployed yet).</p>';

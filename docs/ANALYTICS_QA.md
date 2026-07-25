@@ -11,6 +11,41 @@ again.
 
 ---
 
+## 2026-07-25 (v2.49.51) — "Our Picks look wildly better" reported directly; verified correct, fixed the presentation
+
+Reported with screenshots of the live card (not a description): "these
+numbers don't make sense intuitively, our picks are wildly better than
+the others." Ran the full mandatory process: read this file first, then
+triggered `qa-verify-analytics.yml` (run 30162170465) against production
+rather than trusting the screenshots or re-deriving from memory.
+
+**Result: zero discrepancies.** Every number on the card is exactly what
+an independent recomputation from raw `/api/picks/history` produces:
+
+| Source | Settled | W-L | Win rate | ROI | Avg return/win |
+|---|---|---|---|---|---|
+| Our Picks (`v2`) | 52 | 11-41 | 21.2% | +19.1% | $12.34 |
+| Handicapper Consensus (`crowd`) | 70 | 13-57 | 18.6% | -38.2% | $6.66 |
+| Market Favorite (`baseline_ml`) | 137 | 30-107 | 21.9% | -41.5% | $5.35 |
+
+Not a bug: win rates cluster within ~3 points of each other; the ROI gap
+is entirely payout size (Our Picks' wins pay ~2-2.3x more per hit), not
+hit-rate. Same structural finding as the 2026-07-23 (v2.49.47) entry
+below, confirmed still holding two days and ~100 more graded picks later.
+
+**Fix:** added a win-rate comparison strip that renders *before* the ROI
+hero figure (previously the "ROI ≠ win rate" explanation existed only as
+a sentence *under* the hero — third time this exact ordering mistake has
+caused a real misread on this card). The strip shows all three sources'
+win rates as equal-scale small bars, so "these three are close" is seen
+before "this ROI number is huge," not after. See CHANGELOG v2.49.51 for
+the full writeup. Also shipped this session, unrelated to this specific
+complaint: v2.49.50 made each source's row in this card clickable,
+expanding $ stake/return and by-bet-type detail that was already computed
+server-side but never surfaced.
+
+---
+
 ## 2026-07-23 (v2.49.49) — Full QA/peer-review pass: ROI basis explained BEFORE the numbers, not after
 
 Triggered by a direct question ("does betting the suggested Action Bet

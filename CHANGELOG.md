@@ -1,5 +1,59 @@
 # NE Racing — Changelog
 
+## v2.49.51-brisnet — Analytics: win-rate comparison strip, so "Our Picks look wildly better" reads correctly (2026-07-25)
+
+Reported directly, with screenshots of the live card: "these numbers don't
+make sense intuitively, Our Picks are wildly better than the others."
+Followed the mandatory analytics-qa process before touching anything —
+read `docs/ANALYTICS_QA.md`, then ran `scripts/qa/verify_analytics_numbers.js`
+against production via the `qa-verify-analytics.yml` workflow (run
+30162170465) rather than trusting the screenshot numbers or the code.
+
+**Verification result: zero discrepancies.** Every figure shown
+independently recomputes exactly from raw `/api/picks/history` records:
+
+| Source | Settled | W-L | Win rate | ROI |
+|---|---|---|---|---|
+| Our Picks (`v2`) | 52 | 11-41 | 21.2% | +19.1% |
+| Handicapper Consensus (`crowd`) | 70 | 13-57 | 18.6% | -38.2% |
+| Market Favorite (`baseline_ml`) | 137 | 30-107 | 21.9% | -41.5% |
+
+**The numbers are correct. The "wildly better" read is a real misimpression,
+not a bug** — the three sources' win rates cluster within about 3 points of
+each other (18.6%–21.9%), but Our Picks' 11 wins returned $135.74 (avg
+$12.34/win) vs. Market Favorite's 30 wins returning $160.40 (avg $5.35/win)
+and Handicapper Consensus's 13 wins returning $86.58 (avg $6.66/win) — Our
+Picks' wins pay roughly 2-2.3x more per hit, not more often. Same underlying
+finding as v2.49.47's audit, still holding on fresh data two days later.
+
+**Root cause of the confusion:** v2.49.47 already added a sentence
+explaining "ROI reflects payout size, not hit rate" — but only as small
+gray text sitting *underneath* the giant green ROI hero figure. By the
+time a reader reaches that sentence, the giant number has already made its
+impression. Third time this exact "flashy number first, context after"
+structural mistake has been diagnosed on this card (hero ROI vs. win rate
+in v2.49.47; ROI reference-stake basis in v2.49.49; now this).
+
+**Fix:** a new win-rate comparison strip renders BEFORE the ROI hero
+figure — one row per source, each a small labeled bar (reusing the
+already-defined-but-previously-unused `.aa-bar-track-sm`/`.aa-bar-fill-sm`
+classes) sized to that source's actual win rate, with the number spelled
+out to the right. Because it renders first, a reader sees "all three
+sources hit at nearly the same rate" as a real visual (not just a
+sentence) before encountering any ROI figure at all — the correct mental
+model is established before the number that could be misread.
+
+Did not touch: the ROI hero figure itself, the per-source rows, the
+by-conviction or by-bet-type breakdowns, the Recent Picks filter, or
+anything outside this one card.
+
+Verified with a real Playwright screenshot using the exact confirmed
+production numbers above: strip renders first in DOM order (before
+`aa-hero-roi`), all three win rates display correctly, zero console
+errors. Full suite: 340 total, 338 pass, 1 known-intentional fail, 1
+skipped — unchanged baseline. Pure client-side markup change; no
+worker.js touch, no redeploy needed.
+
 ## v2.49.50-brisnet — Analytics: source rows in Pick Accuracy are now clickable (2026-07-25)
 
 Reported directly: clicking the Our Picks / Market Favorite / Handicapper
