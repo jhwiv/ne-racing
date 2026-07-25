@@ -1,0 +1,56 @@
+name: Pull Entries History (ENTRIES_R2 mirror)
+
+# Merges real pre-race horses data (speed figs, running style, jockey/trainer
+# %, last class, ML odds) from the ENTRIES_R2 mirror onto the results-only
+# data/normalized/{year}/{track}/{date}.json files that pull-race-history.yml
+# already writes. Without this, every race in the on-disk corpus has been
+# unscoreable (horses:[]) for any date after the daily-entries pipeline was
+# disabled -- see scripts/backtest/pull_entries_history.js's header for the
+# full why.
+#
+# Manual trigger only -- this is a backfill/analysis tool, not a scheduled
+# job (ENTRIES_R2 only mirrors one snapshot per (track,date), so there's
+# nothing new to pull on a recurring basis beyond what pull-race-history.yml
+# already covers daily going forward).
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: 'Start date (YYYY-MM-DD). Defaults to 2026-06-05, the earliest the R2 mirror could have anything.'
+        type: string
+        default: ''
+      to:
+        description: 'End date (YYYY-MM-DD). Defaults to today.'
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Pull ENTRIES_R2 horses data into data/normalized/
+        run: |
+          node scripts/backtest/pull_entries_history.js --track SAR \
+            ${{ inputs.from && format('--from {0}', inputs.from) || '' }} \
+            ${{ inputs.to && format('--to {0}', inputs.to) || '' }}
+
+      - name: Commit updated normalized corpus
+        run: |
+          git config user.name "railbird-bot"
+          git config user.email "actions@users.noreply.github.com"
+          # -f: .gitignore blanket-ignores data/normalized/ -- same gotcha as
+          # pull-race-history.yml.
+          git add -f data/normalized/
+          git diff --cached --quiet || git commit -m "chore: merge ENTRIES_R2 horses data into normalized corpus"
+          git push
