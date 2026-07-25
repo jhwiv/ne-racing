@@ -52,5 +52,23 @@ jobs:
           # -f: .gitignore blanket-ignores data/normalized/ -- same gotcha as
           # pull-race-history.yml.
           git add -f data/normalized/
-          git diff --cached --quiet || git commit -m "chore: merge ENTRIES_R2 horses data into normalized corpus"
-          git push
+          git diff --cached --quiet && { echo "Nothing to commit."; exit 0; }
+          git commit -m "chore: merge ENTRIES_R2 horses data into normalized corpus"
+          # This step's own fetch (~50 sequential per-date network calls,
+          # several minutes) opens a wide window for another automated
+          # workflow (e.g. nyra-expert-picks.yml) to push to master first --
+          # confirmed happening twice in a row. Retry with a rebase instead
+          # of failing the whole run and losing several minutes of real
+          # network fetches.
+          for i in 1 2 3 4 5; do
+            if git push; then
+              echo "Pushed on attempt $i."
+              exit 0
+            fi
+            echo "Push rejected (attempt $i) -- fetching + rebasing and retrying..."
+            git fetch origin master
+            git rebase origin/master
+            sleep 3
+          done
+          echo "::error::Push still failing after 5 attempts."
+          exit 1
