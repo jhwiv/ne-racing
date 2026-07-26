@@ -1,15 +1,14 @@
 {
   "track": "SAR",
   "date": "2026-07-04",
-  "source": "RACE_HISTORY + ENTRIES_R2 (worker.js), merged by pull_entries_history.js",
-  "pulled_at": "2026-07-25T15:43:29.241Z",
+  "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
+  "pulled_at": "2026-07-26T06:57:35.386Z",
   "races": [
     {
       "id": "SAR-20260704-R1",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 1,
-      "type": "AOC",
       "horses": [
         {
           "pp": 1,
@@ -97,7 +96,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -131,14 +129,15 @@
             "payout": 2.68
           }
         ]
-      }
+      },
+      "type": "AOC",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R2",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 2,
-      "type": "ALW",
       "horses": [
         {
           "pp": 1,
@@ -345,7 +344,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -379,14 +377,15 @@
             "payout": 27.17
           }
         ]
-      }
+      },
+      "type": "ALW",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R3",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 3,
-      "type": "MSW",
       "horses": [
         {
           "pp": 1,
@@ -593,7 +592,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -627,14 +625,15 @@
             "payout": 71.21
           }
         ]
-      }
+      },
+      "type": "MSW",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R4",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 4,
-      "type": "ALW",
       "horses": [
         {
           "pp": 1,
@@ -773,7 +772,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -807,14 +805,15 @@
             "payout": 35.04
           }
         ]
-      }
+      },
+      "type": "ALW",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R5",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 5,
-      "type": "STK",
       "horses": [
         {
           "pp": 1,
@@ -970,7 +969,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -1004,14 +1002,15 @@
             "payout": 11.17
           }
         ]
-      }
+      },
+      "type": "STK",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R6",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 6,
-      "type": "ALW",
       "horses": [
         {
           "pp": 1,
@@ -1286,7 +1285,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -1320,14 +1318,15 @@
             "payout": 1907.6
           }
         ]
-      }
+      },
+      "type": "ALW",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R7",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 7,
-      "type": "STK",
       "horses": [
         {
           "pp": 1,
@@ -1500,7 +1499,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -1534,14 +1532,15 @@
             "payout": 427.89
           }
         ]
-      }
+      },
+      "type": "STK",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R8",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 8,
-      "type": "STK",
       "horses": [
         {
           "pp": 1,
@@ -1731,7 +1730,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -1765,14 +1763,15 @@
             "payout": 195.97
           }
         ]
-      }
+      },
+      "type": "STK",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R9",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 9,
-      "type": "STK",
       "horses": [
         {
           "pp": 1,
@@ -1945,7 +1944,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -1979,14 +1977,15 @@
             "payout": 52.59
           }
         ]
-      }
+      },
+      "type": "STK",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R10",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 10,
-      "type": "AOC",
       "horses": [
         {
           "pp": 1,
@@ -2159,7 +2158,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -2193,14 +2191,15 @@
             "payout": 293.62
           }
         ]
-      }
+      },
+      "type": "AOC",
+      "expertPicks": []
     },
     {
       "id": "SAR-20260704-R11",
       "track": "SAR",
       "date": "2026-07-04",
       "num": 11,
-      "type": "MSW",
       "horses": [
         {
           "pp": 1,
@@ -2407,7 +2406,6 @@
           "scratched": false
         }
       ],
-      "expertPicks": [],
       "results": {
         "finish_positions": [
           {
@@ -2441,7 +2439,9 @@
             "payout": 68.89
           }
         ]
-      }
+      },
+      "type": "MSW",
+      "expertPicks": []
     }
   ]
 }

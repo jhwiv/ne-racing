@@ -1,15 +1,14 @@
 {
   "track": "SAR",
   "date": "2026-07-19",
-  "source": "RACE_HISTORY + ENTRIES_R2 (worker.js), merged by pull_entries_history.js",
-  "pulled_at": "2026-07-25T15:43:29.244Z",
+  "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
+  "pulled_at": "2026-07-26T06:57:35.391Z",
   "races": [
     {
       "id": "SAR-20260719-R1",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 1,
-      "type": null,
       "horses": [
         {
           "pp": 1,
@@ -148,6 +147,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 6,
+            "horseName": "Sturdy",
+            "position": 1,
+            "win_payout": 6.56
+          },
+          {
+            "pp": 4,
+            "horseName": "American Grant",
+            "position": 2
+          },
+          {
+            "pp": 3,
+            "horseName": "McDiesel",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 29.1
+          },
+          {
+            "type": "trifecta",
+            "payout": 47.71
+          },
+          {
+            "type": "superfecta",
+            "payout": 11.39
+          }
+        ]
+      },
+      "race_number": 1,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -186,48 +220,13 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 1,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 6,
-            "horseName": "Sturdy",
-            "position": 1,
-            "win_payout": 6.56
-          },
-          {
-            "pp": 4,
-            "horseName": "American Grant",
-            "position": 2
-          },
-          {
-            "pp": 3,
-            "horseName": "McDiesel",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 29.1
-          },
-          {
-            "type": "trifecta",
-            "payout": 47.71
-          },
-          {
-            "type": "superfecta",
-            "payout": 11.39
-          }
-        ]
-      }
+      "type": null
     },
     {
       "id": "SAR-20260719-R2",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 2,
-      "type": null,
       "horses": [
         {
           "pp": 16,
@@ -502,6 +501,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 2,
+            "horseName": "Emergency Nine",
+            "position": 1,
+            "win_payout": 8.3
+          },
+          {
+            "pp": 12,
+            "horseName": "Waitin'onapromise",
+            "position": 2
+          },
+          {
+            "pp": 4,
+            "horseName": "Froghollowsummer",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 16.76
+          },
+          {
+            "type": "trifecta",
+            "payout": 242.83
+          },
+          {
+            "type": "superfecta",
+            "payout": 186.22
+          }
+        ]
+      },
+      "race_number": 2,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -546,48 +580,13 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 2,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 2,
-            "horseName": "Emergency Nine",
-            "position": 1,
-            "win_payout": 8.3
-          },
-          {
-            "pp": 12,
-            "horseName": "Waitin'onapromise",
-            "position": 2
-          },
-          {
-            "pp": 4,
-            "horseName": "Froghollowsummer",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 16.76
-          },
-          {
-            "type": "trifecta",
-            "payout": 242.83
-          },
-          {
-            "type": "superfecta",
-            "payout": 186.22
-          }
-        ]
-      }
+      "type": null
     },
     {
       "id": "SAR-20260719-R3",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 3,
-      "type": null,
       "horses": [
         {
           "pp": 10,
@@ -760,6 +759,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 7,
+            "horseName": "Big Brooklyn",
+            "position": 1,
+            "win_payout": 48.32
+          },
+          {
+            "pp": 8,
+            "horseName": "Sfumato",
+            "position": 2
+          },
+          {
+            "pp": 5,
+            "horseName": "Mr R T",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 185.9
+          },
+          {
+            "type": "trifecta",
+            "payout": 314.8
+          },
+          {
+            "type": "superfecta",
+            "payout": 122.42
+          }
+        ]
+      },
+      "race_number": 3,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -804,48 +838,13 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 3,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 7,
-            "horseName": "Big Brooklyn",
-            "position": 1,
-            "win_payout": 48.32
-          },
-          {
-            "pp": 8,
-            "horseName": "Sfumato",
-            "position": 2
-          },
-          {
-            "pp": 5,
-            "horseName": "Mr R T",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 185.9
-          },
-          {
-            "type": "trifecta",
-            "payout": 314.8
-          },
-          {
-            "type": "superfecta",
-            "payout": 122.42
-          }
-        ]
-      }
+      "type": null
     },
     {
       "id": "SAR-20260719-R4",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 4,
-      "type": null,
       "horses": [
         {
           "pp": 1,
@@ -984,6 +983,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 4,
+            "horseName": "Killa Sally",
+            "position": 1,
+            "win_payout": 8.52
+          },
+          {
+            "pp": 1,
+            "horseName": "Celestial Body",
+            "position": 2
+          },
+          {
+            "pp": 5,
+            "horseName": "Hot Gossip",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 72.85
+          },
+          {
+            "type": "trifecta",
+            "payout": 205.97
+          },
+          {
+            "type": "superfecta",
+            "payout": 161.76
+          }
+        ]
+      },
+      "race_number": 4,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -1028,48 +1062,13 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 4,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 4,
-            "horseName": "Killa Sally",
-            "position": 1,
-            "win_payout": 8.52
-          },
-          {
-            "pp": 1,
-            "horseName": "Celestial Body",
-            "position": 2
-          },
-          {
-            "pp": 5,
-            "horseName": "Hot Gossip",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 72.85
-          },
-          {
-            "type": "trifecta",
-            "payout": 205.97
-          },
-          {
-            "type": "superfecta",
-            "payout": 161.76
-          }
-        ]
-      }
+      "type": null
     },
     {
       "id": "SAR-20260719-R5",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 5,
-      "type": null,
       "horses": [
         {
           "pp": 14,
@@ -1310,6 +1309,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Factory Setting",
+            "position": 1,
+            "win_payout": 5.7
+          },
+          {
+            "pp": 3,
+            "horseName": "Amazing Gracer",
+            "position": 2
+          },
+          {
+            "pp": 10,
+            "horseName": "Ganderella",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 9.54
+          },
+          {
+            "type": "trifecta",
+            "payout": 148.2
+          },
+          {
+            "type": "superfecta",
+            "payout": 510.16
+          }
+        ]
+      },
+      "race_number": 5,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -1354,48 +1388,13 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 5,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 1,
-            "horseName": "Factory Setting",
-            "position": 1,
-            "win_payout": 5.7
-          },
-          {
-            "pp": 3,
-            "horseName": "Amazing Gracer",
-            "position": 2
-          },
-          {
-            "pp": 10,
-            "horseName": "Ganderella",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 9.54
-          },
-          {
-            "type": "trifecta",
-            "payout": 148.2
-          },
-          {
-            "type": "superfecta",
-            "payout": 510.16
-          }
-        ]
-      }
+      "type": null
     },
     {
       "id": "SAR-20260719-R6",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 6,
-      "type": null,
       "horses": [
         {
           "pp": 14,
@@ -1636,6 +1635,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 6,
+            "horseName": "Braums Run",
+            "position": 1,
+            "win_payout": 8.72
+          },
+          {
+            "pp": 8,
+            "horseName": "Tonja's Treasure",
+            "position": 2
+          },
+          {
+            "pp": 10,
+            "horseName": "Covered Option",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 30.36
+          },
+          {
+            "type": "trifecta",
+            "payout": 178.11
+          },
+          {
+            "type": "superfecta",
+            "payout": 264.88
+          }
+        ]
+      },
+      "race_number": 6,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -1680,48 +1714,13 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 6,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 6,
-            "horseName": "Braums Run",
-            "position": 1,
-            "win_payout": 8.72
-          },
-          {
-            "pp": 8,
-            "horseName": "Tonja's Treasure",
-            "position": 2
-          },
-          {
-            "pp": 10,
-            "horseName": "Covered Option",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 30.36
-          },
-          {
-            "type": "trifecta",
-            "payout": 178.11
-          },
-          {
-            "type": "superfecta",
-            "payout": 264.88
-          }
-        ]
-      }
+      "type": null
     },
     {
       "id": "SAR-20260719-R7",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 7,
-      "type": null,
       "horses": [
         {
           "pp": 10,
@@ -1894,6 +1893,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Silvology",
+            "position": 1,
+            "win_payout": 13.68
+          },
+          {
+            "pp": 7,
+            "horseName": "Vronti (GB)",
+            "position": 2
+          },
+          {
+            "pp": 5,
+            "horseName": "Snipsnippitysnip",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 24.46
+          },
+          {
+            "type": "trifecta",
+            "payout": 101.89
+          },
+          {
+            "type": "superfecta",
+            "payout": 67.79
+          }
+        ]
+      },
+      "race_number": 7,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -1938,48 +1972,13 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 7,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 1,
-            "horseName": "Silvology",
-            "position": 1,
-            "win_payout": 13.68
-          },
-          {
-            "pp": 7,
-            "horseName": "Vronti (GB)",
-            "position": 2
-          },
-          {
-            "pp": 5,
-            "horseName": "Snipsnippitysnip",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 24.46
-          },
-          {
-            "type": "trifecta",
-            "payout": 101.89
-          },
-          {
-            "type": "superfecta",
-            "payout": 67.79
-          }
-        ]
-      }
+      "type": null
     },
     {
       "id": "SAR-20260719-R8",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 8,
-      "type": null,
       "horses": [
         {
           "pp": 3,
@@ -2101,6 +2100,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Georgia Magic",
+            "position": 1,
+            "win_payout": 13.28
+          },
+          {
+            "pp": 4,
+            "horseName": "Iron Dome",
+            "position": 2
+          },
+          {
+            "pp": 6,
+            "horseName": "Freddie B",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 15.15
+          },
+          {
+            "type": "trifecta",
+            "payout": 47.51
+          },
+          {
+            "type": "superfecta",
+            "payout": 16.81
+          }
+        ]
+      },
+      "race_number": 8,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -2145,48 +2179,13 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 8,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 1,
-            "horseName": "Georgia Magic",
-            "position": 1,
-            "win_payout": 13.28
-          },
-          {
-            "pp": 4,
-            "horseName": "Iron Dome",
-            "position": 2
-          },
-          {
-            "pp": 6,
-            "horseName": "Freddie B",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 15.15
-          },
-          {
-            "type": "trifecta",
-            "payout": 47.51
-          },
-          {
-            "type": "superfecta",
-            "payout": 16.81
-          }
-        ]
-      }
+      "type": null
     },
     {
       "id": "SAR-20260719-R9",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 9,
-      "type": null,
       "horses": [
         {
           "pp": 14,
@@ -2427,6 +2426,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 2,
+            "horseName": "Learntodiscover (GB)",
+            "position": 1,
+            "win_payout": 49.96
+          },
+          {
+            "pp": 3,
+            "horseName": "Throckmorton",
+            "position": 2
+          },
+          {
+            "pp": 5,
+            "horseName": "Monster",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 175.57
+          },
+          {
+            "type": "trifecta",
+            "payout": 881.61
+          },
+          {
+            "type": "superfecta",
+            "payout": 2806.48
+          }
+        ]
+      },
+      "race_number": 9,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -2471,48 +2505,13 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 9,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 2,
-            "horseName": "Learntodiscover (GB)",
-            "position": 1,
-            "win_payout": 49.96
-          },
-          {
-            "pp": 3,
-            "horseName": "Throckmorton",
-            "position": 2
-          },
-          {
-            "pp": 5,
-            "horseName": "Monster",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 175.57
-          },
-          {
-            "type": "trifecta",
-            "payout": 881.61
-          },
-          {
-            "type": "superfecta",
-            "payout": 2806.48
-          }
-        ]
-      }
+      "type": null
     },
     {
       "id": "SAR-20260719-R10",
       "track": "SAR",
       "date": "2026-07-19",
       "num": 10,
-      "type": null,
       "horses": [
         {
           "pp": 11,
@@ -2736,6 +2735,41 @@
           "scratched": false
         }
       ],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 2,
+            "horseName": "Roagna",
+            "position": 1,
+            "win_payout": 10.7
+          },
+          {
+            "pp": 3,
+            "horseName": "Mermaid",
+            "position": 2
+          },
+          {
+            "pp": 10,
+            "horseName": "Greyjoy",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 29.27
+          },
+          {
+            "type": "trifecta",
+            "payout": 88.07
+          },
+          {
+            "type": "superfecta",
+            "payout": 50.67
+          }
+        ]
+      },
+      "race_number": 10,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
@@ -2774,41 +2808,7 @@
           "_nyraPipeline": true
         }
       ],
-      "race_number": 10,
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 2,
-            "horseName": "Roagna",
-            "position": 1,
-            "win_payout": 10.7
-          },
-          {
-            "pp": 3,
-            "horseName": "Mermaid",
-            "position": 2
-          },
-          {
-            "pp": 10,
-            "horseName": "Greyjoy",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 29.27
-          },
-          {
-            "type": "trifecta",
-            "payout": 88.07
-          },
-          {
-            "type": "superfecta",
-            "payout": 50.67
-          }
-        ]
-      }
+      "type": null
     },
     {
       "race_number": 11,
