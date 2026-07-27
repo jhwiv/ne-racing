@@ -111,6 +111,36 @@ test('paceSubScore: hot pace boosts closers and tanks speed', () => {
   assert.equal(S.paceSubScore({ runningStyle: 'E' }, ctx), 30);
 });
 
+// v2.49.53: real running-style data uses 'E/P' (slash form) and 'P'
+// (Presser) -- confirmed against 1272 real horse-entries, together over
+// half of all real running styles seen. Both were previously invisible to
+// paceSubScore/buildPaceContext, silently defaulting to neutral 50
+// regardless of pace context.
+test('paceSubScore: recognizes the slash form "E/P" the same as "EP"', () => {
+  const lone = { loneSpeed: true, hotPace: false };
+  assert.equal(S.paceSubScore({ runningStyle: 'E/P' }, lone), 80);
+  const hot = { loneSpeed: false, hotPace: true };
+  assert.equal(S.paceSubScore({ runningStyle: 'E/P' }, hot), 30);
+});
+
+test('paceSubScore: "P" (Presser) is treated as front-running for hot-pace penalty, neutral otherwise', () => {
+  const lone = { loneSpeed: true, hotPace: false };
+  assert.equal(S.paceSubScore({ runningStyle: 'P' }, lone), 50, '"P" is not a lone-speed style by itself');
+  const hot = { loneSpeed: false, hotPace: true };
+  assert.equal(S.paceSubScore({ runningStyle: 'P' }, hot), 50, 'and is not penalized as a front-runner in a hot pace either -- only E/EP/E-P are');
+});
+
+test('isFrontRunning / isCloserStyle: recognize every real style code seen in production data', () => {
+  assert.ok(S.isFrontRunning('E'));
+  assert.ok(S.isFrontRunning('EP'));
+  assert.ok(S.isFrontRunning('E/P'));
+  assert.ok(!S.isFrontRunning('P'));
+  assert.ok(!S.isFrontRunning('S'));
+  assert.ok(S.isCloserStyle('S'));
+  assert.ok(S.isCloserStyle('SS'));
+  assert.ok(!S.isCloserStyle('P'));
+});
+
 // ── Trainer/Jockey v1 vs v2 (the double-count fix) ───────────────────────────
 test('TJ v1: double-counts a hot rider on a hot barn', () => {
   // jky=20, trn=20 → avg 20 → bucket 80

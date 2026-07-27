@@ -1,5 +1,66 @@
 # NE Racing — Changelog
 
+## v2.49.53-brisnet — Advice engine: fixed a real Pace scoring bug, shipped the first-ever real fitted composite weights (2026-07-27)
+
+Direct follow-up to a backtest-the-engine-and-improve-it request. Two real
+changes, in dependency order:
+
+**1. Fixed `paceSubScore()`/`buildPaceContext()` (scripts/lib/scoring.js,
+and the matching inline copy in app.html/index.html — this function runs
+live in production, not just in the offline backtest).** Both only
+recognized running-style codes `E`/`EP`/`S`/`SS`. Confirmed against 1272
+real horse-entries (the newly-ingested 2023 Equibase dataset): real data
+also uses `E/P` (slash form, 187 entries) and `P` — Presser, the single
+most common style value (484 entries). Together, 53% of real horse-entries
+were silently scored as pace-neutral (50) regardless of actual race
+context, in live production, since before this fix existed. Added a shared
+`isFrontRunning()`/`isCloserStyle()` helper both functions now use.
+Verified directly that fixing this recognition gap does NOT explain an
+earlier-reported "Pace's real relationship with winning looks inverted"
+finding (the raw win-rate-by-bucket pattern barely moved with the fix) —
+that finding stands on its own, most likely reflecting a real track/surface
+characteristic this meet's data shows, not a bug. Don't conflate the two.
+
+**2. `data/weights/v2.json` now holds a real fitted weight vector for the
+first time ever** — it was a permanent `status:"insufficient"` placeholder
+since the fitting pipeline (PR #2, `scripts/training/fit_logit.py`) was
+built. The owner provided a real, licensed 2023 Equibase dataset (40 days
+of Saratoga PP + result-chart data, see prior 2 commits) which, merged with
+live 2026 data, cleared the fitter's own 200-race minimum (559 races used).
+Ran the real conditional-logit MLE fit (not just this session's own
+holdout weight-search):
+
+| Factor | Fitted coefficient | Statistically significant? |
+|---|---|---|
+| Speed | +1.91 | Yes |
+| Class | +1.02 | Yes |
+| Trainer/Jockey | +1.39 | Yes |
+| Pace | -0.98 | Yes (see caveat above — not a bug) |
+| Freshness | -2.29 | Yes (real data doesn't show the assumed 14–28-day peak; longer, deliberate freshening outperforms it at this meet) |
+| Bias | +0.0006 | **No** — SE=31.6, statistically meaningless. Confirms Bias contributes nothing measurable in any dataset available to this project: no source has ever supplied real track-bias context, so its sub-score is a constant 50 for every horse. |
+
+Verified via a chronological train/holdout split (4 different splits: 50/50
+through 80/20) that these fitted weights beat `DEFAULT_V2_WEIGHTS` on
+holdout log-loss in 3 of 4 splits and on top-1 hit rate in all 4 — a real,
+if modest (McFadden pseudo-R² = 0.048), improvement, not the "just
+flattens toward uniform" artifact an earlier, much smaller (147-race)
+holdout search had produced.
+
+**No code deploy needed for the weight change itself** — `index.html`'s own
+`RailbirdFittedWeights` module already fetches `data/weights/v2.json` at
+runtime and switches to it automatically once `status:"fitted"` and
+`n_races >= 200` (both now true). Verified live in a real browser (not
+just Node tests): loaded the real committed file end-to-end, confirmed
+`window.RailbirdScoring.scoreRace()` produces different, real scores when
+using it vs. the default weights, zero console errors.
+
+New test: `tests/fitted-weights.test.js` now asserts the *committed* file
+(not just a synthetic payload) is real, fitted, and accepted by
+`loadFittedWeights` — a regression guard, since an accidental revert of
+this file would silently fall back to defaults with no visible error.
+3 new tests for the E/P/P pace fix in `tests/scoring.test.js`. Full suite:
+366 total, 365 pass, 1 known-intentional fail (unchanged baseline).
+
 ## v2.49.51-brisnet — Analytics: win-rate comparison strip, so "Our Picks look wildly better" reads correctly (2026-07-25)
 
 Reported directly, with screenshots of the live card: "these numbers don't

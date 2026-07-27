@@ -124,3 +124,26 @@ test('DEFAULT_V2_WEIGHTS sum to 1.0', () => {
   const sum = Object.values(DEFAULT_V2_WEIGHTS).reduce((a, b) => a + b, 0);
   assert.ok(Math.abs(sum - 1.0) < 1e-9, 'default weights must sum to 1');
 });
+
+// v2.49.53: data/weights/v2.json went from a permanent "insufficient"
+// placeholder to a real fitted payload (559 real SAR races, 2023 Equibase
+// dataset + live 2026 data) the moment the corpus cleared this project's
+// own 200-race threshold -- the exact mechanism RailbirdFittedWeights in
+// index.html/app.html was built for (see its header comment). This is a
+// regression guard, not a duplicate of fitter-output-contract.test.js
+// (which only exercises the fitter against synthetic data): if this file
+// is ever accidentally reverted to the placeholder, or hand-edited into
+// something loadFittedWeights rejects, the live app silently falls back to
+// DEFAULT_V2_WEIGHTS with no visible error -- this test is what would
+// actually catch that before it ships.
+test('the committed data/weights/v2.json is real, fitted, and accepted by loadFittedWeights', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const payload = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'weights', 'v2.json'), 'utf8'));
+  assert.strictEqual(payload.status, 'fitted');
+  assert.ok(payload.n_races >= 200, `n_races (${payload.n_races}) must meet the live app's own 200-race threshold`);
+  const loaded = loadFittedWeights(payload);
+  assert.ok(loaded, 'loadFittedWeights must accept the real committed payload');
+  const sum = Object.values(loaded.weights).reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(sum - 1.0) < 1e-9, 'loaded weights must sum to 1');
+});

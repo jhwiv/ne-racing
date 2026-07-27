@@ -94,17 +94,63 @@ function countExpertPicks(race, horse) {
 }
 
 // ── Per-factor sub-scores (shared between v1 and v2) ─────────────────────────
+//
+// v2.49.21: brought this into parity with the live engine's Prime-Power-
+// blended speedSubScore (index.html/app.html). Previously this file's
+// version was figs-only, while extract_features.js (scripts/training/)
+// imports THIS function to build the "speed" feature fed to the
+// conditional-logit fitter — meaning the fitter would have been calibrating
+// its speed weight against a completely different quantity than the one
+// the live engine actually multiplies that weight against, a silent
+// train/serve skew. This has no effect on live scoring today (this file is
+// not what index.html/app.html run inline) but fixes the skew for whenever
+// fitted weights are next trained. The Prime Power calibration below uses
+// the corrected piecewise-linear anchors (PP100->30, PP120->55, PP140->80,
+// PP160->95) fixed the same day in the live engine — see CHANGELOG.md.
 function speedSubScore(horse) {
   const figs = (horse.speedFigs || []).filter(f => f != null);
-  if (!figs.length) return { score: 50, n: 0 };
-  const avg = figs.reduce((a, b) => a + b, 0) / figs.length;
-  let s = Math.min(100, Math.max(0, ((avg - 45) / 45) * 100));
-  const latest = figs[figs.length - 1];
-  const highest = Math.max(...figs);
-  if (latest === highest && figs.length > 1) s = Math.min(100, s + 8);
-  const lowest = Math.min(...figs);
-  if (latest === lowest && figs.length > 1) s = Math.max(0, s - 5);
-  return { score: s, n: figs.length };
+  const pp = (horse.primePower != null && isFinite(horse.primePower)) ? horse.primePower : null;
+
+  const PP_CAL = [[100, 30], [120, 55], [140, 80], [160, 95]];
+  let ppScore = null;
+  if (pp != null) {
+    if (pp <= PP_CAL[0][0]) {
+      const slope = (PP_CAL[1][1] - PP_CAL[0][1]) / (PP_CAL[1][0] - PP_CAL[0][0]);
+      ppScore = PP_CAL[0][1] + slope * (pp - PP_CAL[0][0]);
+    } else if (pp >= PP_CAL[PP_CAL.length - 1][0]) {
+      const last = PP_CAL.length - 1;
+      const slope = (PP_CAL[last][1] - PP_CAL[last - 1][1]) / (PP_CAL[last][0] - PP_CAL[last - 1][0]);
+      ppScore = PP_CAL[last][1] + slope * (pp - PP_CAL[last][0]);
+    } else {
+      for (let i = 0; i < PP_CAL.length - 1; i++) {
+        if (pp >= PP_CAL[i][0] && pp <= PP_CAL[i + 1][0]) {
+          const slope = (PP_CAL[i + 1][1] - PP_CAL[i][1]) / (PP_CAL[i + 1][0] - PP_CAL[i][0]);
+          ppScore = PP_CAL[i][1] + slope * (pp - PP_CAL[i][0]);
+          break;
+        }
+      }
+    }
+    ppScore = Math.min(100, Math.max(0, ppScore));
+  }
+
+  let figScore = null;
+  if (figs.length) {
+    const avg = figs.reduce((a, b) => a + b, 0) / figs.length;
+    figScore = Math.min(100, Math.max(0, ((avg - 45) / 45) * 100));
+    const latest = figs[figs.length - 1];
+    const highest = Math.max(...figs);
+    if (latest === highest && figs.length > 1) figScore = Math.min(100, figScore + 8);
+    const lowest = Math.min(...figs);
+    if (latest === lowest && figs.length > 1) figScore = Math.max(0, figScore - 5);
+  }
+
+  let s;
+  if (ppScore != null && figScore != null) s = ppScore * 0.7 + figScore * 0.3;
+  else if (ppScore != null) s = ppScore;
+  else if (figScore != null) s = figScore;
+  else return { score: 50, n: 0 };
+
+  return { score: s, n: figs.length, ppUsed: ppScore != null };
 }
 
 function classSubScore(horse, raceClassVal) {
@@ -120,12 +166,26 @@ function classSubScore(horse, raceClassVal) {
   return 20;
 }
 
+// v2.49.53: 'E' and 'EP' were the only front-running codes recognized here
+// and in buildPaceContext() below. Real running-style data (confirmed
+// against 1272 real horse-entries) uses 'E/P' (slash form) for the same
+// Early/Presser style, and 'P' (Presser) for the single most common style
+// value in the corpus -- together over half of all real entries, every one
+// of which silently fell through to the neutral 50 regardless of context.
+// isFrontRunning() is the one place both functions now read from.
+function isFrontRunning(style) {
+  return style === 'E' || style === 'EP' || style === 'E/P';
+}
+function isCloserStyle(style) {
+  return style === 'S' || style === 'SS';
+}
+
 function paceSubScore(horse, paceContext) {
   const style = horse.runningStyle || '';
   const { loneSpeed, hotPace } = paceContext;
-  if (loneSpeed && (style === 'E' || style === 'EP')) return 80;
-  if (hotPace && (style === 'S' || style === 'SS')) return 70;
-  if (hotPace && (style === 'E' || style === 'EP')) return 30;
+  if (loneSpeed && isFrontRunning(style)) return 80;
+  if (hotPace && isCloserStyle(style)) return 70;
+  if (hotPace && isFrontRunning(style)) return 30;
   return 50;
 }
 
@@ -228,7 +288,7 @@ function dataCompleteness(horse) {
 // ── Pace context (shared) ────────────────────────────────────────────────────
 function buildPaceContext(horses) {
   const styles = horses.map(h => h.runningStyle || '');
-  const frontRunners = styles.filter(s => s === 'E' || s === 'EP').length;
+  const frontRunners = styles.filter(isFrontRunning).length;
   return { frontRunners, loneSpeed: frontRunners === 1, hotPace: frontRunners >= 3 };
 }
 
@@ -481,6 +541,8 @@ function confidenceFor(scored) {
     speedSubScore: speedSubScore,
     classSubScore: classSubScore,
     paceSubScore: paceSubScore,
+    isFrontRunning: isFrontRunning,
+    isCloserStyle: isCloserStyle,
     trainerJockeySubScore_v1: trainerJockeySubScore_v1,
     trainerJockeySubScore_v2: trainerJockeySubScore_v2,
     biasSubScore_v1: biasSubScore_v1,

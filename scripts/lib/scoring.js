@@ -160,12 +160,26 @@ function classSubScore(horse, raceClassVal) {
   return 20;
 }
 
+// v2.49.53: 'E' and 'EP' were the only front-running codes recognized here
+// and in buildPaceContext() below. Real running-style data (confirmed
+// against 1272 real horse-entries) uses 'E/P' (slash form) for the same
+// Early/Presser style, and 'P' (Presser) for the single most common style
+// value in the corpus -- together over half of all real entries, every one
+// of which silently fell through to the neutral 50 regardless of context.
+// isFrontRunning() is the one place both functions now read from.
+function isFrontRunning(style) {
+  return style === 'E' || style === 'EP' || style === 'E/P';
+}
+function isCloserStyle(style) {
+  return style === 'S' || style === 'SS';
+}
+
 function paceSubScore(horse, paceContext) {
   const style = horse.runningStyle || '';
   const { loneSpeed, hotPace } = paceContext;
-  if (loneSpeed && (style === 'E' || style === 'EP')) return 80;
-  if (hotPace && (style === 'S' || style === 'SS')) return 70;
-  if (hotPace && (style === 'E' || style === 'EP')) return 30;
+  if (loneSpeed && isFrontRunning(style)) return 80;
+  if (hotPace && isCloserStyle(style)) return 70;
+  if (hotPace && isFrontRunning(style)) return 30;
   return 50;
 }
 
@@ -268,7 +282,7 @@ function dataCompleteness(horse) {
 // ── Pace context (shared) ────────────────────────────────────────────────────
 function buildPaceContext(horses) {
   const styles = horses.map(h => h.runningStyle || '');
-  const frontRunners = styles.filter(s => s === 'E' || s === 'EP').length;
+  const frontRunners = styles.filter(isFrontRunning).length;
   return { frontRunners, loneSpeed: frontRunners === 1, hotPace: frontRunners >= 3 };
 }
 
@@ -524,6 +538,8 @@ module.exports = {
   speedSubScore,
   classSubScore,
   paceSubScore,
+  isFrontRunning,
+  isCloserStyle,
   trainerJockeySubScore_v1,
   trainerJockeySubScore_v2,
   biasSubScore_v1,

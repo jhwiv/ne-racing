@@ -2,7 +2,7 @@
   "track": "SAR",
   "date": "2023-09-03",
   "source": "Equibase EntryRaceCard (PPs) + Equibase result chart, merged by build_2023_corpus.js",
-  "built_at": "2026-07-27T14:49:42.769Z",
+  "built_at": "2026-07-27T15:06:51.636Z",
   "races": [
     {
       "id": "SAR-20230903-R1",
@@ -30,8 +30,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": 29,
-          "trainerPct": 33
+          "jockeyPct": 17,
+          "trainerPct": 21
         },
         {
           "pp": 1,
@@ -53,7 +53,7 @@
           "lastRaceDate": null,
           "runningStyle": null,
           "jockeyPct": 14,
-          "trainerPct": null
+          "trainerPct": 3
         },
         {
           "pp": 2,
@@ -74,8 +74,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-30",
           "runningStyle": "SS",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 12,
+          "trainerPct": 9
         },
         {
           "pp": 3,
@@ -96,8 +96,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-20",
           "runningStyle": "S",
-          "jockeyPct": 0,
-          "trainerPct": 50
+          "jockeyPct": 18,
+          "trainerPct": 15
         },
         {
           "pp": 4,
@@ -118,8 +118,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 7,
+          "trainerPct": 23
         },
         {
           "pp": 5,
@@ -140,8 +140,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "SS",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 11,
+          "trainerPct": 22
         },
         {
           "pp": 6,
@@ -162,8 +162,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "SS",
-          "jockeyPct": 33,
-          "trainerPct": null
+          "jockeyPct": 12,
+          "trainerPct": 3
         },
         {
           "pp": 7,
@@ -184,8 +184,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-23",
           "runningStyle": "P",
-          "jockeyPct": 22,
-          "trainerPct": 0
+          "jockeyPct": 10,
+          "trainerPct": 22
         },
         {
           "pp": 8,
@@ -206,8 +206,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "S",
-          "jockeyPct": 22,
-          "trainerPct": 33
+          "jockeyPct": 19,
+          "trainerPct": 21
         },
         {
           "pp": 9,
@@ -229,7 +229,7 @@
           "lastRaceDate": null,
           "runningStyle": null,
           "jockeyPct": 14,
-          "trainerPct": 25
+          "trainerPct": 21
         },
         {
           "pp": 10,
@@ -250,33 +250,83 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-30",
           "runningStyle": "S",
-          "jockeyPct": null,
-          "trainerPct": null
-        },
-        {
-          "pp": 11,
-          "name": "Ba Dee Yah",
-          "ml": "20/1",
-          "weight": 119,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Kendrick Carmouche",
-          "jockeyId": "82464",
-          "trainer": "Thomas Amoss",
-          "trainerId": "3496",
-          "speedFigs": [
-            null,
-            null,
-            69
-          ],
-          "lastClass": "MSW",
-          "lastRaceDate": "2023-08-13",
-          "runningStyle": "S",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 5,
+          "trainerPct": 5
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Stents and Statins (GB)",
+            "position": 7
+          },
+          {
+            "pp": 2,
+            "horseName": "Justdeny",
+            "position": 5
+          },
+          {
+            "pp": 3,
+            "horseName": "Most of All",
+            "position": 10
+          },
+          {
+            "pp": 4,
+            "horseName": "Progeny",
+            "position": 8
+          },
+          {
+            "pp": 5,
+            "horseName": "Later Darling",
+            "position": 3
+          },
+          {
+            "pp": 6,
+            "horseName": "Philanthropy",
+            "position": 9
+          },
+          {
+            "pp": 7,
+            "horseName": "Appellate",
+            "position": 2
+          },
+          {
+            "pp": 8,
+            "horseName": "Weigh the Risks",
+            "position": 1,
+            "win_payout": 3.5
+          },
+          {
+            "pp": 9,
+            "horseName": "Sensing Flatter",
+            "position": 4
+          },
+          {
+            "pp": 10,
+            "horseName": "Ice Cold",
+            "position": 6
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 6.1,
+            "winners": "8-7"
+          },
+          {
+            "type": "superfecta",
+            "payout": 10.77,
+            "winners": "8-7-5-9"
+          },
+          {
+            "type": "trifecta",
+            "payout": 9.55,
+            "winners": "8-7-5"
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20230903-R2",
@@ -285,28 +335,6 @@
       "num": 2,
       "type": "MCL",
       "horses": [
-        {
-          "pp": 1,
-          "name": "Montauk Mystique",
-          "ml": "15/1",
-          "weight": 116,
-          "scratched": false,
-          "equipmentChanges": true,
-          "jockey": "Jaime Torres",
-          "jockeyId": "171770",
-          "trainer": "Michael Miceli",
-          "trainerId": "1245",
-          "speedFigs": [
-            58,
-            34,
-            46
-          ],
-          "lastClass": "MCL",
-          "lastRaceDate": "2023-08-10",
-          "runningStyle": "E",
-          "jockeyPct": 0,
-          "trainerPct": 0
-        },
         {
           "pp": 2,
           "name": "Marley's Ghost",
@@ -326,8 +354,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-08-16",
           "runningStyle": "EP",
-          "jockeyPct": 0,
-          "trainerPct": null
+          "jockeyPct": 18,
+          "trainerPct": 24
         },
         {
           "pp": 3,
@@ -348,8 +376,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-08-04",
           "runningStyle": "P",
-          "jockeyPct": null,
-          "trainerPct": 0
+          "jockeyPct": 7,
+          "trainerPct": 14
         },
         {
           "pp": 4,
@@ -370,8 +398,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-15",
           "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 8,
+          "trainerPct": 9
         },
         {
           "pp": 5,
@@ -393,7 +421,7 @@
           "lastRaceDate": "2023-05-12",
           "runningStyle": "P",
           "jockeyPct": 14,
-          "trainerPct": 0
+          "trainerPct": 10
         },
         {
           "pp": 6,
@@ -414,8 +442,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-22",
           "runningStyle": "SS",
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 0,
+          "trainerPct": 14
         },
         {
           "pp": 7,
@@ -436,8 +464,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-12",
           "runningStyle": "S",
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 4,
+          "trainerPct": 20
         },
         {
           "pp": 8,
@@ -458,8 +486,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-07-16",
           "runningStyle": "S",
-          "jockeyPct": 22,
-          "trainerPct": 0
+          "jockeyPct": 19,
+          "trainerPct": 10
         },
         {
           "pp": 9,
@@ -480,8 +508,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-12",
           "runningStyle": "EP",
-          "jockeyPct": 0,
-          "trainerPct": 50
+          "jockeyPct": 11,
+          "trainerPct": 9
         },
         {
           "pp": 10,
@@ -502,11 +530,88 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-08-04",
           "runningStyle": "EP",
-          "jockeyPct": null,
-          "trainerPct": 33
+          "jockeyPct": 7,
+          "trainerPct": 22
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 2,
+            "horseName": "Marley's Ghost",
+            "position": 6
+          },
+          {
+            "pp": 3,
+            "horseName": "Follow the Fed",
+            "position": 5
+          },
+          {
+            "pp": 4,
+            "horseName": "Bon Adieu",
+            "position": 1,
+            "win_payout": 8.2
+          },
+          {
+            "pp": 5,
+            "horseName": "Scherzer",
+            "position": 9
+          },
+          {
+            "pp": 6,
+            "horseName": "Lady Fortuna",
+            "position": 7
+          },
+          {
+            "pp": 7,
+            "horseName": "Sweet Liberty",
+            "position": 4
+          },
+          {
+            "pp": 8,
+            "horseName": "Northway",
+            "position": 8
+          },
+          {
+            "pp": 9,
+            "horseName": "Mim",
+            "position": 2
+          },
+          {
+            "pp": 10,
+            "horseName": "Embraceable Gal",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "daily double",
+            "payout": 8,
+            "winners": "8-4"
+          },
+          {
+            "type": "exacta",
+            "payout": 7.6,
+            "winners": "4-9"
+          },
+          {
+            "type": "quinella",
+            "payout": 2.8,
+            "winners": "4-9"
+          },
+          {
+            "type": "superfecta",
+            "payout": 26.35,
+            "winners": "4-9-10-7"
+          },
+          {
+            "type": "trifecta",
+            "payout": 37.5,
+            "winners": "4-9-10"
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20230903-R3",
@@ -534,8 +639,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-22",
           "runningStyle": "P",
-          "jockeyPct": 22,
-          "trainerPct": 33
+          "jockeyPct": 10,
+          "trainerPct": 21
         },
         {
           "pp": 1,
@@ -556,30 +661,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-11",
           "runningStyle": "SS",
-          "jockeyPct": 29,
-          "trainerPct": 33
-        },
-        {
-          "pp": 2,
-          "name": "Certified Loverboy",
-          "ml": "15/1",
-          "weight": 120,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Dylan Davis",
-          "jockeyId": "149157",
-          "trainer": "Raymond Handal",
-          "trainerId": "951500",
-          "speedFigs": [
-            78,
-            77,
-            83
-          ],
-          "lastClass": "MSW",
-          "lastRaceDate": "2023-07-30",
-          "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 17,
+          "trainerPct": 21
         },
         {
           "pp": 3,
@@ -600,8 +683,8 @@
           "lastClass": "ALW",
           "lastRaceDate": "2023-07-16",
           "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": null
+          "jockeyPct": 12,
+          "trainerPct": 26
         },
         {
           "pp": 4,
@@ -622,8 +705,8 @@
           "lastClass": "AOC",
           "lastRaceDate": "2023-08-02",
           "runningStyle": "EP",
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 7,
+          "trainerPct": 20
         },
         {
           "pp": 5,
@@ -644,30 +727,8 @@
           "lastClass": "ALW",
           "lastRaceDate": "2023-08-13",
           "runningStyle": "E",
-          "jockeyPct": 22,
-          "trainerPct": 33
-        },
-        {
-          "pp": 6,
-          "name": "Implementation",
-          "ml": "10/1",
-          "weight": 124,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Manuel Franco",
-          "jockeyId": "150157",
-          "trainer": "Saffie Joseph, Jr.",
-          "trainerId": "279149",
-          "speedFigs": [
-            98,
-            84,
-            94
-          ],
-          "lastClass": "STR",
-          "lastRaceDate": "2023-08-03",
-          "runningStyle": "S",
-          "jockeyPct": 14,
-          "trainerPct": null
+          "jockeyPct": 19,
+          "trainerPct": 23
         },
         {
           "pp": 7,
@@ -688,11 +749,73 @@
           "lastClass": "ALW",
           "lastRaceDate": "2023-07-16",
           "runningStyle": "E",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 11,
+          "trainerPct": 8
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Leading Contender",
+            "position": 2
+          },
+          {
+            "pp": 1,
+            "horseName": "Moore's Law",
+            "position": 6
+          },
+          {
+            "pp": 3,
+            "horseName": "The Prince's Spur",
+            "position": 5
+          },
+          {
+            "pp": 4,
+            "horseName": "Olympic Dreams",
+            "position": 4
+          },
+          {
+            "pp": 5,
+            "horseName": "Film Star",
+            "position": 1,
+            "win_payout": 5.8
+          },
+          {
+            "pp": 7,
+            "horseName": "Saqeel",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "pick 3",
+            "payout": 21,
+            "winners": "8-4-5"
+          },
+          {
+            "type": "daily double",
+            "payout": 10.2,
+            "winners": "4-5"
+          },
+          {
+            "type": "exacta",
+            "payout": 7.4,
+            "winners": "5-1"
+          },
+          {
+            "type": "superfecta",
+            "payout": 5.22,
+            "winners": "5-1-7-4"
+          },
+          {
+            "type": "trifecta",
+            "payout": 17.25,
+            "winners": "5-1-7"
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20230903-R4",
@@ -720,8 +843,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "EP",
-          "jockeyPct": 0,
-          "trainerPct": null
+          "jockeyPct": 11,
+          "trainerPct": 3
         },
         {
           "pp": 1,
@@ -742,8 +865,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-08-03",
           "runningStyle": "P",
-          "jockeyPct": 33,
-          "trainerPct": null
+          "jockeyPct": 12,
+          "trainerPct": 3
         },
         {
           "pp": 2,
@@ -764,8 +887,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-07-13",
           "runningStyle": "S",
-          "jockeyPct": 0,
-          "trainerPct": 33
+          "jockeyPct": 18,
+          "trainerPct": 23
         },
         {
           "pp": 3,
@@ -787,7 +910,7 @@
           "lastRaceDate": "2023-08-06",
           "runningStyle": "E",
           "jockeyPct": 14,
-          "trainerPct": null
+          "trainerPct": 6
         },
         {
           "pp": 4,
@@ -808,8 +931,8 @@
           "lastClass": "STR",
           "lastRaceDate": "2023-08-02",
           "runningStyle": "SS",
-          "jockeyPct": 0,
-          "trainerPct": null
+          "jockeyPct": 8,
+          "trainerPct": 0
         },
         {
           "pp": 5,
@@ -830,8 +953,8 @@
           "lastClass": "ALW",
           "lastRaceDate": "2023-08-18",
           "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 12,
+          "trainerPct": 31
         },
         {
           "pp": 6,
@@ -852,8 +975,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "SS",
-          "jockeyPct": null,
-          "trainerPct": 0
+          "jockeyPct": 7,
+          "trainerPct": 5
         },
         {
           "pp": 7,
@@ -874,8 +997,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-07-14",
           "runningStyle": "E",
-          "jockeyPct": 22,
-          "trainerPct": 33
+          "jockeyPct": 19,
+          "trainerPct": 23
         },
         {
           "pp": 8,
@@ -896,8 +1019,8 @@
           "lastClass": "AOC",
           "lastRaceDate": "2023-08-02",
           "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 7,
+          "trainerPct": 8
         },
         {
           "pp": 9,
@@ -918,11 +1041,98 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-07-26",
           "runningStyle": "SS",
-          "jockeyPct": 0,
+          "jockeyPct": 11,
           "trainerPct": 0
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Durkin's Call",
+            "position": 2
+          },
+          {
+            "pp": 1,
+            "horseName": "Invisible War",
+            "position": 4
+          },
+          {
+            "pp": 2,
+            "horseName": "Silver Dust",
+            "position": 10
+          },
+          {
+            "pp": 3,
+            "horseName": "Sprinklehead",
+            "position": 5
+          },
+          {
+            "pp": 4,
+            "horseName": "Hang Tight",
+            "position": 6
+          },
+          {
+            "pp": 5,
+            "horseName": "Rally Squirrel",
+            "position": 9
+          },
+          {
+            "pp": 6,
+            "horseName": "Hammerin Aamer",
+            "position": 7
+          },
+          {
+            "pp": 7,
+            "horseName": "Magnolia Midnight",
+            "position": 1,
+            "win_payout": 4
+          },
+          {
+            "pp": 8,
+            "horseName": "Bossmakinbossmoves",
+            "position": 3
+          },
+          {
+            "pp": 9,
+            "horseName": "Beaver Hat",
+            "position": 8
+          }
+        ],
+        "exotics": [
+          {
+            "type": "pick 3",
+            "payout": 14.4,
+            "winners": "4-5-7"
+          },
+          {
+            "type": "daily double",
+            "payout": 5,
+            "winners": "5-7"
+          },
+          {
+            "type": "exacta",
+            "payout": 5,
+            "winners": "7-1"
+          },
+          {
+            "type": "quinella",
+            "payout": 4,
+            "winners": "1-7"
+          },
+          {
+            "type": "superfecta",
+            "payout": 44.9,
+            "winners": "7-1-8-3"
+          },
+          {
+            "type": "trifecta",
+            "payout": 21.75,
+            "winners": "7-1-8"
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20230903-R5",
@@ -950,8 +1160,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 7,
+          "trainerPct": 14
         },
         {
           "pp": 1,
@@ -972,8 +1182,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-24",
           "runningStyle": "SS",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 10,
+          "trainerPct": 14
         },
         {
           "pp": 2,
@@ -994,8 +1204,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": 0,
-          "trainerPct": null
+          "jockeyPct": 18,
+          "trainerPct": 33
         },
         {
           "pp": 3,
@@ -1016,30 +1226,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": 0,
-          "trainerPct": 0
-        },
-        {
-          "pp": 4,
-          "name": "Three Point Strut",
-          "ml": "8/1",
-          "weight": 119,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Ricardo Santana, Jr.",
-          "jockeyId": "136048",
-          "trainer": "Jose Camejo",
-          "trainerId": "946445",
-          "speedFigs": [
-            null,
-            null,
-            null
-          ],
-          "lastClass": null,
-          "lastRaceDate": null,
-          "runningStyle": null,
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 12,
+          "trainerPct": 12
         },
         {
           "pp": 5,
@@ -1060,8 +1248,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 7,
+          "trainerPct": 0
         },
         {
           "pp": 6,
@@ -1082,8 +1270,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": 29,
-          "trainerPct": 33
+          "jockeyPct": 17,
+          "trainerPct": 23
         },
         {
           "pp": 7,
@@ -1104,8 +1292,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": null,
-          "trainerPct": 0
+          "jockeyPct": 7,
+          "trainerPct": 6
         },
         {
           "pp": 8,
@@ -1126,8 +1314,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-10",
           "runningStyle": "S",
-          "jockeyPct": 22,
-          "trainerPct": 0
+          "jockeyPct": 19,
+          "trainerPct": 22
         },
         {
           "pp": 9,
@@ -1148,8 +1336,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-26",
           "runningStyle": "EP",
-          "jockeyPct": 22,
-          "trainerPct": 50
+          "jockeyPct": 10,
+          "trainerPct": 7
         },
         {
           "pp": 10,
@@ -1171,7 +1359,7 @@
           "lastRaceDate": "2023-08-04",
           "runningStyle": "S",
           "jockeyPct": 14,
-          "trainerPct": 33
+          "trainerPct": 23
         },
         {
           "pp": 11,
@@ -1192,99 +1380,103 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": 0,
-          "trainerPct": null
-        },
-        {
-          "pp": 12,
-          "name": "Run Jalen Run",
-          "ml": "8/1",
-          "weight": 119,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Dylan Davis",
-          "jockeyId": "149157",
-          "trainer": "Joe Sharp",
-          "trainerId": "951499",
-          "speedFigs": [
-            null,
-            null,
-            null
-          ],
-          "lastClass": null,
-          "lastRaceDate": null,
-          "runningStyle": null,
-          "jockeyPct": 0,
-          "trainerPct": 0
-        },
-        {
-          "pp": 13,
-          "name": "Yaqui Valley",
-          "ml": "8/1",
-          "weight": 119,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Manuel Franco",
-          "jockeyId": "150157",
-          "trainer": "Michael Maker",
-          "trainerId": "29986",
-          "speedFigs": [
-            42,
-            55,
-            63
-          ],
-          "lastClass": "MSW",
-          "lastRaceDate": "2023-08-04",
-          "runningStyle": "E",
-          "jockeyPct": 14,
-          "trainerPct": 0
-        },
-        {
-          "pp": 14,
-          "name": "Mucho de La Mancha",
-          "ml": "20/1",
-          "weight": 119,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Katie Davis",
-          "jockeyId": "152844",
-          "trainer": "Gary Contessa",
-          "trainerId": "338",
-          "speedFigs": [
-            null,
-            null,
-            null
-          ],
-          "lastClass": null,
-          "lastRaceDate": null,
-          "runningStyle": null,
-          "jockeyPct": 0,
-          "trainerPct": 50
-        },
-        {
-          "pp": 15,
-          "name": "Happy Baytown",
-          "ml": "12/1",
-          "weight": 116,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Dylan Davis",
-          "jockeyId": "149157",
-          "trainer": "Paul McEntee",
-          "trainerId": "280504",
-          "speedFigs": [
-            null,
-            null,
-            71
-          ],
-          "lastClass": "MSW",
-          "lastRaceDate": "2023-04-12",
-          "runningStyle": "E",
-          "jockeyPct": 0,
-          "trainerPct": null
+          "jockeyPct": 8,
+          "trainerPct": 33
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Notafraidtocharge",
+            "position": 9
+          },
+          {
+            "pp": 2,
+            "horseName": "Cowes",
+            "position": 1,
+            "win_payout": 5.4
+          },
+          {
+            "pp": 3,
+            "horseName": "Nano Man",
+            "position": 2
+          },
+          {
+            "pp": 5,
+            "horseName": "Attrayant",
+            "position": 10
+          },
+          {
+            "pp": 6,
+            "horseName": "Magic Beach",
+            "position": 4
+          },
+          {
+            "pp": 7,
+            "horseName": "My Man Woody",
+            "position": 6
+          },
+          {
+            "pp": 8,
+            "horseName": "Khanate",
+            "position": 8
+          },
+          {
+            "pp": 9,
+            "horseName": "Uncle Eddie",
+            "position": 5
+          },
+          {
+            "pp": 10,
+            "horseName": "Piccata Prince",
+            "position": 3
+          },
+          {
+            "pp": 11,
+            "horseName": "Sugar It's Eli",
+            "position": 7
+          }
+        ],
+        "exotics": [
+          {
+            "type": "pick 3",
+            "payout": 16.9,
+            "winners": "5-7-2"
+          },
+          {
+            "type": "pick 4",
+            "payout": 33.62,
+            "winners": "4-5-7-2"
+          },
+          {
+            "type": "pick 5",
+            "payout": 82.12,
+            "winners": "8-4-5-7-2"
+          },
+          {
+            "type": "daily double",
+            "payout": 6.5,
+            "winners": "7-2"
+          },
+          {
+            "type": "exacta",
+            "payout": 29.5,
+            "winners": "2-3"
+          },
+          {
+            "type": "superfecta",
+            "payout": 44.2,
+            "winners": "2-3-10-6"
+          },
+          {
+            "type": "trifecta",
+            "payout": 56.62,
+            "winners": "2-3-10"
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20230903-R6",
@@ -1312,8 +1504,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-07",
           "runningStyle": "SS",
-          "jockeyPct": 22,
-          "trainerPct": 0
+          "jockeyPct": 10,
+          "trainerPct": 8
         },
         {
           "pp": 2,
@@ -1334,8 +1526,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-13",
           "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": 50
+          "jockeyPct": 18,
+          "trainerPct": 15
         },
         {
           "pp": 3,
@@ -1356,8 +1548,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 11,
+          "trainerPct": 3
         },
         {
           "pp": 4,
@@ -1379,7 +1571,7 @@
           "lastRaceDate": "2023-07-23",
           "runningStyle": "S",
           "jockeyPct": 14,
-          "trainerPct": null
+          "trainerPct": 27
         },
         {
           "pp": 5,
@@ -1400,8 +1592,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-13",
           "runningStyle": "S",
-          "jockeyPct": 29,
-          "trainerPct": 33
+          "jockeyPct": 17,
+          "trainerPct": 21
         },
         {
           "pp": 6,
@@ -1422,8 +1614,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 5,
+          "trainerPct": 5
         },
         {
           "pp": 7,
@@ -1444,8 +1636,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-20",
           "runningStyle": "E",
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 7,
+          "trainerPct": 0
         },
         {
           "pp": 8,
@@ -1466,8 +1658,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "S",
-          "jockeyPct": null,
-          "trainerPct": 0
+          "jockeyPct": 7,
+          "trainerPct": 31
         },
         {
           "pp": 9,
@@ -1488,8 +1680,8 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": 33,
-          "trainerPct": 0
+          "jockeyPct": 11,
+          "trainerPct": 22
         },
         {
           "pp": 10,
@@ -1510,11 +1702,93 @@
           "lastClass": null,
           "lastRaceDate": null,
           "runningStyle": null,
-          "jockeyPct": 22,
-          "trainerPct": 0
+          "jockeyPct": 19,
+          "trainerPct": 22
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Social Affair",
+            "position": 10
+          },
+          {
+            "pp": 2,
+            "horseName": "Genetics",
+            "position": 6
+          },
+          {
+            "pp": 3,
+            "horseName": "Dancing Dean",
+            "position": 9
+          },
+          {
+            "pp": 4,
+            "horseName": "Alpine Princess",
+            "position": 1,
+            "win_payout": 8.9
+          },
+          {
+            "pp": 5,
+            "horseName": "Nikitis",
+            "position": 2
+          },
+          {
+            "pp": 6,
+            "horseName": "Extremely Gruntled",
+            "position": 8
+          },
+          {
+            "pp": 7,
+            "horseName": "Snow Dance",
+            "position": 4
+          },
+          {
+            "pp": 8,
+            "horseName": "Noriskit Nobiscuit",
+            "position": 7
+          },
+          {
+            "pp": 9,
+            "horseName": "Caitlinhergrtness",
+            "position": 3
+          },
+          {
+            "pp": 10,
+            "horseName": "Scalable",
+            "position": 5
+          }
+        ],
+        "exotics": [
+          {
+            "type": "pick 3",
+            "payout": 34,
+            "winners": "7-2-4"
+          },
+          {
+            "type": "daily double",
+            "payout": 8.2,
+            "winners": "2-4"
+          },
+          {
+            "type": "exacta",
+            "payout": 24.3,
+            "winners": "4-5"
+          },
+          {
+            "type": "superfecta",
+            "payout": 97.8,
+            "winners": "4-5-9-7"
+          },
+          {
+            "type": "trifecta",
+            "payout": 52.75,
+            "winners": "4-5-9"
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20230903-R7",
@@ -1542,8 +1816,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-08-17",
           "runningStyle": "SS",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 11,
+          "trainerPct": 18
         },
         {
           "pp": 1,
@@ -1564,8 +1838,8 @@
           "lastClass": "STR",
           "lastRaceDate": "2023-08-16",
           "runningStyle": "SS",
-          "jockeyPct": 22,
-          "trainerPct": 0
+          "jockeyPct": 19,
+          "trainerPct": 12
         },
         {
           "pp": 2,
@@ -1586,8 +1860,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-07-28",
           "runningStyle": "EP",
-          "jockeyPct": 29,
-          "trainerPct": 33
+          "jockeyPct": 17,
+          "trainerPct": 23
         },
         {
           "pp": 3,
@@ -1609,7 +1883,7 @@
           "lastRaceDate": "2023-07-13",
           "runningStyle": "EP",
           "jockeyPct": 14,
-          "trainerPct": 0
+          "trainerPct": 12
         },
         {
           "pp": 4,
@@ -1630,8 +1904,8 @@
           "lastClass": "SOC",
           "lastRaceDate": "2023-06-18",
           "runningStyle": "EP",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 12,
+          "trainerPct": 9
         },
         {
           "pp": 5,
@@ -1652,30 +1926,8 @@
           "lastClass": "STR",
           "lastRaceDate": "2023-08-16",
           "runningStyle": "P",
-          "jockeyPct": 22,
-          "trainerPct": null
-        },
-        {
-          "pp": 6,
-          "name": "Provision",
-          "ml": "20/1",
-          "weight": 120,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Trevor McCarthy",
-          "jockeyId": "143811",
-          "trainer": "Orlando Noda",
-          "trainerId": "964818",
-          "speedFigs": [
-            88,
-            72,
-            44
-          ],
-          "lastClass": "CLM",
-          "lastRaceDate": "2023-08-18",
-          "runningStyle": "SS",
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 10,
+          "trainerPct": 10
         },
         {
           "pp": 7,
@@ -1696,30 +1948,8 @@
           "lastClass": "WMC",
           "lastRaceDate": "2023-07-26",
           "runningStyle": "E",
-          "jockeyPct": 0,
-          "trainerPct": 33
-        },
-        {
-          "pp": 8,
-          "name": "Addicted to You",
-          "ml": "30/1",
-          "weight": 119,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Jaime Torres",
-          "jockeyId": "171770",
-          "trainer": "Gary Sciacca",
-          "trainerId": "1670",
-          "speedFigs": [
-            72,
-            71,
-            77
-          ],
-          "lastClass": "CLM",
-          "lastRaceDate": "2023-07-26",
-          "runningStyle": "S",
-          "jockeyPct": 0,
-          "trainerPct": null
+          "jockeyPct": 18,
+          "trainerPct": 23
         },
         {
           "pp": 9,
@@ -1740,55 +1970,83 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-07-28",
           "runningStyle": "E",
-          "jockeyPct": 33,
-          "trainerPct": 33
-        },
-        {
-          "pp": 10,
-          "name": "Memphis",
-          "ml": "4/1",
-          "weight": 120,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Irad Ortiz, Jr.",
-          "jockeyId": "142725",
-          "trainer": "Linda Rice",
-          "trainerId": "1553",
-          "speedFigs": [
-            42,
-            68,
-            36
-          ],
-          "lastClass": "STR",
-          "lastRaceDate": "2023-08-12",
-          "runningStyle": "SS",
-          "jockeyPct": 22,
-          "trainerPct": 33
-        },
-        {
-          "pp": 11,
-          "name": "Achilles Heel",
-          "ml": "6/1",
-          "weight": 119,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Jaime Torres",
-          "jockeyId": "171770",
-          "trainer": "Rudy Rodriguez",
-          "trainerId": "273125",
-          "speedFigs": [
-            47,
-            61,
-            77
-          ],
-          "lastClass": "CLM",
-          "lastRaceDate": "2023-08-16",
-          "runningStyle": "EP",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 11,
+          "trainerPct": 22
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Jarreau",
+            "position": 6
+          },
+          {
+            "pp": 2,
+            "horseName": "Ski Patrol",
+            "position": 7
+          },
+          {
+            "pp": 3,
+            "horseName": "Born a Gambler",
+            "position": 5
+          },
+          {
+            "pp": 4,
+            "horseName": "Empire Attraction",
+            "position": 4
+          },
+          {
+            "pp": 5,
+            "horseName": "Lord Flintshire",
+            "position": 2
+          },
+          {
+            "pp": 7,
+            "horseName": "Indian Mischief",
+            "position": 1,
+            "win_payout": 23
+          },
+          {
+            "pp": 9,
+            "horseName": "Harry Hood",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "pick 3",
+            "payout": 167.5,
+            "winners": "2-4-7"
+          },
+          {
+            "type": "pick 4",
+            "payout": 209,
+            "winners": "7-2-4-7"
+          },
+          {
+            "type": "daily double",
+            "payout": 62,
+            "winners": "4-7"
+          },
+          {
+            "type": "exacta",
+            "payout": 107,
+            "winners": "7-5"
+          },
+          {
+            "type": "superfecta",
+            "payout": 456.05,
+            "winners": "7-5-9-4"
+          },
+          {
+            "type": "trifecta",
+            "payout": 341.5,
+            "winners": "7-5-9"
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20230903-R8",
@@ -1816,8 +2074,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-07-28",
           "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 8,
+          "trainerPct": 6
         },
         {
           "pp": 1,
@@ -1838,8 +2096,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-08-20",
           "runningStyle": "S",
-          "jockeyPct": null,
-          "trainerPct": 0
+          "jockeyPct": 7,
+          "trainerPct": 6
         },
         {
           "pp": 2,
@@ -1860,8 +2118,8 @@
           "lastClass": "STR",
           "lastRaceDate": "2023-07-13",
           "runningStyle": "SS",
-          "jockeyPct": null,
-          "trainerPct": 0
+          "jockeyPct": 7,
+          "trainerPct": 13
         },
         {
           "pp": 2,
@@ -1882,8 +2140,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-08-20",
           "runningStyle": "E",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 18,
+          "trainerPct": 13
         },
         {
           "pp": 3,
@@ -1904,8 +2162,8 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-08-05",
           "runningStyle": "SS",
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 4,
+          "trainerPct": 0
         },
         {
           "pp": 4,
@@ -1926,8 +2184,8 @@
           "lastClass": "STR",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "EP",
-          "jockeyPct": 0,
-          "trainerPct": null
+          "jockeyPct": 7,
+          "trainerPct": 15
         },
         {
           "pp": 5,
@@ -1948,8 +2206,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2022-10-08",
           "runningStyle": "E",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 12,
+          "trainerPct": 8
         },
         {
           "pp": 6,
@@ -1970,8 +2228,8 @@
           "lastClass": "STR",
           "lastRaceDate": "2023-07-09",
           "runningStyle": "SS",
-          "jockeyPct": 22,
-          "trainerPct": null
+          "jockeyPct": 10,
+          "trainerPct": 7
         },
         {
           "pp": 7,
@@ -1992,8 +2250,8 @@
           "lastClass": "STR",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "SS",
-          "jockeyPct": 33,
-          "trainerPct": null
+          "jockeyPct": 12,
+          "trainerPct": 13
         },
         {
           "pp": 8,
@@ -2014,30 +2272,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-07-07",
           "runningStyle": "E",
-          "jockeyPct": 33,
+          "jockeyPct": 11,
           "trainerPct": 0
-        },
-        {
-          "pp": 9,
-          "name": "Proud Foot",
-          "ml": "10/1",
-          "weight": 122,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Jose Lezcano",
-          "jockeyId": "108912",
-          "trainer": "Linda Rice",
-          "trainerId": "1553",
-          "speedFigs": [
-            72,
-            82,
-            75
-          ],
-          "lastClass": "STR",
-          "lastRaceDate": "2023-08-31",
-          "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": 33
         },
         {
           "pp": 10,
@@ -2058,8 +2294,8 @@
           "lastClass": "STR",
           "lastRaceDate": "2023-07-09",
           "runningStyle": "S",
-          "jockeyPct": 22,
-          "trainerPct": 0
+          "jockeyPct": 19,
+          "trainerPct": 12
         },
         {
           "pp": 11,
@@ -2081,7 +2317,7 @@
           "lastRaceDate": "2023-08-06",
           "runningStyle": "S",
           "jockeyPct": 14,
-          "trainerPct": 0
+          "trainerPct": 3
         },
         {
           "pp": 12,
@@ -2102,55 +2338,103 @@
           "lastClass": "CLM",
           "lastRaceDate": "2023-08-11",
           "runningStyle": "SS",
-          "jockeyPct": null,
-          "trainerPct": 0
-        },
-        {
-          "pp": 13,
-          "name": "Yogi",
-          "ml": "8/1",
-          "weight": 117,
-          "scratched": false,
-          "equipmentChanges": true,
-          "jockey": "Jaime Torres",
-          "jockeyId": "171770",
-          "trainer": "Amira Chichakly",
-          "trainerId": "969163",
-          "speedFigs": [
-            72,
-            71,
-            64
-          ],
-          "lastClass": "STR",
-          "lastRaceDate": "2023-08-12",
-          "runningStyle": "SS",
           "jockeyPct": 0,
-          "trainerPct": 0
-        },
-        {
-          "pp": 14,
-          "name": "Thestral",
-          "ml": "5/1",
-          "weight": 120,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Rider TBA",
-          "jockeyId": "159003",
-          "trainer": "Thomas Amoss",
-          "trainerId": "3496",
-          "speedFigs": [
-            66,
-            47,
-            75
-          ],
-          "lastClass": "MCL",
-          "lastRaceDate": "2023-08-16",
-          "runningStyle": "P",
-          "jockeyPct": null,
-          "trainerPct": 0
+          "trainerPct": 5
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "River Tay (IRE)",
+            "position": 8
+          },
+          {
+            "pp": 2,
+            "horseName": "Miscreant",
+            "position": 4
+          },
+          {
+            "pp": 2,
+            "horseName": "Fast Kimmie",
+            "position": 11
+          },
+          {
+            "pp": 3,
+            "horseName": "Sister Nell",
+            "position": 10
+          },
+          {
+            "pp": 4,
+            "horseName": "Up Her Sleeve",
+            "position": 9
+          },
+          {
+            "pp": 5,
+            "horseName": "Mouly",
+            "position": 12
+          },
+          {
+            "pp": 6,
+            "horseName": "Except Temptation",
+            "position": 7
+          },
+          {
+            "pp": 7,
+            "horseName": "Miss Kristy",
+            "position": 3
+          },
+          {
+            "pp": 8,
+            "horseName": "Diamond Status",
+            "position": 2
+          },
+          {
+            "pp": 10,
+            "horseName": "Dontmesswithtess",
+            "position": 6
+          },
+          {
+            "pp": 11,
+            "horseName": "Can't Fool Me",
+            "position": 1,
+            "win_payout": 16.4
+          },
+          {
+            "pp": 12,
+            "horseName": "Anileate",
+            "position": 5
+          }
+        ],
+        "exotics": [
+          {
+            "type": "pick 3",
+            "payout": 1060.5,
+            "winners": "4-7-11"
+          },
+          {
+            "type": "daily double",
+            "payout": 156.5,
+            "winners": "7-11"
+          },
+          {
+            "type": "exacta",
+            "payout": 74,
+            "winners": "11-8"
+          },
+          {
+            "type": "superfecta",
+            "payout": 483.75,
+            "winners": "11-8-7-2"
+          },
+          {
+            "type": "trifecta",
+            "payout": 363,
+            "winners": "11-8-7"
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20230903-R9",
@@ -2179,7 +2463,7 @@
           "lastRaceDate": "2023-07-30",
           "runningStyle": "S",
           "jockeyPct": 14,
-          "trainerPct": 0
+          "trainerPct": 22
         },
         {
           "pp": 2,
@@ -2200,8 +2484,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "EP",
-          "jockeyPct": 33,
-          "trainerPct": 0
+          "jockeyPct": 11,
+          "trainerPct": 8
         },
         {
           "pp": 3,
@@ -2222,8 +2506,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-13",
           "runningStyle": "EP",
-          "jockeyPct": 33,
-          "trainerPct": 50
+          "jockeyPct": 12,
+          "trainerPct": 15
         },
         {
           "pp": 4,
@@ -2244,30 +2528,8 @@
           "lastClass": "STK-G3",
           "lastRaceDate": "2023-07-13",
           "runningStyle": "S",
-          "jockeyPct": 0,
-          "trainerPct": 0
-        },
-        {
-          "pp": 5,
-          "name": "Becky's Joker",
-          "ml": "12/1",
-          "weight": 122,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Javier Castellano",
-          "jockeyId": "57935",
-          "trainer": "Gary Contessa",
-          "trainerId": "338",
-          "speedFigs": [
-            null,
-            85,
-            55
-          ],
-          "lastClass": "STK-G3",
-          "lastRaceDate": "2023-08-06",
-          "runningStyle": "SS",
-          "jockeyPct": 22,
-          "trainerPct": 50
+          "jockeyPct": 18,
+          "trainerPct": 22
         },
         {
           "pp": 6,
@@ -2288,8 +2550,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-30",
           "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 11,
+          "trainerPct": 31
         },
         {
           "pp": 7,
@@ -2310,8 +2572,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-13",
           "runningStyle": "EP",
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 5,
+          "trainerPct": 5
         },
         {
           "pp": 8,
@@ -2332,8 +2594,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "S",
-          "jockeyPct": 29,
-          "trainerPct": 33
+          "jockeyPct": 17,
+          "trainerPct": 21
         },
         {
           "pp": 9,
@@ -2354,8 +2616,8 @@
           "lastClass": "STK-G3",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "EP",
-          "jockeyPct": 22,
-          "trainerPct": null
+          "jockeyPct": 19,
+          "trainerPct": 33
         },
         {
           "pp": 10,
@@ -2380,7 +2642,99 @@
           "trainerPct": null
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Miz Sense",
+            "position": 9
+          },
+          {
+            "pp": 2,
+            "horseName": "Lady Moscato",
+            "position": 7
+          },
+          {
+            "pp": 3,
+            "horseName": "Sugar Hi",
+            "position": 6
+          },
+          {
+            "pp": 4,
+            "horseName": "Closing Act",
+            "position": 5
+          },
+          {
+            "pp": 6,
+            "horseName": "Alys Beach",
+            "position": 4
+          },
+          {
+            "pp": 7,
+            "horseName": "Wonder Ride",
+            "position": 3
+          },
+          {
+            "pp": 8,
+            "horseName": "Ways and Means",
+            "position": 2
+          },
+          {
+            "pp": 9,
+            "horseName": "Brightwork",
+            "position": 1,
+            "win_payout": 8
+          },
+          {
+            "pp": 10,
+            "horseName": "Lemorian",
+            "position": 8
+          }
+        ],
+        "exotics": [
+          {
+            "type": "pick 3",
+            "payout": 654.5,
+            "winners": "7-11-9"
+          },
+          {
+            "type": "daily double",
+            "payout": 31,
+            "winners": "11-9"
+          },
+          {
+            "type": "exacta",
+            "payout": 5.1,
+            "winners": "9-8"
+          },
+          {
+            "type": "consolation pick 3",
+            "payout": 168.25,
+            "winners": "7-11-1"
+          },
+          {
+            "type": "superfecta",
+            "payout": 15.62,
+            "winners": "9-8-7-6"
+          },
+          {
+            "type": "trifecta",
+            "payout": 17.12,
+            "winners": "9-8-7"
+          },
+          {
+            "type": "place pick 9",
+            "payout": 111.5,
+            "winners": "4/5/9-5/7/9-7/8/11-9"
+          },
+          {
+            "type": "consolation double",
+            "payout": 7.8,
+            "winners": "11-1"
+          }
+        ]
+      }
     },
     {
       "id": "SAR-20230903-R10",
@@ -2408,8 +2762,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-07-02",
           "runningStyle": "S",
-          "jockeyPct": 33,
-          "trainerPct": null
+          "jockeyPct": 11,
+          "trainerPct": 0
         },
         {
           "pp": 2,
@@ -2452,8 +2806,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-07-07",
           "runningStyle": "E",
-          "jockeyPct": 0,
-          "trainerPct": 0
+          "jockeyPct": 11,
+          "trainerPct": 5
         },
         {
           "pp": 4,
@@ -2474,30 +2828,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-07-01",
           "runningStyle": "S",
-          "jockeyPct": null,
-          "trainerPct": null
-        },
-        {
-          "pp": 5,
-          "name": "Tooshay",
-          "ml": "30/1",
-          "weight": 120,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Katie Davis",
-          "jockeyId": "152844",
-          "trainer": "Gary Contessa",
-          "trainerId": "338",
-          "speedFigs": [
-            33,
-            36,
-            73
-          ],
-          "lastClass": "MCL",
-          "lastRaceDate": "2023-08-16",
-          "runningStyle": "SS",
           "jockeyPct": 0,
-          "trainerPct": 50
+          "trainerPct": 0
         },
         {
           "pp": 6,
@@ -2518,8 +2850,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-18",
           "runningStyle": "EP",
-          "jockeyPct": null,
-          "trainerPct": null
+          "jockeyPct": 7,
+          "trainerPct": 6
         },
         {
           "pp": 7,
@@ -2541,7 +2873,7 @@
           "lastRaceDate": "2023-07-05",
           "runningStyle": "EP",
           "jockeyPct": 14,
-          "trainerPct": 0
+          "trainerPct": 12
         },
         {
           "pp": 8,
@@ -2562,8 +2894,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-05-14",
           "runningStyle": "P",
-          "jockeyPct": 22,
-          "trainerPct": 33
+          "jockeyPct": 19,
+          "trainerPct": 21
         },
         {
           "pp": 9,
@@ -2584,8 +2916,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-08-05",
           "runningStyle": "P",
-          "jockeyPct": 0,
-          "trainerPct": 25
+          "jockeyPct": 11,
+          "trainerPct": 21
         },
         {
           "pp": 10,
@@ -2606,8 +2938,8 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-08-06",
           "runningStyle": "P",
-          "jockeyPct": 29,
-          "trainerPct": null
+          "jockeyPct": 17,
+          "trainerPct": 0
         },
         {
           "pp": 11,
@@ -2629,29 +2961,7 @@
           "lastRaceDate": "2023-07-13",
           "runningStyle": "SS",
           "jockeyPct": 0,
-          "trainerPct": null
-        },
-        {
-          "pp": 12,
-          "name": "Lakeside Getaway",
-          "ml": "12/1",
-          "weight": 120,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Trevor McCarthy",
-          "jockeyId": "143811",
-          "trainer": "Michael Trombetta",
-          "trainerId": "1898",
-          "speedFigs": [
-            66,
-            69,
-            66
-          ],
-          "lastClass": "MCL",
-          "lastRaceDate": "2023-07-23",
-          "runningStyle": "SS",
-          "jockeyPct": null,
-          "trainerPct": null
+          "trainerPct": 0
         },
         {
           "pp": 13,
@@ -2672,8 +2982,8 @@
           "lastClass": "MSW",
           "lastRaceDate": "2023-08-11",
           "runningStyle": "SS",
-          "jockeyPct": 22,
-          "trainerPct": 33
+          "jockeyPct": 10,
+          "trainerPct": 21
         },
         {
           "pp": 14,
@@ -2694,33 +3004,128 @@
           "lastClass": "MCL",
           "lastRaceDate": "2023-08-23",
           "runningStyle": "E",
-          "jockeyPct": 0,
-          "trainerPct": null
-        },
-        {
-          "pp": 15,
-          "name": "Duke Girls",
-          "ml": "5/2",
-          "weight": 120,
-          "scratched": false,
-          "equipmentChanges": false,
-          "jockey": "Manuel Franco",
-          "jockeyId": "150157",
-          "trainer": "Chad Brown",
-          "trainerId": "259042",
-          "speedFigs": [
-            72,
-            59,
-            68
-          ],
-          "lastClass": "MSW",
-          "lastRaceDate": "2023-07-29",
-          "runningStyle": "P",
-          "jockeyPct": 14,
-          "trainerPct": 33
+          "jockeyPct": 7,
+          "trainerPct": 13
         }
       ],
-      "expertPicks": []
+      "expertPicks": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Jet City Woman",
+            "position": 8
+          },
+          {
+            "pp": 2,
+            "horseName": "Avalanche Is Comin",
+            "position": 7
+          },
+          {
+            "pp": 3,
+            "horseName": "Whiskey Lullaby",
+            "position": 1,
+            "win_payout": 6.4
+          },
+          {
+            "pp": 4,
+            "horseName": "Exotic Cat",
+            "position": 10
+          },
+          {
+            "pp": 6,
+            "horseName": "Keep It Sexy",
+            "position": 4
+          },
+          {
+            "pp": 7,
+            "horseName": "Rosy Tomorrows",
+            "position": 6
+          },
+          {
+            "pp": 8,
+            "horseName": "Addressable Market (IRE)",
+            "position": 3
+          },
+          {
+            "pp": 9,
+            "horseName": "Dark Pool",
+            "position": 2
+          },
+          {
+            "pp": 10,
+            "horseName": "Belleshazza",
+            "position": 9
+          },
+          {
+            "pp": 11,
+            "horseName": "So Are You",
+            "position": 11
+          },
+          {
+            "pp": 13,
+            "horseName": "Better Justice",
+            "position": 5
+          },
+          {
+            "pp": 14,
+            "horseName": "Solevo Spritz",
+            "position": 12
+          }
+        ],
+        "exotics": [
+          {
+            "type": "pick 3",
+            "payout": 105,
+            "winners": "11-9-3"
+          },
+          {
+            "type": "pick 4",
+            "payout": 1348.5,
+            "winners": "7-11-9-3/5/12/15"
+          },
+          {
+            "type": "pick 5",
+            "payout": 7332,
+            "winners": "4-7-11-9-3/5/12/15"
+          },
+          {
+            "type": "pick 6 (5 of 6)",
+            "payout": 300.5,
+            "winners": "2-4-7-11-9-3/5/12/15"
+          },
+          {
+            "type": "pick 6",
+            "payout": 46511.5,
+            "winners": "2-4-7-11-9-3/5/12/15"
+          },
+          {
+            "type": "daily double",
+            "payout": 14.4,
+            "winners": "9-3"
+          },
+          {
+            "type": "exacta",
+            "payout": 18.2,
+            "winners": "3-9"
+          },
+          {
+            "type": "consolation pick 3",
+            "payout": 31,
+            "winners": "11-1-3"
+          },
+          {
+            "type": "superfecta",
+            "payout": 100.2,
+            "winners": "3-9-8-6"
+          },
+          {
+            "type": "trifecta",
+            "payout": 37.5,
+            "winners": "3-9-8"
+          }
+        ]
+      }
     }
   ]
 }
