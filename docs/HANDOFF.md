@@ -185,6 +185,32 @@ live-card critical path — don't confuse it with `cloudflare-worker`.
 3. Cross-validated 2026-07-04: Brisnet file matched Racing API entries
    program-number-for-program-number on a real card (same horses, jockeys,
    post positions) — the two sources agree.
+4. **2023 Equibase historical corpus (offline, backtest/fit-only — never
+   touches the live Worker or live app)** — owner supplied real Equibase
+   `EntryRaceCard` XML ("PPs", 40 files) and matching Trackmaster/Equibase
+   chart XML ("Result Charts", 40 files) for SAR 2023. Ingested by
+   `scripts/ingest/parse_equibase_pp.js` + `scripts/ingest/parse_equibase_chart.js`
+   (parsed via a hand-rolled dependency-free XML parser,
+   `scripts/ingest/lib/tiny_xml_parser.js` — this repo has zero npm deps by
+   design) and merged by `scripts/ingest/build_2023_corpus.js` into
+   `data/normalized/2023/SAR/*.json` (417 races, 410 with graded results).
+   Two non-obvious correctness rules baked into the merge, both covered by
+   `tests/parse-equibase.test.js`:
+   - The **chart's `actualStarterPps` is authoritative over the PP file** —
+     a horse listed in the PP file but absent from the chart was scratched
+     after the PPs were generated and must be excluded (confirmed real case
+     in the sample data: "Toned Up").
+   - The **PP file's real morning line wins over the chart's closing odds**
+     on conflict; closing odds only fill gaps where the PP has none.
+   - `attachRollingConnectionsStats()` computes walk-forward jockey/trainer
+     win% — a connection's stats for a given race are built ONLY from
+     strictly-earlier dates (no same-day leakage between races).
+   This corpus is what first let `scripts/backtest/` and
+   `scripts/training/fit_logit.py` clear the project's own 200-race minimum
+   for a real fitted-weights run (see §11). It is a one-time historical
+   import, not a recurring feed — there is no scheduled job that grows it
+   further; adding more years/tracks would mean repeating this same manual
+   ingestion with new source files.
 
 ---
 
@@ -629,3 +655,116 @@ Touches: `storeTicketPicks`/`logPickToEngine`/`settleEnginePicksForRace`
 
 User's explicit response when offered: **"no. add it to future options"** —
 do not implement unless asked again.
+
+---
+
+## 11. Advice engine: real 2023 data, weight refit, Pace bug fix, live Calibration & Overlay tracking (2026-07-25 → 2026-07-27)
+
+Owner asked to backtest the advice engine and see if a different weighted
+average would predict better, then offered real 2023 Equibase data to make
+that backtest meaningful, then said explicitly: **"fix it all. improve
+betting results."** This section is the record of what that turned into.
+
+### 11.1 Data: see §3.4
+
+The 2023 Equibase PP + chart ingestion (417 races, 410 graded) is documented
+as a permanent architecture fact in §3.4, not repeated here.
+
+### 11.2 Pace running-style bug
+
+`paceSubScore()`/`buildPaceContext()` only recognized running-style codes
+`E`/`EP`/`S`/`SS`. Real Equibase data also uses `E/P` (slash form) and `P`
+— together **53% of real starters in the 2023 corpus** — which fell through
+to a silent neutral score instead of being scored as front-runners/closers.
+Fixed via two small helpers, `isFrontRunning(style)` (`E`, `EP`, `E/P`) and
+`isCloserStyle(style)` (`S`, `SS`), used by both `paceSubScore()` and
+`buildPaceContext()` in `scripts/lib/scoring.js`. Covered by 3 new cases in
+`tests/scoring.test.js`.
+
+This fix was investigated carefully before being applied, because an earlier
+finding this session was that Pace's fitted weight comes out **negative** —
+that looked at first like it might just be this same recognition bug. It
+is not: re-running the fit with the bug fixed still produces a negative Pace
+coefficient (see 11.3). The negative sign is real, not an artifact.
+
+**Ship discipline note:** this fix was applied to the live `index.html`/
+`app.html` inline scoring block by hand-editing the exact ~28 lines needed,
+**not** by running `scripts/build/inline_scoring.js` to regenerate the block.
+That tool is unsafe to run un-audited — see the pre-existing warning in §8
+about `relativeConfidence()` drift. It bit again this session, twice, and was
+caught both times by diffing before commit; no regression shipped. If you
+need to touch the inline scoring block, hand-edit it and diff against
+`git diff --cached` for `relativeConfidence`/`Prime Power scale` strings
+before committing — do not trust a mechanical regen.
+
+### 11.3 First real fitted weights
+
+With the 2023 corpus in hand, `scripts/training/fit_logit.py` (conditional
+logistic regression / McFadden choice model, needs `numpy`+`scipy`) was run
+for real for the first time — 559 scoreable races cleared the project's own
+`MIN_RACES=200` gate in `data/weights/v2.json` (previously a permanent
+`status:"insufficient"` placeholder since the runtime-fetch mechanism was
+built; this is the first time it has ever activated).
+
+Result, committed to `data/weights/v2.json`:
+
+- `beta` (raw logit coefficients) for `[speed, class, pace, tj, bias, fresh]`:
+  `[1.907, 1.022, -0.985, 1.389, 0.0006, -2.294]`
+- `weights_normalized`: `[0.251, 0.134, 0.130, 0.183, 0.0001, 0.302]`
+- `pseudo_r2_mcfadden = 0.0476`, `top1_hit_rate = 0.2147`, `n_races = 559`
+- `status: "fitted"` (was `"insufficient"`)
+
+Validated with chronological (never in-sample) train/holdout splits via
+`scripts/backtest/weight_sweep.js` before committing — multiple splits agreed
+directionally, not just one lucky split. Honest caveat given to the owner:
+`pseudo_r2_mcfadden` of 0.05 is modest — horse racing is hard to predict —
+this is a real, validated improvement over the hand-picked
+`DEFAULT_V2_WEIGHTS`, not a claim of a solved model.
+
+Deploy mechanism: the app already had a `RailbirdFittedWeights` runtime
+fetch of `data/weights/v2.json` that only activates when
+`status==="fitted" && n_races>=200`; this was previously dormant because the
+file was always the placeholder. No code change was needed to activate it —
+committing the real file to `master` was the entire deploy. Confirmed live
+end-to-end via Playwright after push.
+
+### 11.4 Model Calibration & Overlay Betting (v2.49.54)
+
+Answering "what can be done to get better results" honestly: beating the
+market's own pick accuracy is a very high bar. The owner picked the more
+achievable, higher-value option — **is the model's stated confidence
+trustworthy, and is betting model-vs-market overlays actually profitable**.
+
+Shipped:
+
+- `worker.js`: `handlePickStats()` now accumulates, per engine, a 10-bucket
+  calibration table (predicted-probability decile vs. empirical hit rate,
+  via `pick.prob`) and an overlay split (`qualifying` = model probability
+  beats market-implied by more than `OVERLAY_MIN = 0.08`, matching
+  `metrics.js`'s existing `flatOverlayROI` convention, vs. `nonQualifying`).
+  `parseOddsToNum(ml)` mirrors the parser already in `scoring.js` exactly.
+  **This required a manual `wrangler deploy`** — worker.js has no
+  auto-deploy (see §2); owner confirmed they ran it after being given the
+  PowerShell command.
+- New "Model Calibration & Overlay Betting" card in the Analytics tab
+  (`renderAnalyticsCalibration()`), reusing the existing `/api/picks/stats`
+  fetch already made by `renderAnalyticsAccuracy()` — no second network call.
+- New tests: `tests/worker-pick-calibration.test.js` (6 cases: bucketing
+  math, prob-less-pick exclusion, overlay classification, unparseable-ML
+  handling, ROI math).
+
+### 11.5 Deploy cadence clarification (given to owner)
+
+- `worker.js` changes: **manual only**, on code change only — `wrangler
+  deploy` (or CI, if ever set up — not currently). Not a daily task; nothing
+  to run "when the track is open" unless worker.js itself changed.
+  Data jobs (`.github/workflows/*`, NYRA picks refresh, race-history pull)
+  are already scheduled and automatic — no manual daily action needed there.
+- Pages (`index.html`/`app.html`/`sw.js`/etc.) auto-deploys on push to
+  `master`, per §2.
+- Owner was offered, and asked to think about rather than immediately
+  approve, automating the worker.js deploy via a GitHub Actions workflow +
+  Cloudflare API token. Tradeoff given: removes the manual review checkpoint
+  before a worker.js change goes live. **Not implemented** — awaiting an
+  explicit go-ahead and a Cloudflare API token from the owner before doing
+  this.
