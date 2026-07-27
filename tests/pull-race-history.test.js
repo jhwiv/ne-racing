@@ -56,11 +56,21 @@ test('pull_race_history.js writes a normalized file with real results, merged wi
 
   // pull_race_history.js resolves data/ relative to its own location (not
   // cwd), so this runs against the real repo's data/entries-SAR-2026-07-03.json
-  // (already committed, real pre-race field data) and cleans up the one
-  // output file it should produce afterward.
+  // (already committed, real pre-race field data) and restores whatever was
+  // at the output path afterward.
+  //
+  // v2.49.52: this used to unconditionally delete outPath both before and
+  // after the test (existedBefore only checked the DIRECTORY, which always
+  // exists, so the finally block always took the "delete outPath" branch).
+  // That was safe when 2026-07-03.json was purely test-generated scratch --
+  // it stopped being safe the moment a real backfill (ENTRIES_R2 pull)
+  // started writing real committed data to this exact path, at which point
+  // every test-suite run silently destroyed real production data as a side
+  // effect. Snapshot-and-restore instead of blind-delete.
   const outDir = path.join(__dirname, '..', 'data', 'normalized');
   const outPath = path.join(outDir, '2026', 'SAR', '2026-07-03.json');
   const existedBefore = fs.existsSync(outDir);
+  const originalContent = fs.existsSync(outPath) ? fs.readFileSync(outPath, 'utf8') : null;
   try { fs.rmSync(outPath, { force: true }); } catch (_) {}
 
   try {
@@ -85,8 +95,14 @@ test('pull_race_history.js writes a normalized file with real results, merged wi
     const r2 = doc.races.find(r => r.num === 2);
     assert.ok(r2 && r2.horses.length > 0 && !r2.results, 'races the worker never archived must keep their horses data and simply have no results, not get dropped');
   } finally {
-    if (!existedBefore) { try { fs.rmSync(outDir, { recursive: true, force: true }); } catch (_) {} }
-    else { try { fs.rmSync(outPath, { force: true }); } catch (_) {} }
+    if (!existedBefore) {
+      try { fs.rmSync(outDir, { recursive: true, force: true }); } catch (_) {}
+    } else if (originalContent != null) {
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.writeFileSync(outPath, originalContent);
+    } else {
+      try { fs.rmSync(outPath, { force: true }); } catch (_) {}
+    }
     server.close();
   }
 });
