@@ -3432,6 +3432,23 @@ async function handlePickSettle(request, env, origin) {
  * Returns rolling accuracy stats for one engine (or all engines if omitted).
  * Computes on the fly by listing keys; cached 5 minutes.
  */
+// Mirrors scripts/lib/scoring.js's parseOddsToNum exactly -- worker.js is
+// deployed as a standalone script (no bundler/shared-module wiring to the
+// client/backtest code), so small pure helpers like this are duplicated
+// rather than imported, matching this file's existing convention.
+function parseOddsToNum(ml) {
+  if (ml == null) return NaN;
+  const s = String(ml).trim();
+  const m = s.match(/^(\d+)\s*[\-\/]\s*(\d+)$/);
+  if (!m) {
+    const n = parseFloat(s);
+    return isFinite(n) ? n : NaN;
+  }
+  const num = parseInt(m[1], 10), den = parseInt(m[2], 10);
+  if (!den) return NaN;
+  return num / den;
+}
+
 async function handlePickStats(request, env, origin) {
   if (!env.ENGINE_ACCURACY) {
     return jsonOk({ engines: {}, source: "unavailable" }, origin, 0);
@@ -3445,9 +3462,29 @@ async function handlePickStats(request, env, origin) {
   // omitting the param preserves the exact prior all-time behavior.
   const dateFilter = searchParams.get("date") || null;
   const stats = {};
+  // v2.49.54: threshold matching scripts/backtest/metrics.js's
+  // flatOverlayROI default -- kept as one constant so the live endpoint and
+  // the offline backtest never silently diverge on what counts as "a real
+  // overlay" vs. within-normal-noise.
+  const OVERLAY_MIN = 0.08;
 
   function ensureEngine(eng) {
-    if (!stats[eng]) stats[eng] = { picks: 0, settled: 0, wins: 0, places: 0, totalReturn: 0, totalStake: 0, byBetType: {}, byBetTag: {} };
+    if (!stats[eng]) {
+      stats[eng] = {
+        picks: 0, settled: 0, wins: 0, places: 0, totalReturn: 0, totalStake: 0, byBetType: {}, byBetTag: {},
+        // v2.49.54: calibration + overlay-betting tracking. Both require the
+        // pick's own modelProb (stored as `prob` since the field was added)
+        // -- baseline_ml/crowd picks never populate this (they're picked
+        // directly by lowest-ML-odds / crowd consensus, never scored by
+        // scoreRace()), so both sections are naturally empty for those two
+        // engines and the client only renders them for v2.
+        calibration: Array.from({ length: 10 }, () => ({ n: 0, sumProb: 0, wins: 0 })),
+        overlay: {
+          qualifying: { settled: 0, wins: 0, totalStake: 0, totalReturn: 0 },
+          nonQualifying: { settled: 0, wins: 0, totalStake: 0, totalReturn: 0 },
+        },
+      };
+    }
     return stats[eng];
   }
   // v2.49.36: break out settled results by betType (Win vs. Exacta Box)
@@ -3525,6 +3562,41 @@ async function handlePickStats(request, env, origin) {
     if (won) btag.wins++;
     btag.totalReturn += payout;
     btag.totalStake += stake;
+
+    // v2.49.54: calibration -- bucket by the model's OWN stated probability
+    // at pick time (stored as `prob` in the pick record since it was
+    // added), and compare against the real empirical hit rate in that
+    // bucket. A well-calibrated model has predicted ≈ empirical in every
+    // bucket; systematic overconfidence (predicted >> empirical) is exactly
+    // what would make a "high probability" pick a bad bet despite looking
+    // good on paper.
+    const prob = pick ? parseFloat(pick.prob) : NaN;
+    if (Number.isFinite(prob) && prob >= 0 && prob <= 1) {
+      let idx = Math.floor(prob * 10);
+      if (idx >= 10) idx = 9;
+      const bucket = s.calibration[idx];
+      bucket.n++;
+      bucket.sumProb += prob;
+      if (won) bucket.wins++;
+
+      // v2.49.54: overlay-betting ROI -- does betting only when the
+      // model's probability meaningfully exceeds the market's own implied
+      // probability (from the SAME pick's morning line) actually pay off,
+      // as its own tracked metric distinct from "the engine's #1 pick."
+      // Mirrors scripts/backtest/metrics.js's flatOverlayROI so the live
+      // number and the offline backtest number are the same measurement.
+      const mlOdds = pick ? parseOddsToNum(pick.ml) : NaN;
+      if (Number.isFinite(mlOdds) && mlOdds > 0) {
+        const impliedProb = 1 / (mlOdds + 1);
+        const overlay = prob - impliedProb;
+        const bucketKey = overlay > OVERLAY_MIN ? "qualifying" : "nonQualifying";
+        const ov = s.overlay[bucketKey];
+        ov.settled++;
+        if (won) ov.wins++;
+        ov.totalStake += stake;
+        ov.totalReturn += payout;
+      }
+    }
   }
   // Derived ROI
   for (const e of Object.keys(stats)) {
@@ -3541,6 +3613,19 @@ async function handlePickStats(request, env, origin) {
       const b = s.byBetTag[tag];
       b.winRate = b.settled > 0 ? b.wins / b.settled : null;
       b.roi = b.totalStake > 0 ? (b.totalReturn - b.totalStake) / b.totalStake : null;
+    }
+    s.calibration = s.calibration.map((b, i) => ({
+      bucket: i,
+      range: [i / 10, (i + 1) / 10],
+      n: b.n,
+      avgPredicted: b.n > 0 ? b.sumProb / b.n : null,
+      empirical: b.n > 0 ? b.wins / b.n : null,
+      absError: b.n > 0 ? Math.abs((b.wins / b.n) - (b.sumProb / b.n)) : null,
+    }));
+    for (const key of ["qualifying", "nonQualifying"]) {
+      const ov = s.overlay[key];
+      ov.winRate = ov.settled > 0 ? ov.wins / ov.settled : null;
+      ov.roi = ov.totalStake > 0 ? (ov.totalReturn - ov.totalStake) / ov.totalStake : null;
     }
   }
   // appliedDateFilter echoes back whatever dateFilter this exact deployed

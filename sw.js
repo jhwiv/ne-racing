@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260727-v2.49.53-brisnet'; // v2.49.53: Advice engine -- fixed Pace running-style bug (E/P, P codes), shipped first-ever real fitted composite weights               // bump on every ship
+const CACHE_VERSION = '20260727-v2.49.54-brisnet'; // v2.49.54: Analytics -- new Model Calibration & Overlay Betting card tracks whether stated probabilities are trustworthy and whether overlay bets are profitable               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

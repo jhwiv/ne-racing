@@ -1,5 +1,48 @@
 # NE Racing — Changelog
 
+## v2.49.54-brisnet — Analytics: Model Calibration & Overlay Betting card (2026-07-27)
+
+Direct follow-up to "what can be done to get better results": beating the
+market favorite's own hit rate is a very high bar (confirmed via backtest --
+the market still leads Our Picks by a wide margin on both log-loss and
+top-1 rate even with the newly fitted weights). The more achievable, and
+arguably more useful, target is whether the model's own stated
+probabilities are trustworthy, and whether betting specifically when it
+disagrees with the market by a real margin is profitable -- a different
+question than "does the #1 pick win more often," and one the app had never
+tracked as its own ongoing metric.
+
+New card in the Analytics tab, "Model Calibration & Overlay Betting" (Our
+Picks / v2 only -- Market Favorite and Handicapper Consensus are picked
+directly, never scored, so neither has a model probability to check):
+
+- **Calibration**: buckets every graded pick by the model's own stated
+  probability at pick time (already stored per pick, no schema change
+  needed) into deciles, and shows predicted vs. real empirical hit rate in
+  each. A model can rank horses reasonably and still be badly overconfident
+  in its stated percentages -- this is what would catch that.
+- **Overlay betting**: splits graded picks into "model probability beats
+  the market's own implied probability by >8 points" vs. everything else
+  (the same threshold and definition `scripts/backtest/metrics.js`'s
+  `flatOverlayROI` already uses, so the live number and the offline
+  backtest number are the same measurement), and tracks win rate + ROI for
+  each group separately, live, as more picks settle.
+
+`worker.js`'s `/api/picks/stats` computes both from data it already has
+(every logged pick already stores `prob` and `ml`) -- no backfill, no new
+KV writes, no schema migration. New `parseOddsToNum` helper added
+(mirrors `scripts/lib/scoring.js`'s implementation exactly, since worker.js
+is a standalone deploy with no shared-module wiring to the client code).
+
+6 new worker tests cover bucketing, the prob-less-pick (baseline_ml/crowd)
+exclusion, the unparseable-morning-line exclusion, and real ROI math.
+Verified the new card renders correctly with a real Playwright screenshot
+(distinguishable mock data: one well-calibrated bucket, one deliberately
+overconfident bucket, one profitable and one losing overlay group), zero
+console errors. Full suite: 372 total, 371 pass, 1 known-intentional fail
+(unchanged baseline). Pure additive change -- existing byBetType/byBetTag
+sections and every other card untouched.
+
 ## v2.49.53-brisnet — Advice engine: fixed a real Pace scoring bug, shipped the first-ever real fitted composite weights (2026-07-27)
 
 Direct follow-up to a backtest-the-engine-and-improve-it request. Two real

@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260727-v2.49.53-brisnet';
+var NE_APP_VERSION = '20260727-v2.49.54-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260727-v2.49.53-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.53-brisnet';
+var RAILBIRD_VERSION = 'v2.49.54-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10827,6 +10827,26 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         </div>
       </div>
 
+      <!-- v2.49.54: model calibration + overlay-betting ROI, for Our Picks
+           (v2) only -- Market Favorite/Handicapper Consensus never have a
+           real model probability (they're picked directly by lowest-ML-odds
+           / crowd consensus, not scored). Answers a different question than
+           the card above: not "does this source pick more winners," but "is
+           the model's own stated confidence trustworthy, and does betting
+           specifically when it disagrees with the market pay off." Shares
+           the same /api/picks/stats fetch as the card above -- see
+           renderAnalyticsAccuracy(), no second network request. -->
+      <div class="card mb-2">
+        <div class="card-header">
+          <h3>Model Calibration &amp; Overlay Betting</h3>
+        </div>
+        <div class="card-body">
+          <div id="analytics-calibration-body">
+            <p class="text-muted text-sm">Loading…</p>
+          </div>
+        </div>
+      </div>
+
       <!-- v2.49.43: real per-pick history -- every individual logged pick,
            not just aggregated percentages. /api/picks/stats only ever
            returned sums; this reads /api/picks/history so a source with
@@ -19407,10 +19427,85 @@ function renderAnalyticsAccuracy() {
         '<strong>ROI</strong> is profit or loss against that reference stake ($2 Win / $4 Exacta Box, see note above), averaged across every graded pick.</p>';
 
       body.innerHTML = notice + volumeLine + roiNote + winRateCompare + hero + legend + rows + pendingRows + glossary;
+      renderAnalyticsCalibration(engines);
     })
     .catch(function() {
       body.innerHTML = '<p class="text-muted text-sm">Could not load (Worker unreachable, or this endpoint isn’t deployed yet).</p>';
+      var calBody = el('analytics-calibration-body');
+      if (calBody) calBody.innerHTML = '<p class="text-muted text-sm">Could not load.</p>';
     });
+}
+
+// v2.49.54: renders the "Model Calibration & Overlay Betting" card from the
+// SAME /api/picks/stats response renderAnalyticsAccuracy() already fetched
+// -- no second network request. Our Picks (v2) only: Market Favorite/
+// Handicapper Consensus are picked directly (lowest ML odds / crowd
+// consensus), never scored, so they have no model probability to calibrate
+// or compare against the market.
+//
+// Two separate questions, deliberately not conflated:
+//   Calibration -- when the model says "30% chance," does that horse
+//   actually win about 30% of the time? A model can pick the eventual
+//   favorite reasonably well and still be badly overconfident everywhere
+//   else, which is exactly what would make its stated probabilities
+//   untrustworthy for betting decisions even when its RANKING is fine.
+//   Overlay -- of the bets where the model's probability meaningfully
+//   exceeds what the morning line implies (>8 points, matching
+//   scripts/backtest/metrics.js's flatOverlayROI convention), is betting
+//   them actually profitable? This is a different, arguably more
+//   achievable target than "beat the market's own favorite outright."
+function renderAnalyticsCalibration(engines) {
+  var container = el('analytics-calibration-body');
+  if (!container) return;
+  var v2 = engines && engines.v2;
+  if (!v2 || !v2.calibration) {
+    container.innerHTML = '<p class="text-muted text-sm">No graded Our Picks yet.</p>';
+    return;
+  }
+
+  var calRows = v2.calibration.filter(function(b) { return b.n > 0; });
+  var calibrationHtml;
+  if (!calRows.length) {
+    calibrationHtml = '<p class="text-muted text-sm">No graded picks with a recorded model probability yet.</p>';
+  } else {
+    var calTableRows = calRows.map(function(b) {
+      var lo = Math.round(b.range[0] * 100), hi = Math.round(b.range[1] * 100);
+      var errClass = b.absError >= 0.15 ? 'aa-roi-neg' : (b.absError <= 0.05 ? 'aa-roi-pos' : '');
+      return '<div class="flex justify-between items-baseline mb-1" style="gap:0.5rem">' +
+          '<span class="text-xs text-muted" style="width:4.5rem;flex:none">' + lo + '–' + hi + '%</span>' +
+          '<span class="text-xs" style="flex:1">predicted ' + (b.avgPredicted * 100).toFixed(1) + '% · actual ' + (b.empirical * 100).toFixed(1) + '%</span>' +
+          '<span class="text-xs ' + errClass + '" style="width:3.5rem;text-align:right;flex:none">' + (b.absError * 100).toFixed(1) + 'pp</span>' +
+        '</div>' +
+        '<div class="text-xs text-muted mb-1" style="padding-left:4.5rem">n=' + b.n + '</div>';
+    }).join('');
+    calibrationHtml = '<div class="text-xs text-muted mb-2">If Our Picks is well-calibrated, "predicted" and "actual" should track closely in every row below. A predicted probability that is consistently much higher than what actually happens means the model is overconfident -- its rankings can still be useful even when this is true, but its stated percentages should not be read as literal odds.</div>' + calTableRows;
+  }
+
+  var ov = v2.overlay || {};
+  var q = ov.qualifying, nq = ov.nonQualifying;
+  var overlayHtml;
+  if (!q || (q.settled === 0 && nq.settled === 0)) {
+    overlayHtml = '<p class="text-muted text-sm">No graded picks with both a model probability and a parseable morning line yet.</p>';
+  } else {
+    function overlayRow(label, o) {
+      if (!o || !o.settled) return '<div class="text-xs text-muted mb-1">' + label + ': no graded picks yet.</div>';
+      var roiStr = o.roi != null ? fmtPct(o.roi * 100) : '—';
+      var roiClass = o.roi == null ? 'text-muted' : (o.roi >= 0 ? 'aa-roi-pos' : 'aa-roi-neg');
+      var small = o.settled < 10 ? ' (small sample)' : '';
+      return '<div class="flex justify-between items-baseline mt-1">' +
+          '<span class="text-xs text-muted">' + label + '</span>' +
+          '<span class="text-xs ' + roiClass + '">' + roiStr + ' ROI</span>' +
+          '</div>' +
+          '<div class="text-xs text-muted">' + o.wins + '-' + (o.settled - o.wins) + ' (' + (100 * o.winRate).toFixed(1) + '%) on ' + o.settled + ' pick' + (o.settled === 1 ? '' : 's') + small + '</div>';
+    }
+    overlayHtml = '<div class="text-xs text-muted mb-2">"Overlay" picks are ones where Our Picks’ own probability was at least 8 points higher than what the morning line implied -- a real disagreement with the market, not noise. This checks whether betting specifically those disagreements pays off, separately from how the engine’s #1 pick alone performs.</div>' +
+      overlayRow('Overlay bets (model ≫ market)', q) +
+      overlayRow('Everything else', nq);
+  }
+
+  container.innerHTML =
+    '<div class="mb-3"><div class="text-xs text-muted mb-1" style="font-weight:600">Calibration</div>' + calibrationHtml + '</div>' +
+    '<div><div class="text-xs text-muted mb-1" style="font-weight:600">Overlay betting</div>' + overlayHtml + '</div>';
 }
 
 // v2.49.50: expand/collapse a single source's detail panel inside "Pick
