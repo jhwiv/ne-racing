@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260727-v2.49.54-brisnet';
+var NE_APP_VERSION = '20260730-v2.49.55-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260727-v2.49.54-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.54-brisnet';
+var RAILBIRD_VERSION = 'v2.49.55-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10223,6 +10223,13 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
 
     <!-- ===== TAB 1: TODAY'S CARD ===== -->
     <section id="tab-today" class="tab-panel active" role="tabpanel" aria-label="Today's Card">
+      <!-- v2.49.55: Track Status — renders synchronously on boot, before any
+           network round trip, and stays the first thing on this tab so a
+           closed/dark/cancelled track is never left to be inferred from a
+           stuck "Preparing the day's card..." spinner or from every race
+           silently sitting at RESULT PENDING. See renderInitialTrackStatus(),
+           renderCardFoundStatus(), renderAbandonedCardStatus(). -->
+      <div id="track-status-banner" class="banner banner-warning hidden" role="status"></div>
       <div id="live-unavailable-banner" class="banner banner-warning hidden">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         No race card available — check back on a race day
@@ -13119,6 +13126,115 @@ function getSarStatus(today) {
   } catch(e) { return { phase: 'ended', label: '', daysUntil: null }; }
 }
 
+/* =============================================================
+   TRACK STATUS BANNER (v2.49.55)
+
+   Reported live: Saratoga was weather-closed one day, and the app gave no
+   indication anything unusual was happening — every race just sat at
+   "RESULT PENDING" forever, indistinguishable from ordinary results lag,
+   and the only status check in the app (getSarStatus(), above) is a static
+   season calendar that has no way to know about a same-day closure.
+
+   This isn't a live "is the track open" feed — no such signal exists
+   upstream (see docs/HANDOFF.md §3) — so it never asserts a specific cause
+   like "weather." It only states what's actually knowable: whether a card
+   was found for today, whether the season calendar says the meet is even
+   running, and whether a posted card has gone suspiciously long without a
+   single official result. Renders into #track-status-banner, the first
+   element on the Today tab, so it's on screen before "Preparing the day's
+   card..." even finishes loading.
+   ============================================================= */
+function renderTrackStatusBanner(html) {
+  var b = el('track-status-banner');
+  if (!b) return;
+  if (!html) { b.classList.add('hidden'); b.innerHTML = ''; return; }
+  b.innerHTML = trackStatusIconSvg() + ' ' + html;
+  b.classList.remove('hidden');
+}
+
+function trackStatusIconSvg() {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+}
+
+// Synchronous — uses only the static season calendar (getSarStatus), so it
+// can paint the instant the app boots, before fetchLiveEntries() even starts
+// its network round trip (which the v2.49.12 comment on showLoadingIndicator
+// notes can legitimately take 30-50s on a cold cache).
+function renderInitialTrackStatus() {
+  try {
+    var code = getActiveTrack();
+    if (code !== 'SAR') { renderTrackStatusBanner(''); return; }
+    var status = getSarStatus();
+    if (status.phase === 'live') {
+      renderTrackStatusBanner('Checking today’s Saratoga card…');
+    } else if (status.phase === 'upcoming') {
+      renderTrackStatusBanner('Saratoga ' + status.label + '.');
+    } else {
+      renderTrackStatusBanner('Saratoga meet has concluded.');
+    }
+  } catch(_) {}
+}
+
+// Called once fetchLiveEntries() resolves whether today actually has a
+// posted card. foundToday=true clears the banner (races render normally);
+// otherwise states plainly that nothing posted, naming the next known card
+// date if the 3-day lookahead found one, without guessing why.
+function renderCardFoundStatus(foundToday, lookaheadDate) {
+  try {
+    if (getActiveTrack() !== 'SAR') return;
+    if (foundToday) { renderTrackStatusBanner(''); return; }
+    var msg;
+    if (lookaheadDate) {
+      var d = new Date(lookaheadDate + 'T12:00:00');
+      var dayName = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      msg = 'No card posted for Saratoga today — next card is ' + dayName + '.';
+    } else {
+      msg = 'No card posted for Saratoga today or in the next few days. This can be a scheduled dark day or a same-day cancellation (e.g. weather) — check NYRA/Equibase for the official reason.';
+    }
+    renderTrackStatusBanner(msg);
+  } catch(_) {}
+}
+
+// Detects a card that WAS posted but has produced zero official results long
+// after its first post time -- the actual shape of the reported symptom
+// ("all races today say RESULT PENDING"). A real dark day never gets this
+// far (no races to check); ordinary results lag clears within the usual
+// 5-20 minute grading window. Grace period is deliberately generous (2.5h)
+// to avoid false alarms on a single slow-to-grade race.
+function checkForAbandonedCard() {
+  try {
+    if (loadedRaceDate && loadedRaceDate !== getTodayStr()) return null;
+    var data = getTrackData();
+    var races = (data && data.races) || [];
+    if (!races.length) return null;
+    var anyOfficial = races.some(function(r) {
+      return r._official === true || (r._resultData && Array.isArray(r._resultData.results) && r._resultData.results.length);
+    });
+    if (anyOfficial) return null;
+    var postTimes = races.map(function(r) { return parsePostTimeToMinutes(r.postTime); }).filter(function(pt) { return pt >= 0; });
+    if (!postTimes.length) return null;
+    var firstPost = Math.min.apply(null, postTimes);
+    var ABANDONED_GRACE_MIN = 150;
+    if (getNowMinutesET() >= firstPost + ABANDONED_GRACE_MIN) {
+      return 'Saratoga’s card today has posted no official results well past first post — this can indicate the card was cancelled or delayed (e.g. weather) rather than ordinary results lag.';
+    }
+    return null;
+  } catch(_) { return null; }
+}
+
+// Wrapper safe to call on every results-poll tick: only speaks up when a
+// card exists and looks abandoned; otherwise clears (never fights with
+// renderCardFoundStatus's "no card" message, which only runs when there's
+// no card at all — the two conditions are mutually exclusive by construction).
+function renderAbandonedCardStatus() {
+  try {
+    if (getActiveTrack() !== 'SAR') return;
+    var data = getTrackData();
+    if (!((data && data.races) || []).length) return; // no-card path owns the banner
+    renderTrackStatusBanner(checkForAbandonedCard());
+  } catch(_) {}
+}
+
 function getTrackData(code) {
   const store = getStore();
   if (!store) return null;
@@ -14663,6 +14779,11 @@ function deduplicateBets() {
 function initApp() {
   const store = getStore();
   if (!store) return;
+
+  // v2.49.55: track status is the first thing the app determines — render
+  // it before anything else touches the network so a closed/dark meet is
+  // never left to be inferred from a silent loading spinner.
+  try { renderInitialTrackStatus(); } catch(_) {}
 
   // v2.48.9 — prevent stale race-card render. If the live store's races were
   // saved for a date other than today, clear them before any render runs so
@@ -21611,6 +21732,7 @@ async function fetchLiveEntries() {
   if (!result) {
     loadedRaceDate = null; hideLoadingIndicator();
     _entriesFetchAttempted = true;  // v2.48.2: fetch truly failed -- let off-day render
+    renderCardFoundStatus(false, null); // v2.49.55: no card today or in the next 3 days
     // Offline fallback: render cached data if available
     var cachedData = getTrackData();
     if (cachedData && cachedData.races && cachedData.races.length) {
@@ -21626,6 +21748,7 @@ async function fetchLiveEntries() {
   hideLoadingIndicator();
   hideLiveUnavailable();
   loadedRaceDate = result.date;
+  renderCardFoundStatus(!lookaheadDate, lookaheadDate); // v2.49.55
 
   // Persist fetched entries to the per-date cache so historical views can render offline.
   try { saveRacesForDate(result.date, result.races, code); } catch(_) {}
@@ -22171,6 +22294,11 @@ async function fetchLiveResults(isManual) {
   if (!workerUrl) { showToast('Live results require a Worker URL. Check Settings.', 'danger', 4000); return; }
   var code = getActiveTrack();
   var today = getTodayStr();
+
+  // v2.49.55: re-check on every poll tick, independent of whether this
+  // fetch itself succeeds — the abandoned-card signal comes from local
+  // race/post-time data already in the store, not from this response.
+  try { renderAbandonedCardStatus(); } catch(_) {}
 
   // Get already-resolved race numbers from cache to skip re-fetching
   var cachedRaces = getCachedResults(code, today);

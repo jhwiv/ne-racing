@@ -1,5 +1,48 @@
 # NE Racing — Changelog
 
+## v2.49.55-brisnet — Today tab: Track Status banner (2026-07-30)
+
+Reported live: Saratoga was weather-closed one day, and the app gave
+zero indication anything unusual was happening — every race just sat at
+"RESULT PENDING" forever, which looks identical to ordinary results lag.
+The user asked directly: the first thing the app does on launch should be
+to make sure the track is open, and that status should be prominent on the
+same screen as the "Preparing the day's card…" message.
+
+Important constraint respected: there is no live "is the track
+open"/"cancelled: weather" signal from the upstream data source (see
+`docs/HANDOFF.md` §3) — `getSarStatus()` is a static season calendar and
+The Racing API's entries/results responses (verified shapes documented in
+`worker.js`) carry no cancellation-reason field. So this feature never
+asserts a specific cause; it only states what's actually knowable, as
+plainly and as early as possible:
+
+- **New `#track-status-banner`**, the first element on the Today tab.
+  `renderInitialTrackStatus()` paints it synchronously on boot, from the
+  static season calendar alone, before `fetchLiveEntries()`'s network round
+  trip even starts (which can legitimately run 30-50s cold, per the
+  existing v2.49.12 comment) — so a closed/off-season meet is never left
+  silent behind a generic spinner.
+- Once `fetchLiveEntries()` resolves, `renderCardFoundStatus()` states
+  plainly whether today has a posted card, naming the next known card date
+  if the existing 3-day lookahead found one, or noting honestly that no
+  card posted today or in the next few days (scheduled dark day or a
+  same-day cancellation — not distinguishable from the data available, so
+  not guessed at).
+- **New `checkForAbandonedCard()`** — the actual shape of the reported bug:
+  a card that *was* posted but has produced zero official results well
+  past its first post time (2.5h grace period). Runs on every results-poll
+  tick (`renderAbandonedCardStatus()`, called from `fetchLiveResults()`)
+  independent of that fetch's own success/failure, since it only reads
+  local race/post-time data already in the store. This is the concrete
+  fix for "why does the app say all today's races are pending" when the
+  real answer is the card never ran.
+
+Purely additive: new banner element, three new render functions, and
+three call sites (`initApp()`, both branches of `fetchLiveEntries()`,
+`fetchLiveResults()`). No existing status logic (`getRaceStatus()`,
+`getSarStatus()`, the off-day dashboard) was changed.
+
 ## v2.49.54-brisnet — Analytics: Model Calibration & Overlay Betting card (2026-07-27)
 
 Direct follow-up to "what can be done to get better results": beating the
