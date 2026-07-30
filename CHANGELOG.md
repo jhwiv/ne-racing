@@ -1,5 +1,25 @@
 # NE Racing — Changelog
 
+## v2.49.59-brisnet — Track Status splash: once per day (2026-07-30)
+
+Asked directly: the splash was showing on every app open; it should only
+show once per day. New `showTrackSplash()` gate checks
+`localStorage['railbird-splash-seen-date-v1']` against `getTodayStr()`
+(the same ET-anchored race-day definition used everywhere else in the
+app) and no-ops if today's already been seen -- the persistent
+`#track-status-banner` is completely unaffected, this only gates the
+full-screen splash. Marks the date as seen the moment the splash actually
+shows (not on dismissal), so closing the tab before dismissing still
+counts as "seen" for the rest of that day. Resets cleanly at the next real
+racing day rather than an arbitrary rolling time window.
+
+Verified via Playwright with a shared browser context (so localStorage
+persists across page loads exactly like a real device reopening the app):
+first load today shows it and records today's date; a second load the
+same day does not show it; seeding a stale prior date shows it again,
+simulating a new day. Full suite unchanged: 380 total, 379 pass, 1
+known-intentional fail.
+
 ## v2.49.58-brisnet — Track Status splash: timing fix (2026-07-30)
 
 Reported live: the open-day splash disappeared too quickly to read.

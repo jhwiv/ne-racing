@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260730-v2.49.58-brisnet'; // v2.49.58: Track Status splash -- open-day auto-dismiss lengthened 3.2s -> 5s, and tapping anywhere on the overlay (not just the button) dismisses it               // bump on every ship
+const CACHE_VERSION = '20260730-v2.49.59-brisnet'; // v2.49.59: Track Status splash now shows once per day (per device), not once per app open               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
