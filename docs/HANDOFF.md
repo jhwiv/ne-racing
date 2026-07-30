@@ -865,3 +865,64 @@ this before trusting it in production:
 search corroborates an existing local warning, unclear search adds no
 noise), screenshots taken. Full suite: 380 total, 379 pass, 1
 known-intentional fail (unchanged baseline, see §8).
+
+### 12.3 v2.49.56 → v2.49.57 — boot-time splash
+
+Same-day follow-up: asked for a splash page when the app opens — a normal
+open day gets a quick positive splash, a closed day gets a subdued one
+naming the reason (**"closed on the particular day"** — a mundane
+scheduled dark day — vs. **"closed for some other reason"** — an
+exceptional, web-search-confirmed cause). This is purely a more prominent
+FIRST presentation of facts §12.1/12.2 already compute; no new signal was
+added.
+
+- New `#track-splash` full-screen overlay, tied to `initApp()` so it shows
+  once per real app open (not on every tab switch — tab switches don't
+  re-run `initApp()`). `showTrackSplash()` paints synchronously on boot;
+  `updateTrackSplashOpen()` / `updateTrackSplashClosed()` are called from
+  the SAME functions that already drive the banner
+  (`renderCardFoundStatus()`, `renderSearchTrackStatus()`) — no duplicated
+  logic, no second source of truth.
+- Never traps the user: every state (including "checking") has a visible
+  Continue button, and "checking" auto-continues after 5s even if
+  resolution hasn't landed (entries can legitimately take 30-50s cold) —
+  the persistent banner still carries the final word whenever it arrives.
+  Open auto-dismisses itself after 3.2s; closed (either flavor) waits for
+  a tap, since there's something worth reading.
+- **Real bug found and fixed during verification, not before**: entries
+  resolving and the web-search check are two independent async calls with
+  no guaranteed ordering. If the search's `confirmed_closed` result won the
+  race and arrived first, the LATER "entries found today" call would
+  silently flip the splash back to the celebratory open look — burying an
+  actual confirmed cancellation exactly like the abandoned-card scenario
+  (races posted, then rained out). Fixed with a one-way latch,
+  `_trackSplashConfirmedClosedBySearch`: once the search confirms a
+  closure, nothing later can flip the splash back to open for the rest of
+  that page load. Caught by a Playwright test that deliberately forces the
+  wrong order (search resolves, THEN a late "card found" call), asserting
+  the splash stays closed — this is the actual regression test for the bug,
+  not just a happy-path check.
+- **Test-harness gotcha worth remembering for future Playwright work on
+  this app**: the service worker's own self-update flow
+  (`checkVersion()` → `neForceUpdate()` → `document.open()/write()` of a
+  freshly re-fetched `index.html`, or a `window.location.replace()`
+  fallback if `document.open()` throws) was firing non-deterministically
+  in headless Chromium runs, silently swapping the whole document mid-test
+  — this looked exactly like random state loss / a phantom bug (a
+  top-level `var` reading back as `undefined` with no thrown error) until
+  traced to an actual navigation event. Fix for any future test script
+  against this app: disable SW registration up front —
+  ```js
+  await page.addInitScript(() => {
+    if (navigator.serviceWorker) {
+      Object.defineProperty(navigator, 'serviceWorker', { value: undefined, configurable: true });
+    }
+  });
+  ```
+  Not a shipped bug — real users always have a matching `version.json`, so
+  `neForceUpdate` only ever fires on an actual new deploy, same as always.
+
+Verified live via Playwright: all three visual states screenshotted, the
+tap-to-dismiss Continue button exercised, and the ordering-race fix
+specifically regression-tested. Full suite unchanged from §12.2 (380
+total, 379 pass, 1 known-intentional fail).

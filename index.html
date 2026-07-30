@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260730-v2.49.56-brisnet';
+var NE_APP_VERSION = '20260730-v2.49.57-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260730-v2.49.56-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.56-brisnet';
+var RAILBIRD_VERSION = 'v2.49.57-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -9655,6 +9655,73 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     <div class="bg-foot">Powered by Barrier Island Digital, LLC</div>
   </div>
 </div>
+<style>
+  /* v2.49.57: Track Status splash — shown once per app boot (not on every
+     tab switch, since it's tied to initApp(), which only runs on load).
+     Reuses the exact same signals as #track-status-banner (season calendar,
+     entries-fetch outcome, the abandoned-card heuristic, the Perplexity
+     web-search result) but as a full first impression rather than a thin
+     banner, per the owner's explicit ask: a normal open day gets a quick
+     positive splash, a closed day gets a subdued one naming the reason
+     (a mundane scheduled dark day vs. something exceptional like a
+     weather cancellation). Never traps the user — always has a visible
+     "Continue" affordance, and the checking state auto-continues after a
+     few seconds even if resolution hasn't landed yet. */
+  #track-splash {
+    position: fixed; inset: 0; z-index: 99998;
+    display: flex; align-items: center; justify-content: center;
+    padding: 28px 22px;
+    font-family: 'Crimson Pro', Georgia, serif;
+    transition: opacity 0.25s ease;
+  }
+  #track-splash.hidden { display: none; }
+  #track-splash.ts-open {
+    background: linear-gradient(160deg, #1B2E4B 0%, #243653 100%);
+    color: #F5F0E8;
+  }
+  #track-splash.ts-closed, #track-splash.ts-checking {
+    background: #2B2B2B;
+    color: #D8D4C8;
+  }
+  #track-splash .ts-card { width: 100%; max-width: 380px; text-align: center; }
+  #track-splash .ts-icon { font-size: 2.4rem; margin-bottom: 14px; line-height: 1; }
+  #track-splash.ts-checking .ts-icon,
+  #track-splash.ts-closed .ts-icon { opacity: 0.55; font-size: 1.9rem; }
+  #track-splash .ts-headline {
+    font-family: 'Cormorant Garamond', 'Crimson Pro', serif;
+    font-weight: 600; letter-spacing: 0.01em;
+    margin: 0 0 8px;
+  }
+  #track-splash.ts-open .ts-headline { font-size: 1.7rem; color: #F5F0E8; }
+  #track-splash.ts-closed .ts-headline,
+  #track-splash.ts-checking .ts-headline { font-size: 1.3rem; color: #C9C4B6; font-weight: 500; }
+  #track-splash .ts-detail {
+    font-size: 0.95rem; line-height: 1.5; opacity: 0.85; margin: 0 0 22px;
+  }
+  #track-splash.ts-checking .ts-detail { opacity: 0.6; }
+  #track-splash .ts-continue {
+    display: inline-block; padding: 11px 28px; border-radius: 999px;
+    font-family: 'Crimson Pro', serif; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; border: 1px solid transparent;
+  }
+  #track-splash.ts-open .ts-continue { background: #C9A84C; color: #1B2E4B; }
+  #track-splash.ts-closed .ts-continue,
+  #track-splash.ts-checking .ts-continue {
+    background: transparent; color: #D8D4C8; border-color: rgba(216,212,200,0.4);
+  }
+  #track-splash .ts-skip {
+    display: block; margin-top: 14px; font-size: 0.78rem; opacity: 0.5;
+    cursor: pointer; text-decoration: underline;
+  }
+</style>
+<div id="track-splash" class="hidden ts-checking" role="dialog" aria-modal="true" aria-labelledby="ts-headline">
+  <div class="ts-card">
+    <div class="ts-icon" id="ts-icon">&#9202;</div>
+    <h1 class="ts-headline" id="ts-headline">Checking today’s card…</h1>
+    <div class="ts-detail" id="ts-detail"></div>
+    <button type="button" class="ts-continue" id="ts-continue-btn" onclick="dismissTrackSplash()">Continue</button>
+  </div>
+</div>
 <script>
 (function(){
   // ─── Beta access — three modes ────────────────────────────────────────
@@ -13180,13 +13247,18 @@ function renderInitialTrackStatus() {
   try {
     var code = getActiveTrack();
     if (code !== 'SAR') { _trackStatusLocalMsg = ''; repaintTrackStatusBanner(); return; }
+    showTrackSplash(); // v2.49.57
     var status = getSarStatus();
     if (status.phase === 'live') {
       _trackStatusLocalMsg = 'Checking today’s Saratoga card…';
+      // Splash stays in its default "checking" state -- renderCardFoundStatus()
+      // resolves it to open/closed once fetchLiveEntries() knows.
     } else if (status.phase === 'upcoming') {
       _trackStatusLocalMsg = 'Saratoga ' + status.label + '.';
+      updateTrackSplashClosed('Saratoga is not racing today', status.label + '.');
     } else {
       _trackStatusLocalMsg = 'Saratoga meet has concluded.';
+      updateTrackSplashClosed('Saratoga is not racing today', 'This meet has concluded.');
     }
     repaintTrackStatusBanner();
   } catch(_) {}
@@ -13195,18 +13267,32 @@ function renderInitialTrackStatus() {
 // Called once fetchLiveEntries() resolves whether today actually has a
 // posted card. foundToday=true clears the banner (races render normally);
 // otherwise states plainly that nothing posted, naming the next known card
-// date if the 3-day lookahead found one, without guessing why.
-function renderCardFoundStatus(foundToday, lookaheadDate) {
+// date if the 3-day lookahead found one, without guessing why. `races`
+// (v2.49.57, optional) is today's race list when foundToday=true, used only
+// to surface first post time on the splash -- omit for the not-found path.
+function renderCardFoundStatus(foundToday, lookaheadDate, races) {
   try {
     if (getActiveTrack() !== 'SAR') return;
-    if (foundToday) { _trackStatusLocalMsg = ''; repaintTrackStatusBanner(); return; }
+    if (foundToday) {
+      _trackStatusLocalMsg = '';
+      repaintTrackStatusBanner();
+      var firstPost = null;
+      if (Array.isArray(races) && races.length) {
+        var sorted = races.slice().sort(function(a, b) { return (a.num || 0) - (b.num || 0); });
+        if (sorted[0] && sorted[0].postTime && sorted[0].postTime !== 'TBD') firstPost = sorted[0].postTime;
+      }
+      updateTrackSplashOpen(firstPost);
+      return;
+    }
     var msg;
     if (lookaheadDate) {
       var d = new Date(lookaheadDate + 'T12:00:00');
       var dayName = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
       msg = 'No card posted for Saratoga today — next card is ' + dayName + '.';
+      updateTrackSplashClosed('No racing at Saratoga today', 'Next card is ' + dayName + '.');
     } else {
       msg = 'No card posted for Saratoga today or in the next few days. This can be a scheduled dark day or a same-day cancellation (e.g. weather) — check NYRA/Equibase for the official reason.';
+      updateTrackSplashClosed('No racing at Saratoga today', 'This can be a scheduled dark day, or a same-day cancellation — check NYRA/Equibase for the official reason.');
     }
     _trackStatusLocalMsg = msg;
     repaintTrackStatusBanner();
@@ -13273,6 +13359,15 @@ function renderSearchTrackStatus(data) {
       _trackStatusSearchMsg = '';
     }
     repaintTrackStatusBanner();
+    // v2.49.57: upgrade the splash to the "exceptional reason" flavor if
+    // it's still on screen -- a no-op once dismissed (guarded inside
+    // updateTrackSplashClosed), so this never resurrects a closed splash.
+    // Also latches _trackSplashConfirmedClosedBySearch so a later-resolving
+    // "entries found today" can't flip it back to the open/celebratory look.
+    if (data.status === 'confirmed_closed') {
+      _trackSplashConfirmedClosedBySearch = true;
+      updateTrackSplashClosed('Saratoga is closed today', data.summary);
+    }
   } catch(_) {}
 }
 
@@ -13289,6 +13384,91 @@ async function fetchAndRenderSearchTrackStatus() {
     var data = await res.json();
     renderSearchTrackStatus(data);
   } catch(_) {}
+}
+
+/* =============================================================
+   TRACK STATUS SPLASH (v2.49.57)
+
+   A one-time-per-boot full-screen moment, tied to initApp() (so it shows
+   once per real app open, not on every tab switch), answering "is the
+   track open today" up front -- per the owner's explicit ask: an open day
+   gets a quick positive splash, a closed day gets a subdued one naming the
+   reason (a mundane scheduled dark day vs. something exceptional like a
+   confirmed weather cancellation). Reuses the exact same signals as the
+   #track-status-banner above rather than re-deriving anything -- this is
+   purely a more prominent FIRST presentation of the same facts.
+
+   Never traps the user: always has a visible Continue button, and the
+   "checking" state auto-continues after a few seconds even if resolution
+   hasn't landed yet (a cold entries fetch can legitimately take 30-50s --
+   see the v2.49.12 comment on showLoadingIndicator -- so the splash simply
+   steps aside rather than blocking; the banner carries the final word
+   whenever it does arrive). Once dismissed (by timeout or tap) it stays
+   dismissed for the rest of this page load -- later signals (the
+   abandoned-card poll, a delayed web-search result) only update the
+   banner, never resurrect the splash.
+   ============================================================= */
+var _trackSplashDismissed = false;
+var _trackSplashAutoTimer = null;
+var TRACK_SPLASH_CHECK_TIMEOUT_MS = 5000;
+var TRACK_SPLASH_OPEN_AUTODISMISS_MS = 3200;
+
+function showTrackSplash() {
+  try {
+    var s = el('track-splash');
+    if (!s) return;
+    _trackSplashDismissed = false;
+    s.classList.remove('hidden');
+    clearTimeout(_trackSplashAutoTimer);
+    _trackSplashAutoTimer = setTimeout(dismissTrackSplash, TRACK_SPLASH_CHECK_TIMEOUT_MS);
+  } catch(_) {}
+}
+
+function dismissTrackSplash() {
+  try {
+    clearTimeout(_trackSplashAutoTimer);
+    _trackSplashDismissed = true;
+    var s = el('track-splash');
+    if (s) s.classList.add('hidden');
+  } catch(_) {}
+}
+
+function setTrackSplashContent(variant, icon, headline, detail, continueLabel) {
+  var s = el('track-splash');
+  if (!s) return;
+  s.classList.remove('ts-open', 'ts-closed', 'ts-checking');
+  s.classList.add(variant);
+  var iconEl = el('ts-icon'); if (iconEl) iconEl.innerHTML = icon;
+  var hEl = el('ts-headline'); if (hEl) hEl.textContent = headline;
+  var dEl = el('ts-detail'); if (dEl) dEl.textContent = detail || '';
+  var btn = el('ts-continue-btn'); if (btn) btn.textContent = continueLabel || 'Continue';
+}
+
+// v2.49.57: renderCardFoundStatus() (entries resolving) and
+// renderSearchTrackStatus() (the web-search check) both run async and
+// independently -- there's no guaranteed ordering between them. Without
+// this flag, a search result that arrives BEFORE the entries fetch would
+// get silently clobbered the moment entries later resolved "found today"
+// (races can exist and still have been rained out -- that's the whole
+// abandoned-card scenario). Once the search has confirmed a closure, it
+// wins regardless of what entries says afterward; only dismissal clears it.
+var _trackSplashConfirmedClosedBySearch = false;
+
+function updateTrackSplashOpen(firstPostTime) {
+  if (_trackSplashDismissed || _trackSplashConfirmedClosedBySearch) return;
+  clearTimeout(_trackSplashAutoTimer);
+  var detail = firstPostTime ? ('First post ' + firstPostTime + '.') : '';
+  setTrackSplashContent('ts-open', '🏇', 'Saratoga is racing today', detail, 'Let’s go');
+  _trackSplashAutoTimer = setTimeout(dismissTrackSplash, TRACK_SPLASH_OPEN_AUTODISMISS_MS);
+}
+
+// Caller supplies the exact headline/detail -- this function only owns the
+// "subdued, wait for a tap" presentation shared by every closed reason
+// (mundane dark day, off-season, or an exceptional confirmed cancellation).
+function updateTrackSplashClosed(headline, detail) {
+  if (_trackSplashDismissed) return;
+  clearTimeout(_trackSplashAutoTimer);
+  setTrackSplashContent('ts-closed', '\u{1F4CB}', headline, detail, 'Continue to app');
 }
 
 function getTrackData(code) {
@@ -21807,7 +21987,7 @@ async function fetchLiveEntries() {
   hideLoadingIndicator();
   hideLiveUnavailable();
   loadedRaceDate = result.date;
-  renderCardFoundStatus(!lookaheadDate, lookaheadDate); // v2.49.55
+  renderCardFoundStatus(!lookaheadDate, lookaheadDate, result.races); // v2.49.55/56
 
   // Persist fetched entries to the per-date cache so historical views can render offline.
   try { saveRacesForDate(result.date, result.races, code); } catch(_) {}

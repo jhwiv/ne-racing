@@ -1,5 +1,59 @@
 # NE Racing — Changelog
 
+## v2.49.57-brisnet — Track Status splash on app open (2026-07-30)
+
+Direct same-day follow-up: asked for a splash page when the app opens --
+a normal open day gets a quick positive splash, a closed day gets a more
+subdued one naming the reason (closed on the particular day vs. closed for
+some other reason). Builds entirely on the last two releases' signals; no
+new data source, just a more prominent first presentation of facts the app
+already knows.
+
+- New `#track-splash` full-screen overlay, tied to `initApp()` (so it
+  shows once per real app open, not on every tab switch). Renders
+  synchronously on boot from the static season calendar, before any
+  network round trip, then resolves via the exact same functions that
+  already drive the `#track-status-banner`:
+  - **Open**: `renderCardFoundStatus(true, ...)` -> a warm, on-brand splash
+    ("Saratoga is racing today", first post time), auto-dismisses after
+    3.2s.
+  - **Closed, mundane** (`renderCardFoundStatus(false, ...)`, no exceptional
+    signal): subdued dark-gray splash, "No racing at Saratoga today" --
+    this is the "closed on the particular day" case, a normal scheduled
+    dark day. Requires a tap to continue (there's something worth reading).
+  - **Closed, exceptional** (the web-search check confirms a specific
+    cause): same subdued treatment, but the headline becomes "Saratoga is
+    closed today" and the detail is the actual Perplexity-sourced reason
+    (e.g. a weather cancellation) -- this is the "closed for some other
+    reason" case.
+- Never traps the user: every state has a visible Continue button, and the
+  "checking" state auto-continues after 5s even if resolution hasn't
+  landed by then (a cold entries fetch can legitimately take 30-50s) --
+  the persistent banner still carries the final word whenever it arrives.
+- **Real ordering bug found and fixed during verification**: the entries
+  fetch (`renderCardFoundStatus`) and the web-search check
+  (`renderSearchTrackStatus`) run independently and asynchronously, with
+  no guaranteed order. If the search's `confirmed_closed` result happened
+  to arrive BEFORE the entries fetch resolved "found today" (races can
+  exist and still have been rained out -- that's the whole abandoned-card
+  scenario), the later "found today" call would silently flip the splash
+  back to the celebratory open state, burying the actual cancellation.
+  Fixed with a latch (`_trackSplashConfirmedClosedBySearch`): once the
+  search confirms a closure, no later "card found" signal can override it
+  for the rest of that page load.
+
+Verified via a real Playwright-driven browser (not just code reading):
+open/closed-mundane/closed-exceptional states, the tap-to-dismiss button,
+and the ordering-race fix specifically (forced a "found today" call after
+an already-confirmed closure and asserted it stayed closed). Screenshots
+taken for all three visual states. Also surfaced and fixed a test-harness-
+only issue (not a shipped bug): the service worker's self-update flow
+(`checkVersion()` -> `neForceUpdate()` -> `document.write` of a freshly
+re-fetched HTML) was firing non-deterministically in headless Playwright
+runs, silently swapping the document mid-test; disabling SW registration
+in the test harness resolved it. Full suite: 380 total, 379 pass, 1
+known-intentional fail (unchanged baseline).
+
 ## v2.49.56-brisnet — Track Status: live web-search confirmation (2026-07-30)
 
 Direct follow-up to v2.49.55's Track Status banner: that release could

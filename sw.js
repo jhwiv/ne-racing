@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260730-v2.49.56-brisnet'; // v2.49.56: Today tab -- Track Status banner now also checks a live web search (Perplexity, via worker's daily cron) to confirm/refute a suspected closure               // bump on every ship
+const CACHE_VERSION = '20260730-v2.49.57-brisnet'; // v2.49.57: boot-time Track Status splash -- a positive splash on an open day, a subdued one naming the reason (mundane dark day vs. exceptional/confirmed cancellation) on a closed day               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
