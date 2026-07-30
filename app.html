@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260730-v2.49.57-brisnet';
+var NE_APP_VERSION = '20260730-v2.49.58-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260730-v2.49.57-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.57-brisnet';
+var RAILBIRD_VERSION = 'v2.49.58-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -9714,7 +9714,7 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     cursor: pointer; text-decoration: underline;
   }
 </style>
-<div id="track-splash" class="hidden ts-checking" role="dialog" aria-modal="true" aria-labelledby="ts-headline">
+<div id="track-splash" class="hidden ts-checking" role="dialog" aria-modal="true" aria-labelledby="ts-headline" onclick="dismissTrackSplash()">
   <div class="ts-card">
     <div class="ts-icon" id="ts-icon">&#9202;</div>
     <h1 class="ts-headline" id="ts-headline">Checking today’s card…</h1>
@@ -13412,7 +13412,7 @@ async function fetchAndRenderSearchTrackStatus() {
 var _trackSplashDismissed = false;
 var _trackSplashAutoTimer = null;
 var TRACK_SPLASH_CHECK_TIMEOUT_MS = 5000;
-var TRACK_SPLASH_OPEN_AUTODISMISS_MS = 3200;
+var TRACK_SPLASH_OPEN_AUTODISMISS_MS = 5000; // v2.49.58: was 3200 -- reported live as disappearing too fast to read
 
 function showTrackSplash() {
   try {

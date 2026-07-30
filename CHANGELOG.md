@@ -1,5 +1,25 @@
 # NE Racing — Changelog
 
+## v2.49.58-brisnet — Track Status splash: timing fix (2026-07-30)
+
+Reported live: the open-day splash disappeared too quickly to read.
+Two changes:
+
+- `TRACK_SPLASH_OPEN_AUTODISMISS_MS` 3200 → 5000 — the open-state splash
+  now stays a full 5 seconds before auto-dismissing.
+- The whole `#track-splash` overlay is now clickable to dismiss, not just
+  the Continue/Let's go button — tapping anywhere closes it immediately,
+  so a user who doesn't want to wait the full 5s never has to hunt for the
+  small button.
+
+The "checking" state's own 5s auto-continue timeout (unchanged) already
+matched this cadence; open now does too.
+
+Verified via Playwright: confirmed the splash is still visible at 4.5s and
+gone by ~5.6s (auto-dismiss), and that a click on the overlay background
+(away from the card/button entirely) dismisses it immediately. Full suite
+unchanged: 380 total, 379 pass, 1 known-intentional fail.
+
 ## v2.49.57-brisnet — Track Status splash on app open (2026-07-30)
 
 Direct same-day follow-up: asked for a splash page when the app opens --
