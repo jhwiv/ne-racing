@@ -1,5 +1,68 @@
 # NE Racing — Changelog
 
+## v2.49.56-brisnet — Track Status: live web-search confirmation (2026-07-30)
+
+Direct follow-up to v2.49.55's Track Status banner: that release could
+only ever say "no card posted" or "no official results long past
+post" -- honest, but never able to actually confirm *why*, since neither
+The Racing API nor Equibase exposes a cancellation-reason field. Asked
+directly to add a web search to confirm status rather than relying on the
+upstream data source.
+
+**Provider: Perplexity API. Cadence: once daily via the existing cron.**
+Both picked explicitly by the owner over the alternatives (Google/Bing
+Custom Search, live per-request checks) -- Perplexity returns a synthesized,
+sourced answer rather than raw links to parse, and a daily cached check
+avoids multiplying API cost/latency by traffic or cron frequency.
+
+- **`worker.js`**: new `checkTrackStatusViaSearch(track, date, env)` calls
+  Perplexity's `/chat/completions` with a direct, hedging-discouraged
+  question ("has today's card been cancelled... answer only from a
+  specific, dated source... say so plainly rather than guessing"), and a
+  best-effort keyword classifier over the answer
+  (`confirmed_closed` / `confirmed_live` / `unclear`) -- explicitly
+  documented as non-authoritative; the raw `summary` text is the real
+  source of truth. New `GET /api/track-status?track=&date=[&force=1]`
+  serves the result, cached in the existing `RACE_HISTORY` KV under
+  `trackstatus:{TRACK}:{DATE}` (no new KV namespace needed). The
+  `scheduled()` cron now runs this check on the 07:00 ET morning tick only
+  (`event.cron === '0 11 * * *'`) -- one Perplexity call per enabled track
+  per day, never on the every-5-minute race-day tick. Missing
+  `PERPLEXITY_API_KEY` degrades every call to `{status:"unknown",
+  reason:"not_configured"}` -- entries/odds/results are entirely
+  unaffected either way.
+- **Client**: Track Status banner rendering refactored to compose two
+  independent signals instead of one function overwriting another's text
+  -- the app's own local reasoning (season calendar, entries-fetch
+  outcome, the abandoned-card heuristic) plus, when available, the
+  cached web-search result. The web-search line only appears when it adds
+  real signal: a confirmed cancellation (surfaced even if local checks
+  haven't caught it yet -- this is the actual value-add), or a
+  "confirmed live" corroboration specifically alongside an existing local
+  warning (distinguishes "just a data-feed delay" from "actually
+  cancelled"). An unclear/unconfigured result adds zero noise to an
+  otherwise-clean card. Fetches on boot and on every results-poll tick --
+  cheap, since it only ever reads the worker's daily cache, never
+  triggers a new Perplexity call itself.
+
+**Explicitly flagged, not swept under the rug**: the Perplexity request/
+response shape used here has NOT been exercised against a real API key --
+none existed in the environment that wrote this. Before trusting this in
+production: `wrangler secret put PERPLEXITY_API_KEY`, then hit
+`/api/track-status?track=SAR&date=<today>&force=1` once and read the raw
+`summary` field yourself. See the `worker.js` file header and
+`docs/HANDOFF.md` for the full caveat and verification steps.
+
+8 new worker tests (`tests/worker-track-status.test.js`) mock global
+`fetch` for the Perplexity call and a fake KV, covering: not-configured,
+cache hit, `force=1` live bypass, all three status classifications, an
+upstream HTTP failure degrading to `unknown` rather than throwing, and the
+no-KV-binding (dev mode) path. Client behavior verified via a real
+Playwright-driven browser across 3 scenarios (search catches an early
+closure, search corroborates an existing local warning, unclear search
+adds no noise) with a screenshot confirming the composed banner. Full
+suite: 380 total, 379 pass, 1 known-intentional fail (unchanged baseline).
+
 ## v2.49.55-brisnet — Today tab: Track Status banner (2026-07-30)
 
 Reported live: Saratoga was weather-closed one day, and the app gave

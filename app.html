@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260730-v2.49.55-brisnet';
+var NE_APP_VERSION = '20260730-v2.49.56-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260730-v2.49.55-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.55-brisnet';
+var RAILBIRD_VERSION = 'v2.49.56-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -13157,6 +13157,22 @@ function trackStatusIconSvg() {
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
 }
 
+// v2.49.56: the banner now composes TWO independent signals rather than one
+// function clobbering another's text — the app's own local reasoning
+// (season calendar, entries-fetch outcome, the abandoned-card heuristic)
+// and, when available, a live web-search confirmation from
+// GET /api/track-status (see worker.js — Perplexity-backed, cached once
+// daily by the scheduled() cron). Either can be empty; repaintTrackStatusBanner()
+// joins whichever are non-empty so the two never fight over the DOM.
+var _trackStatusLocalMsg = '';
+var _trackStatusSearchMsg = '';
+function repaintTrackStatusBanner() {
+  var parts = [];
+  if (_trackStatusLocalMsg) parts.push(_trackStatusLocalMsg);
+  if (_trackStatusSearchMsg) parts.push(_trackStatusSearchMsg);
+  renderTrackStatusBanner(parts.join(' '));
+}
+
 // Synchronous — uses only the static season calendar (getSarStatus), so it
 // can paint the instant the app boots, before fetchLiveEntries() even starts
 // its network round trip (which the v2.49.12 comment on showLoadingIndicator
@@ -13164,15 +13180,16 @@ function trackStatusIconSvg() {
 function renderInitialTrackStatus() {
   try {
     var code = getActiveTrack();
-    if (code !== 'SAR') { renderTrackStatusBanner(''); return; }
+    if (code !== 'SAR') { _trackStatusLocalMsg = ''; repaintTrackStatusBanner(); return; }
     var status = getSarStatus();
     if (status.phase === 'live') {
-      renderTrackStatusBanner('Checking today’s Saratoga card…');
+      _trackStatusLocalMsg = 'Checking today’s Saratoga card…';
     } else if (status.phase === 'upcoming') {
-      renderTrackStatusBanner('Saratoga ' + status.label + '.');
+      _trackStatusLocalMsg = 'Saratoga ' + status.label + '.';
     } else {
-      renderTrackStatusBanner('Saratoga meet has concluded.');
+      _trackStatusLocalMsg = 'Saratoga meet has concluded.';
     }
+    repaintTrackStatusBanner();
   } catch(_) {}
 }
 
@@ -13183,7 +13200,7 @@ function renderInitialTrackStatus() {
 function renderCardFoundStatus(foundToday, lookaheadDate) {
   try {
     if (getActiveTrack() !== 'SAR') return;
-    if (foundToday) { renderTrackStatusBanner(''); return; }
+    if (foundToday) { _trackStatusLocalMsg = ''; repaintTrackStatusBanner(); return; }
     var msg;
     if (lookaheadDate) {
       var d = new Date(lookaheadDate + 'T12:00:00');
@@ -13192,7 +13209,8 @@ function renderCardFoundStatus(foundToday, lookaheadDate) {
     } else {
       msg = 'No card posted for Saratoga today or in the next few days. This can be a scheduled dark day or a same-day cancellation (e.g. weather) — check NYRA/Equibase for the official reason.';
     }
-    renderTrackStatusBanner(msg);
+    _trackStatusLocalMsg = msg;
+    repaintTrackStatusBanner();
   } catch(_) {}
 }
 
@@ -13232,7 +13250,45 @@ function renderAbandonedCardStatus() {
     if (getActiveTrack() !== 'SAR') return;
     var data = getTrackData();
     if (!((data && data.races) || []).length) return; // no-card path owns the banner
-    renderTrackStatusBanner(checkForAbandonedCard());
+    _trackStatusLocalMsg = checkForAbandonedCard() || '';
+    repaintTrackStatusBanner();
+  } catch(_) {}
+}
+
+// v2.49.56: live web-search confirmation (Perplexity, via the worker's
+// cached GET /api/track-status). Cheap and safe to call often — the
+// worker's scheduled() cron is what actually pays for the Perplexity call
+// once daily; this just reads whatever it cached. Only speaks up when it
+// adds real signal: a confirmed cancellation (worth surfacing even if the
+// app's own local checks haven't caught it yet), or a "confirmed live"
+// corroboration specifically when a local warning is already showing
+// (helps distinguish "just a data-feed delay" from "actually cancelled").
+// An "unclear"/"unknown" result (no key configured, ambiguous answer, or
+// search failure) adds no noise -- silently leaves the local message alone.
+function renderSearchTrackStatus(data) {
+  try {
+    if (!data || !data.status || !data.summary) { _trackStatusSearchMsg = ''; repaintTrackStatusBanner(); return; }
+    if (data.status === 'confirmed_closed' || (data.status === 'confirmed_live' && _trackStatusLocalMsg)) {
+      _trackStatusSearchMsg = 'Web search: ' + data.summary;
+    } else {
+      _trackStatusSearchMsg = '';
+    }
+    repaintTrackStatusBanner();
+  } catch(_) {}
+}
+
+async function fetchAndRenderSearchTrackStatus() {
+  try {
+    var code = getActiveTrack();
+    if (code !== 'SAR') return;
+    var store = getStore();
+    var workerUrl = store && store.settings.workerUrl;
+    if (!workerUrl) return;
+    var today = getTodayStr();
+    var res = await fetch(workerUrl + '/api/track-status?track=' + code + '&date=' + today + '&_t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    var data = await res.json();
+    renderSearchTrackStatus(data);
   } catch(_) {}
 }
 
@@ -14785,6 +14841,9 @@ function initApp() {
   // it before anything else touches the network so a closed/dark meet is
   // never left to be inferred from a silent loading spinner.
   try { renderInitialTrackStatus(); } catch(_) {}
+  // v2.49.56: fire-and-forget web-search confirmation — never blocks boot,
+  // just reads whatever the worker's daily cron already cached.
+  try { fetchAndRenderSearchTrackStatus(); } catch(_) {}
 
   // v2.48.9 — prevent stale race-card render. If the live store's races were
   // saved for a date other than today, clear them before any render runs so
@@ -22300,6 +22359,9 @@ async function fetchLiveResults(isManual) {
   // fetch itself succeeds — the abandoned-card signal comes from local
   // race/post-time data already in the store, not from this response.
   try { renderAbandonedCardStatus(); } catch(_) {}
+  // v2.49.56: refresh the web-search corroboration on the same cadence —
+  // cheap (reads the worker's daily cache), no extra Perplexity cost.
+  try { fetchAndRenderSearchTrackStatus(); } catch(_) {}
 
   // Get already-resolved race numbers from cache to skip re-fetching
   var cachedRaces = getCachedResults(code, today);

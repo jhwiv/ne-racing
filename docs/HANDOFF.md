@@ -211,6 +211,16 @@ live-card critical path — don't confuse it with `cloudflare-worker`.
    import, not a recurring feed — there is no scheduled job that grows it
    further; adding more years/tracks would mean repeating this same manual
    ingestion with new source files.
+5. **Track Status web search (Perplexity, optional)** — neither The Racing
+   API nor Equibase exposes a cancellation-reason field (confirmed: no
+   "status"/"cancelled"/"weather" field in either response shape below), so
+   this is a deliberately separate, independent signal, not part of the
+   entries/odds/results data flow above. When `PERPLEXITY_API_KEY` is set,
+   the `scheduled()` cron's 07:00 ET morning tick asks Perplexity directly
+   whether today's card is confirmed running or confirmed cancelled, and
+   caches the answer in `RACE_HISTORY` KV (`trackstatus:{TRACK}:{DATE}`) —
+   read by `GET /api/track-status`. See §12 for the full writeup and the
+   explicit "not yet tested against a real key" caveat.
 
 ---
 
@@ -768,3 +778,90 @@ Shipped:
   before a worker.js change goes live. **Not implemented** — awaiting an
   explicit go-ahead and a Cloudflare API token from the owner before doing
   this.
+
+---
+
+## 12. Track Status: prominent boot-time check + web-search confirmation (2026-07-30)
+
+Reported live: Saratoga was weather-closed one day, and the app gave zero
+indication anything unusual was happening — every race just sat at
+RESULT PENDING forever, indistinguishable from ordinary results lag. Owner
+asked directly: the first thing the app does on launch should be to make
+sure the track is open, prominently, on the same screen as "Preparing the
+day's card…" — then, as a same-day follow-up, asked to add a web search to
+actually confirm status rather than relying on the upstream data source
+(neither of which has ever exposed a cancellation-reason field — see §3.5).
+
+### 12.1 v2.49.55 — local Track Status banner
+
+New `#track-status-banner`, the first element on the Today tab.
+`renderInitialTrackStatus()` paints synchronously on boot from the static
+season calendar (`getSarStatus()`), before `fetchLiveEntries()`'s network
+round trip even starts. `renderCardFoundStatus()` states plainly once
+entries resolve whether today has a posted card, naming the lookahead date
+if found. `checkForAbandonedCard()`/`renderAbandonedCardStatus()` — the
+actual shape of the reported bug — flags a card that was posted but has
+produced zero official results 2.5h+ past its first post time, checked on
+every results-poll tick. Deliberately never asserts a specific cause
+("weather") since no such signal existed at this point — only states what
+was actually knowable.
+
+### 12.2 v2.49.56 — Perplexity web-search confirmation
+
+Direct same-day follow-up. Provider and cadence were both explicit owner
+choices (asked via a two-question decision, not assumed): **Perplexity
+API** over Google/Bing Custom Search (returns a synthesized, sourced
+answer rather than raw links this app would have to parse/interpret
+itself — same problem class as the NYRA-picks scraper in §6.3, avoided
+here by picking a provider that already does that synthesis), and a
+**once-daily scheduled cron check** over live per-page-load search (avoids
+multiplying API cost/latency by traffic or cron frequency).
+
+- `checkTrackStatusViaSearch(track, date, env)` (worker.js) calls
+  Perplexity's `/chat/completions` with a direct question that explicitly
+  discourages hedging/guessing, and applies a best-effort keyword
+  classifier over the free-text answer (`confirmed_closed` /
+  `confirmed_live` / `unclear`). **The classifier is not authoritative —
+  the raw `summary` text is the real source of truth**, and both worker.js
+  and the client are written to always carry that raw text alongside any
+  use of the coarse status.
+- `GET /api/track-status?track=&date=[&force=1]` — reads the cached result
+  from `RACE_HISTORY` KV (`trackstatus:{TRACK}:{DATE}`, no new KV
+  namespace provisioned). `&force=1` bypasses cache for a live check —
+  this is also the manual verification path (see caveat below).
+- `scheduled()`'s `runScheduledWarm()` now runs this check ONLY on the
+  07:00 ET tick (`event.cron === '0 11 * * *'`), one Perplexity call per
+  enabled track per day. Missing `PERPLEXITY_API_KEY` degrades every call
+  to `{status:"unknown", reason:"not_configured"}` — never affects
+  entries/odds/results.
+- Client: banner rendering refactored from "one function overwrites the
+  DOM" to "compose two independent message slots"
+  (`_trackStatusLocalMsg` + `_trackStatusSearchMsg`,
+  `repaintTrackStatusBanner()`) so the local heuristic and the web-search
+  result never fight over the same element. The web-search line only
+  renders when it adds real signal: a confirmed cancellation (surfaced
+  even if local checks haven't caught it — this is the actual value of
+  adding a second, independent source), or a "confirmed live"
+  corroboration specifically alongside an already-showing local warning.
+  An unclear/unconfigured result adds zero noise.
+
+**CRITICAL — not yet verified against a real key.** No `PERPLEXITY_API_KEY`
+existed in the environment that built this feature, so
+`checkTrackStatusViaSearch()`'s actual HTTP request/response shape against
+Perplexity's real API has never been exercised — only mocked in tests. Do
+this before trusting it in production:
+1. `wrangler secret put PERPLEXITY_API_KEY`
+2. Hit `https://cloudflare-worker.jhwiv-online.workers.dev/api/track-status?track=SAR&date=<today>&force=1`
+   directly in a browser.
+3. Confirm the JSON actually looks like a real Perplexity answer (a
+   `summary` field with real prose, not an error) and that `status` is a
+   reasonable read of it — read the `summary` yourself, don't just trust
+   `status`.
+4. Only then rely on the cron's daily cache for the client banner.
+
+8 new worker tests (`tests/worker-track-status.test.js`, mocked
+`fetch`) + client verification via a real Playwright-driven browser across
+3 scenarios (search catches an early closure locally-silent otherwise,
+search corroborates an existing local warning, unclear search adds no
+noise), screenshots taken. Full suite: 380 total, 379 pass, 1
+known-intentional fail (unchanged baseline, see §8).

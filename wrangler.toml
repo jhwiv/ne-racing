@@ -10,6 +10,13 @@ ALLOWED_ORIGIN = "https://railbirdai.com"
 # FEEDBACK_SENDGRID_KEY, FEEDBACK_ADMIN_TOKEN are stored as encrypted Worker secrets,
 # not plain vars — see `wrangler secret list` / Cloudflare dashboard)
 
+# v2.49.56 — PERPLEXITY_API_KEY (optional, encrypted Worker secret, NOT a
+# plain var): enables GET /api/track-status. Set via:
+#   wrangler secret put PERPLEXITY_API_KEY
+# Without it, /api/track-status always returns {status:"unknown",
+# reason:"not_configured"} and the client's Track Status banner falls back
+# to its own local (non-search) checks — nothing else is affected.
+
 # v2.32.0 — FEEDBACK_LOG KV namespace for beta feedback catalog
 [[kv_namespaces]]
 binding = "FEEDBACK_LOG"

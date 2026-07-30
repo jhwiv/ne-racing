@@ -37,8 +37,9 @@
  * ALLOWED_ORIGIN = "*"
  *
  * # Secrets — set via CLI or CF REST API, never committed to source control:
- * #   wrangler secret put API_USER  (Racing API username, only for DATA_SOURCE=theracingapi)
- * #   wrangler secret put API_KEY   (Racing API password, only for DATA_SOURCE=theracingapi)
+ * #   wrangler secret put API_USER          (Racing API username, only for DATA_SOURCE=theracingapi)
+ * #   wrangler secret put API_KEY           (Racing API password, only for DATA_SOURCE=theracingapi)
+ * #   wrangler secret put PERPLEXITY_API_KEY (optional — see Track Status below)
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Endpoints exposed by this Worker
@@ -48,8 +49,38 @@
  *   GET /api/scratches?track=AQU&date=2026-04-14
  *   GET /api/odds?track=AQU&date=2026-04-14&race=5
  *   GET /api/results?track=AQU&date=2026-04-14
+ *   GET /api/track-status?track=AQU&date=2026-04-14[&force=1]
  *
  * All track codes follow Equibase conventions (AQU, SAR, MTH, PRX, …).
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Track Status via web search (v2.49.56, PERPLEXITY_API_KEY)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Neither The Racing API nor Equibase exposes a cancellation-reason field
+ * (verified: no "status"/"cancelled"/"weather" field appears in the entries
+ * or results response shapes below) — a meet that's rained out looks
+ * identical, from that data, to a normal scheduled dark day. When
+ * PERPLEXITY_API_KEY is set, the `scheduled()` cron handler runs ONE web
+ * search per enabled track per day (the 07:00 ET morning tick only — not
+ * every 5-min tick, to keep this to one Perplexity call/track/day) asking
+ * plainly whether today's card is confirmed running or confirmed
+ * cancelled, and caches the result (raw synthesized answer + a best-effort
+ * coarse status) in RACE_HISTORY KV under `trackstatus:{TRACK}:{DATE}`.
+ * `GET /api/track-status` serves that cached value; `&force=1` runs a live
+ * check immediately instead of reading cache (useful for manually testing
+ * a freshly-added key without waiting for the next cron tick).
+ *
+ * IMPORTANT: `checkTrackStatusViaSearch()`'s request/response shape for
+ * Perplexity's `/chat/completions` endpoint has NOT been exercised against
+ * a real API key as of this writing (no key was available in the
+ * environment that wrote this). Before trusting this in production: add
+ * the secret, hit `/api/track-status?...&force=1` once, and confirm the
+ * response actually looks like Perplexity's real output — read the raw
+ * `summary` field yourself rather than trusting the coarse `status`
+ * classification, which is a best-effort keyword match over free text and
+ * can be wrong. If it's missing/absent, PERPLEXITY_API_KEY is simply
+ * unset and every track-status call degrades to `{status:"unknown"}` —
+ * this never blocks entries/odds/results, which are unaffected.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -2925,6 +2956,112 @@ async function handleOdds(request, env, origin, ctx) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GET /api/track-status?track=AQU&date=2026-04-16[&force=1]
+// ─────────────────────────────────────────────────────────────────────────────
+// See the file-header "Track Status via web search" section for the full
+// design writeup and the unverified-against-a-real-key caveat.
+/**
+ * Calls Perplexity's chat-completions API with a plain, direct question
+ * about whether today's card at `track` is confirmed running or confirmed
+ * cancelled, and returns a best-effort structured result. Returns null
+ * (never throws for a MISSING key — only for a call that was attempted and
+ * failed) when PERPLEXITY_API_KEY isn't configured, so callers can treat
+ * "not configured" and "search failed" differently if they want to.
+ *
+ * The `status` field is a coarse keyword match over Perplexity's own
+ * free-text answer — it is NOT authoritative. `summary` (the model's raw
+ * answer) is the actual source of truth and should always be shown
+ * alongside any use of `status`, never in place of it.
+ */
+async function checkTrackStatusViaSearch(track, date, env) {
+  if (!env.PERPLEXITY_API_KEY) return null;
+  const venue = TRACK_TO_VENUE[track] || track;
+  const prompt =
+    `Is live Thoroughbred horse racing confirmed to run today, ${date}, at ${venue} ` +
+    `(track code ${track})? Specifically: has today's card at this track been reported ` +
+    `as cancelled, postponed, or abandoned for any reason (weather, track condition, ` +
+    `or otherwise)? Answer only from a specific, dated source. If you cannot find a ` +
+    `specific report either confirming a cancellation or confirming racing is ` +
+    `proceeding as scheduled today, say so plainly instead of guessing.`;
+
+  const res = await fetch("https://api.perplexity.ai/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${env.PERPLEXITY_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "sonar",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: "You are a factual research assistant. Only state what a specific, dated source confirms. Never guess or assume normal operation by default.",
+        },
+        { role: "user", content: prompt },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Perplexity HTTP ${res.status}: ${await res.text().catch(() => "")}`.slice(0, 300));
+  }
+  const data = await res.json();
+  const summary = data && data.choices && data.choices[0] && data.choices[0].message
+    ? String(data.choices[0].message.content || "").trim()
+    : "";
+  if (!summary) throw new Error("Perplexity response had no message content");
+
+  const lower = summary.toLowerCase();
+  let status = "unclear";
+  if (/\b(cancel\w*|postpone\w*|abandon\w*|rained? ?out|no racing today|closed today)\b/.test(lower)
+      && !/\b(not|no)\s+(cancel|postpone|abandon)/.test(lower)) {
+    status = "confirmed_closed";
+  } else if (/\b(proceeding as scheduled|racing (is|will be) (on|scheduled)|no cancellation|card is (on|running))\b/.test(lower)) {
+    status = "confirmed_live";
+  }
+
+  return {
+    track,
+    date,
+    status, // 'confirmed_closed' | 'confirmed_live' | 'unclear' — best-effort only, see summary
+    summary,
+    sources: Array.isArray(data.citations) ? data.citations.slice(0, 3) : [],
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+async function handleTrackStatus(request, env, origin) {
+  const { searchParams } = new URL(request.url);
+  const track = (searchParams.get("track") || env.DEFAULT_TRACK || "SAR").toUpperCase();
+  const date = searchParams.get("date") || new Date().toISOString().slice(0, 10);
+  const force = searchParams.get("force") === "1";
+  const kvKey = `trackstatus:${track}:${date}`;
+
+  if (!env.PERPLEXITY_API_KEY) {
+    return jsonOk({ track, date, status: "unknown", reason: "not_configured" }, origin, 0);
+  }
+
+  if (!force && env.RACE_HISTORY) {
+    try {
+      const cached = await env.RACE_HISTORY.get(kvKey, "json");
+      if (cached) return jsonOk(cached, origin, 0);
+    } catch (_) { /* fall through to a live check */ }
+  }
+
+  try {
+    const result = await checkTrackStatusViaSearch(track, date, env);
+    if (!result) return jsonOk({ track, date, status: "unknown", reason: "not_configured" }, origin, 0);
+    if (env.RACE_HISTORY) {
+      try { await env.RACE_HISTORY.put(kvKey, JSON.stringify(result)); } catch (_) { /* best-effort */ }
+    }
+    return jsonOk(result, origin, 0);
+  } catch (err) {
+    // Fail safe: never assert a status we couldn't actually confirm.
+    return jsonOk({ track, date, status: "unknown", reason: "search_failed", error: err.message }, origin, 0);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/results?track=AQU&date=2026-04-16
 // ─────────────────────────────────────────────────────────────────────────────
 /**
@@ -4527,6 +4664,9 @@ export default {
    *   API_KEY        — The Racing API password (secret; only for theracingapi)
    *   DEFAULT_TRACK  — Fallback track code when ?track= is omitted (default: "AQU")
    *   ALLOWED_ORIGIN — Value for Access-Control-Allow-Origin (default: "*")
+   *   PERPLEXITY_API_KEY — optional; enables GET /api/track-status web-search
+   *                        confirmation (see file header). Every track-status
+   *                        call degrades to {status:"unknown"} when unset.
    *
    * Switching sources:
    *   Free (GitHub Pages + Equibase):  DATA_SOURCE=free  (or unset)
@@ -4628,6 +4768,9 @@ export default {
 
       case "/api/results":
         return handleResults(request, env, origin, ctx);
+
+      case "/api/track-status":
+        return handleTrackStatus(request, env, origin);
 
       case "/api/expert-picks":
         return handleExpertPicks(request, env, origin);
@@ -4809,6 +4952,29 @@ async function runScheduledWarm(event, env, ctx) {
       }
     }
   }
+
+  // v2.49.56: Track Status web-search check — the 07:00 ET morning tick
+  // ONLY (not the every-5-min race-day tick above), so this costs at most
+  // one Perplexity call per enabled track per day. Best-effort: a failure
+  // here never affects the entries warm above.
+  if (event && event.cron === '0 11 * * *') {
+    for (const track of tracks) {
+      try {
+        const result = await checkTrackStatusViaSearch(track, todayET, env);
+        if (result) {
+          if (env.RACE_HISTORY) {
+            await env.RACE_HISTORY.put(`trackstatus:${track}:${todayET}`, JSON.stringify(result));
+          }
+          log.push(`trackstatus ${track}/${todayET}: ${result.status}`);
+        } else {
+          log.push(`trackstatus ${track}/${todayET}: not configured (PERPLEXITY_API_KEY unset)`);
+        }
+      } catch (e) {
+        log.push(`trackstatus ${track}/${todayET} FAIL: ${e.message}`);
+      }
+    }
+  }
+
   console.log('[scheduled-warm]', log.join(' | '));
 }
 
