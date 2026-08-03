@@ -998,3 +998,49 @@ this resolves in ~31s (today's own unavoidable attempt only) instead of
 the ~120s worst case, lands on the Dark Day dashboard with the real
 reason in both banner and splash, and confirmed zero added latency on the
 normal card-found path (~560ms, matching pre-change timing exactly).
+
+### 12.6 v2.49.62 — known recurring dark days: Saratoga does not race Mon/Tue (2026-08-03)
+
+Direct follow-up, reported live again: even after §12.5's fix, the app
+still spent ~30s trying today's card before showing the dark-day view.
+Asked the owner directly rather than continuing to guess (two questions):
+(1) was `PERPLEXITY_API_KEY` actually configured yet — **no** — so
+§12.5's web-search precheck was a no-op the whole time, correctly falling
+back to the only thing left: actually attempting the fetch; (2) is
+Saratoga's dark day a known recurring pattern or ad hoc — **owner
+confirmed a real recurring pattern: Saratoga does not race Mondays or
+Tuesdays.** (Today, 2026-08-03, is in fact a real Monday — confirmed via
+`date`.)
+
+New `isKnownWeeklyDarkDay(track, dateStr)` (SAR-only,
+`SAR_WEEKLY_DARK_DAYS = [1, 2]` i.e. Mon/Tue, owner-confirmed not a guess)
+checked FIRST — before any network attempt — everywhere the app decides
+whether to try loading a card for a date: `renderInitialTrackStatus()`
+(instant confident message instead of "Checking…"), `fetchLiveEntries()`
+(skips today's own attempt entirely when today is dark), the 3-day
+lookahead loop, and `offday_probeNextRaceDay()`'s 14-day probe (both skip
+known-dark candidate dates via `continue`).
+
+**This is a genuinely different signal from §12.2's web search, not a
+replacement for it** — a recurring weekly pattern is static and free to
+check (zero network, zero Perplexity dependency), while the web search
+exists specifically for one-off/ad-hoc closures (the original weather
+report) that no static calendar could ever predict. Checking order is now:
+known weekly pattern (instant) → web-search precheck (parallel with the
+fetch, ~8s bound, §12.5) → the live-entries retry chain itself (§2/§3,
+last resort).
+
+**If Saratoga's actual weekly schedule ever changes** (different meet,
+different year, or NYRA changes the pattern mid-meet), update
+`SAR_WEEKLY_DARK_DAYS` — do not assume Mon/Tue holds beyond what the owner
+confirmed for the 2026 meet specifically.
+
+Verified via Playwright against the real current date (a real Monday):
+confirmed ~570ms resolution with zero `/api/entries` calls from the main
+flow (only the unrelated `trk_probe` widget and the off-day dashboard's
+own next-race-day lookup — which correctly skipped the following dark
+Tuesday and checked Wednesday instead — touched the network at all).
+Also directly unit-tested `isKnownWeeklyDarkDay()` against all 7 weekdays
+and confirmed the rule doesn't apply to non-Saratoga track codes, and
+confirmed a real non-dark Wednesday still fetches normally end to end
+(regression check).

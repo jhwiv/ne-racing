@@ -1,5 +1,53 @@
 # NE Racing — Changelog
 
+## v2.49.62-brisnet — Known recurring dark days skip the network entirely (2026-08-03)
+
+Direct follow-up, reported live: even after v2.49.61, the app still spent
+~30 seconds trying to load today's card before showing the dark-day
+view. Root cause: v2.49.61's web-search precheck only short-circuits when
+`PERPLEXITY_API_KEY` is actually configured on the Worker -- confirmed
+directly with the owner that it isn't yet, so that check was a no-op,
+correctly falling back to actually trying the fetch (the only thing the
+app had left to go on). Separately confirmed with the owner: **Saratoga's
+2026 meet does not race Mondays or Tuesdays** -- a real, static,
+recurring fact about the meet, not a guess.
+
+**Fix**: new `isKnownWeeklyDarkDay(track, dateStr)` (SAR-only,
+`[Monday, Tuesday]`, owner-confirmed) checked FIRST, before any network
+attempt at all, wherever the app decides whether to try loading a card
+for a given date:
+- `renderInitialTrackStatus()` — shows the confident "Saratoga does not
+  race Mondays or Tuesdays" message immediately on boot instead of
+  "Checking…", for both the banner and the splash.
+- `fetchLiveEntries()` — skips today's own live-entries attempt entirely
+  when today is a known dark day, going straight to the Dark Day
+  dashboard. This has zero network dependency, so it works whether or not
+  Perplexity is configured.
+- The 3-day lookahead loop and `offday_probeNextRaceDay()`'s 14-day probe
+  both now skip known dark dates via `continue` rather than wasting a
+  fetch attempt (up to ~30s and ~2.5s respectively) on a date already
+  known to have nothing.
+
+This is deliberately a *different* signal from the web-search check: a
+recurring weekly pattern is a static fact, checked instantly with no
+network round trip, while the web search exists specifically for
+one-off/ad-hoc closures (like the original weather-closure report) that
+no static calendar could ever predict. Both mechanisms now run, in this
+order: known weekly pattern (instant) → web-search precheck (in
+parallel with the fetch, ~8s bound) → the live-entries retry chain itself.
+
+Verified via Playwright against the real current date (2026-08-03, a real
+Monday): confirmed the app now resolves in ~570ms with zero calls to
+`/api/entries` from the main flow (only the unrelated `trk_probe` widget
+and the off-day dashboard's own next-race-day lookup, which correctly
+skipped the following dark Tuesday and checked Wednesday instead, touched
+the network at all), renders the Dark Day dashboard with the confident
+reason in both banner and splash. Also directly unit-tested
+`isKnownWeeklyDarkDay()` against all 7 days of the week and a
+non-Saratoga track code, and confirmed a real non-dark Wednesday still
+fetches normally end to end. Full suite: 380 total, 378 pass, 1
+known-intentional fail, 1 environment-conditional skip (unrelated).
+
 ## v2.49.61-brisnet — Check the calendar/web-search status FIRST, before the slow entries retry loop (2026-08-03)
 
 Direct follow-up, reported live with a screenshot: even after v2.49.60's

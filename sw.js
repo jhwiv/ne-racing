@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260803-v2.49.61-brisnet'; // v2.49.61: check the web-search Track Status FIRST -- a confirmed closure now short-circuits the slow 3-day lookahead retry loop instead of waiting up to 2 minutes to reach the same answer               // bump on every ship
+const CACHE_VERSION = '20260803-v2.49.62-brisnet'; // v2.49.62: known recurring dark days (Saratoga does not race Mon/Tue) now skip the network fetch entirely, resolving instantly with zero Perplexity dependency               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

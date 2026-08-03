@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260803-v2.49.61-brisnet';
+var NE_APP_VERSION = '20260803-v2.49.62-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260803-v2.49.61-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.61-brisnet';
+var RAILBIRD_VERSION = 'v2.49.62-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -13193,6 +13193,26 @@ function getSarStatus(today) {
   } catch(e) { return { phase: 'ended', label: '', daysUntil: null }; }
 }
 
+// v2.49.62: Saratoga's recurring weekly dark-day pattern (owner-confirmed,
+// not a guess) -- the meet does not race Mondays or Tuesdays. Unlike a
+// weather cancellation, this is a static fact about the meet, true every
+// week, that costs nothing to check -- so it's checked FIRST, before any
+// network attempt, anywhere the app decides whether to try loading a card
+// for a given date. Reported live: even after checking the web-search
+// status first (v2.49.61), the app still spent ~30s trying to load a card
+// for a date that was ALWAYS going to be empty, every single week, because
+// that fix only short-circuits when PERPLEXITY_API_KEY is configured --
+// this one has zero network dependency and works unconditionally.
+// Date.getDay(): 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat.
+var SAR_WEEKLY_DARK_DAYS = [1, 2]; // Monday, Tuesday
+function isKnownWeeklyDarkDay(track, dateStr) {
+  if (track !== 'SAR') return false;
+  try {
+    var d = new Date(dateStr + 'T12:00:00');
+    return SAR_WEEKLY_DARK_DAYS.indexOf(d.getDay()) !== -1;
+  } catch(_) { return false; }
+}
+
 /* =============================================================
    TRACK STATUS BANNER (v2.49.55)
 
@@ -13249,7 +13269,15 @@ function renderInitialTrackStatus() {
     if (code !== 'SAR') { _trackStatusLocalMsg = ''; repaintTrackStatusBanner(); return; }
     showTrackSplash(); // v2.49.57
     var status = getSarStatus();
-    if (status.phase === 'live') {
+    if (status.phase === 'live' && isKnownWeeklyDarkDay(code, getTodayStr())) {
+      // v2.49.62: known recurring dark day (Mon/Tue) -- this is knowable
+      // instantly, with zero network dependency, so don't show "Checking..."
+      // at all. fetchLiveEntries() independently skips its own fetch
+      // attempt for the exact same reason; this just keeps the banner/splash
+      // in sync with that decision from the very first paint.
+      _trackStatusLocalMsg = 'Saratoga does not race Mondays or Tuesdays.';
+      updateTrackSplashClosed('No racing at Saratoga today', 'Saratoga does not race Mondays or Tuesdays.');
+    } else if (status.phase === 'live') {
       _trackStatusLocalMsg = 'Checking today’s Saratoga card…';
       // Splash stays in its default "checking" state -- renderCardFoundStatus()
       // resolves it to open/closed once fetchLiveEntries() knows.
@@ -21968,6 +21996,19 @@ async function tryFetchEntries(code, date) {
   return null;
 }
 
+// v2.49.62: dedicated messaging for a day we're CONFIDENT is dark (the
+// recurring weekly pattern), distinct from renderCardFoundStatus()'s "no
+// card found, could be a dark day or a cancellation" hedge -- here we
+// actually know why, so say so plainly instead of guessing.
+function renderKnownDarkDayStatus() {
+  try {
+    if (getActiveTrack() !== 'SAR') return;
+    _trackStatusLocalMsg = 'Saratoga does not race Mondays or Tuesdays.';
+    repaintTrackStatusBanner();
+    updateTrackSplashClosed('No racing at Saratoga today', 'Saratoga does not race Mondays or Tuesdays.');
+  } catch(_) {}
+}
+
 async function fetchLiveEntries() {
   const code = getActiveTrack();
   const today = getTodayStr();
@@ -21977,6 +22018,22 @@ async function fetchLiveEntries() {
   // from a previous in-flight fetch so past-date cards aren't covered by it.
   if (selectedCalendarDate && selectedCalendarDate !== today) {
     hideLoadingIndicator();
+    return;
+  }
+
+  // v2.49.62: known recurring dark day (Mon/Tue) -- skip the ENTIRE fetch
+  // attempt, including the v2.49.61 web-search precheck, since this is
+  // knowable instantly with zero network dependency. Reported live: the
+  // app still spent ~30s trying to load a card for a date that never has
+  // one, every single week, because the web-search precheck only helps
+  // when PERPLEXITY_API_KEY happens to be configured -- this doesn't.
+  if (isKnownWeeklyDarkDay(code, today)) {
+    hideLoadingIndicator();
+    loadedRaceDate = null;
+    _entriesFetchAttempted = true;
+    renderKnownDarkDayStatus();
+    renderTodayTab(); // lets the Dark Day dashboard trigger (v2.49.60 fix)
+    showLiveUnavailable();
     return;
   }
 
@@ -22026,6 +22083,10 @@ async function fetchLiveEntries() {
       // already "tomorrow" and toISOString() returned d+2 instead of d+1).
       const ds = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' })
         .format(new Date(Date.now() + d * 86400000));
+      // v2.49.62: don't burn ~30s attempting a lookahead date we already
+      // know is a recurring dark day (Mon/Tue) -- same reasoning as today's
+      // own check above.
+      if (isKnownWeeklyDarkDay(code, ds)) continue;
       result = await tryFetchEntries(code, ds);
       if (result) { lookaheadDate = ds; break; }
     }
@@ -23691,6 +23752,9 @@ var _entriesFetchAttempted = false;
     // Fallback: network probe up to 14 days out (catches mid-meet dark days).
     for (var i = 1; i <= 14; i++) {
       var d = offday_addDays(today, i);
+      // v2.49.62: skip a known recurring dark day (Mon/Tue) without even
+      // attempting the network call -- it's never going to have a card.
+      if (typeof isKnownWeeklyDarkDay === 'function' && isKnownWeeklyDarkDay(code, d)) continue;
       try {
         if (typeof tryFetchEntries !== 'function') break;
         var res = await withTimeout(tryFetchEntries(code, d), 2500);
