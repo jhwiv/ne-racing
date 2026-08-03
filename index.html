@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260730-v2.49.59-brisnet';
+var NE_APP_VERSION = '20260803-v2.49.60-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260730-v2.49.59-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.59-brisnet';
+var RAILBIRD_VERSION = 'v2.49.60-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -21995,6 +21995,17 @@ async function fetchLiveEntries() {
       renderTodayTab();
       showToast('Offline — showing last loaded data', 'warning', 5000);
     } else {
+      // v2.49.60: renderTodayTab() MUST run here too. The off-day dashboard
+      // (offday_buildHTML -- the rich "Dark day at Saratoga" graphic) only
+      // triggers by intercepting renderTodayTab() and checking
+      // _entriesFetchAttempted, which is only just now true. Without this
+      // call, the ONLY earlier renderTodayTab() invocation was during
+      // initApp() before the fetch even started (_entriesFetchAttempted
+      // still false then), so the dashboard's own check never re-ran after
+      // the fetch actually resolved -- reported live as the app looking
+      // stuck on the loading hero on a real track-closed day, when a
+      // fresh device had no cached races to fall back on either.
+      renderTodayTab();
       showLiveUnavailable();
     }
     return;

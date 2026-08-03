@@ -1,5 +1,45 @@
 # NE Racing — Changelog
 
+## v2.49.60-brisnet — CRITICAL fix: Dark Day dashboard never rendered on a closed day with no cached data (2026-08-03)
+
+Reported live: track closed today (weather), app stuck showing what
+looked like the loading hero instead of the "Dark day at Saratoga"
+dashboard. Root-caused via a real Playwright reproduction before touching
+any code (~2 minutes real wait to exhaust the genuine 30s-per-date
+`tryFetchEntries` retry ceiling across today + 3 lookahead days, matching
+what a real device experiences) — confirmed the app does NOT get
+permanently stuck on the static "Preparing the day's card…" placeholder;
+it's worse: it silently falls back to a plain, unstyled "No race card
+available — check back on a race day" line instead of the intended rich
+dashboard, which reads just as "broken" to a user glancing at it.
+
+**Root cause**: `fetchLiveEntries()`'s "no card found anywhere, no cached
+data to fall back on" branch called `showLiveUnavailable()` but never
+`renderTodayTab()`. The Dark Day dashboard (`offday_buildHTML()`) only
+triggers by intercepting `renderTodayTab()` calls and checking
+`_entriesFetchAttempted` — and the ONLY `renderTodayTab()` call that had
+happened by that point was much earlier, during `initApp()`, before the
+fetch even started (when `_entriesFetchAttempted` was still `false`).
+Once the fetch chain actually resolved "nothing anywhere" and flipped
+`_entriesFetchAttempted` to `true`, nothing ever called `renderTodayTab()`
+again to give the dashboard-interceptor a second chance to fire. The
+sibling branch (stale cached data exists) was never affected — it already
+called `renderTodayTab()` correctly.
+
+**Fix**: one added `renderTodayTab();` call in the no-cache branch, right
+before `showLiveUnavailable()`.
+
+Verified via Playwright end-to-end (not a direct function call shortcut —
+the full real retry chain was allowed to exhaust): confirmed the bug
+first (`#offday-dashboard` absent, plain empty-state text present),
+applied the fix, re-ran the identical scenario and confirmed
+`#offday-dashboard` now renders with the full "Dark day at Saratoga"
+treatment, screenshotted both states. Also confirmed no regression on the
+normal "card found today" path (still renders real race cards, no
+dashboard). Full suite: 380 total, 378 pass, 1 known-intentional fail, 1
+environment-conditional skip (`fitter-output-contract.test.js` needs
+python3/scipy, unrelated to this fix).
+
 ## v2.49.59-brisnet — Track Status splash: once per day (2026-07-30)
 
 Asked directly: the splash was showing on every app open; it should only

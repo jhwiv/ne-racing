@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260730-v2.49.59-brisnet'; // v2.49.59: Track Status splash now shows once per day (per device), not once per app open               // bump on every ship
+const CACHE_VERSION = '20260803-v2.49.60-brisnet'; // v2.49.60: CRITICAL fix -- dark/closed day with no cached data got stuck showing plain text instead of the Dark Day dashboard (renderTodayTab() was never re-run after the fetch chain resolved)               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

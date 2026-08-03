@@ -926,3 +926,50 @@ Verified live via Playwright: all three visual states screenshotted, the
 tap-to-dismiss Continue button exercised, and the ordering-race fix
 specifically regression-tested. Full suite unchanged from §12.2 (380
 total, 379 pass, 1 known-intentional fail).
+
+### 12.4 v2.49.60 — CRITICAL: Dark Day dashboard never rendered when there was no cached data (2026-08-03)
+
+Reported live on an actual weather-closed day: the app looked stuck on
+the loading hero instead of showing the Dark Day dashboard. Reproduced
+with a real Playwright run (not a shortcut) letting the genuine
+`tryFetchEntries` 30s-per-date retry ceiling exhaust across today + 3
+lookahead days (~2 real minutes) with no cached races in localStorage —
+confirmed it does NOT loop forever on the static loading placeholder; it
+resolves to a plain, unstyled "No race card available — check back on a
+race day" line instead of the rich dashboard, which is what actually
+reads as "broken."
+
+**Root cause**: the Dark Day dashboard (`offday_buildHTML()`, §5-era
+feature) is wired in by *monkey-patching* `renderTodayTab()` — it
+intercepts every call to that function and checks `_entriesFetchAttempted`
+before deciding whether to swap in the dashboard. `fetchLiveEntries()`'s
+"nothing found anywhere, no cached data to fall back on" branch called
+`showLiveUnavailable()` (just toggles a small banner) but never
+`renderTodayTab()` itself. The ONLY `renderTodayTab()` call that had
+happened by that point was during `initApp()`, *before* the fetch even
+started — when `_entriesFetchAttempted` was still `false`, so the
+dashboard interceptor correctly declined to fire *then*. Once the fetch
+chain actually finished and flipped `_entriesFetchAttempted` to `true`,
+nothing ever gave the interceptor a second chance by calling
+`renderTodayTab()` again. The sibling branch (stale cached data exists)
+was never affected — it already called `renderTodayTab()`.
+
+**Fix**: one added `renderTodayTab();` call, right before
+`showLiveUnavailable()`, in that no-cache branch of `fetchLiveEntries()`.
+
+**Lesson for future changes near this dashboard**: any code path that
+should be able to show the Dark Day dashboard MUST call `renderTodayTab()`
+itself (not just update some other banner/element) — the dashboard has no
+independent render call of its own; it is entirely parasitic on
+`renderTodayTab()` being invoked *after* `_entriesFetchAttempted` is true.
+Grep for `_entriesFetchAttempted = true` before adding a new early-return
+branch in `fetchLiveEntries()` and make sure `renderTodayTab()` gets
+called somewhere on that path.
+
+Verified via Playwright end-to-end (full real retry chain, not a
+shortcut): confirmed the bug first, applied the fix, re-ran the identical
+scenario and confirmed `#offday-dashboard` renders correctly, screenshots
+of both states. Confirmed no regression on the normal "card found today"
+path. Full suite: 380 total, 378 pass, 1 known-intentional fail, 1
+environment-conditional skip (fitter-output-contract needs python3/scipy
+— this session's container didn't have them, unrelated to this fix).
