@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260803-v2.49.60-brisnet';
+var NE_APP_VERSION = '20260803-v2.49.61-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260803-v2.49.60-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.60-brisnet';
+var RAILBIRD_VERSION = 'v2.49.61-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -13372,18 +13372,32 @@ function renderSearchTrackStatus(data) {
   } catch(_) {}
 }
 
+// v2.49.61: shared, bounded fetch of GET /api/track-status. Bounded with an
+// AbortController so a slow/hung worker can never itself become a new
+// source of the "stuck checking" symptom -- callers get null on any
+// failure or timeout and treat that exactly like "no signal yet."
+async function fetchTrackStatus(code, date, timeoutMs) {
+  try {
+    var store = getStore();
+    var workerUrl = store && store.settings.workerUrl;
+    if (!workerUrl) return null;
+    var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var to = ac ? setTimeout(function(){ try { ac.abort(); } catch(_){} }, timeoutMs || 8000) : null;
+    var opts = { cache: 'no-store' };
+    if (ac) opts.signal = ac.signal;
+    var res = await fetch(workerUrl + '/api/track-status?track=' + code + '&date=' + date + '&_t=' + Date.now(), opts);
+    if (to) clearTimeout(to);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch(_) { return null; }
+}
+
 async function fetchAndRenderSearchTrackStatus() {
   try {
     var code = getActiveTrack();
     if (code !== 'SAR') return;
-    var store = getStore();
-    var workerUrl = store && store.settings.workerUrl;
-    if (!workerUrl) return;
-    var today = getTodayStr();
-    var res = await fetch(workerUrl + '/api/track-status?track=' + code + '&date=' + today + '&_t=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return;
-    var data = await res.json();
-    renderSearchTrackStatus(data);
+    var data = await fetchTrackStatus(code, getTodayStr(), 8000);
+    if (data) renderSearchTrackStatus(data);
   } catch(_) {}
 }
 
@@ -21970,10 +21984,43 @@ async function fetchLiveEntries() {
   // Task 6c: Show loading indicator
   showLoadingIndicator();
 
+  // v2.49.61: kick off the calendar/web-search status check IN PARALLEL
+  // with the live entries fetch below -- reported live: a genuinely
+  // closed day with nothing cached left the user staring at "still
+  // checking... slow connections can take up to a minute" while the app
+  // pointlessly worked through today's fetch AND all 3 lookahead dates
+  // (up to ~2 real minutes total) before ever showing the closed view,
+  // even though the track-status check already knew the answer. Starting
+  // it here (not awaited yet) means it's very likely already resolved by
+  // the time we actually need it below, at zero added latency to the
+  // normal "card found" path.
+  var _statusPrecheckPromise = fetchTrackStatus(code, today, 8000);
+
   // Try today first, then look ahead up to 3 days for next available card
   let result = await tryFetchEntries(code, today);
   let lookaheadDate = null;
   if (!result) {
+    // v2.49.61: before burning up to 90 more seconds on 3 lookahead dates,
+    // check whether the status precheck (kicked off above, bounded to 8s)
+    // has already confirmed the closure -- if so, skip the lookahead loop
+    // entirely and go straight to the closed view.
+    var _statusPrecheck = await _statusPrecheckPromise;
+    if (_statusPrecheck && _statusPrecheck.status === 'confirmed_closed') {
+      loadedRaceDate = null; hideLoadingIndicator();
+      _entriesFetchAttempted = true;
+      renderCardFoundStatus(false, null);
+      renderSearchTrackStatus(_statusPrecheck);
+      var _cachedForClosed = getTrackData();
+      if (_cachedForClosed && _cachedForClosed.races && _cachedForClosed.races.length) {
+        loadedRaceDate = getTodayStr();
+        renderTodayTab();
+        showToast('Offline — showing last loaded data', 'warning', 5000);
+      } else {
+        renderTodayTab(); // v2.49.60 fix -- lets the Dark Day dashboard trigger
+        showLiveUnavailable();
+      }
+      return;
+    }
     for (let d = 1; d <= 3; d++) {
       // P1-8 (v2.48.6): use ET-anchored date (en-CA = YYYY-MM-DD) so the lookahead
       // doesn't roll a day early when called between 8pm-midnight ET (when UTC is

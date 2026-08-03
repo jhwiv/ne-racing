@@ -1,5 +1,39 @@
 # NE Racing — Changelog
 
+## v2.49.61-brisnet — Check the calendar/web-search status FIRST, before the slow entries retry loop (2026-08-03)
+
+Direct follow-up, reported live with a screenshot: even after v2.49.60's
+fix, a real closed day still showed "Checking today's Saratoga card…" /
+"Still checking… slow connections can take up to a minute" for a long
+time before resolving. That's real — v2.49.60 fixed what happens once the
+fetch chain finishes, not how long it takes to get there. On a genuine
+no-card day, `fetchLiveEntries()` was still working through today's own
+live-entries attempt AND all 3 lookahead dates (up to ~30s each, ~2
+minutes worst case) before concluding "nothing here," even when the
+already-shipped web-search Track Status check (v2.49.56) already knew the
+answer. The ask: look at the calendar first.
+
+**Fix**: `fetchLiveEntries()` now kicks off `fetchTrackStatus()` (bounded
+to 8s) in parallel with today's live-entries attempt, *before* either one
+is awaited — zero added latency to the normal "card found" path (verified
+unaffected: ~560ms, unchanged). If today's own attempt comes back empty,
+the (by then almost certainly already-resolved) status check is consulted
+*before* starting the expensive 3-day lookahead loop: a confirmed closure
+skips the lookahead entirely and goes straight to the closed view,
+carrying the real reason into both the banner and the splash. Extracted
+the fetch itself into a shared `fetchTrackStatus(code, date, timeoutMs)`
+helper (also now used by the existing boot-time banner refresh) so the
+timeout/abort logic isn't duplicated.
+
+Verified via Playwright with the full real retry chain (not shortcuts):
+confirmed the "confirmed_closed" scenario now resolves in ~31s (today's
+own unavoidable attempt) instead of the ~120s worst case, correctly lands
+on the Dark Day dashboard with the real weather-cancellation reason in
+both the banner and the splash, and confirmed the normal "card found
+today" path is completely unaffected (~560ms, same as before). Full
+suite: 380 total, 378 pass, 1 known-intentional fail, 1
+environment-conditional skip (unrelated).
+
 ## v2.49.60-brisnet — CRITICAL fix: Dark Day dashboard never rendered on a closed day with no cached data (2026-08-03)
 
 Reported live: track closed today (weather), app stuck showing what

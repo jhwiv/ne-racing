@@ -973,3 +973,28 @@ of both states. Confirmed no regression on the normal "card found today"
 path. Full suite: 380 total, 378 pass, 1 known-intentional fail, 1
 environment-conditional skip (fitter-output-contract needs python3/scipy
 — this session's container didn't have them, unrelated to this fix).
+
+### 12.5 v2.49.61 — check the web-search status FIRST, before the slow retry loop (2026-08-03)
+
+Direct follow-up, reported live with a screenshot: §12.4's fix corrected
+*what* renders once the fetch chain finishes, but not *how long* that
+takes. On a genuine no-card day, `fetchLiveEntries()` still worked
+through today's own live-entries attempt AND all 3 lookahead dates (up to
+~30s each via `tryFetchEntries`'s existing cold-start retry ceiling — see
+§2/§3 — up to ~2 minutes worst case) before concluding "nothing here,"
+even though the web-search Track Status check (§12.2) already had the
+answer. Asked directly: look at the calendar first.
+
+Fix: kick off `fetchTrackStatus()` (new shared helper, bounded to 8s) in
+parallel with today's live-entries attempt, unawaited, right when
+`fetchLiveEntries()` starts. If today's own attempt comes back empty, the
+(by then almost certainly already-resolved) status result is checked
+*before* starting the 3-day lookahead loop — a confirmed closure skips the
+lookahead entirely. Zero added latency to the normal path since the
+precheck runs concurrently, not sequentially before it.
+
+Verified via Playwright with the real retry chain unshortened: confirmed
+this resolves in ~31s (today's own unavoidable attempt only) instead of
+the ~120s worst case, lands on the Dark Day dashboard with the real
+reason in both banner and splash, and confirmed zero added latency on the
+normal card-found path (~560ms, matching pre-change timing exactly).
