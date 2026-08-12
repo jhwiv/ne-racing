@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260803-v2.49.62-brisnet';
+var NE_APP_VERSION = '20260812-v2.49.63-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260803-v2.49.62-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.62-brisnet';
+var RAILBIRD_VERSION = 'v2.49.63-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -22874,6 +22874,17 @@ async function fetchLiveResults(isManual) {
     // Render Today tab to show inline results
     renderTodayTab();
     refreshStatusTabIfActive();
+    // v2.49.63: re-check the abandoned-card banner AFTER the merge above has
+    // actually stamped race._official -- the call at the top of this
+    // function (for resilience when the fetch itself fails) only sees
+    // whatever was true BEFORE this fetch ran, so a successful merge that
+    // just resolved the warning never got a chance to clear it until some
+    // later poll tick. Reported live: results were confirmed present and
+    // official via a direct worker check, yet the app kept showing "posted
+    // no official results" through a manual refresh and a full reload,
+    // because the banner never re-evaluated against the data it had just
+    // fetched.
+    try { renderAbandonedCardStatus(); } catch(_) {}
 
     var racesResolved = allRaces.length;
     // v2.49.19: scope the "still pending" count to today's bets, matching the

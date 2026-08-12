@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260803-v2.49.62-brisnet'; // v2.49.62: known recurring dark days (Saratoga does not race Mon/Tue) now skip the network fetch entirely, resolving instantly with zero Perplexity dependency               // bump on every ship
+const CACHE_VERSION = '20260812-v2.49.63-brisnet'; // v2.49.63: fix -- abandoned-card banner now clears within the SAME fetchLiveResults() call that merges real official results, instead of requiring a later poll cycle               // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

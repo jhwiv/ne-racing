@@ -1,5 +1,38 @@
 # NE Racing — Changelog
 
+## v2.49.63-brisnet — Fix: abandoned-card banner didn't clear when results actually arrived (2026-08-12)
+
+Reported live on a real race day: entries loaded fine, but the app kept
+showing "Saratoga's card today has posted no official results well past
+first post" even after tapping "Check Results (Live)" and after a full
+app reload. Verified directly against the live worker (bypassing the app
+entirely) that both `/api/entries` and `/api/results` had real, correct,
+`official: true` data the whole time — this was never a data problem.
+
+**Root cause**: `renderAbandonedCardStatus()` (the function that decides
+whether to show that warning) was called at the very top of
+`fetchLiveResults()`, before that same function's fetch/merge logic runs
+and stamps `race._official = true` from the fresh worker response. It was
+placed there deliberately so the banner still updates even when the fetch
+itself fails (using whatever local data already exists) -- but that meant
+a *successful* fetch never got to immediately clear its own warning; the
+banner only had a chance to catch up on some later poll tick, and in
+practice kept missing that too.
+
+**Fix**: added a second call to `renderAbandonedCardStatus()` right after
+the merge completes and results are saved, so a successful fetch reflects
+its own freshly-stamped official results in the same pass. The original
+top-of-function call is untouched (still needed for the failed-fetch
+case).
+
+**Verification discipline**: reproduced the exact bug first by stashing
+the fix and re-running the same Playwright scenario -- confirmed the
+banner stayed stuck even after a successful merge with real official
+results, matching the live report exactly. Restored the fix, re-ran the
+identical scenario, confirmed the banner now clears within that single
+call. Full suite: 380 total, 378 pass, 1 known-intentional fail, 1
+environment-conditional skip (unrelated).
+
 ## v2.49.62-brisnet — Known recurring dark days skip the network entirely (2026-08-03)
 
 Direct follow-up, reported live: even after v2.49.61, the app still spent

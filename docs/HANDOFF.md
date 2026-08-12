@@ -1044,3 +1044,37 @@ Also directly unit-tested `isKnownWeeklyDarkDay()` against all 7 weekdays
 and confirmed the rule doesn't apply to non-Saratoga track codes, and
 confirmed a real non-dark Wednesday still fetches normally end to end
 (regression check).
+
+### 12.7 v2.49.63 — abandoned-card banner didn't clear when results actually arrived (2026-08-12)
+
+Reported live on a real race day, and this time the diagnosis leaned
+heavily on the owner running direct `Invoke-RestMethod` checks against
+the live worker (bypassing the app) rather than me guessing from a
+screenshot alone — confirmed both `/api/entries` and `/api/results` had
+correct, real, `official: true` data for today throughout. This was
+never a data problem, which narrowed it to the client's own state
+handling immediately.
+
+**Root cause**: `renderAbandonedCardStatus()` runs at the very top of
+`fetchLiveResults()` (added in §11-era work, deliberately placed there so
+the banner still updates even when the fetch itself fails, using
+whatever local data already exists). But that means it only ever
+evaluates data from *before* the current call's own fetch/merge runs — a
+fetch that succeeds and correctly stamps `race._official = true` never
+gets to immediately clear its own warning; the banner only had a chance
+on some *later* poll tick. In practice it kept missing that too, so the
+warning persisted through a manual "Check Results (Live)" tap and a full
+app reload, even though the merge was demonstrably succeeding (the
+"Checked — no new results yet" toast only fires from code that runs after
+a successful merge — that toast firing was itself proof the data was
+fine, just not reflected in the banner).
+
+**Fix**: one added call to `renderAbandonedCardStatus()` right after the
+merge/save completes, alongside the existing pre-fetch call (kept
+unchanged for the failed-fetch case).
+
+**Notable this round**: the bug was confirmed by stashing the fix and
+re-running the exact same Playwright scenario against the pre-fix code —
+watching it reproduce the live symptom precisely (banner stuck even after
+a successful merge with real official results) — before trusting the fix
+was actually the cause, not just a plausible-sounding guess.
