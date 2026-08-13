@@ -1078,3 +1078,82 @@ re-running the exact same Playwright scenario against the pre-fix code —
 watching it reproduce the live symptom precisely (banner stuck even after
 a successful merge with real official results) — before trusting the fix
 was actually the cause, not just a plausible-sounding guess.
+
+## 13. Analytics tab: `/api/picks/stats` and `/api/picks/history` crashed once real pick history grew large (v2.49.64, 2026-08-13)
+
+Reported live via screenshot: "Pick Accuracy by Source: Loading...",
+"Model Calibration & Overlay Betting: Could not load.", "Recent Picks:
+Could not load." all failing at once on the Analytics tab. Diagnosed
+step by step against the live worker, not guessed:
+
+1. Confirmed the worker had not been redeployed since the most recent
+   `worker.js` changes (owner: "No").
+2. `Invoke-RestMethod` directly against `/api/picks/stats` returned
+   `error code: 1101` — Cloudflare's generic "Worker threw exception"
+   page, also reproduced in-browser (Ray ID captured from the actual
+   screenshot).
+3. `wrangler tail` (had to be restarted with `--config wrangler.toml` —
+   see the wrangler config-auto-discovery gotcha noted throughout this
+   doc; the first `tail` attempt silently connected to an unrelated
+   worker, "family-transition-tracker", on the same Cloudflare account)
+   produced the definitive stack trace:
+
+   ```
+   GET https://cloudflare-worker.jhwiv-online.workers.dev/api/picks/stats - Exception Thrown
+   X [ERROR] Error: Too many API requests by single Worker invocation. To configure
+   this limit, refer to https://developers.cloudflare.com/workers/wrangler/configuration/#limits
+       at handlePickStats (worker.js:2164:47)
+   ```
+
+**Root cause**: `handlePickStats` (§11.4's Model Calibration & Overlay
+Betting endpoint, also backing "Pick Accuracy by Source") does 2 extra KV
+`.get()` calls for *every* settled outcome record — the outcome itself,
+then a second read of the matching `pick:` record (swapping the
+`outcome:`/`pick:` key prefix) to reconstruct stake/betType/betTag/prob/ml
+— with no cap on top of its 2 `.list()` calls. `handlePickHistory`
+(backing "Recent Picks") has the identical shape: 2 `.get()` calls per
+matching pick key, and its `limit` query param was only ever applied to
+the final `.slice()` of the *output*, not to how many keys got
+detail-fetched along the way. The `ENGINE_ACCURACY` KV namespace has been
+accumulating real pick/outcome records since June across 3 engines (v2,
+baseline_ml, crowd) via the existing `daily_pick_log.js`/
+`daily_pick_settle.js` scheduled workflows (see §3) — large enough by
+mid-August that a single "All Time" Analytics load blew past Cloudflare's
+per-invocation subrequest ceiling and the Worker threw instead of
+responding, rather than degrading gracefully.
+
+**Fix**: both handlers now filter matching keys by `date`/`engine` first
+(free — both are embedded in the KV key name itself, e.g.
+`outcome:SAR:2026-07-13:1:v2:3`, no read required), sort by the key's
+embedded date segment specifically rather than the raw key string (TRACK
+sorts ahead of DATE in the key, which would silently break "most recent"
+ordering once more than one track's history exists), then only
+detail-fetch the most recent 400 records
+(`MAX_DETAILED_OUTCOMES`/`MAX_DETAILED_PICKS` in `worker.js`).
+`/api/picks/stats` additionally returns `truncated` / `processedOutcomes`
+/ `totalOutcomes` fields so a caller can tell aggregates are scoped to
+recent history rather than silently presenting a partial number as a true
+all-time total.
+
+**Why 400, not some other number**: chosen as a conservative margin under
+an assumed 1000-subrequest paid-plan ceiling (2 `.list()` + 400 × 2
+`.get()` = 802, leaving headroom for the rest of the request). The crash
+only started now, after weeks of accumulation, which is far more
+consistent with a ~1000-limit paid plan being approached than an
+extremely low 50-limit free-plan ceiling that would have broken almost
+immediately after the feature shipped.
+
+**Tests**: `tests/worker-pick-stats.test.js` and
+`tests/worker-pick-history.test.js` each gained a test that seeds 410 KV
+records (10 over the cap) and asserts the cap is enforced and reported
+honestly, plus a companion test confirming small (under-cap) histories
+report `truncated: false` with exact, unchanged counts. Full suite: 383
+total, 382 pass, 1 pre-existing unrelated failure (the `index.html`
+scoring-block sync check, confirmed to fail identically via `git stash`
+against a clean master — not caused by this change), 1 skipped.
+
+**Deploy note**: pure `worker.js` change, no client HTML touched. Does
+NOT auto-deploy via Cloudflare Pages — requires
+`wrangler deploy --config wrangler.toml` from the correctly up-to-date
+local clone (see the Wrangler config-auto-discovery gotcha earlier in
+this doc for why the explicit `--config` flag matters on this machine).

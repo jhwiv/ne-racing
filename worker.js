@@ -3660,11 +3660,37 @@ async function handlePickStats(request, env, origin) {
     ensureEngine(eng).picks++;
   }
   const outcomeList = await env.ENGINE_ACCURACY.list({ prefix: "outcome:", limit: 1000 });
-  for (const { name } of outcomeList.keys) {
-    if (dateFilter && name.split(":")[2] !== dateFilter) continue;
+  // v2.49.64: cap per-outcome KV reads to stay under Cloudflare's
+  // per-invocation subrequest ceiling. Real accumulated history (since June,
+  // across 3 engines) grew past it -- confirmed live via wrangler tail:
+  // "Error: Too many API requests by single Worker invocation", thrown from
+  // this loop. Each outcome costs 2 .get() calls (the outcome itself, then
+  // its matching pick record for stake/prob/ml) on top of the 2 .list()
+  // calls above, so total subrequests ≈ 2 + 2*N with no prior cap. Filter by
+  // date/engine FIRST (free -- both are embedded in the key name, no read
+  // required) so a scoped "Today" request never pays for history it doesn't
+  // want, then keep only the most recent MAX_DETAILED_OUTCOMES. Sorting by
+  // the DATE segment specifically (not the full key) matters once more than
+  // one track is present: the key format is
+  // "outcome:{TRACK}:{DATE}:{RACE}:{ENGINE}:{PP}", so TRACK sorts ahead of
+  // DATE in a plain string compare and would silently break "most recent."
+  const MAX_DETAILED_OUTCOMES = 400;
+  const recencyKey = (name) => {
     const parts = name.split(":");
-    const eng = parts[4] || "unknown";
-    if (engineFilter && eng !== engineFilter) continue;
+    return (parts[2] || "") + String(parts[3] || "").padStart(3, "0");
+  };
+  let outcomeKeys = outcomeList.keys.filter(({ name }) => {
+    if (dateFilter && name.split(":")[2] !== dateFilter) return false;
+    if (engineFilter && (name.split(":")[4] || "unknown") !== engineFilter) return false;
+    return true;
+  });
+  const totalOutcomes = outcomeKeys.length;
+  outcomeKeys.sort((a, b) => recencyKey(b.name).localeCompare(recencyKey(a.name)));
+  const outcomesTruncated = outcomeKeys.length > MAX_DETAILED_OUTCOMES;
+  if (outcomesTruncated) outcomeKeys = outcomeKeys.slice(0, MAX_DETAILED_OUTCOMES);
+
+  for (const { name } of outcomeKeys) {
+    const eng = name.split(":")[4] || "unknown";
     const s = ensureEngine(eng);
     const outcome = await env.ENGINE_ACCURACY.get(name, "json");
     if (!outcome) continue;
@@ -3769,7 +3795,18 @@ async function handlePickStats(request, env, origin) {
   // version actually used (null if none requested) -- lets an older,
   // not-yet-redeployed client detect that a requested date scope was
   // silently ignored, instead of mislabeling all-time totals as "Today".
-  return jsonOk({ engines: stats, generatedAt: new Date().toISOString(), appliedDateFilter: dateFilter }, origin, dateFilter ? 60 : 300);
+  // truncated/processedOutcomes/totalOutcomes are additive and honest about
+  // the MAX_DETAILED_OUTCOMES cap above: when true, the aggregates only
+  // reflect the most recent processedOutcomes of totalOutcomes settled
+  // outcomes, not true all-time totals.
+  return jsonOk({
+    engines: stats,
+    generatedAt: new Date().toISOString(),
+    appliedDateFilter: dateFilter,
+    truncated: outcomesTruncated,
+    processedOutcomes: outcomeKeys.length,
+    totalOutcomes,
+  }, origin, dateFilter ? 60 : 300);
 }
 
 /**
@@ -3792,10 +3829,31 @@ async function handlePickHistory(request, env, origin) {
   const limit = Math.min(parseInt(searchParams.get("limit"), 10) || 200, 500);
 
   const pickList = await env.ENGINE_ACCURACY.list({ prefix: "pick:", limit: 1000 });
-  const picks = [];
-  for (const { name, metadata } of pickList.keys) {
+  // v2.49.64: same subrequest-ceiling fix as handlePickStats -- this loop
+  // did 2 .get() calls (the pick + its outcome) per key with NO cap, since
+  // `limit` was only ever applied to the final .slice(). Once accumulated
+  // history grew large enough this endpoint threw the identical live error
+  // ("Too many API requests by single Worker invocation"), shown failing in
+  // the same Analytics-tab screenshot as /api/picks/stats. Filter by engine
+  // first (free -- embedded in the key name), sort by the DATE segment
+  // specifically (not the full key -- TRACK precedes DATE in the key string
+  // and would break "most recent" once more than one track is present), then
+  // only detail-fetch the most recent MAX_DETAILED_PICKS candidates.
+  const MAX_DETAILED_PICKS = 400;
+  const recencyKey = (name) => {
+    const parts = name.split(":");
+    return (parts[2] || "") + String(parts[3] || "").padStart(3, "0");
+  };
+  let candidates = pickList.keys.filter(({ name, metadata }) => {
+    if (!engineFilter) return true;
     const eng = (metadata && metadata.engine) || name.split(":")[4] || "unknown";
-    if (engineFilter && eng !== engineFilter) continue;
+    return eng === engineFilter;
+  });
+  candidates.sort((a, b) => recencyKey(b.name).localeCompare(recencyKey(a.name)));
+  if (candidates.length > MAX_DETAILED_PICKS) candidates = candidates.slice(0, MAX_DETAILED_PICKS);
+
+  const picks = [];
+  for (const { name } of candidates) {
     const pick = await env.ENGINE_ACCURACY.get(name, "json");
     if (!pick) continue;
     const outcome = await env.ENGINE_ACCURACY.get(name.replace(/^pick:/, "outcome:"), "json");

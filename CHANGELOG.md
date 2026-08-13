@@ -1,5 +1,58 @@
 # NE Racing — Changelog
 
+## v2.49.64-brisnet — Fix: Analytics tab crash (Cloudflare subrequest ceiling) once pick history grew large (2026-08-13)
+
+Reported live: the Analytics tab's "Pick Accuracy by Source", "Model
+Calibration & Overlay Betting", and "Recent Picks" cards all showed
+"Could not load." Diagnosed step-by-step against the live worker (not
+guessed): `Invoke-RestMethod` against `/api/picks/stats` returned Cloudflare
+error code 1101 ("Worker threw exception"), reproduced in-browser as the
+generic Cloudflare error page, then root-caused via a live `wrangler tail`
+stack trace showing the real exception:
+
+```
+Error: Too many API requests by single Worker invocation. To configure
+this limit, refer to https://developers.cloudflare.com/workers/wrangler/configuration/#limits
+    at handlePickStats (worker.js:2164:47)
+```
+
+**Root cause**: `handlePickStats` (backing "Pick Accuracy by Source" and
+"Model Calibration & Overlay Betting") does 2 extra KV `.get()` calls for
+*every* settled outcome — once for the outcome record, once again for its
+matching `pick:` record (to reconstruct stake/betType/betTag/prob/ml) — with
+no cap. `handlePickHistory` (backing "Recent Picks") has the same shape: 2
+`.get()` calls per matching pick, and its `limit` query param was only ever
+applied to the final `.slice()`, not to how many keys got detail-fetched.
+Real pick/outcome history has been accumulating in the `ENGINE_ACCURACY` KV
+namespace since June across 3 engines (v2, baseline_ml, crowd) via the
+existing daily pick-log/settle cron jobs — large enough now that a single
+`/api/picks/stats` or `/api/picks/history` invocation blew past Cloudflare's
+per-invocation subrequest ceiling and the Worker threw instead of responding.
+
+**Fix**: both handlers now filter by `date`/`engine` first (free — both are
+embedded in the KV key name, no read required), sort by the key's embedded
+date segment specifically (not the raw key string, since `TRACK` sorts ahead
+of `DATE` in the key and would silently break "most recent" once more than
+one track's history is present), and only detail-fetch the most recent 400
+records (`MAX_DETAILED_OUTCOMES` / `MAX_DETAILED_PICKS`). `/api/picks/stats`
+now also returns `truncated` / `processedOutcomes` / `totalOutcomes` so the
+client (and anyone reading the response directly) can tell aggregates are
+scoped to recent history rather than silently presenting a partial number as
+an all-time total.
+
+New tests in `tests/worker-pick-stats.test.js` and
+`tests/worker-pick-history.test.js` seed 410 KV records (over the 400 cap)
+and assert the cap is honored and reported honestly, plus a companion test
+confirming small (under-cap) histories report `truncated: false` with exact
+counts unchanged from before this fix. Full suite: 383 total, 382 pass, 1
+pre-existing unrelated failure (`index.html` scoring-block sync check — same
+failure reproduces identically on a clean `git stash` against master, i.e.
+before this change), 1 skipped.
+
+Worker-only change — requires the maintainer to run
+`wrangler deploy --config wrangler.toml` before it's live; no Pages
+auto-deploy path touches `worker.js`.
+
 ## v2.49.63-brisnet — Fix: abandoned-card banner didn't clear when results actually arrived (2026-08-12)
 
 Reported live on a real race day: entries loaded fine, but the app kept

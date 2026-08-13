@@ -160,3 +160,43 @@ test('GET /api/picks/stats: date filter (v2.49.39) scopes to a single day for th
   assert.equal(otherDay.engines.v2.settled, 1);
   assert.equal(otherDay.engines.v2.wins, 1);
 });
+
+// v2.49.64: real accumulated history (since June, across 3 engines) grew
+// past Cloudflare's per-invocation subrequest ceiling -- confirmed live via
+// wrangler tail: "Error: Too many API requests by single Worker invocation",
+// thrown from handlePickStats' per-outcome detail loop (2 extra KV .get()
+// calls per settled outcome, previously unbounded). This locks in the fix:
+// only the most recent MAX_DETAILED_OUTCOMES (400) outcomes get the expensive
+// per-outcome detail fetch, and the response is honest about it via
+// truncated/processedOutcomes/totalOutcomes.
+test('GET /api/picks/stats: caps per-outcome detail reads and reports truncation honestly', async () => {
+  const kv = makeFakeKv();
+  const TOTAL = 410;
+  for (let i = 0; i < TOTAL; i++) {
+    const day = String(1 + (i % 28)).padStart(2, '0');
+    const key = `SAR:2026-0${1 + Math.floor(i / 280)}-${day}:1:v2:${i}`;
+    await kv.put(`pick:${key}`, JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win' }), { metadata: { engine: 'v2' } });
+    await kv.put(`outcome:${key}`, JSON.stringify({ won: true, payout: 4, betType: 'Win', position: 1 }));
+  }
+
+  const env = { ENGINE_ACCURACY: kv };
+  const body = await callPickStats(env);
+
+  assert.equal(body.totalOutcomes, TOTAL, 'totalOutcomes must reflect the real full count, not the capped one');
+  assert.equal(body.processedOutcomes, 400, 'processedOutcomes must be clamped to the MAX_DETAILED_OUTCOMES cap');
+  assert.equal(body.truncated, true, 'truncated must be true whenever real history exceeds the cap');
+  assert.equal(body.engines.v2.settled, 400, 'aggregates themselves must only reflect the capped, processed subset');
+});
+
+test('GET /api/picks/stats: truncated is false and matches real counts when under the cap', async () => {
+  const kv = makeFakeKv();
+  await kv.put('pick:SAR:2026-07-13:1:v2:3', JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win' }), { metadata: { engine: 'v2' } });
+  await kv.put('outcome:SAR:2026-07-13:1:v2:3', JSON.stringify({ won: true, payout: 6.4, betType: 'Win', position: 1 }));
+
+  const env = { ENGINE_ACCURACY: kv };
+  const body = await callPickStats(env);
+
+  assert.equal(body.truncated, false);
+  assert.equal(body.processedOutcomes, 1);
+  assert.equal(body.totalOutcomes, 1);
+});

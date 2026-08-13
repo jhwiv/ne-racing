@@ -100,3 +100,26 @@ test('GET /api/picks/history: limit caps the returned list but not the reported 
   assert.equal(body.picks.length, 2);
   assert.equal(body.total, 5, 'total must reflect the full matching set, not just the returned page');
 });
+
+// v2.49.64: this endpoint shared the same unbounded-KV-reads pattern as
+// /api/picks/stats -- `limit` was only ever applied to the final .slice(),
+// so the loop still did 2 .get() calls per key for EVERY matching pick
+// regardless of how small a page was requested, and it was shown failing
+// with the identical live error in the same Analytics-tab screenshot. This
+// locks in the fix: only the most recent MAX_DETAILED_PICKS (400) candidates
+// get detail-fetched at all.
+test('GET /api/picks/history: caps detail reads to MAX_DETAILED_PICKS regardless of requested limit', async () => {
+  const kv = makeFakeKv();
+  const TOTAL = 410;
+  for (let i = 0; i < TOTAL; i++) {
+    const day = String(1 + (i % 28)).padStart(2, '0');
+    await kv.put(`pick:SAR:2026-0${1 + Math.floor(i / 280)}-${day}:1:v2:${i}`, JSON.stringify({
+      engine: 'v2', track: 'SAR', date: `2026-0${1 + Math.floor(i / 280)}-${day}`, race: 1, pp: i, horseName: 'Horse' + i,
+    }), { metadata: { engine: 'v2' } });
+  }
+  const env = { ENGINE_ACCURACY: kv };
+  const body = await callPickHistory(env, '?limit=500');
+
+  assert.equal(body.picks.length, 400, 'output is capped at MAX_DETAILED_PICKS even though limit=500 was requested');
+  assert.equal(body.total, 400, 'total reflects the processed (capped) candidate set, matching the honest cap in /api/picks/stats');
+});

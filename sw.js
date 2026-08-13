@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260812-v2.49.63-brisnet'; // v2.49.63: fix -- abandoned-card banner now clears within the SAME fetchLiveResults() call that merges real official results, instead of requiring a later poll cycle               // bump on every ship
+const CACHE_VERSION = '20260813-v2.49.64-brisnet'; // v2.49.64: fix -- /api/picks/stats and /api/picks/history no longer crash (Cloudflare subrequest ceiling) once real accumulated pick history grows large // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
