@@ -411,17 +411,27 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
 // ── Probability normalization ────────────────────────────────────────────────
 // v1: score-share. Mathematically not a probability (just a normalization of
 //     positive numbers); kept for parity with current production.
-// v2: temperature-scaled softmax over composites. Temperature is chosen so the
-//     dispersion of model probabilities roughly matches the dispersion of
-//     morning-line implied probabilities in the same race (calibrated default
-//     T=12 produces sensible spreads for fields of 6–12 horses).
+// v2: temperature-scaled softmax over composites.
+//     T=20, backtested 2026-08-13 against the real 2023-2026 corpus (563
+//     races) across 4 independent chronological holdout splits (train-frac
+//     0.5/0.6/0.7/0.8) via scripts/backtest/weight_sweep.js's evaluate()
+//     harness: T=20 minimized holdout log-loss in every split (the flat
+//     optimum spans T=19-22), replacing the prior hand-picked T=12, which was
+//     never validated against data and was measurably overconfident -- e.g.
+//     the [0.3,0.4] predicted-probability bucket was predicting 33.8% but
+//     hitting only 18.7% at T=12, vs. 33.5% predicted / 31.0% actual at T=20.
+//     Temperature only rescales probability DISPERSION -- it cannot change
+//     which horse ranks #1 (softmax is monotonic in the underlying score), so
+//     this has zero effect on Best Bet/Action Bet selection or their ROI; it
+//     only makes modelProb (and therefore the overlay = modelProb - market
+//     calculation) a more honest estimate.
 function probabilityNormalizeV1(scored) {
   const sum = scored.reduce((acc, s) => acc + Math.max(s.score, 1), 0);
   scored.forEach(s => { s.modelProb = Math.max(s.score, 1) / sum; });
 }
 
 function probabilityNormalizeV2(scored, temperature) {
-  const T = temperature || 12;
+  const T = temperature || 20;
   // Softmax with numerical stability.
   const maxS = Math.max(...scored.map(s => s.score));
   const exps = scored.map(s => Math.exp((s.score - maxS) / T));
@@ -452,7 +462,7 @@ function attachOverlay(scored) {
  * @param {string} opts.version   — 'v1' (parity) | 'v2' (methodology-fixed)
  * @param {Object} opts.bias      — { style, rail } or null
  * @param {string} opts.today     — 'YYYY-MM-DD' for freshness calc; defaults to now
- * @param {number} opts.temperature — softmax temperature (v2 only); default 12
+ * @param {number} opts.temperature — softmax temperature (v2 only); default 20
  * @param {boolean} opts.includeExpertInComposite — override default per-version
  * @returns {Array} scored — sorted by composite desc, with modelProb / overlay attached
  */

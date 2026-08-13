@@ -1,5 +1,63 @@
 # NE Racing — Changelog
 
+## v2.49.65-brisnet — Model: backtest-validated softmax temperature 12→20 (2026-08-13)
+
+Follow-up to the Analytics tab fix above: owner asked why v2's real results are
+worse than chance/the market, then explicitly asked to try to improve them,
+with instructions not to guess and to back-test. Two hypotheses were tested
+against the real 2023-2026 corpus (563 races) using this repo's own
+`scripts/backtest/weight_sweep.js` chronological-holdout methodology; both are
+recorded here because the first was disproven, not shipped:
+
+1. **Tested and rejected**: `data/weights/v2.json`'s fitted `pace` (β=−0.985)
+   and `fresh` (β=−2.294, the largest-magnitude coefficient in the model) came
+   out significantly negative, but `loadFittedWeights()`/`fit_logit.py` strip
+   the sign via `abs()` before deploying (a deliberate, pre-existing, commented
+   design choice). Restoring the true fitted sign looked like the obvious fix
+   for the model's overconfidence. Backtested on a chronological holdout: it
+   makes results *worse* (holdout ROI +14.0% → −16.4%) — a small-sample MLE
+   sign artifact that doesn't generalize. Not shipped.
+2. **Tested and confirmed**: the softmax temperature in `probabilityNormalizeV2`
+   (`scripts/lib/scoring.js`) was a hand-picked constant, `T=12`, never
+   validated against data. Swept `T` across 4 independent chronological
+   holdout splits (train-frac 0.5/0.6/0.7/0.8): **`T=20` minimized holdout
+   log-loss in every single split** (flat optimum spans T=19-22). Confirmed
+   this can only improve calibration, never hurt betting selection: softmax is
+   monotonic in the underlying composite score, so temperature cannot change
+   which horse ranks #1 — Best Bet/Action Bet picks and their ROI are
+   mathematically unaffected. What it fixes is `modelProb` itself (and
+   therefore `overlay = modelProb − market`, which feeds both Value Play
+   selection and the Analytics "Model Calibration & Overlay Betting" card):
+   at T=12 the [0.3, 0.4] predicted-probability bucket was predicting 33.8%
+   but hitting only 18.7% (overconfident); at T=20 it's 33.5% predicted vs.
+   31.0% actual.
+
+Also checked, using a binomial test against the same 2023-2026 real corpus as
+a baseline, whether the live season's worst-looking numbers (overlay-qualifying
+bets 2/37 = 5.4%; Exacta Box 0/14) are evidence of a live-specific bug: neither
+is statistically distinguishable from the model's own historical base rates at
+this sample size (p=0.094 and p=0.272) — likely ordinary variance, not a new
+defect. Reported to the owner as an honest non-finding rather than a guess.
+
+**Shipped**: `T=12` → `T=20` default in `probabilityNormalizeV2()`, hand-edited
+identically in `scripts/lib/scoring.js`, `app.html`, and `index.html` (per the
+§11.2 ship-discipline rule — no automated regen of the inline block).
+**Caught during this ship**: `node scripts/build/inline_scoring.js` was run
+without `--check` by mistake and silently clobbered pre-existing hand-drift
+in `index.html`'s inlined block unrelated to this change (it reverted the
+`primePower` data-completeness override and replaced `confidenceFor()`'s
+delegation to the newer `relativeConfidence()` engine with the old inline
+fallback) — the exact `relativeConfidence()`/regen-tool danger already
+documented in §11.2. Caught via `git diff` before commit; `index.html` was
+reverted and the temperature change re-applied by hand only. No regression
+shipped. `scripts/build/_inlined_scoring.js` (test-only, never shipped to the
+browser) was left regenerated.
+
+No worker.js change — this is scoring-model-only, so no `wrangler deploy` is
+needed; auto-deploys via Pages on push to `master` like any other
+index.html/app.html/sw.js change. Full suite: 383 total, 382 pass, 1
+pre-existing unrelated failure, 1 skipped.
+
 ## v2.49.64-brisnet — Fix: Analytics tab crash (Cloudflare subrequest ceiling) once pick history grew large (2026-08-13)
 
 Reported live: the Analytics tab's "Pick Accuracy by Source", "Model

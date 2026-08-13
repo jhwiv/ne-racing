@@ -779,6 +779,77 @@ Shipped:
   explicit go-ahead and a Cloudflare API token from the owner before doing
   this.
 
+### 11.6 v2.49.65 — softmax temperature 12→20, backtest-validated (2026-08-13)
+
+Owner asked directly why real live results (v2: −24.3% ROI, 18.9% win rate,
+all-time) are worse than chance and the market, then said "try something to
+improve results," with explicit instructions not to guess and to back-test.
+Two things were tried; only one shipped, and the negative result is recorded
+here on purpose so a future session doesn't re-try it.
+
+**Tried and rejected**: `data/weights/v2.json`'s real fitted coefficients for
+`pace` (β=−0.985) and `fresh` (β=−2.294, the largest-magnitude coefficient in
+the whole model) are significantly negative, but `fit_logit.py`/
+`loadFittedWeights()` strip the sign via `abs()` before the weights are
+deployed (see §11.3's own comment on this — a deliberate, pre-existing
+choice). Restoring the true fitted sign looks like exactly the bug that would
+explain the model being overconfident specifically where it disagrees with
+the market. Backtested via `scripts/backtest/weight_sweep.js`'s chronological
+train/holdout split (train through 2023-09-03, holdout after): sign-preserved
+weights make holdout ROI *worse* (+14.0% → −16.4%) — a small-sample MLE sign
+artifact (559 races, 6 correlated features) that doesn't generalize. **Not
+shipped.** A companion automated weight search (`weight_sweep.js --trials
+3000`+, 4 different `--train-frac` splits) was also run to look for any
+better weight vector: every split converges on a candidate that dumps ~50%
+weight onto `bias` (the one feature whose fitted standard error, 31.6, makes
+it statistically pure noise) — better holdout log-loss, but worse ROI than
+what's deployed in 3 of 4 splits and tied in the 4th. Confirms the weight
+space is close to exhausted; not a lever worth pulling further.
+
+**Tried and shipped**: the softmax temperature in `probabilityNormalizeV2()`
+was a hand-picked constant (`T=12`, "calibrated" only by eyeball, never
+against data). Swept `T ∈ {4..40}` then refined to `{14..24}` across the same
+4 independent chronological holdout splits: **`T=20` minimizes holdout
+log-loss in every split**, with a flat optimum spanning T=19-22 — a
+consistent, cross-split-agreeing signal, not a one-split fluke. Verified this
+is risk-free for picks themselves: softmax is monotonic in the underlying
+composite score, so `T` cannot change which horse ranks #1 in a race — Best
+Bet and Action Bet selection (`pick_selection.js`'s `group[0]`) and their ROI
+are mathematically unaffected by this change. What changes is `modelProb`'s
+calibration (and therefore `overlay = modelProb − market`, which drives Value
+Play selection and the §11.4 Analytics calibration card): at T=12 the [0.3,
+0.4] predicted bucket was claiming 33.8% and hitting 18.7% (real
+overconfidence); at T=20 it's 33.5% claimed vs. 31.0% actual.
+
+**Also checked** (binomial test against the real 2023-2026 corpus as the null
+hypothesis) whether the live season's worst-looking small-sample numbers are
+themselves evidence of a bug: overlay-qualifying bets (2/37 live = 5.4% vs.
+14.0% historical base rate, p=0.094) and Exacta Box (0/14 live vs. 8.9%
+historical, p=0.272) are both statistically indistinguishable from the
+model's own long-run historical rate at this sample size. Reported to the
+owner as "this is very likely ordinary variance, not a new defect" rather
+than either dismissing it or guessing at a fix.
+
+**Ship-discipline near-miss**: while hand-editing `index.html`, `node
+scripts/build/inline_scoring.js` was run WITHOUT `--check` by mistake. This
+regenerates the inlined block from `scripts/lib/scoring.js` and overwrites
+`index.html`'s marked block wholesale — it silently reverted the `primePower`
+data-completeness override (§ "v2.46.0"/"v2.49.20" era) and replaced
+`confidenceFor()`'s delegation to the newer `relativeConfidence()` engine
+(v2.42.0) with scoring.js's own older inline fallback — exactly the
+`relativeConfidence()`/regen-tool drift danger §11.2 already warns about,
+triggered a third time. Caught via `git diff` before committing anything;
+`index.html` was reverted with `git checkout` and only the intended
+temperature edit re-applied by hand, matching `app.html`. **This tool remains
+unsafe to run without `--check` first, or without diffing its output before
+committing — full stop, no exceptions.** `_inlined_scoring.js` itself (used
+only by `tests/inline-scoring-sync.test.js`, never shipped to the browser)
+was left regenerated since it's supposed to be a straight mirror of
+`scoring.js` with no independent hand-edits of its own.
+
+No worker.js change; this is scoring-model-only and auto-deploys via Pages on
+push to `master`, per §2/§11.5 — no `wrangler deploy` needed for this one.
+
 ---
 
 ## 12. Track Status: prominent boot-time check + web-search confirmation (2026-07-30)
