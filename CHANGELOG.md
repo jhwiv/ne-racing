@@ -1,5 +1,53 @@
 # NE Racing — Changelog
 
+## v2.49.69-brisnet — Fix: same-day regression in v2.49.68's own per-engine cap fix (2026-08-14)
+
+Direct follow-up. After deploying v2.49.68 and re-running
+`qa-verify-analytics.yml`, discrepancies were still found (22 this time),
+plus a new symptom: `scripts/qa/verify_analytics_numbers.js`'s own "ground
+truth" fetch (`/api/picks/history?engine=X`) reported v2's "picks logged
+(history total)" as 150 instead of the real 282, with only 91 of its real
+~149 settled outcomes visible.
+
+**Root cause:** v2.49.68 applied ONE shared per-engine cap (150) to both
+the pooled "All" case (no `?engine=`, where the cap genuinely needs to be
+small since N engines share one invocation's subrequest budget) AND the
+already-filtered `?engine=X` case (where there is exactly one group and
+never any cross-engine competition — the cap never needed lowering there
+at all). `verify_analytics_numbers.js` always calls with `?engine=X`, so
+its own ground-truth fetch got needlessly capped to 150 — and since that
+cap applies across ALL picks (pending + settled), and pending picks for
+today's still-unsettled races skew newest, the capped window
+disproportionately filled with pending picks and pushed genuinely older,
+already-settled ones out.
+
+Also confirmed (not just suspected): `/api/picks/stats`'s numbers for `v2`
+were byte-identical between the pre-deploy and post-deploy verification
+runs, while the (differently cache-keyed) history numbers clearly reflected
+the new code — consistent with Cloudflare's edge serving a stale, cached
+`Cache-Control: max-age=300` response to the verification script's own
+un-cache-busted `fetch()` shortly after the deploy.
+
+**Fix:**
+- `handlePickStats()`/`handlePickHistory()`: replaced the single shared
+  per-engine cap with two values — a large single-engine cap (450) used
+  whenever `?engine=` is given, and the smaller pooled cap (150) used only
+  for the genuinely multi-engine "All"/no-filter case.
+- `scripts/qa/verify_analytics_numbers.js`: added `&_t=`+`Date.now()` +
+  `cache: 'no-store'` to both its fetch calls, so this script's own
+  post-deploy verification can never again be silently masked by a stale
+  cached response.
+
+New tests lock in the exact regression: a filtered request for a single
+engine must see its full history (300 records, over the pooled cap but
+under the filtered one), not the smaller pooled-case cap. Full suite: 387
+total, 386 pass, 1 pre-existing unrelated failure, 1 skipped.
+
+**Requires a manual `wrangler deploy --config wrangler.toml`** again — the
+prior deploy for v2.49.68 is what surfaced this. Re-run
+`qa-verify-analytics.yml` after deploying to get the real confirmed
+numbers.
+
 ## v2.49.68-brisnet — Fix: per-engine ROI/win-rate caps were a shared global budget, producing wrong numbers (2026-08-14)
 
 Direct follow-up to v2.49.67's UX redesign. Followed the mandatory

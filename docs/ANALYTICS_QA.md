@@ -70,12 +70,55 @@ recent-window view. New tests in `tests/worker-pick-stats.test.js` and
 directly: a "busy" engine exceeding the old global cap on its own must not
 truncate a "quiet" engine's numbers at all.
 
-**Not yet re-verified live** — this requires a `wrangler deploy` (worker.js
-change) before `qa-verify-analytics.yml` can be re-run to confirm zero
-discrepancies against the fixed code. Whoever deploys this should re-run
-the workflow and update the baseline table below.
+**Update, same day:** the fix above was deployed
+(`wrangler deploy --config wrangler.toml`, confirmed via real terminal
+output) and `qa-verify-analytics.yml` re-run
+([31810805968](https://github.com/jhwiv/ne-racing/actions/runs/31810805968)).
+Still 22 discrepancies, but a different symptom this time — see the
+v2.49.69 entry directly below, which found and fixed a same-day regression
+in this fix.
 
 ---
+
+## 2026-08-14 (v2.49.69) — v2.49.68's own fix had a same-day regression; the shared cap needed to differ by filtered-vs-pooled
+
+Direct continuation of the entry above. Re-ran
+`qa-verify-analytics.yml` after deploying v2.49.68
+([31810805968](https://github.com/jhwiv/ne-racing/actions/runs/31810805968)):
+still 22 discrepancies, plus a new tell — the verification script's own
+"ground truth" fetch (`/api/picks/history?engine=v2`) reported only 150
+picks logged for `v2` instead of the real 282, with only 91 of its real
+~149 settled outcomes visible.
+
+**Root cause:** v2.49.68 applied ONE shared per-engine cap (150) to both
+the pooled "All" case (genuinely needs a small per-engine slice — N
+engines share one invocation's subrequest budget) and the already-filtered
+`?engine=X` case (exactly one group, never any cross-engine competition —
+never needed lowering at all). `verify_analytics_numbers.js` always calls
+filtered, so its own baseline got needlessly capped, and because pending
+picks for today's still-unsettled races skew newest, the capped window
+filled disproportionately with pending picks, pushing older, already-
+settled picks out.
+
+**Also confirmed:** `/api/picks/stats`'s `v2` numbers were byte-identical
+between the pre- and post-deploy runs (settled=137, wins=26, ROI=−25.8%,
+to the decimal) — consistent with a stale `Cache-Control: max-age=300`
+response served from Cloudflare's edge to the verification script's own
+un-cache-busted fetch shortly after the deploy.
+
+**Fix:** two cap values — 450 for the filtered single-engine case, 150 for
+the pooled multi-engine case — in both `handlePickStats()` and
+`handlePickHistory()`. Added cache-busting to
+`verify_analytics_numbers.js`'s own fetch calls so this can't happen
+again. New tests lock in the regression directly (a filtered request for a
+single engine with 300 records — over the pooled cap, under the filtered
+one — must see its full history).
+
+**Not yet deployed or re-verified.** Requires another
+`wrangler deploy --config wrangler.toml`, then a fresh
+`qa-verify-analytics.yml` run, before this can be marked confirmed-correct.
+Per `.claude/skills/analytics-qa/SKILL.md`'s standing instruction: do not
+assume this fix worked without reading the actual log output of that run.
 
 ## 2026-07-25 (v2.49.51) — "Our Picks look wildly better" reported directly; verified correct, fixed the presentation
 

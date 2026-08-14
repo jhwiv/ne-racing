@@ -157,3 +157,28 @@ test('GET /api/picks/history: one engine exceeding the cap does not crowd out an
 
   assert.equal(crowdPicks.length, QUIET_TOTAL, 'the quiet engine\'s picks must all survive, not be crowded out by the busy engine\'s volume');
 });
+
+// v2.49.69: a same-day regression -- shipping ONE shared per-engine cap
+// (150) for both the pooled and filtered (?engine=X) cases broke
+// scripts/qa/verify_analytics_numbers.js's own "ground truth" fetch, which
+// always calls with ?engine=X and expects a single engine's FULL real
+// history (pending picks included), not an artificially small window that
+// disproportionately captures today's still-pending picks and pushes
+// genuinely older, already-settled ones out. A filtered request has no
+// cross-engine competition for the subrequest budget, so it gets a much
+// larger single-engine cap (450) than the pooled "All" case (150).
+test('GET /api/picks/history: engine-filtered request gets a much larger single-engine cap than the pooled "All" request', async () => {
+  const kv = makeFakeKv();
+  const TOTAL = 300; // over the pooled cap (150), under the filtered cap (450)
+  for (let i = 0; i < TOTAL; i++) {
+    const day = String(1 + (i % 28)).padStart(2, '0');
+    await kv.put(`pick:SAR:2026-0${1 + Math.floor(i / 280)}-${day}:1:v2:${i}`, JSON.stringify({
+      engine: 'v2', track: 'SAR', date: `2026-0${1 + Math.floor(i / 280)}-${day}`, race: 1, pp: i, horseName: 'Horse' + i,
+    }), { metadata: { engine: 'v2' } });
+  }
+  const env = { ENGINE_ACCURACY: kv };
+  const body = await callPickHistory(env, '?engine=v2&limit=500');
+
+  assert.equal(body.total, TOTAL, 'a filtered request for a single engine must see its FULL history, not the smaller pooled-case cap');
+  assert.equal(body.picks.length, TOTAL);
+});

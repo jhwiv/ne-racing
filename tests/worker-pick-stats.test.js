@@ -244,3 +244,28 @@ test('GET /api/picks/stats: truncated is false and matches real counts when unde
   assert.equal(body.processedOutcomes, 1);
   assert.equal(body.totalOutcomes, 1);
 });
+
+// v2.49.69: a same-day regression -- shipping ONE shared per-engine cap
+// (150) for both the pooled (?engine= omitted) and filtered (?engine=X)
+// cases broke scripts/qa/verify_analytics_numbers.js's own "ground truth"
+// fetch, which always calls with ?engine=X and expects to see a single
+// engine's FULL real history, not an artificially small window. When a
+// filter is already applied there is exactly one engine group and never
+// any cross-engine competition for the subrequest budget, so the filtered
+// case gets a much larger single-engine cap (450) than the pooled case
+// (150) that still protects the multi-engine unfiltered call.
+test('GET /api/picks/stats: engine-filtered request gets a much larger single-engine cap than the pooled request', async () => {
+  const kv = makeFakeKv();
+  const TOTAL = 300; // over the pooled cap (150), under the filtered cap (450)
+  for (let i = 0; i < TOTAL; i++) {
+    const day = String(1 + (i % 28)).padStart(2, '0');
+    const key = `SAR:2026-0${1 + Math.floor(i / 280)}-${day}:1:v2:${i}`;
+    await kv.put(`pick:${key}`, JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win' }), { metadata: { engine: 'v2' } });
+    await kv.put(`outcome:${key}`, JSON.stringify({ won: true, payout: 4, betType: 'Win', position: 1 }));
+  }
+
+  const env = { ENGINE_ACCURACY: kv };
+  const filtered = await callPickStats(env, '?engine=v2');
+  assert.equal(filtered.engines.v2.settled, TOTAL, 'a filtered request for a single engine must see its FULL history, not the smaller pooled-case cap');
+  assert.equal(filtered.engines.v2.truncated, false);
+});

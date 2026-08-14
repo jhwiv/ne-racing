@@ -94,7 +94,18 @@ async function fetchAllHistory(workerUrl, engine) {
   // /api/picks/history caps at 500 per request; page via ever-growing limit
   // since it doesn't support an offset -- fine at today's real volumes
   // (low hundreds), revisit if this ever needs true pagination.
-  const res = await fetch(`${workerUrl}/api/picks/history?engine=${engine}&limit=500`);
+  //
+  // v2.49.69: cache-bust -- both worker endpoints below set Cache-Control:
+  // public, max-age (300s for stats, 120s for history), which Cloudflare's
+  // own edge can honor for a bare fetch() with no cache-busting. Confirmed
+  // live: a verification run right after a fresh `wrangler deploy` reported
+  // stats numbers byte-identical to the PRE-deploy run, while the (already
+  // cache-busted by a different query string) history numbers reflected the
+  // new code -- strong evidence the stats response was served stale from
+  // cache, not from the newly-deployed code. This script exists specifically
+  // to catch real bugs after a deploy; a stale cached response defeats that
+  // purpose silently. `&_t=` + Date.now() forces a real network hit every run.
+  const res = await fetch(`${workerUrl}/api/picks/history?engine=${engine}&limit=500&_t=${Date.now()}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`GET /api/picks/history?engine=${engine} -> ${res.status}`);
   const body = await res.json();
   if (body.total > body.picks.length) {
@@ -110,7 +121,7 @@ async function main() {
 
   console.log(`Verifying Analytics numbers against worker: ${args.workerUrl}\n`);
 
-  const statsRes = await fetch(`${args.workerUrl}/api/picks/stats`);
+  const statsRes = await fetch(`${args.workerUrl}/api/picks/stats?_t=${Date.now()}`, { cache: 'no-store' });
   if (!statsRes.ok) throw new Error(`GET /api/picks/stats -> ${statsRes.status}`);
   const statsBody = await statsRes.json();
   const stats = statsBody.engines || {};

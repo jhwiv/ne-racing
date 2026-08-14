@@ -1386,3 +1386,55 @@ pass (2 new, both passing), 1 pre-existing unrelated failure, 1 skipped.
 reaches it). `qa-verify-analytics.yml` should be re-run after deploying to
 confirm zero discrepancies against the fixed code, and `docs/
 ANALYTICS_QA.md`'s baseline table updated with the result.
+
+### 13.4 v2.49.69 — §13.3's own fix had a same-day regression, found by re-running the same verification
+
+Owner deployed v2.49.68 (`wrangler deploy --config wrangler.toml`,
+confirmed via real terminal output) and the verification workflow was
+re-run. Still 22 discrepancies — but a NEW, different symptom this time:
+`scripts/qa/verify_analytics_numbers.js`'s own "ground truth" fetch
+(`/api/picks/history?engine=v2`) reported only 150 picks logged for `v2`
+instead of the real 282, with only 91 of its real ~149 settled outcomes
+visible. The verification tool's own baseline had become unreliable.
+
+**Root cause, in §13.3's own fix:** the per-engine cap (150) was applied
+uniformly to BOTH the pooled "All" case (correctly needs a small
+per-engine slice, since N engines share one invocation's subrequest
+budget) and the already-`?engine=`-filtered case (which has exactly ONE
+group and never any cross-engine competition — the cap never needed
+lowering there). `verify_analytics_numbers.js` always calls filtered, so
+its own baseline got needlessly capped to 150 total picks (pending +
+settled combined) — and because pending picks for today's still-unsettled
+races skew newest, the capped window filled disproportionately with
+pending picks, pushing genuinely older, already-settled picks out.
+
+**Also confirmed, not just suspected:** `/api/picks/stats`'s `v2` numbers
+were byte-identical between the pre-deploy and post-deploy verification
+runs (settled=137, wins=26, ROI=−25.8%, to the decimal), while the
+differently-cache-keyed history numbers clearly reflected the new code.
+Consistent with Cloudflare's edge serving a stale `Cache-Control:
+max-age=300` response to the verification script's own un-cache-busted
+`fetch()` in the few minutes right after the deploy.
+
+**Fix:** two cap values instead of one — a large single-engine cap (450)
+used when `?engine=` is given (no cross-engine risk, safe to be generous),
+the smaller pooled cap (150) reserved for the genuinely multi-engine "All"
+case. Applied to both `handlePickStats()` and `handlePickHistory()` for
+consistency, even though the live client only ever calls the pooled path
+today — the filtered path is still real, public API surface. Also added
+cache-busting (`&_t=`+`Date.now()`, `cache: 'no-store'`) to both of
+`verify_analytics_numbers.js`'s own fetch calls, so this exact
+verification tool can never again be silently defeated by a stale cached
+response right after the deploy it exists to check.
+
+New tests lock in the exact regression directly: a filtered request for a
+single engine (300 records — over the pooled cap, under the filtered one)
+must see its FULL history. Full suite: 387 total, 386 pass, 1 pre-existing
+unrelated failure, 1 skipped.
+
+**Requires another `wrangler deploy --config wrangler.toml`.** Re-run
+`qa-verify-analytics.yml` after deploying — this is the third pass at
+getting this specific card's numbers to actually check out clean, and per
+`.claude/skills/analytics-qa/SKILL.md`'s standing instruction, the next
+session should NOT assume this one succeeded without looking at the real
+log output.
