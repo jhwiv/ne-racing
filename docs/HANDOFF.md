@@ -1228,3 +1228,43 @@ NOT auto-deploy via Cloudflare Pages — requires
 `wrangler deploy --config wrangler.toml` from the correctly up-to-date
 local clone (see the Wrangler config-auto-discovery gotcha earlier in
 this doc for why the explicit `--config` flag matters on this machine).
+
+### 13.1 v2.49.66 — Refresh button (and reopening the tab) could silently serve up to 5-minute-stale data (2026-08-14)
+
+Follow-up to §13's crash fix. Owner sent a fresh screenshot of the same
+three Analytics cards failing again; a direct check of
+`/api/picks/stats` (browser address bar, then confirmed again via
+PowerShell) returned healthy JSON immediately — the worker was not down,
+so the crash fixed in §13 had not recurred. Owner then reloaded and it
+worked, and separately noted the tab "can take 5 min to run," asking for
+a way to get the freshest data.
+
+**Root cause**: `worker.js`'s `jsonOk()` sets `Cache-Control: public,
+max-age=300, s-maxage=300` on `/api/picks/stats`'s all-time response
+(`max-age=120` on `/api/picks/history`) — reasonable for reducing KV read
+pressure across users, but `renderAnalyticsAccuracy()`,
+`refreshEngineAccuracy()`, and `fetchAnalyticsPickHistory()` (all in
+`index.html`/`app.html`) called plain `fetch(url)` with no cache-busting.
+The browser's own HTTP cache can legitimately serve that same response
+for up to 5 minutes — including when the user taps the card's own
+"Refresh" button, since Refresh just re-runs the same function against
+the identical URL. (The original screenshot's failure itself was most
+likely an unrelated transient network blip, separate from this staleness
+issue — the worker was proven healthy the moment it was checked
+directly.)
+
+**Fix**: added `&_t=' + Date.now()` plus `{ cache: 'no-store' }` to all
+three fetch calls, hand-edited identically in both `index.html` and
+`app.html` — the same cache-busting pattern this app already uses for
+`/api/track-status`, `/api/expert-picks`, `/api/results`. Every Analytics
+tab load, Refresh click, and Today/All-Time toggle now guarantees a real
+network round-trip. `worker.js`'s own `Cache-Control` headers were left
+unchanged (still useful for concurrent users hitting the same URL close
+together at Cloudflare's edge).
+
+Verified all 11 inline `<script>` blocks in both files still parse
+(`new Function(...)` per block, since these are large hand-edited HTML
+files with no dedicated syntax test). Full suite: 383 total, 382 pass, 1
+pre-existing unrelated failure, 1 skipped. Pure client change — no
+worker.js touch, no `wrangler deploy` needed, auto-deploys via Pages on
+push to `master`.

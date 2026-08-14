@@ -1,5 +1,40 @@
 # NE Racing — Changelog
 
+## v2.49.66-brisnet — Fix: Analytics tab could silently serve up to 5-min-stale data, even on Refresh (2026-08-14)
+
+Reported live: a screenshot showed the Analytics tab's three cards all
+"Could not load" — investigated by checking `/api/picks/stats` directly
+(both browser address bar and PowerShell), which returned healthy, correct
+JSON immediately, ruling out a live worker crash. Owner then noted the tab
+"can take 5 min to run" and asked for a way to preload/get the freshest data.
+
+**Root cause**: `worker.js`'s `jsonOk()` sets `Cache-Control: public,
+max-age=300, s-maxage=300` (5 minutes) on `/api/picks/stats`'s "All Time"
+response (`max-age=120` on `/api/picks/history`) — a reasonable header for
+reducing KV read pressure across users. But `renderAnalyticsAccuracy()`,
+`refreshEngineAccuracy()`, and `fetchAnalyticsPickHistory()` all called
+plain `fetch(url)` with no cache-busting, so the browser's own HTTP cache
+could legitimately serve the same cached response for up to 5 minutes —
+including when the user clicked the card's own "Refresh" button, since that
+button just re-runs the same function against the identical URL. The
+original "Could not load" screenshot was very likely an unrelated transient
+network blip (the worker was proven healthy immediately after), but the
+5-minute staleness on top of it is real and reproducible from the code.
+
+**Fix**: added `&_t=' + Date.now()` cache-busting plus `{ cache: 'no-store'
+}` to all three fetch calls, in both `index.html` and `app.html` — the same
+pattern this app already uses for `/api/track-status`, `/api/expert-picks`,
+`/api/results`, etc. Now every load of the Analytics tab, and every click of
+Refresh or the Today/All-Time toggle, is guaranteed to hit the network for
+real, unstale data. The worker's own `Cache-Control` headers are left
+unchanged (still useful for near-simultaneous requests from different
+users hitting Cloudflare's edge).
+
+Verified: all 11 inline `<script>` blocks in both `index.html` and `app.html`
+still parse (`new Function(...)` per block). Full suite: 383 total, 382
+pass, 1 pre-existing unrelated failure, 1 skipped. No worker.js change — pure
+client fix, auto-deploys via Pages on push to `master`.
+
 ## v2.49.65-brisnet — Model: backtest-validated softmax temperature 12→20 (2026-08-13)
 
 Follow-up to the Analytics tab fix above: owner asked why v2's real results are

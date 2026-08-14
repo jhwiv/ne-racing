@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260813-v2.49.65-brisnet'; // v2.49.65: backtest-validated softmax temperature 12->20, better-calibrated model probabilities // bump on every ship
+const CACHE_VERSION = '20260814-v2.49.66-brisnet'; // v2.49.66: fix -- Analytics tab Refresh button (and Today/All-Time toggle) now cache-busts, was silently serving up to 5-min-stale data from the browser's own HTTP cache // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260813-v2.49.65-brisnet';
+var NE_APP_VERSION = '20260814-v2.49.66-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260813-v2.49.65-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.65-brisnet';
+var RAILBIRD_VERSION = 'v2.49.66-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -19505,7 +19505,14 @@ function refreshEngineAccuracy() {
     return;
   }
   body.innerHTML = '<p class="text-muted text-sm">Loading…</p>';
-  fetch(workerUrl + '/api/picks/stats')
+  // v2.49.66: cache-bust -- the worker sets Cache-Control: max-age=300 on
+  // this response (see worker.js jsonOk() call), and a plain fetch(url) with
+  // no cache-busting lets the BROWSER's own HTTP cache legitimately serve
+  // that same 5-minute-old response again, including when the user clicks
+  // "Refresh" -- the click re-runs this function but hits the identical URL,
+  // so nothing actually changes for up to 5 minutes. `_t=Date.now()` forces
+  // every call (including Refresh) to be a real network request.
+  fetch(workerUrl + '/api/picks/stats?_t=' + Date.now(), { cache: 'no-store' })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var engines = (data && data.engines) || {};
@@ -19566,8 +19573,13 @@ function renderAnalyticsAccuracy() {
   }
   body.innerHTML = '<p class="text-muted text-sm">Loading…</p>';
   var todayStr = new Date().toISOString().slice(0, 10);
-  var url = workerUrl + '/api/picks/stats' + (analyticsRange === 'today' ? ('?date=' + todayStr) : '');
-  fetch(url)
+  var url = workerUrl + '/api/picks/stats' + (analyticsRange === 'today' ? ('?date=' + todayStr + '&_t=') : '?_t=') + Date.now();
+  // v2.49.66: cache-bust (see refreshEngineAccuracy()'s comment above) --
+  // this card's own "Refresh" button and the Today/All-Time toggle both
+  // re-run this function against the SAME url otherwise, so the browser's
+  // HTTP cache (worker sets max-age=300) can silently serve up to 5-minute-
+  // old data no matter how the user asks for fresh data.
+  fetch(url, { cache: 'no-store' })
     .then(function(r) {
       // v2.49.43 QA pass: same defensive check as the pick-history fetch
       // below -- fetch() doesn't reject on a non-2xx status, so an actual
@@ -20008,7 +20020,9 @@ function fetchAnalyticsPickHistory() {
     return;
   }
   var engineParam = analyticsPickHistoryEngine ? ('&engine=' + encodeURIComponent(analyticsPickHistoryEngine)) : '';
-  fetch(workerUrl + '/api/picks/history?limit=' + analyticsPickHistoryLimit + engineParam)
+  // v2.49.66: cache-bust -- same reasoning as renderAnalyticsAccuracy()'s
+  // fetch above (worker sets Cache-Control: max-age=120 on this endpoint).
+  fetch(workerUrl + '/api/picks/history?limit=' + analyticsPickHistoryLimit + engineParam + '&_t=' + Date.now(), { cache: 'no-store' })
     .then(function(r) {
       // v2.49.43 QA fix: fetch() doesn't reject on a 404 -- and this
       // endpoint's 404 (from the currently-deployed Worker not having it
