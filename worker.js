@@ -3669,12 +3669,25 @@ async function handlePickStats(request, env, origin) {
   // calls above, so total subrequests ≈ 2 + 2*N with no prior cap. Filter by
   // date/engine FIRST (free -- both are embedded in the key name, no read
   // required) so a scoped "Today" request never pays for history it doesn't
-  // want, then keep only the most recent MAX_DETAILED_OUTCOMES. Sorting by
-  // the DATE segment specifically (not the full key) matters once more than
-  // one track is present: the key format is
+  // want, then keep only the most recent outcomes.
+  //
+  // v2.49.68: that cap was a single GLOBAL budget shared across every
+  // engine -- confirmed via scripts/qa/verify_analytics_numbers.js against
+  // production that this produces internally inconsistent, actively wrong
+  // per-engine numbers once real volume crosses it: v2 reported -25.8% ROI
+  // vs -10.5% recomputed from full raw history, baseline_ml -7.4% vs
+  // -29.7%, crowd's sign even flipped (+15.0% vs -20.7%). Whichever engine
+  // happens to log more densely crowds another engine's still-recent
+  // outcomes out of the shared window, in an uneven, unpredictable way.
+  // Real handicapper-tracking sites (checked directly: Covers Experts,
+  // CapperTek/TipsGG) always window PER ENTITY -- one handicapper's volume
+  // never competes with another's for a shared budget -- so the cap is now
+  // applied per engine instead of once across all of them. Sorting by the
+  // DATE segment specifically (not the full key) still matters once more
+  // than one track is present: the key format is
   // "outcome:{TRACK}:{DATE}:{RACE}:{ENGINE}:{PP}", so TRACK sorts ahead of
   // DATE in a plain string compare and would silently break "most recent."
-  const MAX_DETAILED_OUTCOMES = 400;
+  const MAX_DETAILED_OUTCOMES_PER_ENGINE = 150;
   const recencyKey = (name) => {
     const parts = name.split(":");
     return (parts[2] || "") + String(parts[3] || "").padStart(3, "0");
@@ -3685,9 +3698,29 @@ async function handlePickStats(request, env, origin) {
     return true;
   });
   const totalOutcomes = outcomeKeys.length;
-  outcomeKeys.sort((a, b) => recencyKey(b.name).localeCompare(recencyKey(a.name)));
-  const outcomesTruncated = outcomeKeys.length > MAX_DETAILED_OUTCOMES;
-  if (outcomesTruncated) outcomeKeys = outcomeKeys.slice(0, MAX_DETAILED_OUTCOMES);
+  const outcomesByEngine = {};
+  for (const k of outcomeKeys) {
+    const eng = k.name.split(":")[4] || "unknown";
+    (outcomesByEngine[eng] || (outcomesByEngine[eng] = [])).push(k);
+  }
+  let outcomesTruncated = false;
+  // Per-engine truncation disclosure -- ensureEngine() is idempotent, so
+  // calling it here (before the main processing loop) is safe even for an
+  // engine that turns out to have zero settled outcomes after all.
+  const totalOutcomesByEngine = {};
+  const processedOutcomesByEngine = {};
+  outcomeKeys = [];
+  for (const eng of Object.keys(outcomesByEngine)) {
+    let keys = outcomesByEngine[eng];
+    totalOutcomesByEngine[eng] = keys.length;
+    keys.sort((a, b) => recencyKey(b.name).localeCompare(recencyKey(a.name)));
+    if (keys.length > MAX_DETAILED_OUTCOMES_PER_ENGINE) {
+      keys = keys.slice(0, MAX_DETAILED_OUTCOMES_PER_ENGINE);
+      outcomesTruncated = true;
+    }
+    processedOutcomesByEngine[eng] = keys.length;
+    outcomeKeys = outcomeKeys.concat(keys);
+  }
 
   for (const { name } of outcomeKeys) {
     const eng = name.split(":")[4] || "unknown";
@@ -3767,6 +3800,12 @@ async function handlePickStats(request, env, origin) {
     s.winRate = s.settled > 0 ? s.wins / s.settled : null;
     s.placeRate = s.settled > 0 ? s.places / s.settled : null;
     s.roi = s.totalStake > 0 ? (s.totalReturn - s.totalStake) / s.totalStake : null;
+    // v2.49.68: per-engine truncation disclosure -- mirrors the top-level
+    // truncated/processedOutcomes/totalOutcomes fields, but scoped to THIS
+    // engine specifically, since the cap above is now applied per engine.
+    s.truncated = (totalOutcomesByEngine[e] || 0) > (processedOutcomesByEngine[e] || 0);
+    s.processedOutcomes = processedOutcomesByEngine[e] || 0;
+    s.totalOutcomes = totalOutcomesByEngine[e] || 0;
     for (const bt of Object.keys(s.byBetType)) {
       const b = s.byBetType[bt];
       b.winRate = b.settled > 0 ? b.wins / b.settled : null;
@@ -3795,10 +3834,11 @@ async function handlePickStats(request, env, origin) {
   // version actually used (null if none requested) -- lets an older,
   // not-yet-redeployed client detect that a requested date scope was
   // silently ignored, instead of mislabeling all-time totals as "Today".
-  // truncated/processedOutcomes/totalOutcomes are additive and honest about
-  // the MAX_DETAILED_OUTCOMES cap above: when true, the aggregates only
-  // reflect the most recent processedOutcomes of totalOutcomes settled
-  // outcomes, not true all-time totals.
+  // truncated/processedOutcomes/totalOutcomes are the SUM across engines of
+  // the now-per-engine cap (see MAX_DETAILED_OUTCOMES_PER_ENGINE above) --
+  // true if ANY engine was truncated. Check engines[x].truncated for which
+  // engine(s) specifically, and whether that engine's own numbers are a
+  // partial (most-recent-only) view rather than its true all-time totals.
   return jsonOk({
     engines: stats,
     generatedAt: new Date().toISOString(),
@@ -3838,19 +3878,37 @@ async function handlePickHistory(request, env, origin) {
   // first (free -- embedded in the key name), sort by the DATE segment
   // specifically (not the full key -- TRACK precedes DATE in the key string
   // and would break "most recent" once more than one track is present), then
-  // only detail-fetch the most recent MAX_DETAILED_PICKS candidates.
-  const MAX_DETAILED_PICKS = 400;
+  // only detail-fetch the most recent candidates.
+  //
+  // v2.49.68: cap PER ENGINE, not globally -- same fix and same root cause
+  // as handlePickStats' MAX_DETAILED_OUTCOMES_PER_ENGINE. The unfiltered
+  // "All" view (no ?engine=) previously pooled every engine's picks into one
+  // shared 400-slot budget, so whichever engine logs more densely could
+  // silently crowd another engine's still-recent picks out of the "All"
+  // list. Grouping by engine before capping fixes both the filtered case
+  // (already effectively one group) and the unfiltered case uniformly.
+  const MAX_DETAILED_PICKS_PER_ENGINE = 150;
   const recencyKey = (name) => {
     const parts = name.split(":");
     return (parts[2] || "") + String(parts[3] || "").padStart(3, "0");
   };
-  let candidates = pickList.keys.filter(({ name, metadata }) => {
+  const rawCandidates = pickList.keys.filter(({ name, metadata }) => {
     if (!engineFilter) return true;
     const eng = (metadata && metadata.engine) || name.split(":")[4] || "unknown";
     return eng === engineFilter;
   });
-  candidates.sort((a, b) => recencyKey(b.name).localeCompare(recencyKey(a.name)));
-  if (candidates.length > MAX_DETAILED_PICKS) candidates = candidates.slice(0, MAX_DETAILED_PICKS);
+  const candidatesByEngine = {};
+  for (const k of rawCandidates) {
+    const eng = (k.metadata && k.metadata.engine) || k.name.split(":")[4] || "unknown";
+    (candidatesByEngine[eng] || (candidatesByEngine[eng] = [])).push(k);
+  }
+  let candidates = [];
+  for (const eng of Object.keys(candidatesByEngine)) {
+    let keys = candidatesByEngine[eng];
+    keys.sort((a, b) => recencyKey(b.name).localeCompare(recencyKey(a.name)));
+    if (keys.length > MAX_DETAILED_PICKS_PER_ENGINE) keys = keys.slice(0, MAX_DETAILED_PICKS_PER_ENGINE);
+    candidates = candidates.concat(keys);
+  }
 
   const picks = [];
   for (const { name } of candidates) {

@@ -106,11 +106,17 @@ test('GET /api/picks/history: limit caps the returned list but not the reported 
 // so the loop still did 2 .get() calls per key for EVERY matching pick
 // regardless of how small a page was requested, and it was shown failing
 // with the identical live error in the same Analytics-tab screenshot. This
-// locks in the fix: only the most recent MAX_DETAILED_PICKS (400) candidates
-// get detail-fetched at all.
-test('GET /api/picks/history: caps detail reads to MAX_DETAILED_PICKS regardless of requested limit', async () => {
+// locks in the fix: only the most recent candidates get detail-fetched at
+// all.
+//
+// v2.49.68: that cap was originally a single GLOBAL budget shared across
+// every engine in the unfiltered "All" view -- confirmed live (via
+// scripts/qa/verify_analytics_numbers.js against /api/picks/stats' identical
+// bug) that a shared budget lets one engine's volume crowd another's still-
+// recent picks out. Now per engine (MAX_DETAILED_PICKS_PER_ENGINE = 150).
+test('GET /api/picks/history: caps detail reads per engine regardless of requested limit', async () => {
   const kv = makeFakeKv();
-  const TOTAL = 410;
+  const TOTAL = 160;
   for (let i = 0; i < TOTAL; i++) {
     const day = String(1 + (i % 28)).padStart(2, '0');
     await kv.put(`pick:SAR:2026-0${1 + Math.floor(i / 280)}-${day}:1:v2:${i}`, JSON.stringify({
@@ -120,6 +126,34 @@ test('GET /api/picks/history: caps detail reads to MAX_DETAILED_PICKS regardless
   const env = { ENGINE_ACCURACY: kv };
   const body = await callPickHistory(env, '?limit=500');
 
-  assert.equal(body.picks.length, 400, 'output is capped at MAX_DETAILED_PICKS even though limit=500 was requested');
-  assert.equal(body.total, 400, 'total reflects the processed (capped) candidate set, matching the honest cap in /api/picks/stats');
+  assert.equal(body.picks.length, 150, 'output is capped at MAX_DETAILED_PICKS_PER_ENGINE even though limit=500 was requested');
+  assert.equal(body.total, 150, 'total reflects the processed (capped) candidate set, matching the honest cap in /api/picks/stats');
+});
+
+// The actual bug found live: in the unfiltered "All" view, a busy engine's
+// picks used to crowd a quiet engine's picks out of a shared 400-slot
+// budget. Proves a quiet engine's picks all survive even when a busy
+// engine alone exceeds what used to be the old global cap.
+test('GET /api/picks/history: one engine exceeding the cap does not crowd out another engine in the unfiltered "All" view', async () => {
+  const kv = makeFakeKv();
+  const BUSY_TOTAL = 450; // exceeds the old global cap (400) on its own
+  for (let i = 0; i < BUSY_TOTAL; i++) {
+    const day = String(1 + (i % 28)).padStart(2, '0');
+    await kv.put(`pick:SAR:2026-0${1 + Math.floor(i / 280)}-${day}:1:v2:${i}`, JSON.stringify({
+      engine: 'v2', track: 'SAR', date: `2026-0${1 + Math.floor(i / 280)}-${day}`, race: 1, pp: i, horseName: 'Busy' + i,
+    }), { metadata: { engine: 'v2' } });
+  }
+  const QUIET_TOTAL = 20;
+  for (let i = 0; i < QUIET_TOTAL; i++) {
+    const day = String(1 + (i % 28)).padStart(2, '0');
+    await kv.put(`pick:SAR:2026-0${1 + Math.floor(i / 280)}-${day}:2:crowd:${i}`, JSON.stringify({
+      engine: 'crowd', track: 'SAR', date: `2026-0${1 + Math.floor(i / 280)}-${day}`, race: 2, pp: i, horseName: 'Quiet' + i,
+    }), { metadata: { engine: 'crowd' } });
+  }
+
+  const env = { ENGINE_ACCURACY: kv };
+  const body = await callPickHistory(env, '?limit=1000');
+  const crowdPicks = body.picks.filter(p => p.engine === 'crowd');
+
+  assert.equal(crowdPicks.length, QUIET_TOTAL, 'the quiet engine\'s picks must all survive, not be crowded out by the busy engine\'s volume');
 });

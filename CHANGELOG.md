@@ -1,5 +1,100 @@
 # NE Racing — Changelog
 
+## v2.49.68-brisnet — Fix: per-engine ROI/win-rate caps were a shared global budget, producing wrong numbers (2026-08-14)
+
+Direct follow-up to v2.49.67's UX redesign. Followed the mandatory
+`docs/ANALYTICS_QA.md` process before shipping the redesign: triggered
+`scripts/qa/verify_analytics_numbers.js` via `qa-verify-analytics.yml`
+against production. **Found 20 real discrepancies** — Our Picks reported
+−25.8% ROI but a from-scratch recompute from raw history gives −10.5%;
+Market Favorite −7.4% vs. −29.7%; Handicapper Consensus even flips sign,
++15.0% vs. −20.7%.
+
+**Root cause:** `handlePickStats()`'s `MAX_DETAILED_OUTCOMES` cap (added
+v2.49.64 to fix the Cloudflare subrequest-ceiling crash) was a single
+global 400-outcome budget shared across all three engines pooled together,
+not scoped per engine. Now that real volume (545 settled outcomes) exceeds
+it, whichever engine's outcomes sort more recently in the pooled list
+crowds another engine's still-recent outcomes out of the window — unevenly,
+per engine. `handlePickHistory()`'s unfiltered "All" view had the identical
+bug.
+
+Peer-reviewed before fixing: real handicapper-tracking sites (Covers
+Experts, CapperTek/TipsGG) window strictly per entity, never pool a shared
+budget across every tracked handicapper — confirms the fix direction.
+Brisnet's own published jockey/trainer convention (win% + ROI per $2
+wagered) matches what this app already computes, so the metric choice
+itself needed no change.
+
+**Fix:** `MAX_DETAILED_OUTCOMES_PER_ENGINE` / `MAX_DETAILED_PICKS_PER_ENGINE`
+(150 each) replace the global caps in both `handlePickStats()` and
+`handlePickHistory()` — each engine's outcomes/picks are grouped and capped
+independently, so one engine's volume can no longer distort another's.
+`/api/picks/stats` now reports `truncated`/`processedOutcomes`/
+`totalOutcomes` per engine (`engines[x].truncated`, etc.), not just as a
+top-level aggregate. A larger, architecturally cleaner follow-up (running
+per-engine tallies updated incrementally at settlement time, instead of a
+capped full rescan on every request) was proposed and deferred as separate
+work — see `docs/ANALYTICS_QA.md`.
+
+New tests lock in the actual bug found: a "busy" engine exceeding the old
+global cap on its own must not truncate a "quiet" engine's numbers at all
+(`tests/worker-pick-stats.test.js`, `tests/worker-pick-history.test.js`).
+Full suite: 385 total, 384 pass, 1 pre-existing unrelated failure, 1
+skipped.
+
+**Requires a manual `wrangler deploy --config wrangler.toml`** — this
+touches `worker.js`, no Pages auto-deploy path reaches it. The live number
+re-verification (`qa-verify-analytics.yml`) should be re-run after
+deploying to confirm zero discrepancies against the fixed code.
+
+## v2.49.67-brisnet — UX: Pick Accuracy card leads with Our Picks' own win rate + ROI, rest collapsed (2026-08-14)
+
+Owner, evaluating the Analytics tab directly: "it's confusing... I want to
+see results of straight up accuracy on bets and another result of roi if
+the user takes the app's advice on bet amount." Reviewed the card as a real
+UX problem, not a code-read: five prior sessions (v2.49.47–v2.49.51, see
+`docs/ANALYTICS_QA.md`) each fixed a real misread by adding MORE
+explanatory text, never by removing anything. The result: the biggest
+number on the card was "Leading source, all time" — whichever engine
+currently has the best ROI, often NOT Our Picks — followed by a win-rate
+strip, ranked rows with badges, an expandable by-conviction breakdown, an
+expandable $-detail panel, then an entirely separate "Model Calibration &
+Overlay Betting" card with a 10-bucket table and a qualifying/non-qualifying
+split. Four-plus different "ROI" numbers for Our Picks, two cards, heavy
+jargon (calibration, overlay, conviction), and neither of the two questions
+actually asked answered plainly anywhere.
+
+**Fix — pure display restructuring, zero number-computation changes:**
+- New two-tile hero at the top (`.bankroll-grid`/`.bankroll-stat`, reusing
+  the Bets tab's own existing stat-tile component) showing **Our Picks'
+  Win Rate and ROI**, always — never "whichever source leads." The ROI
+  tile states its basis directly: "betting our suggested amount ($2 Win /
+  $4 Exacta Box) on every pick."
+- Cross-source comparison (win-rate strip, ranked rows/badges,
+  by-conviction, by-bet-type, $ detail) moved into a `<details
+  class="bankroll-detail">` disclosure — same collapsible component already
+  used on the Bets tab — collapsed by default, titled "Compare to Market
+  Favorite & Handicapper Consensus."
+- The standalone "Model Calibration & Overlay Betting" card removed; its
+  unchanged content now renders inside a second collapsed disclosure in the
+  SAME card, "Model diagnostics (calibration & overlay betting)."
+  `renderAnalyticsCalibration()` itself is untouched — only where its
+  target container lives moved.
+
+Followed `.claude/skills/analytics-qa/SKILL.md`'s mandatory two-part
+process in full: triggered `scripts/qa/verify_analytics_numbers.js` via the
+`qa-verify-analytics.yml` GitHub Action (this sandbox can't reach the live
+worker directly) to independently recompute every number from raw
+`/api/picks/history` records, AND took a real Playwright screenshot with
+the actual live numbers from this session (not placeholders), expanded both
+new collapsibles to confirm their content still renders correctly, and
+covered three edge cases (zero picks, picks-logged-but-unsettled, fetch
+failure) — see `docs/ANALYTICS_QA.md` for the exact verified numbers and
+run link. Full suite: 383 total, 382 pass, 1 pre-existing unrelated
+failure, 1 skipped. Pure client change (`index.html`/`app.html` only) — no
+worker.js touch, auto-deploys via Pages on push to `master`.
+
 ## v2.49.66-brisnet — Fix: Analytics tab could silently serve up to 5-min-stale data, even on Refresh (2026-08-14)
 
 Reported live: a screenshot showed the Analytics tab's three cards all

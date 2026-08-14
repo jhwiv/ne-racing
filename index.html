@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260814-v2.49.66-brisnet';
+var NE_APP_VERSION = '20260814-v2.49.68-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260814-v2.49.66-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.66-brisnet';
+var RAILBIRD_VERSION = 'v2.49.68-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -10911,25 +10911,16 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         </div>
       </div>
 
-      <!-- v2.49.54: model calibration + overlay-betting ROI, for Our Picks
-           (v2) only -- Market Favorite/Handicapper Consensus never have a
-           real model probability (they're picked directly by lowest-ML-odds
-           / crowd consensus, not scored). Answers a different question than
-           the card above: not "does this source pick more winners," but "is
-           the model's own stated confidence trustworthy, and does betting
-           specifically when it disagrees with the market pay off." Shares
-           the same /api/picks/stats fetch as the card above -- see
-           renderAnalyticsAccuracy(), no second network request. -->
-      <div class="card mb-2">
-        <div class="card-header">
-          <h3>Model Calibration &amp; Overlay Betting</h3>
-        </div>
-        <div class="card-body">
-          <div id="analytics-calibration-body">
-            <p class="text-muted text-sm">Loading…</p>
-          </div>
-        </div>
-      </div>
+      <!-- v2.49.67: "Model Calibration & Overlay Betting" moved from its own
+           standalone card into a collapsed disclosure INSIDE the "Pick
+           Accuracy by Source" card above (see renderAnalyticsAccuracy()'s
+           diagnosticsSection) -- it answers a real but secondary question
+           (is the model's stated confidence trustworthy) rather than the
+           two headline ones (win rate, ROI), so it no longer competes for
+           the same top-of-tab attention as those. #analytics-calibration-
+           body is now rendered dynamically as part of that card's own
+           innerHTML; renderAnalyticsCalibration() is unchanged, only where
+           its target container lives moved. -->
 
       <!-- v2.49.43: real per-pick history -- every individual logged pick,
            not just aggregated percentages. /api/picks/stats only ever
@@ -19636,6 +19627,41 @@ function renderAnalyticsAccuracy() {
         ' logged across ' + tracked.length + ' source' + (tracked.length === 1 ? '' : 's') +
         ' — ' + totalSettled + ' graded so far, ' + (totalPicks - totalSettled) + ' pending.</p>';
 
+      // v2.49.67: two headline numbers for OUR PICKS specifically (not
+      // "whichever source currently leads," which the old top-of-card hero
+      // showed and which could be Market Favorite or Handicapper Consensus
+      // -- a user opening this tab wants to know how the app's OWN advice
+      // is doing, first, before any cross-source comparison). Requested
+      // directly: "straight up accuracy on bets" (win rate) and "roi if the
+      // user takes the app's advice on bet amount" (this engine's ROI,
+      // which IS computed from the actual suggested stake per pick type --
+      // $2 flat on Win picks, $4 on Exacta Box combos, per daily_pick_log.js
+      // -- so it already answers that question; the one-line caption below
+      // makes that explicit instead of leaving it to the roiNote paragraph
+      // further down, which was previously the only place this was said).
+      var ourPicksHero = '';
+      var ourPicks = engines['v2'];
+      if (ourPicks && ourPicks.settled > 0) {
+        var opWinPct = Math.max(0, Math.min(100, (ourPicks.winRate || 0) * 100));
+        var opLosses = ourPicks.settled - ourPicks.wins;
+        var opRoiStr = ourPicks.roi != null ? fmtPct(ourPicks.roi * 100) : '—';
+        var opRoiClass = ourPicks.roi == null ? '' : (ourPicks.roi >= 0 ? 'stat-positive' : 'stat-negative');
+        ourPicksHero = '<div class="bankroll-grid" style="grid-template-columns:1fr 1fr;margin-bottom:0.5rem">' +
+          '<div class="bankroll-stat">' +
+            '<div class="stat-label">Win Rate</div>' +
+            '<div class="stat-value">' + opWinPct.toFixed(1) + '%</div>' +
+            '<div class="text-xs text-muted mt-1">' + ourPicks.wins + '-' + opLosses + ' on ' + ourPicks.settled + ' graded pick' + (ourPicks.settled === 1 ? '' : 's') + '</div>' +
+          '</div>' +
+          '<div class="bankroll-stat">' +
+            '<div class="stat-label">ROI</div>' +
+            '<div class="stat-value ' + opRoiClass + '">' + opRoiStr + '</div>' +
+            '<div class="text-xs text-muted mt-1">betting our suggested amount ($2 Win / $4 Exacta Box) on every pick</div>' +
+          '</div>' +
+        '</div>';
+      } else {
+        ourPicksHero = '<p class="text-muted text-sm mb-3">No graded Our Picks yet' + (analyticsRange === 'today' ? ' today' : '') + ' — check back once today’s races finish.</p>';
+      }
+
       if (!present.length) {
         var pendingRows = pendingOnly.map(function(e) {
           return '<div class="flex justify-between items-center mb-2">' +
@@ -19866,7 +19892,36 @@ function renderAnalyticsAccuracy() {
       var glossary = '<p class="text-xs text-muted mt-1"><strong>Win rate</strong> is how often that pick’s horse actually finished 1st. ' +
         '<strong>ROI</strong> is profit or loss against that reference stake ($2 Win / $4 Exacta Box, see note above), averaged across every graded pick.</p>';
 
-      body.innerHTML = notice + volumeLine + roiNote + winRateCompare + hero + legend + rows + pendingRows + glossary;
+      // v2.49.67: everything below the two headline Our Picks numbers --
+      // cross-source ranking/comparison, the by-conviction and by-bet-type
+      // breakdowns, the $/net detail panels -- is real and useful but was
+      // previously the FIRST thing on the card (a "leading source" hero
+      // that often wasn't even Our Picks, competing rank badges, a bar
+      // chart) even though it answers a secondary question ("how does this
+      // compare to the market/handicappers") rather than the primary one
+      // ("how is the app's own advice doing"). Collapsed by default behind
+      // the same disclosure pattern already used for the Bets tab's
+      // bankroll detail (.bankroll-detail), so it's one tap away, not a
+      // wall of text and jargon in front of the two numbers being asked for.
+      var compareSection = '<details class="bankroll-detail"><summary>Compare to Market Favorite &amp; Handicapper Consensus</summary>' +
+        '<div style="padding:0.5rem 0.85rem 0.85rem">' + roiNote + winRateCompare + hero + legend + rows + pendingRows + glossary + '</div>' +
+      '</details>';
+
+      // v2.49.67: "Model Calibration & Overlay Betting" used to be its own
+      // always-visible card, right under this one -- the model's own
+      // internal diagnostics (is its stated confidence trustworthy, does
+      // betting its market disagreements pay off) are genuinely useful but
+      // answer neither of the two questions actually asked for here, so
+      // they're folded in as a second, collapsed disclosure instead of a
+      // second full card competing for the same attention as the headline
+      // numbers above. renderAnalyticsCalibration() still targets
+      // #analytics-calibration-body by id -- only WHERE that container
+      // lives moved, not the function that fills it in.
+      var diagnosticsSection = '<details class="bankroll-detail mt-2"><summary>Model diagnostics (calibration &amp; overlay betting)</summary>' +
+        '<div style="padding:0.5rem 0.85rem 0.85rem" id="analytics-calibration-body"><p class="text-muted text-sm">Loading…</p></div>' +
+      '</details>';
+
+      body.innerHTML = notice + volumeLine + ourPicksHero + compareSection + diagnosticsSection;
       renderAnalyticsCalibration(engines);
     })
     .catch(function() {

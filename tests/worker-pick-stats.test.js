@@ -166,12 +166,21 @@ test('GET /api/picks/stats: date filter (v2.49.39) scopes to a single day for th
 // wrangler tail: "Error: Too many API requests by single Worker invocation",
 // thrown from handlePickStats' per-outcome detail loop (2 extra KV .get()
 // calls per settled outcome, previously unbounded). This locks in the fix:
-// only the most recent MAX_DETAILED_OUTCOMES (400) outcomes get the expensive
-// per-outcome detail fetch, and the response is honest about it via
-// truncated/processedOutcomes/totalOutcomes.
-test('GET /api/picks/stats: caps per-outcome detail reads and reports truncation honestly', async () => {
+// only the most recent outcomes get the expensive per-outcome detail fetch,
+// and the response is honest about it via truncated/processedOutcomes/
+// totalOutcomes.
+//
+// v2.49.68: that cap was originally a single GLOBAL budget shared across
+// every engine -- confirmed via scripts/qa/verify_analytics_numbers.js
+// against production that this produced actively wrong per-engine numbers
+// once real volume crossed it (one engine's outcomes crowding another's
+// still-recent outcomes out of the shared window). Now per engine
+// (MAX_DETAILED_OUTCOMES_PER_ENGINE = 150) -- this test locks in a single
+// engine's own cap behavior; the next test locks in cross-engine
+// independence, the actual bug that was found.
+test('GET /api/picks/stats: caps per-outcome detail reads (per engine) and reports truncation honestly', async () => {
   const kv = makeFakeKv();
-  const TOTAL = 410;
+  const TOTAL = 160;
   for (let i = 0; i < TOTAL; i++) {
     const day = String(1 + (i % 28)).padStart(2, '0');
     const key = `SAR:2026-0${1 + Math.floor(i / 280)}-${day}:1:v2:${i}`;
@@ -183,9 +192,44 @@ test('GET /api/picks/stats: caps per-outcome detail reads and reports truncation
   const body = await callPickStats(env);
 
   assert.equal(body.totalOutcomes, TOTAL, 'totalOutcomes must reflect the real full count, not the capped one');
-  assert.equal(body.processedOutcomes, 400, 'processedOutcomes must be clamped to the MAX_DETAILED_OUTCOMES cap');
-  assert.equal(body.truncated, true, 'truncated must be true whenever real history exceeds the cap');
-  assert.equal(body.engines.v2.settled, 400, 'aggregates themselves must only reflect the capped, processed subset');
+  assert.equal(body.processedOutcomes, 150, 'processedOutcomes must be clamped to MAX_DETAILED_OUTCOMES_PER_ENGINE');
+  assert.equal(body.truncated, true, 'truncated must be true whenever real history exceeds the per-engine cap');
+  assert.equal(body.engines.v2.settled, 150, 'aggregates themselves must only reflect the capped, processed subset');
+  assert.equal(body.engines.v2.truncated, true, 'per-engine truncated flag must also be set');
+  assert.equal(body.engines.v2.processedOutcomes, 150);
+  assert.equal(body.engines.v2.totalOutcomes, TOTAL);
+});
+
+// The actual bug found live: a global shared cap let one engine's volume
+// crowd another engine's still-recent outcomes out of the window, so a
+// busy engine's numbers were fine but a quieter engine's numbers were
+// silently wrong (and vice versa, unpredictably). This proves engine B's
+// numbers are complete and untruncated even though engine A alone exceeds
+// what used to be the GLOBAL cap (400) on its own.
+test('GET /api/picks/stats: one engine exceeding the cap does not truncate another engine', async () => {
+  const kv = makeFakeKv();
+  const BUSY_TOTAL = 450; // exceeds the old global cap (400) on its own
+  for (let i = 0; i < BUSY_TOTAL; i++) {
+    const day = String(1 + (i % 28)).padStart(2, '0');
+    const key = `SAR:2026-0${1 + Math.floor(i / 280)}-${day}:1:v2:${i}`;
+    await kv.put(`pick:${key}`, JSON.stringify({ engine: 'v2', amount: 2, betType: 'Win' }), { metadata: { engine: 'v2' } });
+    await kv.put(`outcome:${key}`, JSON.stringify({ won: true, payout: 4, betType: 'Win', position: 1 }));
+  }
+  const QUIET_TOTAL = 20; // well under any cap
+  for (let i = 0; i < QUIET_TOTAL; i++) {
+    const day = String(1 + (i % 28)).padStart(2, '0');
+    const key = `SAR:2026-0${1 + Math.floor(i / 280)}-${day}:2:crowd:${i}`;
+    await kv.put(`pick:${key}`, JSON.stringify({ engine: 'crowd', amount: 2, betType: 'Win' }), { metadata: { engine: 'crowd' } });
+    await kv.put(`outcome:${key}`, JSON.stringify({ won: true, payout: 4, betType: 'Win', position: 1 }));
+  }
+
+  const env = { ENGINE_ACCURACY: kv };
+  const body = await callPickStats(env);
+
+  assert.equal(body.engines.v2.truncated, true, 'the busy engine is truncated at its own per-engine cap');
+  assert.equal(body.engines.v2.settled, 150);
+  assert.equal(body.engines.crowd.truncated, false, 'the quiet engine must NOT be truncated by the busy engine\'s volume');
+  assert.equal(body.engines.crowd.settled, QUIET_TOTAL, 'the quiet engine must see ALL of its own outcomes, not a share of a pooled budget');
 });
 
 test('GET /api/picks/stats: truncated is false and matches real counts when under the cap', async () => {

@@ -11,6 +11,72 @@ again.
 
 ---
 
+## 2026-08-14 (v2.49.68) — Global outcome/pick cap produced internally inconsistent per-engine numbers; fixed to per-engine
+
+Owner asked for a UX evaluation and redesign (see v2.49.67 below), then
+asked to do a peer review of how other betting/tracking sites tally
+numbers before proposing a fix, once the mandatory numbers-verification
+step (below) turned up a real problem.
+
+**Full mandatory process followed, in order:** triggered
+`qa-verify-analytics.yml` (`workflow_dispatch`, run
+[31806473846](https://github.com/jhwiv/ne-racing/actions/runs/31806473846))
+to independently recompute every engine's numbers from raw
+`/api/picks/history` records and diff against `/api/picks/stats`. **Result:
+20 discrepancies found** — not layout, not display rounding, real
+divergence in the underlying aggregates:
+
+| Source | `/api/picks/stats` ROI | Recomputed from full raw history |
+|---|---|---|
+| Our Picks (`v2`) | −25.8% | **−10.5%** |
+| Market Favorite (`baseline_ml`) | −7.4% | **−29.7%** |
+| Handicapper Consensus (`crowd`) | +15.0% | **−20.7%** (sign flips) |
+
+**Root cause:** `handlePickStats()`'s `MAX_DETAILED_OUTCOMES` cap (added in
+v2.49.64 to fix the Cloudflare subrequest-ceiling crash, see §13 above) was
+a single **global** budget (400 outcomes) shared across all three engines
+combined, not scoped per engine. Real accumulated volume (545 total
+settled outcomes as of this session) now exceeds that shared budget, so
+whichever engine's outcomes happen to sort more recently in the pooled,
+cross-engine list crowds another engine's still-recent outcomes out of the
+window — unevenly and unpredictably, engine by engine. `/api/picks/history
+?engine=X` (what the verification script calls) has its own, separate
+per-engine-filtered cap and wasn't affected the same way, which is exactly
+why the two endpoints disagreed.
+
+**Peer review, before proposing a fix (not guessed):** checked how real
+handicapper/tipster tracking sites window their numbers — Covers Experts,
+CapperTek/TipsGG, and Brisnet's own published jockey/trainer stat
+convention (win% + ROI per $2 wagered, which this app already matches
+exactly). Every real leaderboard windows **per entity** — "Last 30 Days" /
+"All Time" per handicapper — never a shared budget one handicapper's volume
+can crowd another's out of. General database/aggregation practice
+(incremental materialized views vs. full recompute) further confirms the
+architecturally correct long-term answer is a running per-engine tally
+updated incrementally at settlement time, not a capped full rescan — noted
+as a separate, larger follow-up, not done in this pass.
+
+**Fix shipped (v2.49.68):** `MAX_DETAILED_OUTCOMES_PER_ENGINE` (150) and
+`MAX_DETAILED_PICKS_PER_ENGINE` (150) replace the global caps in both
+`handlePickStats()` and `handlePickHistory()` (the latter's unfiltered
+"All" view had the identical bug). Each engine's own outcomes/picks are
+grouped and capped independently before detail-fetching, so one engine's
+volume can never distort another's numbers. `/api/picks/stats` now also
+reports `truncated`/`processedOutcomes`/`totalOutcomes` **per engine**
+(`engines[x].truncated` etc.), not just as a top-level aggregate, so a
+future UI change can disclose exactly which engine's numbers are a partial
+recent-window view. New tests in `tests/worker-pick-stats.test.js` and
+`tests/worker-pick-history.test.js` lock in cross-engine independence
+directly: a "busy" engine exceeding the old global cap on its own must not
+truncate a "quiet" engine's numbers at all.
+
+**Not yet re-verified live** — this requires a `wrangler deploy` (worker.js
+change) before `qa-verify-analytics.yml` can be re-run to confirm zero
+discrepancies against the fixed code. Whoever deploys this should re-run
+the workflow and update the baseline table below.
+
+---
+
 ## 2026-07-25 (v2.49.51) — "Our Picks look wildly better" reported directly; verified correct, fixed the presentation
 
 Reported with screenshots of the live card (not a description): "these
