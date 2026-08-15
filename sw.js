@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260814-v2.49.69-brisnet'; // v2.49.69: worker.js fix -- filtered (?engine=X) requests get a much larger single-engine cap than pooled "All" requests, fixing a same-day regression in v2.49.68's own fix // bump on every ship
+const CACHE_VERSION = '20260815-v2.49.71-brisnet'; // v2.49.71: Analytics tab suppressed from nav pending redesign; also ships the color-coding/caption fix drafted for it (now dormant while hidden) // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

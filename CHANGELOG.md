@@ -1,5 +1,32 @@
 # NE Racing — Changelog
 
+## v2.49.71-brisnet — Analytics tab suppressed from nav pending redesign (2026-08-15)
+
+The owner's reaction to the live v2.49.67 redesign ("This sucks why is it so
+hard to come up with a good info graphic") plus a real bug in the same
+screenshot (negative ROI rendering in the same green as a positive win rate,
+`.bankroll-grid .bankroll-stat .stat-value` had no `.stat-positive`/
+`.stat-negative` branch) made clear the "Our Picks" hero needed a real
+redesign, not another live patch. Per instruction, three visual directions
+were mocked up for review before touching the shipped UI further.
+
+While that mockup was pending review, the owner asked to suppress the tab
+outright rather than leave the current display up. Both nav entry points —
+`#tab-btn-analytics` (mobile bottom bar) and `#dnav-analytics` (desktop nav)
+— are hidden using the same `legacy-hidden-tab` demotion pattern already
+used for Barn/Results/Reference/Handicap (`aria-hidden`, `tabindex="-1"`,
+`style="display:none"`). The tab's own markup (`#tab-analytics`) and all
+render/fetch code (`renderAnalyticsTab`, `renderAnalyticsAccuracy`, etc.)
+are untouched and still fully functional — there is no other entry point
+into `switchTab('analytics')`, so hiding the two buttons fully removes it
+from navigation without deleting anything. Restoring it later is a two-line
+revert per file.
+
+This ship also carries the already-drafted, syntax-checked color-coding fix
+(`.stat-value.stat-positive` / `.stat-value.stat-negative` overrides) and
+ROI-caption shortening from the v2.49.70 draft — both correct, both now
+dormant since the card they style isn't reachable from nav.
+
 ## v2.49.69-brisnet — Fix: same-day regression in v2.49.68's own per-engine cap fix (2026-08-14)
 
 Direct follow-up. After deploying v2.49.68 and re-running

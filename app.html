@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260814-v2.49.69-brisnet';
+var NE_APP_VERSION = '20260815-v2.49.71-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260814-v2.49.69-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.69-brisnet';
+var RAILBIRD_VERSION = 'v2.49.71-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -8731,6 +8731,14 @@ input::placeholder, textarea::placeholder { color: var(--msp-muted) !important; 
 .bankroll-grid .bankroll-stat { background: var(--msp-surface) !important; border: 1px solid var(--msp-border) !important; color: var(--msp-ink) !important; }
 .bankroll-grid .bankroll-stat .stat-label { color: var(--msp-ink-2) !important; font-style: normal !important; }
 .bankroll-grid .bankroll-stat .stat-value { color: var(--msp-turf-deep) !important; }
+/* v2.49.70: this tile was only ever used for neutral values (Total Staked,
+   Total Bets, etc.) before the Analytics tab's Our Picks ROI reused it for
+   a genuinely signed number -- the base rule above has no positive/negative
+   branch (unlike the sibling .bankroll-banner .stat-val rules just above,
+   which do), so a negative ROI silently rendered in the same green as a
+   positive one. Matches the sibling rules' exact color tokens. */
+.bankroll-grid .bankroll-stat .stat-value.stat-positive { color: var(--msp-turf) !important; }
+.bankroll-grid .bankroll-stat .stat-value.stat-negative { color: var(--msp-red) !important; }
 
 /* P&L panel — paper, turf line */
 .pnl-panel, .sparkline-panel, #pnl-sparkline-wrap, .pnl-chart-wrap {
@@ -10230,7 +10238,15 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
         Today&rsquo;s Results
       </button>
-      <button class="desktop-nav-btn" onclick="switchTab('analytics')" id="dnav-analytics">
+      <!-- v2.49.71: Analytics suppressed from nav -- display quality was
+           unacceptable to the owner ("This sucks why is it so hard to come
+           up with a good info graphic") and a redesign is pending review
+           (see docs/ANALYTICS_QA.md). Underlying tab/render code is left
+           intact; only the nav entry point is hidden, same demotion pattern
+           as Barn/Results/Reference/Handicap below. Restore by removing
+           legacy-hidden-tab + the three suppression attributes once the
+           redesign ships. -->
+      <button class="desktop-nav-btn legacy-hidden-tab" onclick="switchTab('analytics')" id="dnav-analytics" aria-hidden="true" tabindex="-1" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-3-3-4 4"/></svg>
         Analytics
       </button>
@@ -11375,7 +11391,8 @@ tr.sar-barn-row > td:first-child { box-shadow: inset 3px 0 0 var(--msp-brass) !i
     </svg>
     <span>Today&rsquo;s Results</span>
   </button>
-  <button class="tab-btn" id="tab-btn-analytics" onclick="switchTab('analytics')" aria-label="Analytics" aria-selected="false">
+  <!-- v2.49.71: suppressed from nav, see matching comment on #dnav-analytics above -->
+  <button class="tab-btn legacy-hidden-tab" id="tab-btn-analytics" onclick="switchTab('analytics')" aria-label="Analytics" aria-hidden="true" tabindex="-1" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 3v18h18"/><path d="M18 9l-5 5-3-3-4 4"/>
     </svg>
@@ -19656,7 +19673,7 @@ function renderAnalyticsAccuracy() {
           '<div class="bankroll-stat">' +
             '<div class="stat-label">ROI</div>' +
             '<div class="stat-value ' + opRoiClass + '">' + opRoiStr + '</div>' +
-            '<div class="text-xs text-muted mt-1">betting our suggested amount ($2 Win / $4 Exacta Box) on every pick</div>' +
+            '<div class="text-xs text-muted mt-1">on our suggested $2 Win / $4 Exacta stake</div>' +
           '</div>' +
         '</div>';
       } else {
