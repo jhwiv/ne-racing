@@ -2,9 +2,48 @@
   "track": "SAR",
   "date": "2026-08-15",
   "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
-  "pulled_at": "2026-08-16T06:09:06.974Z",
+  "pulled_at": "2026-08-17T06:13:22.398Z",
   "races": [
     {
+      "id": "SAR-20260815-R1",
+      "track": "SAR",
+      "date": "2026-08-15",
+      "num": 1,
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 7,
+            "horseName": "Math Tutor",
+            "position": 1,
+            "win_payout": 10.5
+          },
+          {
+            "pp": 1,
+            "horseName": "Epitaph",
+            "position": 2
+          },
+          {
+            "pp": 4,
+            "horseName": "Nantz",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 35.25
+          },
+          {
+            "type": "trifecta",
+            "payout": 81.3
+          },
+          {
+            "type": "superfecta",
+            "payout": 105.28
+          }
+        ]
+      },
       "race_number": 1,
       "expertPicks": [
         {
@@ -44,48 +83,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260815-R1",
+      "type": null
+    },
+    {
+      "id": "SAR-20260815-R2",
       "track": "SAR",
       "date": "2026-08-15",
-      "num": 1,
-      "type": null,
+      "num": 2,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 7,
-            "horseName": "Math Tutor",
+            "pp": 6,
+            "horseName": "Scramjet",
             "position": 1,
-            "win_payout": 10.5
-          },
-          {
-            "pp": 1,
-            "horseName": "Epitaph",
-            "position": 2
+            "win_payout": 18.96
           },
           {
             "pp": 4,
-            "horseName": "Nantz",
+            "horseName": "Mindfield",
+            "position": 2
+          },
+          {
+            "pp": 7,
+            "horseName": "Big Handsome",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 35.25
+            "payout": 49.46
           },
           {
             "type": "trifecta",
-            "payout": 81.3
+            "payout": 81.01
           },
           {
             "type": "superfecta",
-            "payout": 105.28
+            "payout": 124.16
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 2,
       "expertPicks": [
         {
@@ -125,48 +164,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260815-R2",
+      "type": null
+    },
+    {
+      "id": "SAR-20260815-R3",
       "track": "SAR",
       "date": "2026-08-15",
-      "num": 2,
-      "type": null,
+      "num": 3,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 6,
-            "horseName": "Scramjet",
-            "position": 1,
-            "win_payout": 18.96
-          },
-          {
             "pp": 4,
-            "horseName": "Mindfield",
-            "position": 2
+            "horseName": "Road Show",
+            "position": 1,
+            "win_payout": 3.74
           },
           {
             "pp": 7,
-            "horseName": "Big Handsome",
+            "horseName": "Cut Down the Nets",
+            "position": 2
+          },
+          {
+            "pp": 6,
+            "horseName": "J Buck",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 49.46
+            "payout": 5.1
           },
           {
             "type": "trifecta",
-            "payout": 81.01
+            "payout": 27.81
           },
           {
             "type": "superfecta",
-            "payout": 124.16
+            "payout": 35.43
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 3,
       "expertPicks": [
         {
@@ -206,48 +245,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260815-R3",
+      "type": null
+    },
+    {
+      "id": "SAR-20260815-R4",
       "track": "SAR",
       "date": "2026-08-15",
-      "num": 3,
-      "type": null,
+      "num": 4,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 4,
-            "horseName": "Road Show",
+            "pp": 2,
+            "horseName": "Lady Rose",
             "position": 1,
-            "win_payout": 3.74
-          },
-          {
-            "pp": 7,
-            "horseName": "Cut Down the Nets",
-            "position": 2
+            "win_payout": 4.24
           },
           {
             "pp": 6,
-            "horseName": "J Buck",
+            "horseName": "Fedupwiththefed",
+            "position": 2
+          },
+          {
+            "pp": 4,
+            "horseName": "Full Pour",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 5.1
+            "payout": 6.87
           },
           {
             "type": "trifecta",
-            "payout": 27.81
+            "payout": 8.95
           },
           {
             "type": "superfecta",
-            "payout": 35.43
+            "payout": 4.71
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 4,
       "expertPicks": [
         {
@@ -287,48 +326,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260815-R4",
+      "type": null
+    },
+    {
+      "id": "SAR-20260815-R5",
       "track": "SAR",
       "date": "2026-08-15",
-      "num": 4,
-      "type": null,
+      "num": 5,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 2,
-            "horseName": "Lady Rose",
+            "pp": 1,
+            "horseName": "Bertrille",
             "position": 1,
-            "win_payout": 4.24
+            "win_payout": 8.4
           },
           {
-            "pp": 6,
-            "horseName": "Fedupwiththefed",
+            "pp": 5,
+            "horseName": "Britain",
             "position": 2
           },
           {
-            "pp": 4,
-            "horseName": "Full Pour",
+            "pp": 7,
+            "horseName": "Miami Style",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 6.87
+            "payout": 9.21
           },
           {
             "type": "trifecta",
-            "payout": 8.95
+            "payout": 39.78
           },
           {
             "type": "superfecta",
-            "payout": 4.71
+            "payout": 12.72
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 5,
       "expertPicks": [
         {
@@ -368,48 +407,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260815-R5",
+      "type": null
+    },
+    {
+      "id": "SAR-20260815-R6",
       "track": "SAR",
       "date": "2026-08-15",
-      "num": 5,
-      "type": null,
+      "num": 6,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 1,
-            "horseName": "Bertrille",
+            "pp": 3,
+            "horseName": "Libby Lloyd",
             "position": 1,
-            "win_payout": 8.4
+            "win_payout": 4.44
           },
           {
-            "pp": 5,
-            "horseName": "Britain",
+            "pp": 9,
+            "horseName": "Groves",
             "position": 2
           },
           {
             "pp": 7,
-            "horseName": "Miami Style",
+            "horseName": "Free Verse",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 9.21
+            "payout": 8.19
           },
           {
             "type": "trifecta",
-            "payout": 39.78
+            "payout": 12.81
           },
           {
             "type": "superfecta",
-            "payout": 12.72
+            "payout": 7.64
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 6,
       "expertPicks": [
         {
@@ -449,48 +488,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260815-R6",
+      "type": null
+    },
+    {
+      "id": "SAR-20260815-R7",
       "track": "SAR",
       "date": "2026-08-15",
-      "num": 6,
-      "type": null,
+      "num": 7,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 3,
-            "horseName": "Libby Lloyd",
+            "pp": 2,
+            "horseName": "Bite and Strike",
             "position": 1,
-            "win_payout": 4.44
+            "win_payout": 10.6
           },
           {
             "pp": 9,
-            "horseName": "Groves",
+            "horseName": "Vettriano",
             "position": 2
           },
           {
-            "pp": 7,
-            "horseName": "Free Verse",
+            "pp": 5,
+            "horseName": "War Stride",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 8.19
+            "payout": 14.8
           },
           {
             "type": "trifecta",
-            "payout": 12.81
+            "payout": 14.44
           },
           {
             "type": "superfecta",
-            "payout": 7.64
+            "payout": 3.67
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 7,
       "expertPicks": [
         {
@@ -530,48 +569,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260815-R7",
+      "type": null
+    },
+    {
+      "id": "SAR-20260815-R8",
       "track": "SAR",
       "date": "2026-08-15",
-      "num": 7,
-      "type": null,
+      "num": 8,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 2,
-            "horseName": "Bite and Strike",
+            "pp": 3,
+            "horseName": "Q B Rocket",
             "position": 1,
-            "win_payout": 10.6
+            "win_payout": 4.52
           },
           {
-            "pp": 9,
-            "horseName": "Vettriano",
+            "pp": 2,
+            "horseName": "Card Man",
             "position": 2
           },
           {
-            "pp": 5,
-            "horseName": "War Stride",
+            "pp": 7,
+            "horseName": "Decimation",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 14.8
+            "payout": 8.27
           },
           {
             "type": "trifecta",
-            "payout": 14.44
+            "payout": 25.12
           },
           {
             "type": "superfecta",
-            "payout": 3.67
+            "payout": 17.19
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 8,
       "expertPicks": [
         {
@@ -611,48 +650,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260815-R8",
+      "type": null
+    },
+    {
+      "id": "SAR-20260815-R9",
       "track": "SAR",
       "date": "2026-08-15",
-      "num": 8,
-      "type": null,
+      "num": 9,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 3,
-            "horseName": "Q B Rocket",
+            "pp": 7,
+            "horseName": "Survie (IRE)",
             "position": 1,
-            "win_payout": 4.52
+            "win_payout": 10.96
           },
           {
-            "pp": 2,
-            "horseName": "Card Man",
+            "pp": 6,
+            "horseName": "Minaret Station",
             "position": 2
           },
           {
-            "pp": 7,
-            "horseName": "Decimation",
+            "pp": 4,
+            "horseName": "Program Trading (GB)",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 8.27
+            "payout": 19.84
           },
           {
             "type": "trifecta",
-            "payout": 25.12
+            "payout": 29.45
           },
           {
             "type": "superfecta",
-            "payout": 17.19
+            "payout": 12.28
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 9,
       "expertPicks": [
         {
@@ -692,86 +731,13 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260815-R9",
-      "track": "SAR",
-      "date": "2026-08-15",
-      "num": 9,
-      "type": null,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": 7,
-            "horseName": "Survie (IRE)",
-            "position": 1,
-            "win_payout": 10.96
-          },
-          {
-            "pp": 6,
-            "horseName": "Minaret Station",
-            "position": 2
-          },
-          {
-            "pp": 4,
-            "horseName": "Program Trading (GB)",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 19.84
-          },
-          {
-            "type": "trifecta",
-            "payout": 29.45
-          },
-          {
-            "type": "superfecta",
-            "payout": 12.28
-          }
-        ]
-      }
+      "type": null
     },
     {
-      "race_number": 10,
-      "expertPicks": [
-        {
-          "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - David Aragona",
-          "pick": 6,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Talking Horses - Jonathon Kinchen",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "NYRA Bets - DeSantis",
-          "pick": 2,
-          "horseName": null,
-          "_nyraPipeline": true
-        },
-        {
-          "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 3,
-          "horseName": null,
-          "_nyraPipeline": true
-        }
-      ],
       "id": "SAR-20260815-R10",
       "track": "SAR",
       "date": "2026-08-15",
       "num": 10,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -806,35 +772,47 @@
             "payout": 180.59
           }
         ]
-      }
-    },
-    {
-      "race_number": 11,
+      },
+      "race_number": 10,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 1,
+          "pick": 2,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Talking Horses - David Aragona",
-          "pick": 1,
+          "pick": 6,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - Jonathon Kinchen",
+          "pick": 2,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Bets - DeSantis",
+          "pick": 2,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 2,
+          "pick": 3,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
+      "type": null
+    },
+    {
       "id": "SAR-20260815-R11",
       "track": "SAR",
       "date": "2026-08-15",
       "num": 11,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -869,35 +847,35 @@
             "payout": 5.37
           }
         ]
-      }
-    },
-    {
-      "race_number": 12,
+      },
+      "race_number": 11,
       "expertPicks": [
         {
           "source": "NYRA Talking Horses - Andy Serling",
-          "pick": 3,
+          "pick": 1,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "NYRA Talking Horses - David Aragona",
-          "pick": 11,
+          "pick": 1,
           "horseName": null,
           "_nyraPipeline": true
         },
         {
           "source": "Hablan Los Caballos - Darwin Vizcaya",
-          "pick": 3,
+          "pick": 2,
           "horseName": null,
           "_nyraPipeline": true
         }
       ],
+      "type": null
+    },
+    {
       "id": "SAR-20260815-R12",
       "track": "SAR",
       "date": "2026-08-15",
       "num": 12,
-      "type": null,
       "horses": [],
       "results": {
         "finish_positions": [
@@ -924,7 +902,29 @@
             "payout": 8.76
           }
         ]
-      }
+      },
+      "race_number": 12,
+      "expertPicks": [
+        {
+          "source": "NYRA Talking Horses - Andy Serling",
+          "pick": 3,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "NYRA Talking Horses - David Aragona",
+          "pick": 11,
+          "horseName": null,
+          "_nyraPipeline": true
+        },
+        {
+          "source": "Hablan Los Caballos - Darwin Vizcaya",
+          "pick": 3,
+          "horseName": null,
+          "_nyraPipeline": true
+        }
+      ],
+      "type": null
     }
   ]
 }
