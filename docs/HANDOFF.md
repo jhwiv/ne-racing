@@ -1735,3 +1735,26 @@ just training) is a bigger product decision left to the owner, not made unilater
 
 Full suite: 401 total, 400 pass, 1 pre-existing failure (§14.3, unchanged). No
 worker.js change in this entry.
+
+### 14.8 v2.49.77 — the live overlay itself disabled (worker.js — requires `wrangler deploy`)
+
+Owner said yes to closing the remaining gap §14.7 flagged. `mergeBrisnetIntoEntries`
+(v2.46.0) was still live and enabled — would keep re-serving `data/brisnet-*.json`
+content into live entries for its 6 dates (and any future date one is added for),
+exactly the "reuse" `docs/DATA_WISHLIST.md`'s Rules bar regardless of subscription.
+
+**Fixed:** gated behind `ENABLE_BRISNET_OVERLAY === "true"`, default disabled. Not
+deleted — the Rules text is conditional ("do not reopen *unless*..."), so this can
+return the moment a real agreement exists, matching `theracingapi_adapter.js`'s own
+default-off reserved pattern.
+
+**No dedicated test**: `handleEntries`'s paid-source path needs Workers-only globals
+(`caches.default`, `btoa`) never polyfilled anywhere in this suite; building that from
+scratch for a one-line gate wasn't proportionate. Verified via `node --check` + full
+suite (401/400, no regressions) + direct code review instead.
+
+**Requires a manual `wrangler deploy --config wrangler.toml`** — this is the one part
+of this fix that does NOT auto-deploy via Pages. Until deployed, the live overlay
+remains active in production despite being committed to `master`.
+
+Full suite: 401 total, 400 pass, 1 pre-existing failure (§14.3, unchanged).

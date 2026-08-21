@@ -1,5 +1,37 @@
 # NE Racing — Changelog
 
+## v2.49.77-brisnet — Disabled the live Brisnet overlay pending a signed agreement (2026-08-21, worker.js — REQUIRES `wrangler deploy`)
+
+Follow-up to v2.49.76, which only stopped Brisnet-derived data from reaching the
+*training* corpus. The live overlay itself (`worker.js`'s `mergeBrisnetIntoEntries`,
+v2.46.0) was still enabled and would keep re-serving `data/brisnet-{TRACK}-{DATE}.json`
+content into live entries for those 6 dates (and any future date such a file is added
+for) — the exact "reuse" `docs/DATA_WISHLIST.md`'s own Rules bar: *"BLOCKED BY TOS ...
+regardless of subscription... Reuse of this data is expressly prohibited."*
+
+**Fixed:** gated the call behind an explicit opt-in env var
+(`ENABLE_BRISNET_OVERLAY === "true"`), defaulting to disabled. Not deleted — the
+Rules text is conditional ("do not reopen *unless* Churchill Downs Inc. issues a
+separate enterprise agreement"), so this can come back the moment that agreement
+exists, matching the same default-off, reserved-for-later pattern
+`theracingapi_adapter.js` already uses for its own not-yet-authorized source.
+
+No dedicated test added for this specific gate: `handleEntries`'s paid-source path
+needs Cloudflare-Workers-only globals (`caches.default`, `btoa`) this test suite has
+never polyfilled for any existing test, and building that scaffolding from scratch for
+a one-line boolean gate wasn't a proportionate amount of new test infrastructure to
+introduce. Verified instead via `node --check worker.js` (syntax) and the full existing
+suite (401 total, 400 pass, no regressions) — direct code review confirms the gate is
+a straightforward `if` around the existing try/catch, easy to verify by inspection.
+
+**Requires a manual `wrangler deploy --config wrangler.toml`** — worker.js changes do
+not auto-deploy the way `index.html`/`app.html`/`sw.js` do via Cloudflare Pages. Until
+that deploy runs, the live overlay remains active in production despite this being
+committed to `master`.
+
+See `docs/DATA_WISHLIST.md`'s decision log and `docs/HANDOFF.md` §14.7 for the full
+compliance writeup this follows up on.
+
 ## v2.49.76-brisnet — Data compliance fix: Brisnet-derived data excluded from the training corpus (2026-08-21)
 
 Found while investigating why the model can't clear a bigger gap over the market:

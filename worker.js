@@ -2797,9 +2797,21 @@ async function handleEntries(request, env, origin, ctx) {
       // scoring engine has the same inputs the legacy static JSON provided.
       // Runs AFTER PP enrichment so it can use ppHistory/ppSummary when present.
       try { enrichEntriesWithScoringFields(body); } catch (e) { body.scoringFieldEnrichmentError = e.message; }
-      // v2.46.0: Brisnet single-file PP overlay — highest-fidelity data wins.
-      // No-ops if /data/brisnet-{TRACK}-{DATE}.json is absent.
-      try { await mergeBrisnetIntoEntries(body, track, date); } catch (e) { body.brisnetOverlayError = e.message; }
+      // v2.49.76: DISABLED pending a signed Brisnet enterprise agreement.
+      // docs/DATA_WISHLIST.md's own Rules: Brisnet is "BLOCKED BY TOS ...
+      // regardless of subscription... Reuse of this data is expressly
+      // prohibited. Do not reopen unless Churchill Downs Inc. issues a
+      // separate enterprise agreement." This overlay (v2.46.0) re-serves
+      // committed data/brisnet-{TRACK}-{DATE}.json content into live entries
+      // -- exactly the "reuse" the ToS bars, and the same data that leaked
+      // into the training corpus via RACE_HISTORY archival (see
+      // docs/HANDOFF.md §14.7). Gated off by an explicit opt-in flag, not
+      // deleted, so it can come back the moment that agreement exists --
+      // matching how theracingapi_adapter.js is reserved default-off for its
+      // own not-yet-authorized source.
+      if (String(env.ENABLE_BRISNET_OVERLAY || "").toLowerCase() === "true") {
+        try { await mergeBrisnetIntoEntries(body, track, date); } catch (e) { body.brisnetOverlayError = e.message; }
+      }
     } else {
       // ── Free / GitHub Pages path ──────────────────────────────────────────
       body = await fetchFreeEntries(track, date, venue);
