@@ -59,7 +59,7 @@ function mulberry32(seed) {
   };
 }
 
-const FACTORS = ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'];
+const FACTORS = ['speed', 'class', 'pace', 'tj', 'bias', 'fresh', 'market'];
 
 /** Sample a random point on the 6-simplex (Dirichlet(alpha=1) via normalized -log(uniform)). */
 function randomWeights(rng) {

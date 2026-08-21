@@ -1,5 +1,89 @@
 # NE Racing — Changelog
 
+## v2.49.74-brisnet — Added market-implied probability as a 7th fitted feature, closed most of the gap to the market (2026-08-21)
+
+Requested directly: "we must be better than the market or handicappers given the data
+we have. Figure it out." The v2.49.72/73 sign fix corrected a real bug but left the
+model at best statistically tied with `DEFAULT_V2_WEIGHTS`, and still clearly behind
+`baseline_ml` (market alone) on every measure — 21-22% top-1 for v2 vs. 29.2% for the
+market. The six hand-designed sub-scores (speed, class, pace, trainer/jockey, bias,
+freshness) were trying to out-predict the market from a standing start, which is a
+much harder problem than the standard, principled way a real handicapping edge is
+actually found.
+
+**Change:** added the market's own implied win probability (from morning-line/live
+odds, the same quantity `attachOverlay()` already compares `modelProb` against) as a
+7th input feature (`marketSubScore()` in `scoring.js`, a logit-affine 0-100 transform),
+fed into the exact same conditional-logit fit as the other six. This lets the fit
+decide how much *residual* value the other six features add on top of what the market
+already prices in, instead of asking them to forecast races independently. It also
+turns `overlay` (modelProb − impliedProb) into a genuine measure of "how much do our
+OTHER features move us away from the market" rather than noise from an under-powered
+from-scratch model.
+
+**Result of the refit** (559 real races, same corpus): `pseudo_r2_mcfadden` more than
+doubled, 0.048 → **0.105**; in-sample top-1 hit rate 21.5% → **27.6%**. `market` came
+back the single largest weight by a wide margin (0.558 of the composite, more than the
+other six combined) — unsurprising, but confirms the fit is using it correctly, not
+just adding noise. `pace` and `fresh` stayed negative (same real finding as v2.49.72),
+their magnitudes just shrank a bit now that `market` absorbs the explanatory power
+that was previously misattributed to them.
+
+**Temperature had to be re-validated, not assumed.** T=20 was tuned for the OLD
+composite's dispersion; with `market` now dominating, T=20 was no longer optimal.
+Re-ran the same 4-split chronological holdout sweep used for the original T=12→20
+decision: **T=13** minimizes holdout log-loss in every split (flat optimum spans
+12-14), confirmed by an oracle search of each holdout itself, not just its
+corresponding train split. Shipped both changes together since they're inseparable —
+the market feature's real benefit was being partly masked by the stale temperature.
+
+**Honest result, checked the same way as always** (chronological holdout, log-loss
+primary — the metric this project has consistently treated as authoritative over flat
+ROI, which is far noisier on samples this size):
+
+| train-frac | holdout n | market log-loss | model (T=13) log-loss | market top-1 | model top-1 |
+| --- | --- | --- | --- | --- | --- |
+| 0.5 | 282 | 1.8906 | 1.9033 | 24.8% | 24.1% |
+| 0.6 | 226 | 1.9039 | 1.9073 | 24.3% | 23.5% |
+| 0.7 | 169 | 1.9468 | 1.9443 | 22.4% | 21.9% |
+| 0.8 | 113 | 1.9023 | 1.9070 | 21.1% | 22.1% |
+
+The model now beats market log-loss on 1 of 4 splits and trails it narrowly (0.003-
+0.013) on the other 3 — a dramatic closing of what was previously a consistent,
+unambiguous 0.13-0.15 gap on every split, but **not yet a robust, provable edge over
+the market** on this data. Framed honestly: this took the model from "clearly worse
+than the market on every measure, every split" to "statistically indistinguishable
+from the market" — real, substantial progress toward the stated goal, not a finish
+line. Full-corpus (all 563 races, in-sample-leaning) numbers moved from 21.1% top-1 /
+1.9716 log-loss to 27.0% top-1 / 1.8518 log-loss, vs. the market's own 29.2% / 1.8430
+— the gap that remains.
+
+**What would close the rest of the gap** (not attempted here, each is a real next
+step): the market's own calibration in this corpus shows a classic favorite-longshot-
+bias signature (the run.js calibration table's 40-50%-predicted bucket realizes 57.1%
+empirically, n=42 — the market underprices that band here) — a leakage-safe (train-
+only, per-split) recalibration of the market feature against this bias is the most
+promising lever tried-and-not-yet-built; more real race results would help every
+feature, market included; a nonlinear (not just linear-in-logit) market term could
+capture curvature a single coefficient can't.
+
+**Schema change, hand-verified:** `data/weights/v2.json`'s `features`/
+`weights_normalized` grew from 6 to 7 entries; `loadFittedWeights()` now rejects the
+old 6-feature shape outright (falls back to `DEFAULT_V2_WEIGHTS`, matching how it
+already handles any other malformed payload) rather than partially accepting it.
+`extract_features.js`, `fit_logit.py` (`FEATURES`, initial-guess vector), `scoring.js`
+(`compositeForHorse`, `loadFittedWeights`), and every test hardcoding the 6-feature
+schema (`fitted-weights.test.js`, `fitter-output-contract.test.js`, `weight-sweep.test.js`)
+updated together. `DEFAULT_V2_WEIGHTS` (the hand-picked v1/no-fitted-weights fallback)
+deliberately left untouched — it never used market data and still doesn't; `market`
+only ever gets a nonzero weight from a real fit. Hand-edited into `index.html`/
+`app.html` directly (not via `inline_scoring.js` regeneration — see v2.49.72's own
+note on that danger); `scripts/build/_inlined_scoring.js` regenerated standalone
+without touching `index.html`.
+
+Full suite: 388 total, 387 pass, 1 pre-existing failure (documented, unrelated
+`confidenceFor()` hand-drift, unchanged). No worker.js change.
+
 ## v2.49.73-brisnet — Follow-up: regression lock for the sign fix, an honest look at Value Play thresholds (2026-08-21)
 
 Continuing "keep trying to improve the results" after v2.49.72's sign fix. Three things, no live-behavior change in this entry (no HTML/worker touched):

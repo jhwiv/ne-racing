@@ -1577,3 +1577,68 @@ sample. The tool is committed as a durable asset to re-run once more real data l
 
 Full suite: 388 total, 387 pass, 1 pre-existing failure (§14.3, unchanged). No version
 bump — nothing in the served HTML/worker bundle changed this entry.
+
+### 14.5 v2.49.74 — market-implied probability as a 7th feature: closing the gap to the market
+
+Explicit instruction: "we must be better than the market or handicappers given the
+data we have. Figure it out." §14.2's sign fix was real but left the model statistically
+tied with the hand-picked defaults and clearly behind `baseline_ml` on every measure.
+Six hand-designed sub-scores were trying to out-forecast the market cold — a much
+harder problem than the standard shape a real edge takes: market probability + a
+residual term from whatever the market hasn't fully priced in.
+
+**Change:** market's own implied win probability (same quantity `attachOverlay()`
+already compares `modelProb` against) added as a 7th feature — `marketSubScore()`, a
+logit-affine 0-100 transform, fed into the same conditional-logit fit as the other
+six. Lets the fit decide how much residual value the other six add on top of the
+market, rather than asking them to forecast independently.
+
+**Refit result** (559 real races): `pseudo_r2_mcfadden` 0.048 → 0.105 (more than
+doubled); in-sample top-1 hit rate 21.5% → 27.6%. `market` came back the single
+largest weight (0.558, more than the other six combined). `pace`/`fresh` stayed
+negative (same real finding as §14.2), magnitudes shrank now that `market` absorbs
+explanatory power previously misattributed to them.
+
+**Temperature re-validated, not assumed.** T=20 was tuned for the old composite's
+dispersion; with `market` dominating, it was no longer optimal. Same 4-split
+chronological-holdout method as the original T=12→20 decision: **T=13** minimizes
+holdout log-loss in every split (flat optimum 12-14, confirmed by an oracle search of
+each holdout itself). Shipped together with the feature addition since the market
+feature's benefit was partly masked by the stale temperature.
+
+**Honest result** (chronological holdout, log-loss primary):
+
+| train-frac | holdout n | market log-loss | model (T=13) | market top-1 | model top-1 |
+| --- | --- | --- | --- | --- | --- |
+| 0.5 | 282 | 1.8906 | 1.9033 | 24.8% | 24.1% |
+| 0.6 | 226 | 1.9039 | 1.9073 | 24.3% | 23.5% |
+| 0.7 | 169 | 1.9468 | 1.9443 | 22.4% | 21.9% |
+| 0.8 | 113 | 1.9023 | 1.9070 | 21.1% | 22.1% |
+
+Beats market on 1 of 4 splits, trails narrowly (0.003-0.013) on the other 3 — closes a
+previously consistent 0.13-0.15 gap down to noise-level, but is NOT yet a robust,
+provable edge over the market. Honestly: "clearly worse than the market on every
+measure, every split" → "statistically indistinguishable from the market." Real
+progress toward the stated goal, not the finish line.
+
+**Promising next lever, not attempted here:** the market's own calibration in this
+corpus shows a favorite-longshot-bias signature (run.js's calibration table: the
+40-50%-predicted bucket realizes 57.1% empirically, n=42 — the market underprices that
+band in this data). A leakage-safe (train-only, per-split) recalibration of the market
+feature against this bias is the most concrete untried lever. Also: more real race
+results (the standing gap); a nonlinear market term to capture curvature a single
+coefficient can't.
+
+**Schema change, hand-verified:** `data/weights/v2.json` grew from 6 to 7 features;
+`loadFittedWeights()` now rejects the old 6-feature shape outright (falls back to
+`DEFAULT_V2_WEIGHTS`, same as any other malformed payload). Updated together:
+`extract_features.js`, `fit_logit.py` (`FEATURES`, initial-guess vector), `scoring.js`
+(`compositeForHorse`, `loadFittedWeights`), and every test hardcoding the 6-feature
+schema. `DEFAULT_V2_WEIGHTS` deliberately untouched (never used market data, still
+doesn't — `market` only gets weight from a real fit). Hand-edited into
+`index.html`/`app.html` directly (per §14.3's own warning against blind
+`inline_scoring.js` regeneration); `scripts/build/_inlined_scoring.js` regenerated
+standalone without touching `index.html`.
+
+Full suite: 388 total, 387 pass, 1 pre-existing failure (§14.3, unchanged). No
+worker.js change — auto-deploys via Pages on push to `master`.

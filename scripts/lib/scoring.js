@@ -266,6 +266,36 @@ function freshnessSubScore(horse, today) {
   return 50;
 }
 
+// v2.49.74: the market's own price is, by a wide margin, the single most
+// informative signal available for any given race -- baseline_ml (morning-
+// line favorite) hits 29.2% of races outright, comfortably beating every
+// composite-score configuration tried so far (21-22% top-1, even after the
+// v2.49.72 sign fix). Rather than try to out-predict the market from a
+// standing start using six hand-designed heuristics, fold the market's own
+// implied win probability in as a seventh feature and let conditional logit
+// decide how much weight the OTHER six deserve on top of it. This is the
+// standard shape a real edge takes: market probability + a residual term
+// from information the market hasn't fully priced in -- not a fully
+// independent model that has to out-forecast the market cold. It also turns
+// `overlay` (modelProb - impliedProb, see attachOverlay below) into a
+// genuine measure of "how much do our OTHER features move us away from the
+// market," instead of noise from an under-powered from-scratch model.
+function marketSubScore(horse) {
+  const mlOdds = parseOddsToNum(horse.ml);
+  const liveOdds = horse.liveOdds ? parseOddsToNum(horse.liveOdds) : 0;
+  const marketOdds = liveOdds > 0 ? liveOdds : mlOdds;
+  if (!(marketOdds > 0) || !isFinite(marketOdds)) return { score: 50, n: 0 };
+  const impliedProb = 1 / (marketOdds + 1);
+  // Map implied probability to a 0..100 scale via its logit, affine-fit so
+  // p=0.02 (50-1) -> ~10, p=0.10 (9-1) -> ~40, p=0.333 (2-1) -> ~68,
+  // p=0.50 (even) -> ~80 -- a monotonic, roughly-centered transform of the
+  // same quantity attachOverlay() below compares modelProb against.
+  const clamped = Math.min(0.9, Math.max(0.01, impliedProb));
+  const logit = Math.log(clamped / (1 - clamped));
+  const score = Math.max(0, Math.min(100, 80 + 18 * logit));
+  return { score, n: 1 };
+}
+
 function dataCompleteness(horse) {
   let n = 0;
   const figs = (horse.speedFigs || []).filter(f => f != null);
@@ -344,9 +374,13 @@ function loadFittedWeights(payload) {
   if (payload.status && payload.status !== 'fitted') return null;
   const arr = Array.isArray(payload.weights_normalized) ? payload.weights_normalized : null;
   const feats = Array.isArray(payload.features) ? payload.features : null;
-  if (!arr || !feats || arr.length !== 6 || feats.length !== 6) return null;
-  // Build a {speed,class,pace,tj,bias,fresh} object from the fitted features.
-  const required = ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'];
+  // v2.49.74: 7 features (added `market`, see marketSubScore() above). A
+  // pre-v2.49.74 6-feature payload is rejected here (falls back to
+  // DEFAULT_V2_WEIGHTS at every call site) rather than partially accepted --
+  // safer during rollout than silently treating market as some default.
+  if (!arr || !feats || arr.length !== 7 || feats.length !== 7) return null;
+  // Build a {speed,class,pace,tj,bias,fresh,market} object from the fitted features.
+  const required = ['speed', 'class', 'pace', 'tj', 'bias', 'fresh', 'market'];
   const w = {};
   for (let i = 0; i < required.length; i++) {
     const featIdx = feats.indexOf(required[i]);
@@ -403,6 +437,11 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
     ? biasSubScore_v2(horse, bias)
     : biasSubScore_v1(horse, bias);
   const freshScore = freshnessSubScore(horse, opts.today);
+  // v2.49.74: only meaningful for v2 (fed to the fitter as a 7th feature so
+  // it earns its own weight rather than being hand-picked); v1 stays exactly
+  // as it always scored, since DEFAULT_V2_WEIGHTS has no `market` key and the
+  // `|| 0` below gives it zero contribution whenever a weights map lacks one.
+  const marketScore = version === 'v2' ? marketSubScore(horse).score : 50;
   const completeness = dataCompleteness(horse);
 
   // Use fitted v2 weights when supplied (and only for v2 engine); else fall
@@ -419,11 +458,17 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
   // positive and sum to 1 (DEFAULT_V2_WEIGHTS, or an all-positive fit) this is
   // algebraically identical to the old plain weighted sum -- it only changes
   // behavior for a negatively-signed fitted feature (pace, fresh today).
+  //
+  // `market` (v2.49.74) is looked up with `|| 0` because DEFAULT_V2_WEIGHTS
+  // has no `market` key at all -- the hand-picked heuristic blend never used
+  // market odds, and stays that way; only a real fit (data/weights/v2.json,
+  // 7-feature schema) gives it a nonzero weight.
   const w = (version === 'v2' && opts.fittedWeights) ? opts.fittedWeights : DEFAULT_V2_WEIGHTS;
   let composite = 50
                 + (speedScore - 50) * w.speed + (classScore - 50) * w.class
                 + (paceScore  - 50) * w.pace  + (tjScore     - 50) * w.tj
-                + (biasScore  - 50) * w.bias  + (freshScore  - 50) * w.fresh;
+                + (biasScore  - 50) * w.bias  + (freshScore  - 50) * w.fresh
+                + (marketScore - 50) * (w.market || 0);
 
   // Equipment change (both versions keep this; small directional effect).
   if (horse.equipmentChanges) composite = Math.min(100, composite + 5);
@@ -450,6 +495,7 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
     horse,
     score: composite,
     speedScore, classScore, paceScore, tjScore, biasScore, freshnessScore: freshScore,
+    marketScore,
     completeness,
     expertMatchCount: expertCount,
     modelProb: 0, impliedProb: 0, overlay: 0,
@@ -460,26 +506,30 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
 // v1: score-share. Mathematically not a probability (just a normalization of
 //     positive numbers); kept for parity with current production.
 // v2: temperature-scaled softmax over composites.
-//     T=20, backtested 2026-08-13 against the real 2023-2026 corpus (563
-//     races) across 4 independent chronological holdout splits (train-frac
-//     0.5/0.6/0.7/0.8) via scripts/backtest/weight_sweep.js's evaluate()
-//     harness: T=20 minimized holdout log-loss in every split (the flat
-//     optimum spans T=19-22), replacing the prior hand-picked T=12, which was
-//     never validated against data and was measurably overconfident -- e.g.
-//     the [0.3,0.4] predicted-probability bucket was predicting 33.8% but
-//     hitting only 18.7% at T=12, vs. 33.5% predicted / 31.0% actual at T=20.
-//     Temperature only rescales probability DISPERSION -- it cannot change
-//     which horse ranks #1 (softmax is monotonic in the underlying score), so
-//     this has zero effect on Best Bet/Action Bet selection or their ROI; it
-//     only makes modelProb (and therefore the overlay = modelProb - market
-//     calculation) a more honest estimate.
+//     T=13, backtested 2026-08-21 (v2.49.74, after adding `market` as a 7th
+//     fitted feature -- see marketSubScore() above) against the real 2023-
+//     2026 corpus across the same 4 independent chronological holdout splits
+//     (train-frac 0.5/0.6/0.7/0.8) used for the original T=20 decision: T=13
+//     minimized holdout log-loss in every split (flat optimum spans T=12-14;
+//     an oracle search of the HOLDOUT itself, not just train, agreed within
+//     that same narrow band on all 4 splits). T=20 was calibrated for the
+//     OLD, 6-feature composite's dispersion -- once `market` (which alone
+//     carries more than half the fitted composite weight) was added, the
+//     composite's typical spread changed enough that T=20 was no longer
+//     optimal; re-validating temperature after any material composite change
+//     going forward, not just assuming a prior T carries over, is the
+//     takeaway here. Temperature only rescales probability DISPERSION -- it
+//     cannot change which horse ranks #1 (softmax is monotonic in the
+//     underlying score), so this has zero effect on Best Bet/Action Bet
+//     selection or their ROI; it only makes modelProb (and therefore the
+//     overlay = modelProb - market calculation) a more honest estimate.
 function probabilityNormalizeV1(scored) {
   const sum = scored.reduce((acc, s) => acc + Math.max(s.score, 1), 0);
   scored.forEach(s => { s.modelProb = Math.max(s.score, 1) / sum; });
 }
 
 function probabilityNormalizeV2(scored, temperature) {
-  const T = temperature || 20;
+  const T = temperature || 13;
   // Softmax with numerical stability.
   const maxS = Math.max(...scored.map(s => s.score));
   const exps = scored.map(s => Math.exp((s.score - maxS) / T));
@@ -609,6 +659,7 @@ module.exports = {
   biasSubScore_v1,
   biasSubScore_v2,
   freshnessSubScore,
+  marketSubScore,
   dataCompleteness,
   buildPaceContext,
   fieldStrengthMultiplier,

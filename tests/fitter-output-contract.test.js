@@ -39,7 +39,7 @@ function pythonAvailable() {
 }
 
 function makeSyntheticCorpus(nRaces) {
-  // Each race: 8 horses, features = [speed, class, pace, tj, bias, fresh].
+  // Each race: 8 horses, features = [speed, class, pace, tj, bias, fresh, market].
   // We bake in a real signal: speed dominates winner choice so the fitter
   // should converge to a speed-heavy weight vector.
   const lines = [];
@@ -53,7 +53,8 @@ function makeSyntheticCorpus(nRaces) {
       const tj    = 40 + Math.floor(Math.random() * 30);
       const bias  = 50;
       const fresh = 50;
-      features.push([speed, klass, pace, tj, bias, fresh]);
+      const market = 50; // no market signal baked in -- speed is the only real one
+      features.push([speed, klass, pace, tj, bias, fresh, market]);
       if (speed > bestSpeed) { bestSpeed = speed; bestIdx = h; }
     }
     lines.push(JSON.stringify({
@@ -86,7 +87,7 @@ test('fitter produces a runtime-loader-compatible v2.json', { skip: !pythonAvail
   // Schema fields.
   assert.strictEqual(payload.schema_version, 1);
   assert.strictEqual(payload.engine_version, 'v2');
-  assert.deepStrictEqual(payload.features, ['speed','class','pace','tj','bias','fresh']);
+  assert.deepStrictEqual(payload.features, ['speed','class','pace','tj','bias','fresh','market']);
   assert.ok(['fitted','insufficient'].includes(payload.status));
   assert.strictEqual(typeof payload.n_races, 'number');
   assert.ok(payload.n_races >= 200);
@@ -96,7 +97,7 @@ test('fitter produces a runtime-loader-compatible v2.json', { skip: !pythonAvail
 
   // Weight contract: signed, magnitude sums to 1.
   const w = payload.weights_normalized;
-  assert.ok(Array.isArray(w) && w.length === 6, 'weights_normalized is length-6 array');
+  assert.ok(Array.isArray(w) && w.length === 7, 'weights_normalized is length-7 array');
   for (const v of w) {
     assert.ok(typeof v === 'number' && isFinite(v),
       'weights_normalized values must be finite numbers, got ' + v);

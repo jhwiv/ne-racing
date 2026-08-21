@@ -19,7 +19,7 @@ test('mulberry32 is deterministic for a given seed', () => {
   seqA.forEach(v => { assert.ok(v >= 0 && v < 1); });
 });
 
-test('randomWeights always sums to 1 and covers all 6 factors', () => {
+test('randomWeights always sums to 1 and covers all factors', () => {
   const rng = mulberry32(7);
   for (let i = 0; i < 50; i++) {
     const w = randomWeights(rng);
@@ -32,7 +32,7 @@ test('randomWeights always sums to 1 and covers all 6 factors', () => {
 
 test('perturb stays on the simplex (sums to 1, all non-negative) regardless of maxDelta', () => {
   const rng = mulberry32(3);
-  const base = { speed: 0.35, class: 0.20, pace: 0.15, tj: 0.15, bias: 0.10, fresh: 0.05 };
+  const base = { speed: 0.35, class: 0.20, pace: 0.15, tj: 0.15, bias: 0.10, fresh: 0.05, market: 0 };
   for (let i = 0; i < 50; i++) {
     const w = perturb(base, rng, 0.3);
     const sum = FACTORS.reduce((s, f) => s + w[f], 0);

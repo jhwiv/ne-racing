@@ -42,7 +42,12 @@ import numpy as np
 from scipy.optimize import minimize
 
 
-FEATURES = ['speed', 'class', 'pace', 'tj', 'bias', 'fresh']
+# v2.49.74: added `market` (the morning-line/live-odds implied win probability,
+# see scoring.js's marketSubScore()) -- the single strongest available signal,
+# folded in as a feature so the fit decides how much residual value the other
+# six sub-scores add on top of it, rather than the six trying to out-predict
+# the market from a standing start.
+FEATURES = ['speed', 'class', 'pace', 'tj', 'bias', 'fresh', 'market']
 SUBSCORE_SCALE = 100.0  # features are 0..100 in scoring.js; we rescale to 0..1
 
 
@@ -168,7 +173,10 @@ def main() -> int:
     # 100x — but conditional logit is invariant to the additive constant and the
     # softmax already absorbs scale, so we start at a modest magnitude and let the
     # optimizer find the calibrated scale.
-    beta0 = np.array([3.5, 2.0, 1.5, 1.5, 1.0, 0.5], dtype=float)
+    # v2.49.74: 7th entry for `market` -- given a strong initial guess since
+    # it's expected to be the single most informative feature (see FEATURES
+    # comment above), but this is only a starting point for the optimizer.
+    beta0 = np.array([3.5, 2.0, 1.5, 1.5, 1.0, 0.5, 3.0], dtype=float)
 
     res = minimize(
         fun=lambda b: neg_log_lik(b, X_list, y, args.l2),

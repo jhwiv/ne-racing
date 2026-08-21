@@ -11,8 +11,8 @@
  *     "raceId": "SAR-20250710-R1",
  *     "track":  "SAR",
  *     "date":   "2025-07-10",
- *     "features": [   // one row per non-scratched horse, six sub-scores 0..100
- *       [speed, classS, pace, tj, bias, fresh],   // pp 1
+ *     "features": [   // one row per non-scratched horse, seven sub-scores 0..100
+ *       [speed, classS, pace, tj, bias, fresh, market],   // pp 1
  *       ...
  *     ],
  *     "ppOrder": [1,2,3,...],    // parallel to `features`, the actual PP values
@@ -114,9 +114,12 @@ async function main() {
       skipReasons['winner_scratched'] = (skipReasons['winner_scratched']||0)+1; skipped++; continue;
     }
 
+    // v2.49.74: 7th feature, marketScore -- see scoring.js's marketSubScore()
+    // for why (the market's own price is the strongest available signal;
+    // let it anchor the fit instead of building a from-scratch predictor).
     const features = scored.map(s => [
       s.speedScore, s.classScore, s.paceScore,
-      s.tjScore, s.biasScore, s.freshnessScore,
+      s.tjScore, s.biasScore, s.freshnessScore, s.marketScore,
     ]);
     const ppOrder = scored.map(s => parseInt(s.horse.pp, 10));
 

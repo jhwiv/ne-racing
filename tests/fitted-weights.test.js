@@ -25,8 +25,8 @@ test('loadFittedWeights accepts a valid payload and normalizes to sum 1', () => 
     schema_version: 1,
     engine_version: 'v2',
     method: 'conditional_logit',
-    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'],
-    weights_normalized: [0.40, 0.20, 0.15, 0.10, 0.10, 0.05],
+    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh', 'market'],
+    weights_normalized: [0.35, 0.20, 0.15, 0.10, 0.05, 0.05, 0.10],
     n_races: 250,
     status: 'fitted',
   };
@@ -41,8 +41,8 @@ test('loadFittedWeights accepts a valid payload and normalizes to sum 1', () => 
 
 test('loadFittedWeights rejects insufficient-status payloads', () => {
   const payload = {
-    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'],
-    weights_normalized: [0.4, 0.2, 0.15, 0.1, 0.1, 0.05],
+    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh', 'market'],
+    weights_normalized: [0.35, 0.20, 0.15, 0.10, 0.05, 0.05, 0.10],
     n_races: 50,
     status: 'insufficient',
   };
@@ -55,9 +55,17 @@ test('loadFittedWeights rejects mis-shaped feature lists', () => {
   assert.strictEqual(loadFittedWeights({
     features: ['speed', 'class'], weights_normalized: [0.7, 0.3], status: 'fitted',
   }), null);
+  // v2.49.74: the old 6-feature schema (pre-`market`) must now be rejected --
+  // a stale/pre-upgrade payload should fall back to DEFAULT_V2_WEIGHTS at the
+  // call site rather than being partially accepted.
   assert.strictEqual(loadFittedWeights({
-    features: ['speed', 'class', 'pace', 'tj', 'bias', 'WRONG'],
-    weights_normalized: [0.4, 0.2, 0.15, 0.1, 0.1, 0.05],
+    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'],
+    weights_normalized: [0.35, 0.20, 0.15, 0.15, 0.10, 0.05],
+    status: 'fitted',
+  }), null);
+  assert.strictEqual(loadFittedWeights({
+    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh', 'WRONG'],
+    weights_normalized: [0.35, 0.20, 0.15, 0.10, 0.05, 0.05, 0.10],
     status: 'fitted',
   }), null);
 });
@@ -69,8 +77,8 @@ test('loadFittedWeights preserves the sign of negative coefficients, normalizing
   // see the comment on this function). Sign must survive; only |beta| is
   // renormalized, so weights sum in absolute value to 1, not in raw sum.
   const payload = {
-    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'],
-    weights_normalized: [-0.4, 0.2, -0.15, 0.1, 0.1, 0.05],
+    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh', 'market'],
+    weights_normalized: [-0.4, 0.2, -0.15, 0.1, 0.05, 0.05, 0.05],
     n_races: 300, status: 'fitted',
   };
   const out = loadFittedWeights(payload);
@@ -97,8 +105,8 @@ test('scoreRace v2 uses default weights when no fittedWeights provided', () => {
 test('scoreRace v2 with fittedWeights weighting speed heavily favors top speed horse', () => {
   const race = tinyRace();
   const speedHeavy = {
-    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'],
-    weights_normalized: [0.95, 0.01, 0.01, 0.01, 0.01, 0.01],
+    features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh', 'market'],
+    weights_normalized: [0.94, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
     n_races: 300, status: 'fitted',
   };
   const scored = scoreRace(race, { version: 'v2', fittedWeights: speedHeavy });
@@ -112,8 +120,8 @@ test('scoreRace v2 ignores fittedWeights when version is v1', () => {
   const v1B = scoreRace(race, {
     version: 'v1',
     fittedWeights: {
-      features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'],
-      weights_normalized: [0.95, 0.01, 0.01, 0.01, 0.01, 0.01],
+      features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh', 'market'],
+      weights_normalized: [0.94, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
       n_races: 300, status: 'fitted',
     },
   });
@@ -166,7 +174,10 @@ test('the committed data/weights/v2.json is real, fitted, and accepted by loadFi
 // holdout, 2026-08-21): sign-preserved weights beat DEFAULT_V2_WEIGHTS on
 // holdout log-loss (2.0932 vs 2.1018) -- a real, if modest, edge; see
 // docs/HANDOFF.md §14.2 for the full context on why this is not, by itself,
-// a fix for the model's still-weak overall predictive power.
+// a fix for the model's still-weak overall predictive power. v2.49.74 added
+// `market` as a 7th feature (see marketSubScore() in scoring.js) and it came
+// back the single largest, unambiguously positive weight -- also locked in
+// here.
 test('the committed data/weights/v2.json preserves the real negative sign found for pace and fresh', () => {
   const fs = require('node:fs');
   const path = require('node:path');
@@ -178,4 +189,6 @@ test('the committed data/weights/v2.json preserves the real negative sign found 
   assert.ok(loaded.weights.fresh < 0,
     `fresh weight (${loaded.weights.fresh}) must stay negative -- the fitted data says higher freshness sub-score predicts LOWER win probability here`);
   assert.ok(loaded.weights.speed > 0, 'speed weight must stay positive (the dominant, unambiguous real signal)');
+  assert.ok(loaded.weights.market > 0.3,
+    `market weight (${loaded.weights.market}) must stay strongly positive and dominant -- it's the single most informative feature available`);
 });
