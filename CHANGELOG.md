@@ -1,5 +1,89 @@
 # NE Racing — Changelog
 
+## v2.49.72-brisnet — Fix: v2 fitted weights silently discarded a real, significant negative signal (2026-08-21)
+
+Requested review of why "Our Picks" (v2) results have been bad. Traced it past the
+Analytics display, into the model itself.
+
+**Root cause.** `data/weights/v2.json` is a conditional-logit fit over 559 real races
+(one weight per sub-score: speed, class, pace, trainer/jockey, bias, freshness). Two
+of the six fitted coefficients came back negative — `pace` (β=-0.985, |z|≈2.6) and
+`fresh` (β=-2.294, |z|≈2.9) — both statistically real effects, not noise (contrast
+`bias`, β≈0.0006 with se=31.6, which really is unidentified noise and stays ~0 either
+way). Both `scripts/lib/scoring.js`'s `loadFittedWeights()` (JS) and
+`scripts/training/fit_logit.py` (Python, the true source — `weights_normalized` was
+already abs()'d before it ever reached the JS side) took `Math.abs()`/`np.abs()` of
+every coefficient before use, on the stated assumption that "higher sub-score is
+always better." It isn't — the data says horses that scored well on the hand-designed
+pace-setup and freshness heuristics were, controlling for everything else, LESS
+likely to win. `fresh` alone carries 30% of the total composite weight, so this was
+applied backwards for practically a third of the model. Matches the worst live
+numbers seen: Best Bet (the single highest-composite horse) at 1-20 (4.8%), Value
+Play (overlay-selected) at 0-12 — both selection paths read directly off this
+corrupted composite/modelProb.
+
+**Fixed** end-to-end: `fit_logit.py` now normalizes magnitude only (`beta / abs_sum`,
+sign preserved) instead of `abs(beta) / abs_sum`; `scoring.js`'s `loadFittedWeights()`
+does the same; `compositeForHorse()` now applies each weight to the sub-score's
+DEVIATION from the neutral midpoint (50), not the raw sub-score, so a negative weight
+correctly pulls the composite down instead of requiring every weight to be positive
+and sum to exactly 1 (algebraically identical to the old formula when all weights are
+positive and sum to 1 — only changes behavior for a negatively-signed feature).
+`data/weights/v2.json`'s committed `weights_normalized` was corrected in place (a pure
+sign flip on `pace`/`fresh`, recomputed deterministically from the already-committed
+`beta` — no retraining needed). Hand-edited identically into `index.html`/`app.html`
+(NOT via `inline_scoring.js` regeneration — see below).
+
+**Second bug found while verifying the fix**: `scripts/backtest/run.js`, the tool this
+project uses to validate every model change, never loaded `data/weights/v2.json` at
+all — every past backtest run of "v2" was silently measuring `DEFAULT_V2_WEIGHTS` (the
+hand-picked heuristic blend), not what's actually live. Fixed — `run.js` now loads the
+same file the live app does via `RailbirdFittedWeights.getSync()`.
+
+**Third bug, pre-existing, unrelated to the above**: regenerating the inline script
+block for `index.html` from `scripts/lib/scoring.js` via `node
+scripts/build/inline_scoring.js` (the normal documented path) would have DELETED a
+real fix that only ever lived in the live HTML — `dataCompleteness()`'s Prime-Power
+completeness short-circuit (v2.46.0/v2.49.20). `scripts/lib/scoring.js` had silently
+drifted out of sync with production at some earlier point; `tests/inline-scoring-
+sync.test.js` had been failing and was being treated as "1 pre-existing unrelated
+failure" rather than fixed. Restored the missing fix into `scoring.js` (bringing it up
+to what's live) and hand-edited `index.html`/`app.html` directly for this ship instead
+of regenerating (per the existing §11.2 hand-drift danger in docs/HANDOFF.md) — the
+inline-sync test still fails, but now for the one specific, understood, intentional
+reason (`confidenceFor()`'s delegation to `relativeConfidence()`), matching the
+documented baseline instead of an unexplained one.
+
+**Honest result, not a fix for "results have not been good" by itself.** Using this
+project's own held-out validation (`scripts/backtest/weight_sweep.js`, chronological
+70/30 split, holdout log-loss as primary metric — flat ROI is too noisy on 169 holdout
+races to trust alone):
+
+| Candidate | Holdout log-loss | Holdout top-1 | Holdout flat ROI |
+| --- | --- | --- | --- |
+| Current defaults (DEFAULT_V2_WEIGHTS) | 2.1018 | 17.8% | +6.7% |
+| **Fitted weights, sign fixed (this ship)** | **2.0932** | 18.9% | -6.6% |
+| Best of 3000 random search (train-selected) | 2.0867 | 17.8% | -9.4% |
+
+The sign fix is a real, modest improvement on the metric that matters most
+(log-loss) — but all three candidates cluster in a similarly weak range, because
+`fit_diagnostics.pseudo_r2_mcfadden = 0.048` on the current 559-race corpus: this
+model explains almost nothing beyond a coin-flip regardless of which weight vector is
+used. Fixing the sign made a real bug correct; it does not make an underpowered model
+powerful. Shipping anyway because (a) discarding a fitted coefficient's sign is simply
+wrong on its face, independent of backtest results, and (b) it is a real, if modest,
+improvement on holdout log-loss, not a regression.
+
+**Recommended next steps** (not yet done): gate `data/weights/v2.json` adoption on
+beating `DEFAULT_V2_WEIGHTS` on holdout log-loss, not just `n_races >= 200` (right now
+nothing stops a worse fit from shipping); backfill more real race results (README's
+long-documented gap — 559-1012 races is thin for a 6-parameter fit); backtest-validate
+the Value Play thresholds (`overlay > 0.08`, `score >= 55`) the same way, since Value
+Play has been the single worst-performing bet category historically.
+
+Full suite: 387 total, 386 pass, 1 pre-existing failure (the documented
+`confidenceFor()` hand-drift above — not a regression, same root cause as always).
+
 ## v2.49.71-brisnet — Analytics tab suppressed from nav pending redesign (2026-08-15)
 
 The owner's reaction to the live v2.49.67 redesign ("This sucks why is it so

@@ -8,7 +8,10 @@
  * the contract expected by the runtime loader (RailbirdFittedWeights +
  * loadFittedWeights):
  *
- *   - non-negative `weights_normalized` summing to 1.0
+ *   - signed `weights_normalized`, summing in ABSOLUTE VALUE to 1.0 (v2.49.72:
+ *     a negative fitted coefficient is a real, meaningful signal when a
+ *     sub-score's actual relationship to winning runs opposite the "higher =
+ *     better" design assumption -- it must not be discarded)
  *   - required keys present (features, n_races, status, schema_version)
  *   - status either 'fitted' or 'insufficient'
  *   - 'fitted' implies n_races >= min_races_required
@@ -91,16 +94,21 @@ test('fitter produces a runtime-loader-compatible v2.json', { skip: !pythonAvail
     assert.ok(payload.n_races >= payload.min_races_required);
   }
 
-  // Weight contract: non-negative, sums to 1.
+  // Weight contract: signed, magnitude sums to 1.
   const w = payload.weights_normalized;
   assert.ok(Array.isArray(w) && w.length === 6, 'weights_normalized is length-6 array');
   for (const v of w) {
-    assert.ok(typeof v === 'number' && v >= 0,
-      'weights_normalized values must be non-negative, got ' + v);
+    assert.ok(typeof v === 'number' && isFinite(v),
+      'weights_normalized values must be finite numbers, got ' + v);
   }
-  const sum = w.reduce((a, b) => a + b, 0);
-  assert.ok(Math.abs(sum - 1.0) < 1e-6,
-    'weights_normalized must sum to 1.0 (got ' + sum + ')');
+  const absSum = w.reduce((a, b) => a + Math.abs(b), 0);
+  assert.ok(Math.abs(absSum - 1.0) < 1e-6,
+    'sum of |weights_normalized| must be 1.0 (got ' + absSum + ')');
+  // This synthetic corpus bakes in a pure speed signal (every other feature
+  // is constant/noise), so speed's fitted coefficient should be positive and
+  // dominant -- a real regression check that sign survived the round trip.
+  const speedIdx = payload.features.indexOf('speed');
+  assert.ok(w[speedIdx] > 0, 'speed weight must be positive given the synthetic speed-only signal');
 
   // Diagnostics block present.
   assert.ok(payload.fit_diagnostics, 'fit_diagnostics present');
@@ -114,8 +122,9 @@ test('fitter produces a runtime-loader-compatible v2.json', { skip: !pythonAvail
   const { loadFittedWeights } = require('../scripts/lib/scoring.js');
   const loaded = loadFittedWeights(payload);
   assert.ok(loaded, 'runtime loader accepts fitter output');
-  const loadedSum = Object.values(loaded.weights).reduce((a, b) => a + b, 0);
-  assert.ok(Math.abs(loadedSum - 1.0) < 1e-9);
+  // v2.49.72: signed weights sum in ABSOLUTE VALUE to 1, not in raw sum.
+  const loadedAbsSum = Object.values(loaded.weights).reduce((a, b) => a + Math.abs(b), 0);
+  assert.ok(Math.abs(loadedAbsSum - 1.0) < 1e-9);
 
   // Cleanup.
   fs.rmSync(tmp, { recursive: true, force: true });

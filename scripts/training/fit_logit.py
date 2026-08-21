@@ -207,14 +207,22 @@ def main() -> int:
             hits += 1
     hit_rate = hits / n_races
 
-    # Normalize |beta| to sum to 1 for the "report-card" weight that the
-    # runtime loader consumes. Sub-scores are constructed so higher = better;
-    # if a fitted coefficient came out negative it means the feature is
-    # mis-signed or just noise, but we still want a non-negative weight in
-    # the final composite. Keep raw fitted coefficients separately as `beta`.
+    # Normalize beta's MAGNITUDE to sum to 1 for the "report-card" weight the
+    # runtime loader consumes -- but keep its SIGN. Sub-scores are constructed
+    # so "higher = better" is the intended direction, but that is a design
+    # assumption, not a guarantee: if the real fitted data says a sub-score's
+    # actual relationship to winning runs the other way (v2.49.72 found this
+    # for both `pace` and `fresh`, each with |z| > 2.5 -- not noise), the
+    # runtime composite must apply that weight as negative or it silently
+    # inverts a real, statistically significant signal. This used to
+    # np.abs(beta) here and lose the sign before it ever reached the JS
+    # loader, which made scripts/lib/scoring.js's own sign-preserving fix a
+    # no-op against this file's output -- fixing both ends matters. Raw
+    # (unnormalized, signed) fitted coefficients are still kept separately as
+    # `beta` for diagnostics.
     abs_beta = np.abs(beta)
     abs_sum = float(np.sum(abs_beta))
-    weights_normalized = (abs_beta / abs_sum).tolist() if abs_sum > 0 else [1.0 / len(beta)] * len(beta)
+    weights_normalized = (beta / abs_sum).tolist() if abs_sum > 0 else [1.0 / len(beta)] * len(beta)
 
     payload = {
         'schema_version': 1,

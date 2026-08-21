@@ -25,6 +25,21 @@ const { loadCorpus } = require('./load_corpus');
 const M = require('./metrics');
 const S = require('../lib/scoring');
 
+// v2.49.72: the live app (index.html/app.html) fetches data/weights/v2.json
+// at runtime and passes it as opts.fittedWeights into every v2 scoreRace()
+// call (see RailbirdFittedWeights.getSync() in index.html) -- but this
+// harness never did, so every prior backtest run of "v2" was actually
+// measuring DEFAULT_V2_WEIGHTS (the hand-picked heuristic blend), not the
+// fitted weights production has served since v2.49.53. Load the same file
+// here so backtest numbers reflect what's actually live.
+const WEIGHTS_PATH = path.join(__dirname, '..', '..', 'data', 'weights', 'v2.json');
+let FITTED_WEIGHTS = null;
+try {
+  const payload = JSON.parse(fs.readFileSync(WEIGHTS_PATH, 'utf8'));
+  const loaded = S.loadFittedWeights(payload);
+  if (loaded) FITTED_WEIGHTS = loaded.weights;
+} catch (e) { /* no weights file yet, or not fitted -- fall back to defaults */ }
+
 function parseArgs(argv) {
   const out = {
     versions: ['v1', 'v2'],
@@ -67,7 +82,10 @@ function evaluateVersion(version, races) {
   let scoredCount = 0;
 
   for (const race of races) {
-    const scored = S.scoreRace(race, { version, today: race.date });
+    const scored = S.scoreRace(race, {
+      version, today: race.date,
+      fittedWeights: (version === 'v2') ? FITTED_WEIGHTS : null,
+    });
     if (!scored.length) continue;
     scoredCount++;
 

@@ -1438,3 +1438,105 @@ getting this specific card's numbers to actually check out clean, and per
 `.claude/skills/analytics-qa/SKILL.md`'s standing instruction, the next
 session should NOT assume this one succeeded without looking at the real
 log output.
+
+## 14. Analytics tab suppressed from nav; v2 fitted-weights sign bug fixed (2026-08-21)
+
+### 14.1 v2.49.71 — Analytics tab suppressed from nav pending redesign
+
+Owner's reaction to the v2.49.67 redesign: "This sucks why is it so hard to come up
+with a good info graphic." A real CSS bug was also found in the same screenshot
+(negative ROI rendering in the same green as positive win rate — `.bankroll-grid
+.bankroll-stat .stat-value` had no `.stat-positive`/`.stat-negative` branch). Three
+mockup directions were built for review before touching the shipped UI again; while
+that review was pending, the owner asked to suppress the tab outright instead. Both
+nav entry points (`#tab-btn-analytics` mobile, `#dnav-analytics` desktop) demoted with
+the same `legacy-hidden-tab` pattern already used for Barn/Results/Reference/
+Handicap — markup and render code (`renderAnalyticsTab`, `renderAnalyticsAccuracy`,
+etc.) untouched, no other path into `switchTab('analytics')`. Ships the already-
+drafted color-coding + caption fixes too (correct, dormant while hidden).
+
+### 14.2 v2.49.72 — v2 fitted weights were silently discarding a real, significant negative signal
+
+Requested: review pick accuracy, results have not been good. Traced past the
+Analytics display into the model itself.
+
+**Root cause.** `data/weights/v2.json`'s conditional-logit fit (559 real races) came
+back with two of six sub-score coefficients negative — `pace` (β=-0.985, |z|≈2.6) and
+`fresh` (β=-2.294, |z|≈2.9), both statistically real (contrast `bias`, β≈0.0006,
+se=31.6 — genuinely unidentified noise). Both `scoring.js`'s `loadFittedWeights()` and
+`fit_logit.py` (the true source of the bug — `weights_normalized` was already abs()'d
+in Python before JS ever saw it) took the absolute value of every coefficient before
+use, assuming "higher sub-score is always better." The real data said the opposite for
+these two features, and `fresh` alone is 30% of the composite weight — applied
+backwards for a third of the model. Explains the worst live numbers: Best Bet 1-20
+(4.8%), Value Play 0-12 — both read directly off this composite.
+
+**Fix, three parts, hand-verified with tests + backtest before shipping:**
+- `fit_logit.py`: `beta / abs_sum` (sign preserved) instead of `abs(beta) / abs_sum`.
+- `scoring.js`'s `loadFittedWeights()`: same. `compositeForHorse()` reformulated to
+  apply each weight to the sub-score's deviation from 50 (neutral midpoint), not the
+  raw sub-score — algebraically identical to the old formula when all weights are
+  positive and sum to 1 (the DEFAULT_V2_WEIGHTS case), only changes behavior for a
+  negatively-signed fitted weight.
+- `data/weights/v2.json`'s committed `weights_normalized` corrected in place — pure
+  sign flip on `pace`/`fresh`, recomputed deterministically from the already-committed
+  `beta`, no retraining needed.
+- Hand-edited into `index.html`/`app.html` directly, NOT via `node
+  scripts/build/inline_scoring.js` — see §14.3.
+
+**Second bug, found while verifying:** `scripts/backtest/run.js` never loaded
+`data/weights/v2.json` — every past "v2" backtest run (including the T=12→T=20
+temperature decision in §11.6) was silently measuring `DEFAULT_V2_WEIGHTS`, not what's
+actually live. Fixed: `run.js` now loads the same file the live app fetches via
+`RailbirdFittedWeights.getSync()`.
+
+**Result, via `scripts/backtest/weight_sweep.js` (chronological 70/30 holdout,
+log-loss primary — flat ROI on 169 holdout races is too noisy to trust alone):**
+
+| Candidate | Holdout log-loss | Holdout top-1 | Holdout flat ROI |
+| --- | --- | --- | --- |
+| DEFAULT_V2_WEIGHTS | 2.1018 | 17.8% | +6.7% |
+| Fitted weights, sign fixed (shipped) | 2.0932 | 18.9% | -6.6% |
+| Best of 3000 random search (train-selected) | 2.0867 | 17.8% | -9.4% |
+
+Real, modest win on the metric that matters most — but all three cluster in a
+similarly weak range (`pseudo_r2_mcfadden = 0.048` on this corpus: the model explains
+almost nothing beyond chance regardless of weight vector). The sign fix corrects a
+real bug and gives a small honest edge; it is not, by itself, the reason results have
+been bad. Shipped anyway — discarding a fitted coefficient's sign is wrong on its face
+independent of backtest results, and this is a net-positive holdout change, not a
+regression.
+
+**Not yet done (next steps for improving results further):**
+- Gate `data/weights/v2.json` adoption on beating `DEFAULT_V2_WEIGHTS` on holdout
+  log-loss, not just `n_races >= 200` — nothing today stops a worse fit from shipping.
+- Backfill more real race results (the backtest README's long-standing documented gap
+  — 559-1012 races is thin for a 6-parameter conditional logit).
+- Backtest-validate the Value Play thresholds (`overlay > 0.08`, `score >= 55`) the
+  same way `weight_sweep.js` validates the composite weights — they've never been
+  tuned against holdout data, and Value Play has been the single worst-performing bet
+  category historically.
+
+### 14.3 A pre-existing, unrelated drift caught (and NOT introduced) during this ship
+
+Regenerating `index.html`'s inline scoring block the normal way (`node
+scripts/build/inline_scoring.js`, no `--check`) would have deleted a real fix that has
+only ever lived in the live HTML: `dataCompleteness()`'s Prime-Power completeness
+short-circuit (v2.46.0/v2.49.20 — see §11.2's own warning about this exact danger,
+which had already bitten this project "twice" per that section). `scripts/lib/
+scoring.js` had drifted out of sync with production at some earlier point;
+`tests/inline-scoring-sync.test.js` had been failing for a while and was being
+written off as "1 pre-existing unrelated failure" rather than investigated. Restored
+the missing fix into `scoring.js` (bringing the canonical module up to what's
+actually live, the correct direction to resolve drift) and hand-edited `index.html`/
+`app.html` directly for this ship instead of regenerating. The inline-sync test still
+fails — but now for the one specific, understood, deliberate reason
+(`confidenceFor()`'s delegation to the separate `relativeConfidence()` engine, per
+§11.2), matching a documented baseline instead of an unexplained one. If a future
+session wants that test fully green, `confidenceFor()`'s delegation logic needs to be
+ported into `scoring.js` too (not attempted here — out of scope for this fix, and
+risk/benefit didn't justify it for an unrelated function).
+
+Full suite: 387 total, 386 pass, 1 pre-existing failure (the above, unchanged root
+cause), 1 skipped. No worker.js change — scoring-model-only, no `wrangler deploy`
+needed; auto-deploys via Pages on push to `master`.

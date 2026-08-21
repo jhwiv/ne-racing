@@ -62,9 +62,12 @@ test('loadFittedWeights rejects mis-shaped feature lists', () => {
   }), null);
 });
 
-test('loadFittedWeights takes absolute values of negative coefficients', () => {
-  // Conditional logit can produce negative betas if a sub-score is mis-signed.
-  // We treat magnitudes as the effective weight (higher = more influence).
+test('loadFittedWeights preserves the sign of negative coefficients, normalizing only magnitude', () => {
+  // Conditional logit can produce negative betas when a sub-score's real
+  // relationship to winning runs opposite the hand-designed "higher = better"
+  // assumption (v2.49.72: pace and fresh both did, in the real fitted data --
+  // see the comment on this function). Sign must survive; only |beta| is
+  // renormalized, so weights sum in absolute value to 1, not in raw sum.
   const payload = {
     features: ['speed', 'class', 'pace', 'tj', 'bias', 'fresh'],
     weights_normalized: [-0.4, 0.2, -0.15, 0.1, 0.1, 0.05],
@@ -72,9 +75,11 @@ test('loadFittedWeights takes absolute values of negative coefficients', () => {
   };
   const out = loadFittedWeights(payload);
   assert.ok(out);
-  for (const v of Object.values(out.weights)) {
-    assert.ok(v >= 0, 'all weights non-negative after abs');
-  }
+  assert.ok(out.weights.speed < 0, 'negative speed coefficient must stay negative');
+  assert.ok(out.weights.pace < 0, 'negative pace coefficient must stay negative');
+  assert.ok(out.weights.class > 0, 'positive coefficients stay positive');
+  const absSum = Object.values(out.weights).reduce((a, b) => a + Math.abs(b), 0);
+  assert.ok(Math.abs(absSum - 1.0) < 1e-9, 'sum of absolute values normalizes to 1');
 });
 
 test('scoreRace v2 uses default weights when no fittedWeights provided', () => {
@@ -144,6 +149,8 @@ test('the committed data/weights/v2.json is real, fitted, and accepted by loadFi
   assert.ok(payload.n_races >= 200, `n_races (${payload.n_races}) must meet the live app's own 200-race threshold`);
   const loaded = loadFittedWeights(payload);
   assert.ok(loaded, 'loadFittedWeights must accept the real committed payload');
-  const sum = Object.values(loaded.weights).reduce((a, b) => a + b, 0);
-  assert.ok(Math.abs(sum - 1.0) < 1e-9, 'loaded weights must sum to 1');
+  // v2.49.72: weights are signed (pace/fresh are negative in this real
+  // payload), so only the ABSOLUTE VALUES sum to 1 -- the raw signed sum does not.
+  const absSum = Object.values(loaded.weights).reduce((a, b) => a + Math.abs(b), 0);
+  assert.ok(Math.abs(absSum - 1.0) < 1e-9, 'sum of |weights| must be 1');
 });

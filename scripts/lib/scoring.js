@@ -276,6 +276,30 @@ function dataCompleteness(horse) {
   if ((parseFloat(horse.jockeyPct) || 0) > 0) n++;
   if ((parseFloat(horse.trainerPct) || 0) > 0) n++;
   if (horse.lastClass) n++;
+  // v2.46.0: when Brisnet Prime Power is present, the runner has full PP
+  // coverage from a primary vendor — anchor completeness to 1.0 so the
+  // sub-3/7 and sub-4/7 penalty multipliers in compositeForHorse() do not
+  // unfairly knock down well-documented Brisnet horses just because the
+  // legacy fig/jky/trainer fields are sparse.
+  // v2.49.20: use the same >0 guard as jockeyPct/trainerPct above -- a real
+  // Brisnet Prime Power is never legitimately 0 (documented range ~80-165),
+  // so primePower:0 only occurs from malformed upstream data. `!= null`
+  // treated that as "fully complete" (return 1, no penalty) at the exact
+  // same time speedSubScore() computes the worst-possible speed sub-score
+  // for it -- a data-completeness signal directly contradicting the speed
+  // signal for the same malformed row.
+  //
+  // v2.49.72: restored here after discovering this fix existed live in
+  // index.html/app.html's hand-inlined RailbirdScoring block but had never
+  // been ported back into this canonical module -- the inline-sync check
+  // (tests/inline-scoring-sync.test.js) had been failing, silently, for an
+  // unknown period before this session, meaning scripts/lib/scoring.js (the
+  // source every unit test and backtest run treats as ground truth) had
+  // already drifted from what the live app actually runs. Restoring parity
+  // in this direction (bring scoring.js up to what's live) rather than the
+  // other way (regenerate the live block from the stale scoring.js and
+  // silently drop the fix), which is what a blind re-sync would have done.
+  if ((parseFloat(horse.primePower) || 0) > 0) return 1;
   return n / 7;
 }
 
@@ -331,12 +355,29 @@ function loadFittedWeights(payload) {
     if (!isFinite(v)) return null;
     w[required[i]] = v;
   }
-  // Normalize sign + magnitude: take absolute values then renormalize so weights sum to 1.
-  // (Conditional logit can produce negative coefficients when a sub-score is
-  // mis-signed in the training data — we treat them as pure magnitudes here, on
-  // the assumption that the v2 sub-scores are oriented "higher = better".)
+  // Normalize MAGNITUDE only, by dividing every beta by the sum of absolute
+  // values (so Σ|w_k| = 1) -- but keep the SIGN the fit actually found.
+  //
+  // v2.49.72: this used to Math.abs() every beta before normalizing, discarding
+  // sign entirely, on the stated assumption that "higher sub-score = better" is
+  // always true. It isn't -- the real fitted data/weights/v2.json (559 real SAR
+  // races) came back with beta_pace = -0.985 (se 0.38, |z|~2.6) and
+  // beta_fresh = -2.294 (se 0.79, |z|~2.9): both are statistically real
+  // negative effects, not noise (contrast beta_bias = 0.0006 with se 31.6 --
+  // that one really is unidentified noise, and stays ~0 either way). Stripping
+  // that sign meant compositeForHorse() was adding paceScore/freshnessScore
+  // in with a POSITIVE weight when the fitted data said horses scoring higher
+  // on those two sub-scores were, controlling for the rest, LESS likely to
+  // win -- fresh alone carried 30% of the total composite weight, applied
+  // backwards. Confirmed via scripts/backtest/run.js against the real 2023-
+  // 2026 corpus: v2's top-1 hit rate (21.5%) was *worse* than baseline_ml
+  // (morning-line favorite, 29.2%), and live pick history showed Best Bet
+  // (the single highest-composite horse) at 1-20 (4.8%) and Value Play
+  // (overlay-selected) at 0-12 -- both selection paths read directly off this
+  // composite/modelProb, so a sign error here corrupts them most. See
+  // compositeForHorse() below for how the now-signed weight is applied.
   let absSum = 0;
-  for (const k of required) { w[k] = Math.abs(w[k]); absSum += w[k]; }
+  for (const k of required) absSum += Math.abs(w[k]);
   if (absSum === 0) return null;
   for (const k of required) w[k] /= absSum;
   return {
@@ -365,11 +406,24 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
   const completeness = dataCompleteness(horse);
 
   // Use fitted v2 weights when supplied (and only for v2 engine); else fall
-  // back to the hand-picked defaults. Both shapes are {speed,class,pace,tj,bias,fresh}
-  // and both sum to 1 by construction.
+  // back to the hand-picked defaults. DEFAULT_V2_WEIGHTS are all-positive and
+  // sum to 1 by construction; fittedWeights (v2.49.72+) are signed and sum in
+  // ABSOLUTE VALUE to 1 (loadFittedWeights above), since conditional logit can
+  // -- and here, does -- find a feature runs the opposite direction from the
+  // hand-designed "higher sub-score = better" assumption.
+  //
+  // Apply each weight to the sub-score's DEVIATION from the neutral midpoint
+  // (50), not the raw sub-score, so a negative weight correctly PULLS the
+  // composite down when that sub-score is above-neutral, instead of requiring
+  // every weight to be positive and sum to exactly 1. When all weights are
+  // positive and sum to 1 (DEFAULT_V2_WEIGHTS, or an all-positive fit) this is
+  // algebraically identical to the old plain weighted sum -- it only changes
+  // behavior for a negatively-signed fitted feature (pace, fresh today).
   const w = (version === 'v2' && opts.fittedWeights) ? opts.fittedWeights : DEFAULT_V2_WEIGHTS;
-  let composite = speedScore * w.speed + classScore * w.class + paceScore * w.pace
-                + tjScore   * w.tj    + biasScore  * w.bias  + freshScore * w.fresh;
+  let composite = 50
+                + (speedScore - 50) * w.speed + (classScore - 50) * w.class
+                + (paceScore  - 50) * w.pace  + (tjScore     - 50) * w.tj
+                + (biasScore  - 50) * w.bias  + (freshScore  - 50) * w.fresh;
 
   // Equipment change (both versions keep this; small directional effect).
   if (horse.equipmentChanges) composite = Math.min(100, composite + 5);
