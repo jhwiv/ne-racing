@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260821-v2.49.75-brisnet'; // v2.49.75: replaced discrete step-bucketed class/freshness/trainer-jockey sub-scores with continuous piecewise-linear functions, a small consistent holdout improvement // bump on every ship
+const CACHE_VERSION = '20260821-v2.49.76-brisnet'; // v2.49.76: excluded Brisnet-contaminated dates from the training corpus, refit data/weights/v2.json clean (compliance fix, docs/DATA_WISHLIST.md) // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

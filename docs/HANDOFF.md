@@ -1694,3 +1694,44 @@ warning); `_inlined_scoring.js` regenerated standalone.
 
 Full suite: 398 total, 397 pass, 1 pre-existing failure (§14.3, unchanged). No
 worker.js change.
+
+### 14.7 v2.49.76 — data compliance: Brisnet-derived data excluded from training
+
+Found while investigating why the model can't clear a bigger gap over the market.
+`worker.js`'s `mergeBrisnetIntoEntries()` (v2.46.0) overlays real Brisnet PP data
+(`data/brisnet-{TRACK}-{DATE}.json`, committed for 6 SAR dates) onto LIVE entries for
+those dates. That data gets archived into `RACE_HISTORY` with no `source_provenance`
+tag and pulled into `data/normalized/` by `pull-race-history.yml` — the exact corpus
+`fit_logit.py` trains on.
+
+`docs/DATA_WISHLIST.md`'s own Rules: *"Never enter Equibase, Brisnet, or TimeformUS
+data into `training/` output unless a signed agreement explicitly permits it,"*
+Brisnet specifically "BLOCKED BY TOS ... regardless of subscription." Confirmed by
+exact-match comparison (`jockeyPct`/`trainerPct` vs. the source files'
+`jockeyMeetWinPct`/`trainerMeetWinPct`, matched by program number): **56 of 559
+training races (10%)** carried Brisnet-derived data — meaning §14.2/14.5/14.6's fits
+were all trained partly on barred data.
+
+**Fixed:** `load_corpus.js`'s `loadCorpus()` unconditionally excludes all races on the
+6 known dates (no opt-out — no valid reason to ever include this). Excludes the whole
+date, not just detectably-matching rows, since other overlaid fields could carry
+Brisnet data too without as clean a fingerprint. Refit `data/weights/v2.json` on the
+clean 492-race corpus.
+
+**Reassuring:** the clean refit's beta/signs/`pseudo_r2_mcfadden` (0.1064 vs 0.1051)
+are essentially unchanged, and the same 4-split holdout re-validation shows the same
+picture as §14.5's own reporting — T=13 still optimal, model still roughly at parity
+with market. The contamination was a real compliance problem, not one that also
+happened to corrupt the conclusions.
+
+Added `tests/load-corpus-compliance.test.js` locking in the exclusion.
+
+**Not resolved, flagged for the owner:** `mergeBrisnetIntoEntries()` itself is still
+live and enabled in `worker.js` — will keep firing for these dates (and any future
+`data/brisnet-*.json` date added) on every entries fetch, with no provenance tagging
+for a future pull to detect. This entry only stops it reaching *training*; whether the
+live *display* use should also be reconsidered (the ToS quote may cover that too, not
+just training) is a bigger product decision left to the owner, not made unilaterally.
+
+Full suite: 401 total, 400 pass, 1 pre-existing failure (§14.3, unchanged). No
+worker.js change in this entry.

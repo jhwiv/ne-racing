@@ -1,5 +1,59 @@
 # NE Racing — Changelog
 
+## v2.49.76-brisnet — Data compliance fix: Brisnet-derived data excluded from the training corpus (2026-08-21)
+
+Found while investigating why the model can't clear a bigger gap over the market:
+`worker.js`'s `mergeBrisnetIntoEntries()` (v2.46.0) overlays real Brisnet PP data
+(`data/brisnet-{TRACK}-{DATE}.json`, committed for 6 specific SAR dates) onto LIVE
+entries whenever served for those dates. That overlaid data (real `jockeyMeetWinPct`/
+`trainerMeetWinPct` → `jockeyPct`/`trainerPct`, plus speed figures, running style,
+last class) gets archived into `RACE_HISTORY` with no `source_provenance` tag
+distinguishing it from clean data, and the automated `pull-race-history.yml` job pulls
+it straight into `data/normalized/` — the exact corpus `scripts/training/fit_logit.py`
+fits on.
+
+`docs/DATA_WISHLIST.md`'s own "Rules" section is unambiguous: *"Never enter Equibase,
+Brisnet, or TimeformUS data into `training/` output unless a signed agreement
+explicitly permits it,"* and separately labels Brisnet **"BLOCKED BY TOS ... regardless
+of subscription... Reuse of this data is expressly prohibited."* Confirmed by exact-
+match comparison against the source `data/brisnet-*.json` files (matching `jockeyPct`/
+`trainerPct` to the decimal against `jockeyMeetWinPct`/`trainerMeetWinPct` by program
+number): **56 of the 559 training races (10%) carried Brisnet-derived data** — meaning
+every fit shipped today before this entry (v2.49.72's sign fix, v2.49.74's market
+feature, v2.49.75's de-bucketing) was trained partly on data barred by this project's
+own written policy.
+
+**Fixed:** `scripts/backtest/load_corpus.js`'s `loadCorpus()` now unconditionally
+excludes all races on the 6 known-contaminated dates (no opt-out flag — there's no
+valid reason to ever include this in training). Excludes the whole date, not just the
+rows that detectably matched, since other overlaid fields could carry Brisnet data too
+without as clean a fingerprint to detect by. Re-extracted features and refit
+`data/weights/v2.json` on the clean 492-race corpus (was 559).
+
+**Reassuring, not just compliant:** the clean refit's `beta`/signs/`pseudo_r2_mcfadden`
+(0.1064 vs. 0.1051) are essentially unchanged from the contaminated fit, and the same
+4-split holdout re-validation shows the same picture as v2.49.74/75's own honest
+reporting — T=13 remains optimal, the model remains roughly at parity with market.
+None of today's earlier conclusions were invalidated by the contamination; this was a
+real compliance problem, not one that happened to also corrupt the results.
+
+Added a regression lock (`tests/load-corpus-compliance.test.js`) asserting the 6 known
+dates never leak back into `loadCorpus()`'s output, and that the exclusion count is
+reported in stats rather than silently applied.
+
+**Not resolved by this entry, flagged for the owner's decision:** `worker.js`'s
+`mergeBrisnetIntoEntries()` overlay itself is still live and enabled — it will keep
+firing for these same 6 dates (and any future date a `data/brisnet-*.json` file is
+added for) every time entries are served, keeps writing Brisnet-derived fields into
+whatever gets archived to `RACE_HISTORY`, and there's still no `source_provenance`
+tagging to let a future corpus pull detect and exclude it automatically. This entry
+only stops it from reaching *training* — the live *display* use of Brisnet data (which
+the ToS quote above may also cover, not just training) is a separate, bigger product
+decision this fix deliberately did not make unilaterally.
+
+Full suite: 401 total, 400 pass, 1 pre-existing failure (documented, unrelated
+`confidenceFor()` hand-drift, unchanged). No worker.js change in this entry.
+
 ## v2.49.75-brisnet — Replaced discrete step-bucketed sub-scores with continuous functions; three other levers tried and honestly ruled out (2026-08-21)
 
 Continuing "keep trying, go for better results" past v2.49.74's market feature. Four

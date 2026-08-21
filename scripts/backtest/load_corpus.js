@@ -188,6 +188,36 @@ function loadCorpus(opts) {
   }
 
   let races = Array.from(byId.values());
+
+  // v2.49.76: unconditional compliance exclusion, not an opt-in flag -- there
+  // is no valid reason to ever include this in training. docs/DATA_WISHLIST.md
+  // ("Rules"): "Never enter Equibase, Brisnet, or TimeformUS data into
+  // `training/` output unless a signed agreement explicitly permits it," and
+  // separately labels Brisnet "BLOCKED BY TOS... regardless of subscription."
+  //
+  // worker.js's mergeBrisnetIntoEntries() (v2.46.0) overlays real Brisnet PP
+  // data (data/brisnet-{TRACK}-{DATE}.json, committed for these 6 dates only)
+  // onto LIVE entries whenever served for these dates. That overlaid data then
+  // gets archived into RACE_HISTORY and pulled into data/normalized/ by the
+  // automated pull-race-history.yml job -- with no source_provenance tag
+  // distinguishing it from clean data. Confirmed by exact-match comparison
+  // against the source data/brisnet-*.json files: 56 of 559 training races
+  // (10%) carried Brisnet-derived jockeyPct/trainerPct until this fix.
+  //
+  // This excludes every race on these dates entirely (not just the rows that
+  // detectably matched) since other overlaid fields (speedFigs, runningStyle,
+  // lastClass) could carry Brisnet data too without leaving as clean a
+  // fingerprint. If more data/brisnet-*.json dates are ever added, add them
+  // here too -- there is currently no automated provenance tag this could
+  // instead be driven from.
+  const BRISNET_CONTAMINATED_DATES = new Set([
+    '2026-06-05', '2026-06-06', '2026-06-07',
+    '2026-07-04', '2026-07-05', '2026-07-09',
+  ]);
+  const beforeExclusion = races.length;
+  races = races.filter(r => !(r.track === 'SAR' && BRISNET_CONTAMINATED_DATES.has(r.date)));
+  const brisnetExcluded = beforeExclusion - races.length;
+
   const total = races.length;
   const withResults = races.filter(r => r._hasResult).length;
 
@@ -203,6 +233,7 @@ function loadCorpus(opts) {
       from_normalized: normalized.length,
       from_entries: entries.length,
       from_fixtures: fixtures.length,
+      brisnet_excluded_for_compliance: brisnetExcluded,
     },
   };
 }
