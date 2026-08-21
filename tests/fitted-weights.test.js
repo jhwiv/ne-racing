@@ -154,3 +154,28 @@ test('the committed data/weights/v2.json is real, fitted, and accepted by loadFi
   const absSum = Object.values(loaded.weights).reduce((a, b) => a + Math.abs(b), 0);
   assert.ok(Math.abs(absSum - 1.0) < 1e-9, 'sum of |weights| must be 1');
 });
+
+// v2.49.72: locks in the actual empirical finding, not just the loader's
+// generic sign-preservation behavior (already covered above). If a future
+// re-fit, a hand-edit, or a regression anywhere in the pipeline (JS loader,
+// Python fitter, or the committed JSON itself) ever silently re-introduces
+// Math.abs()/np.abs() on these coefficients -- the exact bug this version
+// fixed -- this is what catches it before it ships, rather than relying on
+// someone noticing Best Bet/Value Play performance degrade live again.
+// Confirmed via scripts/backtest/weight_sweep.js (chronological 70/30
+// holdout, 2026-08-21): sign-preserved weights beat DEFAULT_V2_WEIGHTS on
+// holdout log-loss (2.0932 vs 2.1018) -- a real, if modest, edge; see
+// docs/HANDOFF.md §14.2 for the full context on why this is not, by itself,
+// a fix for the model's still-weak overall predictive power.
+test('the committed data/weights/v2.json preserves the real negative sign found for pace and fresh', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const payload = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'weights', 'v2.json'), 'utf8'));
+  const loaded = loadFittedWeights(payload);
+  assert.ok(loaded, 'loadFittedWeights must accept the real committed payload');
+  assert.ok(loaded.weights.pace < 0,
+    `pace weight (${loaded.weights.pace}) must stay negative -- the fitted data says higher pace sub-score predicts LOWER win probability here`);
+  assert.ok(loaded.weights.fresh < 0,
+    `fresh weight (${loaded.weights.fresh}) must stay negative -- the fitted data says higher freshness sub-score predicts LOWER win probability here`);
+  assert.ok(loaded.weights.speed > 0, 'speed weight must stay positive (the dominant, unambiguous real signal)');
+});

@@ -1,5 +1,42 @@
 # NE Racing — Changelog
 
+## v2.49.73-brisnet — Follow-up: regression lock for the sign fix, an honest look at Value Play thresholds (2026-08-21)
+
+Continuing "keep trying to improve the results" after v2.49.72's sign fix. Three things, no live-behavior change in this entry (no HTML/worker touched):
+
+**Checked whether more training data landed.** The corpus picked up ~100 automated
+"refresh NYRA expert picks" / "pull real race history" commits since the last check.
+Re-ran `scripts/training/extract_features.js`: still exactly 559 usable races (same
+`no_result`/`empty_scored`/`winner_scratched` counts as before). The new commits added
+picks/entries data, not new result-bearing races with full horse detail — refitting
+today would produce an identical model. Backfilling real results is still the real
+lever (README's long-documented gap), just not unlocked yet.
+
+**Added a durable regression lock**, not just a generic loader test: `tests/fitted-
+weights.test.js` now asserts the COMMITTED `data/weights/v2.json`'s `pace` and `fresh`
+weights are specifically negative (the actual empirical finding from v2.49.72), so any
+future re-fit, hand-edit, or pipeline regression that silently reintroduces
+`abs()`-stripping anywhere gets caught by the test suite immediately, instead of
+waiting for Best Bet/Value Play to visibly degrade live again.
+
+**Built `scripts/backtest/overlay_threshold_sweep.js`** — the same honest,
+chronological-holdout method as `weight_sweep.js`, applied to the Value Play gate
+(`overlay > 0.08 && score >= 55` in `pick_selection.js`/`metrics.js`), since that's
+been the single worst-performing bet category historically and these two numbers were
+never backtested at all. **Honest result: no actionable change found.** A naive
+grid-search "best on train" cell (overlay>0.12, score>=70, +31.1% train ROI) collapsed
+to 2 holdout bets at -100% the moment it was checked out-of-sample — textbook
+overfitting to a thin corpus's noise, exactly the failure mode `weight_sweep.js`
+already warns about for weight vectors. The current 0.08/55 gate shows no holdout
+advantage over alternatives, but neither does anything else in the grid survive
+out-of-sample — the corpus (563 races, ~40-300 overlay bets per grid cell) is too thin
+to safely retune this pair of numbers yet. Left `pick_selection.js`/`metrics.js`
+unchanged rather than ship a number that only looks good on this specific sample.
+The tool itself is a durable asset for re-checking once more real data lands.
+
+Full suite: 388 total, 387 pass, 1 pre-existing failure (unchanged, documented
+`confidenceFor()` hand-drift, see §14.3 in docs/HANDOFF.md).
+
 ## v2.49.72-brisnet — Fix: v2 fitted weights silently discarded a real, significant negative signal (2026-08-21)
 
 Requested review of why "Our Picks" (v2) results have been bad. Traced it past the

@@ -1540,3 +1540,40 @@ risk/benefit didn't justify it for an unrelated function).
 Full suite: 387 total, 386 pass, 1 pre-existing failure (the above, unchanged root
 cause), 1 skipped. No worker.js change — scoring-model-only, no `wrangler deploy`
 needed; auto-deploys via Pages on push to `master`.
+
+### 14.4 v2.49.73 — follow-up: regression lock + an honest look at the Value Play thresholds
+
+Continuing "keep trying to improve the results" after §14.2's sign fix. No live
+HTML/worker change in this entry — tooling and tests only.
+
+**More data check.** ~100 automated commits ("refresh NYRA expert picks", "pull real
+race history from RACE_HISTORY archive") landed on `master` between §14.2 and this
+entry. Re-ran `scripts/training/extract_features.js`: still exactly 559 usable races,
+identical skip-reason counts. The new commits added picks/entries data, not new
+result-bearing races with full horse detail — a refit today would be byte-identical.
+Backfilling real results is still the actual lever; just not unlocked by this churn.
+
+**Added a targeted regression lock.** `tests/fitted-weights.test.js` now asserts the
+COMMITTED `data/weights/v2.json`'s `pace` and `fresh` weights are specifically
+negative — not just "loadFittedWeights preserves whatever sign it's given" (already
+covered), but the actual empirical finding itself. Closes the gap that let the
+original sign-stripping bug ship and stay unnoticed: any future re-fit, hand-edit, or
+pipeline regression that reintroduces `abs()`-stripping anywhere now fails the test
+suite immediately.
+
+**Built `scripts/backtest/overlay_threshold_sweep.js`**, same honest methodology as
+`weight_sweep.js` (chronological 70/30 split, real results only), applied to the
+never-backtested Value Play gate (`overlay > 0.08 && score >= 55`). Grid-searched
+overlay ∈ {0.02..0.20} × score ∈ {45..70} on TRAIN, then checked the "best on train"
+cell against HOLDOUT as a deliberate honesty check: it collapsed from +31.1% train ROI
+(overlay>0.12, score>=70, 40 train bets) to 2 holdout bets at -100% — clear
+overfitting to a thin sample, the exact failure mode `weight_sweep.js` already warns
+about for weight vectors. The current 0.08/55 gate shows no holdout advantage over
+alternatives, but nothing else in the grid survives out-of-sample either at this
+corpus size (563 races, 20-300 bets per grid cell depending on threshold). Left
+`pick_selection.js`/`metrics.js` unchanged — an honest non-finding, not a fix,
+reported as such rather than shipping a number that only looks good on this one
+sample. The tool is committed as a durable asset to re-run once more real data lands.
+
+Full suite: 388 total, 387 pass, 1 pre-existing failure (§14.3, unchanged). No version
+bump — nothing in the served HTML/worker bundle changed this entry.
