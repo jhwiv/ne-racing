@@ -1,5 +1,78 @@
 # NE Racing — Changelog
 
+## v2.49.75-brisnet — Replaced discrete step-bucketed sub-scores with continuous functions; three other levers tried and honestly ruled out (2026-08-21)
+
+Continuing "keep trying, go for better results" past v2.49.74's market feature. Four
+things tried this round; one shipped, three didn't pan out and were reported honestly
+rather than forced.
+
+**Shipped: de-bucketed class/freshness/trainer-jockey sub-scores.** `classSubScore`,
+`freshnessSubScore`, and `trainerJockeySubScore_v2`'s internal bucketing each squashed
+a genuinely continuous underlying quantity (class-level diff, days since last race,
+jockey/trainer win%) into 4-6 discrete step values — real resolution thrown away for
+no benefit, since the step boundaries were hand-picked and never backtested. Added a
+shared `piecewiseLinear(x, knots)` helper and v2-only continuous replacements
+(`classSubScore_v2`, `freshnessSubScore_v2`, and `trainerJockeySubScore_v2` rewritten
+in place) through the SAME anchor points as the old buckets' midpoints, so the
+calibration intent is unchanged — only the flat plateaus become smooth interpolation.
+v1 untouched (same version-split pattern already used for trainer/jockey and bias).
+
+Verified with a fair A/B: both the old-bucketed and new-continuous 7-feature models
+freshly fit on the SAME train-only split, evaluated on the SAME holdout, across all 4
+chronological splits:
+
+| train-frac | holdout n | old (bucketed) log-loss | new (continuous) log-loss |
+| --- | --- | --- | --- |
+| 0.5 | 282 | 1.8862 | 1.8764 |
+| 0.6 | 226 | 1.8950 | 1.8908 |
+| 0.7 | 169 | 1.9385 | 1.9365 |
+| 0.8 | 113 | 1.9034 | 1.9040 |
+
+Small but consistent — better on 3 of 4 splits, negligibly worse (noise-level) on the
+4th. Nowhere near the market-feature addition's size of improvement, but real, and in
+the right direction every time it wasn't a wash. Optimal temperature re-checked the
+same rigorous way as every prior composite change — stayed at T=13, no change needed.
+Refit `data/weights/v2.json` on the full 559-race corpus with the new continuous
+features (in-sample `pseudo_r2_mcfadden` essentially unchanged, 0.1051 vs 0.1047 — the
+gain here is a holdout-generalization one, not an in-sample-fit one, consistent with
+"reduced overfitting to noisy step boundaries" being the actual mechanism).
+
+**Tried and honestly ruled out — reported here so the next session doesn't re-try
+them from scratch:**
+
+1. **Recalibrating the market feature against its own favorite-longshot bias.** The
+   full-corpus calibration table showed the market underpricing horses in the 40-50%-
+   implied bucket (44.8% predicted vs 57.1% empirical, n=42). Built a leakage-safe
+   (train-only per split) isotonic-regression recalibration (`PAV`, both per-horse and
+   20-bucket-regularized variants) and re-fit around it. Result: consistently WORSE
+   holdout log-loss than the raw market feature on every one of the 4 splits, in both
+   variants. The apparent bias doesn't reliably replicate on smaller training-only
+   subsets — likely mostly noise from the small buckets it was measured on, not a
+   robust, exploitable effect at this data volume. Not shipped.
+2. **An explicit quadratic market term** (curvature the single linear coefficient
+   can't capture), fit jointly in the same conditional-logit likelihood rather than as
+   a separate calibration stage. No improvement on any of the 4 splits (differences
+   all within noise, no split showed a real gain). Not shipped.
+3. **L2 regularization strength.** Never tuned before (hardcoded default 0.001).
+   Swept 0.0001-1.0 per split; the best value varied split to split with only
+   noise-level differences (0.0002-0.0015 log-loss) from the default. No actionable,
+   robust improvement. Left at 0.001.
+4. **Disabling the pre-existing field-strength normalization** (a speed-based,
+   market-independent multiplier that predates the market feature). Mixed, small,
+   inconsistent results across the 4 splits (sometimes better, sometimes worse, all
+   within noise). No clear signal either way. Left unchanged.
+
+Schema unchanged (still 7 features) — this is a within-feature-definition change, no
+`loadFittedWeights`/`fit_logit.py` FEATURES-list changes needed. New unit tests lock in
+the continuous functions' key properties (peak/floor values, interpolation between old
+plateaus, monotonicity where the old design intended it). Hand-edited into
+`index.html`/`app.html` directly (same reasoning as v2.49.72/74 — `inline_scoring.js`
+regeneration would clobber the documented `confidenceFor()` hand-drift);
+`scripts/build/_inlined_scoring.js` regenerated standalone.
+
+Full suite: 398 total, 397 pass, 1 pre-existing failure (documented, unrelated
+`confidenceFor()` hand-drift, unchanged). No worker.js change.
+
 ## v2.49.74-brisnet — Added market-implied probability as a 7th fitted feature, closed most of the gap to the market (2026-08-21)
 
 Requested directly: "we must be better than the market or handicappers given the data

@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260821-v2.49.74-brisnet';
+var NE_APP_VERSION = '20260821-v2.49.75-brisnet';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260821-v2.49.74-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.74-brisnet';
+var RAILBIRD_VERSION = 'v2.49.75-brisnet';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -336,6 +336,46 @@ function classSubScore(horse, raceClassVal) {
   return 20;
 }
 
+// ── Piecewise-linear interpolation (shared, v2 continuous sub-scores) ───────
+// v2.49.75: classSubScore/freshnessSubScore/trainerJockeySubScore_v2 squash a
+// genuinely continuous underlying quantity (class-level diff, days since last
+// race, jockey/trainer win%) into 4-6 discrete step values, throwing away real
+// resolution the conditional logit fitter could otherwise use. This threw
+// away information for no benefit -- the step boundaries were never
+// backtested, just hand-picked, and a continuous function through the SAME
+// anchor points (bucket midpoints, so the calibration intent is preserved)
+// loses nothing the steps had and gains real resolution between and beyond
+// them. `knots` = [[x0,y0],[x1,y1],...] sorted ascending by x; flat
+// extrapolation beyond the first/last knot (matches the old step functions'
+// own flat-beyond-the-extremes behavior).
+function piecewiseLinear(x, knots) {
+  if (!knots.length) return 50;
+  if (x <= knots[0][0]) return knots[0][1];
+  if (x >= knots[knots.length - 1][0]) return knots[knots.length - 1][1];
+  for (let i = 0; i < knots.length - 1; i++) {
+    const [x0, y0] = knots[i], [x1, y1] = knots[i + 1];
+    if (x >= x0 && x <= x1) {
+      if (x1 === x0) return y0;
+      const t = (x - x0) / (x1 - x0);
+      return y0 + t * (y1 - y0);
+    }
+  }
+  return knots[knots.length - 1][1];
+}
+
+// v2: continuous replacement for classSubScore's discrete diff buckets.
+// Knots are the OLD buckets' representative midpoints (e.g. diff=5 for the
+// (0,10] bucket that used to flatly return 60), so the calibration intent is
+// unchanged -- only the plateaus become smooth interpolation.
+const CLASS_KNOTS_V2 = [[-15, 20], [-5, 35], [0, 50], [5, 60], [15, 75], [25, 90]];
+function classSubScore_v2(horse, raceClassVal) {
+  const lastClassVal = (horse.lastClass && CLASS_SCALE[horse.lastClass] != null)
+    ? CLASS_SCALE[horse.lastClass]
+    : raceClassVal;
+  const diff = lastClassVal - raceClassVal;
+  return piecewiseLinear(diff, CLASS_KNOTS_V2);
+}
+
 // v2.49.53: 'E' and 'EP' were the only front-running codes recognized here
 // and in buildPaceContext() below. Real running-style data (confirmed
 // against 1272 real horse-entries) uses 'E/P' (slash form) for the same
@@ -376,19 +416,15 @@ function trainerJockeySubScore_v1(horse) {
 // v2: score jockey and trainer independently, then take a soft-max blend so a
 //     hot rider on a cold barn still gets credit, and the same hot rider on the
 //     same hot barn does NOT get scored ~2× as much as either alone.
+// v2.49.75: replaced the discrete 6-step bucket() with piecewiseLinear()
+// through the same anchor points (bucket midpoints) -- continuous now, same
+// calibration intent. See the piecewiseLinear() comment above classSubScore_v2.
+const TJ_KNOTS_V2 = [[3, 20], [8, 35], [12, 50], [16, 65], [20, 80], [25, 95]];
 function trainerJockeySubScore_v2(horse) {
   const jky = parseFloat(horse.jockeyPct) || 0;
   const trn = parseFloat(horse.trainerPct) || 0;
-  const bucket = (pct) => {
-    if (pct >= 22) return 95;
-    if (pct >= 18) return 80;
-    if (pct >= 14) return 65;
-    if (pct >= 10) return 50;
-    if (pct >= 6)  return 35;
-    return 20;
-  };
-  const jScore = bucket(jky);
-  const tScore = bucket(trn);
+  const jScore = piecewiseLinear(jky, TJ_KNOTS_V2);
+  const tScore = piecewiseLinear(trn, TJ_KNOTS_V2);
   // Blend: 60% the better of the two, 40% the worse. Avoids double-counting
   // while still rewarding two-strong setups slightly over one-strong.
   const hi = Math.max(jScore, tScore);
@@ -440,6 +476,18 @@ function freshnessSubScore(horse, today) {
   if (daysSince > 60 && daysSince <= 90)  return 35;
   if (daysSince > 90) return 20;
   return 50;
+}
+
+// v2: continuous replacement for the discrete daysSince buckets above -- a
+// non-monotonic "bump" peaking at the old sweet-spot bucket's representative
+// day count, falling off (asymmetrically, matching the old buckets' own
+// asymmetry) on both sides. Knots are the old buckets' midpoints.
+const FRESH_KNOTS_V2 = [[3, 50], [10, 65], [21, 80], [44, 55], [75, 35], [120, 20]];
+function freshnessSubScore_v2(horse, today) {
+  if (!horse.lastRaceDate) return 50;
+  const ref = today ? new Date(today + 'T12:00:00') : new Date();
+  const daysSince = Math.floor((ref - new Date(horse.lastRaceDate + 'T12:00:00')) / 86400000);
+  return piecewiseLinear(daysSince, FRESH_KNOTS_V2);
 }
 
 // v2.49.74: the market's own price is, by a wide margin, the single most
@@ -593,7 +641,12 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
 
   const speedRes = speedSubScore(horse);
   const speedScore = speedRes.score;
-  const classScore = classSubScore(horse, raceClassVal);
+  // v2.49.75: v2 gets the continuous (piecewise-linear) replacements for
+  // class/freshness's discrete step buckets; v1 stays on the original
+  // functions, unchanged, same as the existing tj/bias version split.
+  const classScore = version === 'v2'
+    ? classSubScore_v2(horse, raceClassVal)
+    : classSubScore(horse, raceClassVal);
   const paceScore  = paceSubScore(horse, paceCtx);
   const tjScore    = version === 'v2'
     ? trainerJockeySubScore_v2(horse)
@@ -601,7 +654,9 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
   const biasScore  = version === 'v2'
     ? biasSubScore_v2(horse, bias)
     : biasSubScore_v1(horse, bias);
-  const freshScore = freshnessSubScore(horse, opts.today);
+  const freshScore = version === 'v2'
+    ? freshnessSubScore_v2(horse, opts.today)
+    : freshnessSubScore(horse, opts.today);
   // v2.49.74: only meaningful for v2 (fed to the fitter as a 7th feature so
   // it earns its own weight rather than being hand-picked); v1 stays exactly
   // as it always scored, since DEFAULT_V2_WEIGHTS has no `market` key and the

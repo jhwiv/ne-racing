@@ -1642,3 +1642,55 @@ standalone without touching `index.html`.
 
 Full suite: 388 total, 387 pass, 1 pre-existing failure (§14.3, unchanged). No
 worker.js change — auto-deploys via Pages on push to `master`.
+
+### 14.6 v2.49.75 — de-bucketed class/freshness/trainer-jockey; three other levers ruled out
+
+Continuing "keep trying, go for better results" past §14.5. Four things tried; one
+shipped, three ruled out and reported rather than forced.
+
+**Shipped:** `classSubScore`, `freshnessSubScore`, `trainerJockeySubScore_v2` each
+squashed a genuinely continuous quantity (class diff, days since last race,
+jockey/trainer win%) into 4-6 discrete steps — thrown-away resolution, never
+backtested boundaries. Added `piecewiseLinear(x, knots)` and v2-only continuous
+replacements through the SAME anchor points as the old buckets' midpoints (calibration
+intent preserved, only the plateaus smoothed). v1 untouched, same version-split
+pattern as tj/bias already use.
+
+**Fair A/B** (both old-bucketed and new-continuous freshly fit on the same train-only
+split per fraction, evaluated on the same holdout):
+
+| train-frac | holdout n | old log-loss | new log-loss |
+| --- | --- | --- | --- |
+| 0.5 | 282 | 1.8862 | 1.8764 |
+| 0.6 | 226 | 1.8950 | 1.8908 |
+| 0.7 | 169 | 1.9385 | 1.9365 |
+| 0.8 | 113 | 1.9034 | 1.9040 |
+
+Small but consistent — better on 3/4 splits, negligible (noise-level) on the 4th.
+Temperature re-checked, stayed at T=13. Refit full corpus; `pseudo_r2_mcfadden`
+essentially unchanged (0.1051 vs 0.1047) — the gain is a holdout-generalization
+effect (less overfitting to noisy step boundaries), not an in-sample-fit effect.
+
+**Tried and ruled out** (reported so the next session doesn't redo this work):
+
+1. **Market-feature recalibration against its own favorite-longshot bias** (the
+   40-50%-implied bucket underprices at 44.8% predicted vs 57.1% empirical, n=42).
+   Leakage-safe (train-only per split) isotonic regression, both raw per-horse PAV and
+   a 20-bucket-regularized variant. Consistently WORSE holdout log-loss than the raw
+   market feature on every split, both variants. The bias doesn't reliably replicate on
+   smaller training subsets — likely mostly noise at this n. Not shipped.
+2. **Explicit quadratic market term**, fit jointly in the same MLE (not a separate
+   calibration stage). No improvement on any split — differences all within noise.
+   Not shipped.
+3. **L2 regularization strength** (never tuned, default 0.001). Swept 0.0001-1.0 per
+   split; best value varied split to split, only noise-level differences (0.0002-
+   0.0015 log-loss). Left at default.
+4. **Disabling the pre-existing speed-based field-strength normalization.** Mixed,
+   small, inconsistent across splits. No clear signal. Left unchanged.
+
+Schema unchanged (still 7 features). New unit tests lock in the continuous functions'
+key properties. Hand-edited into `index.html`/`app.html` directly (per §14.3's own
+warning); `_inlined_scoring.js` regenerated standalone.
+
+Full suite: 398 total, 397 pass, 1 pre-existing failure (§14.3, unchanged). No
+worker.js change.

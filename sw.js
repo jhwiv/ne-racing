@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260821-v2.49.74-brisnet'; // v2.49.74: added market-implied probability as a 7th fitted feature, retuned softmax temperature (20->13); closed most of the gap to market-alone performance // bump on every ship
+const CACHE_VERSION = '20260821-v2.49.75-brisnet'; // v2.49.75: replaced discrete step-bucketed class/freshness/trainer-jockey sub-scores with continuous piecewise-linear functions, a small consistent holdout improvement // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

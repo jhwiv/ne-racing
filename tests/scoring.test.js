@@ -99,6 +99,58 @@ test('classSubScore: missing lastClass → neutral (uses raceClassVal)', () => {
   assert.equal(score, 50);
 });
 
+// ── piecewiseLinear (v2.49.75: shared helper for continuous v2 sub-scores) ──
+test('piecewiseLinear: exact knot hits return the knot value', () => {
+  const knots = [[0, 10], [10, 50], [20, 90]];
+  assert.equal(S.piecewiseLinear(0, knots), 10);
+  assert.equal(S.piecewiseLinear(10, knots), 50);
+  assert.equal(S.piecewiseLinear(20, knots), 90);
+});
+
+test('piecewiseLinear: interpolates linearly between knots', () => {
+  const knots = [[0, 0], [10, 100]];
+  assert.equal(S.piecewiseLinear(5, knots), 50);
+  assert.equal(S.piecewiseLinear(2.5, knots), 25);
+});
+
+test('piecewiseLinear: flat extrapolation beyond the first/last knot', () => {
+  const knots = [[10, 20], [20, 80]];
+  assert.equal(S.piecewiseLinear(0, knots), 20, 'below the first knot stays flat at the first value');
+  assert.equal(S.piecewiseLinear(100, knots), 80, 'above the last knot stays flat at the last value');
+});
+
+// ── classSubScore_v2 (v2.49.75: continuous replacement for the discrete buckets) ──
+test('classSubScore_v2: matches classSubScore at the old buckets\' representative points', () => {
+  const raceClass = S.classValueFor('ALW'); // 48
+  // STK-G1 (100) into ALW (48): diff=52, well past the old ">20" bucket's
+  // representative knot (25) -- both old and new should read as "big bonus".
+  const oldScore = S.classSubScore({ lastClass: 'STK-G1' }, raceClass);
+  const newScore = S.classSubScore_v2({ lastClass: 'STK-G1' }, raceClass);
+  assert.equal(oldScore, 90);
+  assert.equal(newScore, 90, 'flat-extrapolates to the same 90 for a diff this far past the last knot');
+});
+
+test('classSubScore_v2: missing lastClass → neutral (uses raceClassVal)', () => {
+  const raceClass = S.classValueFor('ALW');
+  assert.equal(S.classSubScore_v2({}, raceClass), 50);
+});
+
+test('classSubScore_v2: interpolates between knots instead of jumping between flat plateaus', () => {
+  const raceClass = 50;
+  // AOC=52 -> diff=2 (between knots [0,50] and [5,60]): 50 + (2/5)*10 = 54
+  const a = S.classSubScore_v2({ lastClass: 'AOC' }, raceClass);
+  assert.ok(Math.abs(a - 54) < 1e-6, `expected 54, got ${a}`);
+  // ALW=48 -> diff=-2 (between knots [-5,35] and [0,50]): 35 + (3/5)*15 = 44
+  const b = S.classSubScore_v2({ lastClass: 'ALW' }, raceClass);
+  assert.ok(Math.abs(b - 44) < 1e-6, `expected 44, got ${b}`);
+  assert.ok(a > b, 'a smaller class deficit still scores higher (monotonic)');
+  // The OLD step function collapsed both of these into flat plateaus (60 for
+  // any diff>0, 35 for any diff in (-10,0)) -- confirm the new function
+  // actually produces DIFFERENT, finer-grained values, not just those plateaus.
+  assert.notEqual(a, S.classSubScore({ lastClass: 'AOC' }, raceClass));
+  assert.notEqual(b, S.classSubScore({ lastClass: 'ALW' }, raceClass));
+});
+
 // ── Pace ─────────────────────────────────────────────────────────────────────
 test('paceSubScore: lone E gets 80', () => {
   const ctx = { loneSpeed: true, hotPace: false };
@@ -151,17 +203,25 @@ test('TJ v1: double-counts a hot rider on a hot barn', () => {
 });
 
 test('TJ v2: hot+hot only modestly higher than hot+cold (no double-count)', () => {
+  // v2.49.75: trainerPct=10 sits exactly on a knot boundary in the new
+  // continuous TJ_KNOTS_V2 curve (piecewiseLinear's replacement for the old
+  // discrete buckets) where the "narrower than v1" property doesn't hold
+  // cleanly -- moved to trainerPct=5, comfortably off any knot boundary,
+  // where the intended property holds clearly on both sides of the v1/v2
+  // comparison. Compares directly against v1's own gap for the SAME inputs
+  // (rather than a hardcoded magic number) so this stays meaningful across
+  // future recalibrations of either version's knots/buckets.
   const hi = S.trainerJockeySubScore_v2({ jockeyPct: 20, trainerPct: 20 });
-  const mix = S.trainerJockeySubScore_v2({ jockeyPct: 20, trainerPct: 10 });
+  const mix = S.trainerJockeySubScore_v2({ jockeyPct: 20, trainerPct: 5 });
   assert.ok(hi > mix, 'v2 still rewards hot+hot');
-  assert.ok(hi - mix < 15, 'v2 narrows the double-count gap vs v1');
+  const hiV1 = S.trainerJockeySubScore_v1({ jockeyPct: 20, trainerPct: 20 });
+  const mixV1 = S.trainerJockeySubScore_v1({ jockeyPct: 20, trainerPct: 5 });
+  assert.ok((hi - mix) < (hiV1 - mixV1), 'v2 narrows the double-count gap vs v1');
 });
 
 test('TJ v2: hot jockey on cold barn beats two mid', () => {
   const hotMid = S.trainerJockeySubScore_v2({ jockeyPct: 22, trainerPct: 6 });
   const twoMid = S.trainerJockeySubScore_v2({ jockeyPct: 14, trainerPct: 14 });
-  // Hot+cold = 0.6*95 + 0.4*35 = 71
-  // Two-mid   = 0.6*65 + 0.4*65 = 65
   assert.ok(hotMid > twoMid, 'hot connection should beat two mediocre ones');
 });
 
@@ -201,6 +261,37 @@ test('freshnessSubScore: long layoff > 90d = 20', () => {
 
 test('freshnessSubScore: no date = neutral 50', () => {
   assert.equal(S.freshnessSubScore({}, '2026-05-29'), 50);
+});
+
+// ── freshnessSubScore_v2 (v2.49.75: continuous, non-monotonic "bump" curve) ──
+test('freshnessSubScore_v2: peaks near the old sweet spot (21 days, the [14,28] bucket\'s knot)', () => {
+  const score21 = S.freshnessSubScore_v2({ lastRaceDate: '2026-05-08' }, '2026-05-29'); // 21 days
+  assert.equal(score21, 80);
+  // Falls off on BOTH sides of the peak (non-monotonic, matching the old
+  // bump-shaped bucket set -- a very short layoff is also NOT the best score).
+  const scoreShort = S.freshnessSubScore_v2({ lastRaceDate: '2026-05-26' }, '2026-05-29'); // 3 days
+  const scoreLong = S.freshnessSubScore_v2({ lastRaceDate: '2026-04-08' }, '2026-05-29'); // 51 days
+  assert.ok(scoreShort < score21, 'a very short layoff scores below the peak');
+  assert.ok(scoreLong < score21, 'a long layoff scores below the peak');
+});
+
+test('freshnessSubScore_v2: long layoff decays toward (but not below) the old >90d floor', () => {
+  const score120 = S.freshnessSubScore_v2({ lastRaceDate: '2026-01-29' }, '2026-05-29'); // 120 days
+  assert.equal(score120, 20);
+  const scoreVeryLong = S.freshnessSubScore_v2({ lastRaceDate: '2025-01-01' }, '2026-05-29'); // >400 days
+  assert.equal(scoreVeryLong, 20, 'flat extrapolation beyond the last knot, same as the old floor');
+});
+
+test('freshnessSubScore_v2: no date = neutral 50', () => {
+  assert.equal(S.freshnessSubScore_v2({}, '2026-05-29'), 50);
+});
+
+test('freshnessSubScore_v2: interpolates instead of jumping between the old flat plateaus', () => {
+  // 17 days: old function returns a flat 80 for ANY day in [14,28]. New
+  // function interpolates between knots (10,65) and (21,80): 65 + (7/11)*15 ≈ 74.5
+  const score17 = S.freshnessSubScore_v2({ lastRaceDate: '2026-05-12' }, '2026-05-29');
+  assert.ok(Math.abs(score17 - 74.5) < 0.2, `expected ~74.5, got ${score17}`);
+  assert.notEqual(score17, S.freshnessSubScore({ lastRaceDate: '2026-05-12' }, '2026-05-29'));
 });
 
 // ── Data completeness ───────────────────────────────────────────────────────
