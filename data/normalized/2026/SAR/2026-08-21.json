@@ -2,9 +2,40 @@
   "track": "SAR",
   "date": "2026-08-21",
   "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
-  "pulled_at": "2026-08-22T06:09:01.804Z",
+  "pulled_at": "2026-08-23T06:09:57.455Z",
   "races": [
     {
+      "id": "SAR-20260821-R1",
+      "track": "SAR",
+      "date": "2026-08-21",
+      "num": 1,
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 1,
+            "horseName": "Tiz Dashing",
+            "position": 1,
+            "win_payout": 4.42
+          },
+          {
+            "pp": 2,
+            "horseName": "Carson's Run",
+            "position": 2
+          },
+          {
+            "pp": 3,
+            "horseName": "Cugino",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 13.95
+          }
+        ]
+      },
       "race_number": 1,
       "expertPicks": [
         {
@@ -44,40 +75,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260821-R1",
+      "type": null
+    },
+    {
+      "id": "SAR-20260821-R2",
       "track": "SAR",
       "date": "2026-08-21",
-      "num": 1,
-      "type": null,
+      "num": 2,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 1,
-            "horseName": "Tiz Dashing",
+            "pp": 5,
+            "horseName": "Dr. Kraft",
             "position": 1,
-            "win_payout": 4.42
+            "win_payout": 4.72
           },
           {
-            "pp": 2,
-            "horseName": "Carson's Run",
+            "pp": 6,
+            "horseName": "Concorde Spirit",
             "position": 2
           },
           {
-            "pp": 3,
-            "horseName": "Cugino",
+            "pp": 4,
+            "horseName": "Shadow Dragon",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 13.95
+            "payout": 11.34
+          },
+          {
+            "type": "trifecta",
+            "payout": 20.15
+          },
+          {
+            "type": "superfecta",
+            "payout": 21.15
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 2,
       "expertPicks": [
         {
@@ -117,48 +156,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260821-R2",
+      "type": null
+    },
+    {
+      "id": "SAR-20260821-R3",
       "track": "SAR",
       "date": "2026-08-21",
-      "num": 2,
-      "type": null,
+      "num": 3,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 5,
-            "horseName": "Dr. Kraft",
+            "pp": 2,
+            "horseName": "Jadorlinija",
             "position": 1,
-            "win_payout": 4.72
+            "win_payout": 7.28
           },
           {
-            "pp": 6,
-            "horseName": "Concorde Spirit",
+            "pp": 7,
+            "horseName": "Hypnotica",
             "position": 2
           },
           {
-            "pp": 4,
-            "horseName": "Shadow Dragon",
+            "pp": 5,
+            "horseName": "Full of Tact",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 11.34
+            "payout": 14.16
           },
           {
             "type": "trifecta",
-            "payout": 20.15
+            "payout": 37.34
           },
           {
             "type": "superfecta",
-            "payout": 21.15
+            "payout": 18.81
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 3,
       "expertPicks": [
         {
@@ -198,48 +237,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260821-R3",
+      "type": null
+    },
+    {
+      "id": "SAR-20260821-R4",
       "track": "SAR",
       "date": "2026-08-21",
-      "num": 3,
-      "type": null,
+      "num": 4,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 2,
-            "horseName": "Jadorlinija",
+            "pp": 1,
+            "horseName": "Nash Potatoes",
             "position": 1,
-            "win_payout": 7.28
+            "win_payout": 12.54
           },
           {
-            "pp": 7,
-            "horseName": "Hypnotica",
+            "pp": 3,
+            "horseName": "Tartabull",
             "position": 2
           },
           {
-            "pp": 5,
-            "horseName": "Full of Tact",
+            "pp": 2,
+            "horseName": "Island Town",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 14.16
+            "payout": 22.1
           },
           {
             "type": "trifecta",
-            "payout": 37.34
+            "payout": 25.04
           },
           {
             "type": "superfecta",
-            "payout": 18.81
+            "payout": 23.46
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 4,
       "expertPicks": [
         {
@@ -279,48 +318,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260821-R4",
+      "type": null
+    },
+    {
+      "id": "SAR-20260821-R5",
       "track": "SAR",
       "date": "2026-08-21",
-      "num": 4,
-      "type": null,
+      "num": 5,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 1,
-            "horseName": "Nash Potatoes",
+            "pp": 7,
+            "horseName": "Scalene",
             "position": 1,
-            "win_payout": 12.54
+            "win_payout": 34.14
           },
           {
-            "pp": 3,
-            "horseName": "Tartabull",
+            "pp": 8,
+            "horseName": "Fire Marshal",
             "position": 2
           },
           {
-            "pp": 2,
-            "horseName": "Island Town",
+            "pp": 9,
+            "horseName": "Tinian",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 22.1
+            "payout": 196.28
           },
           {
             "type": "trifecta",
-            "payout": 25.04
+            "payout": 321.11
           },
           {
             "type": "superfecta",
-            "payout": 23.46
+            "payout": 224.92
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 5,
       "expertPicks": [
         {
@@ -360,48 +399,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260821-R5",
+      "type": null
+    },
+    {
+      "id": "SAR-20260821-R6",
       "track": "SAR",
       "date": "2026-08-21",
-      "num": 5,
-      "type": null,
+      "num": 6,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 7,
-            "horseName": "Scalene",
+            "pp": -1,
+            "horseName": "Golden Siren",
             "position": 1,
-            "win_payout": 34.14
+            "win_payout": 7.56
           },
           {
-            "pp": 8,
-            "horseName": "Fire Marshal",
+            "pp": -1,
+            "horseName": "Doves and Hawks",
             "position": 2
           },
           {
-            "pp": 9,
-            "horseName": "Tinian",
+            "pp": -1,
+            "horseName": "Belmont Street",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 196.28
+            "payout": 31.22
           },
           {
             "type": "trifecta",
-            "payout": 321.11
+            "payout": 68.4
           },
           {
             "type": "superfecta",
-            "payout": 224.92
+            "payout": 61.84
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 6,
       "expertPicks": [
         {
@@ -441,48 +480,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260821-R6",
+      "type": null
+    },
+    {
+      "id": "SAR-20260821-R7",
       "track": "SAR",
       "date": "2026-08-21",
-      "num": 6,
-      "type": null,
+      "num": 7,
       "horses": [],
       "results": {
         "finish_positions": [
           {
             "pp": -1,
-            "horseName": "Golden Siren",
+            "horseName": "Georgia Magic",
             "position": 1,
-            "win_payout": 7.56
+            "win_payout": 3.94
           },
           {
             "pp": -1,
-            "horseName": "Doves and Hawks",
+            "horseName": "Render Judgment",
             "position": 2
           },
           {
             "pp": -1,
-            "horseName": "Belmont Street",
+            "horseName": "Cooke Creek",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 31.22
+            "payout": 14.24
           },
           {
             "type": "trifecta",
-            "payout": 68.4
+            "payout": 33.99
           },
           {
             "type": "superfecta",
-            "payout": 61.84
+            "payout": 33.81
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 7,
       "expertPicks": [
         {
@@ -522,46 +561,7 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260821-R7",
-      "track": "SAR",
-      "date": "2026-08-21",
-      "num": 7,
-      "type": null,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": -1,
-            "horseName": "Georgia Magic",
-            "position": 1,
-            "win_payout": 3.94
-          },
-          {
-            "pp": -1,
-            "horseName": "Render Judgment",
-            "position": 2
-          },
-          {
-            "pp": -1,
-            "horseName": "Cooke Creek",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 14.24
-          },
-          {
-            "type": "trifecta",
-            "payout": 33.99
-          },
-          {
-            "type": "superfecta",
-            "payout": 33.81
-          }
-        ]
-      }
+      "type": null
     },
     {
       "race_number": 8,
