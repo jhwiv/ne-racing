@@ -2,9 +2,48 @@
   "track": "SAR",
   "date": "2026-08-22",
   "source": "RACE_HISTORY (worker.js), merged with local entries data where available",
-  "pulled_at": "2026-08-23T06:09:57.455Z",
+  "pulled_at": "2026-08-24T06:15:46.491Z",
   "races": [
     {
+      "id": "SAR-20260822-R1",
+      "track": "SAR",
+      "date": "2026-08-22",
+      "num": 1,
+      "horses": [],
+      "results": {
+        "finish_positions": [
+          {
+            "pp": 7,
+            "horseName": "Bubster",
+            "position": 1,
+            "win_payout": 6.68
+          },
+          {
+            "pp": 8,
+            "horseName": "Term Premium",
+            "position": 2
+          },
+          {
+            "pp": 5,
+            "horseName": "Uncle Barrie",
+            "position": 3
+          }
+        ],
+        "exotics": [
+          {
+            "type": "exacta",
+            "payout": 12.57
+          },
+          {
+            "type": "trifecta",
+            "payout": 98.03
+          },
+          {
+            "type": "superfecta",
+            "payout": 32.75
+          }
+        ]
+      },
       "race_number": 1,
       "expertPicks": [
         {
@@ -44,48 +83,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260822-R1",
+      "type": null
+    },
+    {
+      "id": "SAR-20260822-R2",
       "track": "SAR",
       "date": "2026-08-22",
-      "num": 1,
-      "type": null,
+      "num": 2,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 7,
-            "horseName": "Bubster",
+            "pp": 1,
+            "horseName": "Rothschild",
             "position": 1,
-            "win_payout": 6.68
+            "win_payout": 10.1
           },
           {
-            "pp": 8,
-            "horseName": "Term Premium",
+            "pp": 4,
+            "horseName": "Asbury Park (GB)",
             "position": 2
           },
           {
-            "pp": 5,
-            "horseName": "Uncle Barrie",
+            "pp": 7,
+            "horseName": "Arkhipov",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 12.57
+            "payout": 15.16
           },
           {
             "type": "trifecta",
-            "payout": 98.03
+            "payout": 15.19
           },
           {
             "type": "superfecta",
-            "payout": 32.75
+            "payout": 11.14
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 2,
       "expertPicks": [
         {
@@ -125,48 +164,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260822-R2",
+      "type": null
+    },
+    {
+      "id": "SAR-20260822-R3",
       "track": "SAR",
       "date": "2026-08-22",
-      "num": 2,
-      "type": null,
+      "num": 3,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 1,
-            "horseName": "Rothschild",
+            "pp": 6,
+            "horseName": "American History",
             "position": 1,
-            "win_payout": 10.1
+            "win_payout": 21.22
           },
           {
-            "pp": 4,
-            "horseName": "Asbury Park (GB)",
+            "pp": 8,
+            "horseName": "Art Museum",
             "position": 2
           },
           {
             "pp": 7,
-            "horseName": "Arkhipov",
+            "horseName": "Shocked",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 15.16
+            "payout": 59.48
           },
           {
             "type": "trifecta",
-            "payout": 15.19
+            "payout": 474.51
           },
           {
             "type": "superfecta",
-            "payout": 11.14
+            "payout": 344.53
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 3,
       "expertPicks": [
         {
@@ -206,48 +245,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260822-R3",
+      "type": null
+    },
+    {
+      "id": "SAR-20260822-R4",
       "track": "SAR",
       "date": "2026-08-22",
-      "num": 3,
-      "type": null,
+      "num": 4,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 6,
-            "horseName": "American History",
+            "pp": 2,
+            "horseName": "Heads in Beds (FR)",
             "position": 1,
-            "win_payout": 21.22
+            "win_payout": 9.12
           },
           {
-            "pp": 8,
-            "horseName": "Art Museum",
+            "pp": 1,
+            "horseName": "Americanexpression",
             "position": 2
           },
           {
-            "pp": 7,
-            "horseName": "Shocked",
+            "pp": 6,
+            "horseName": "Five Dozen Roses",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 59.48
+            "payout": 11.94
           },
           {
             "type": "trifecta",
-            "payout": 474.51
+            "payout": 21.36
           },
           {
             "type": "superfecta",
-            "payout": 344.53
+            "payout": 16.95
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 4,
       "expertPicks": [
         {
@@ -287,48 +326,48 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260822-R4",
+      "type": null
+    },
+    {
+      "id": "SAR-20260822-R5",
       "track": "SAR",
       "date": "2026-08-22",
-      "num": 4,
-      "type": null,
+      "num": 5,
       "horses": [],
       "results": {
         "finish_positions": [
           {
-            "pp": 2,
-            "horseName": "Heads in Beds (FR)",
+            "pp": -1,
+            "horseName": "Private Property [IRE]",
             "position": 1,
-            "win_payout": 9.12
+            "win_payout": 8.9
           },
           {
-            "pp": 1,
-            "horseName": "Americanexpression",
+            "pp": -1,
+            "horseName": "Outro",
             "position": 2
           },
           {
-            "pp": 6,
-            "horseName": "Five Dozen Roses",
+            "pp": -1,
+            "horseName": "Raging Bloom",
             "position": 3
           }
         ],
         "exotics": [
           {
             "type": "exacta",
-            "payout": 11.94
+            "payout": 113.64
           },
           {
             "type": "trifecta",
-            "payout": 21.36
+            "payout": 491.96
           },
           {
             "type": "superfecta",
-            "payout": 16.95
+            "payout": 862.44
           }
         ]
-      }
-    },
-    {
+      },
       "race_number": 5,
       "expertPicks": [
         {
@@ -368,46 +407,7 @@
           "_nyraPipeline": true
         }
       ],
-      "id": "SAR-20260822-R5",
-      "track": "SAR",
-      "date": "2026-08-22",
-      "num": 5,
-      "type": null,
-      "horses": [],
-      "results": {
-        "finish_positions": [
-          {
-            "pp": -1,
-            "horseName": "Private Property [IRE]",
-            "position": 1,
-            "win_payout": 8.9
-          },
-          {
-            "pp": -1,
-            "horseName": "Outro",
-            "position": 2
-          },
-          {
-            "pp": -1,
-            "horseName": "Raging Bloom",
-            "position": 3
-          }
-        ],
-        "exotics": [
-          {
-            "type": "exacta",
-            "payout": 113.64
-          },
-          {
-            "type": "trifecta",
-            "payout": 491.96
-          },
-          {
-            "type": "superfecta",
-            "payout": 862.44
-          }
-        ]
-      }
+      "type": null
     },
     {
       "race_number": 6,
