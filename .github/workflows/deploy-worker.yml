@@ -1,0 +1,44 @@
+name: Deploy Worker
+
+# worker.js has never had automated deploy -- CHANGELOG/HANDOFF entries for
+# v2.49.77 and others explicitly note "requires a manual `wrangler deploy`."
+# That means a merge to master is NOT the same fact as "live in production"
+# for anything touching worker.js, unlike index.html (GitHub Pages auto-
+# deploys that on push via CNAME). This workflow closes that gap: any push
+# to master that touches worker.js or wrangler.toml deploys it immediately
+# via the Cloudflare API, the same way GitHub Pages already does for the
+# static site.
+#
+# Requires two repo secrets (Settings > Secrets and variables > Actions):
+#   CLOUDFLARE_API_TOKEN   -- scoped at minimum to Workers Scripts:Edit on
+#                             the account that owns this Worker
+#   CLOUDFLARE_ACCOUNT_ID  -- the Cloudflare account ID (visible via
+#                             `wrangler whoami` or the dashboard sidebar)
+#
+# Until both secrets are set, this workflow will fail loudly on every push
+# that touches worker.js rather than silently no-op -- that's deliberate,
+# so a missing secret is never mistaken for "it deployed."
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'worker.js'
+      - 'wrangler.toml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

@@ -1758,3 +1758,63 @@ of this fix that does NOT auto-deploy via Pages. Until deployed, the live overla
 remains active in production despite being committed to `master`.
 
 Full suite: 401 total, 400 pass, 1 pre-existing failure (§14.3, unchanged).
+
+### 14.9 Richer-data audit — RAILBIRD_DB (D1) real but frozen at 2023; Racing API
+### training path already wired; worker.js deploy automated (owner gave the explicit
+### go-ahead §11.5 was waiting on)
+
+Owner asked where richer data (workouts, trip lines) could come from, having already
+paid for The Racing API, and pushed back hard on an earlier wrong claim in
+conversation that it needed to be "turned on." Verified against the live deployment
+rather than assumed:
+
+**The Racing API is genuinely live in production.** `GET /api/status` (owner ran it
+directly): `dataSource: "theracingapi"`, `hasApiKey`/`hasApiUser: true`, `mode:
+"paid"`, live probe against `api.theracingapi.com` returned `200` with a real
+`meetsToday` count. It has been configured since the `f3f7576` bulk-infra commit
+(2026-08-03), predating this whole arc — no "turn it on" step was ever needed.
+
+**Self-correction, same investigation:** an earlier claim in conversation that live
+API data "never reaches the training corpus" was wrong. It does — `pull-race-
+history.yml` runs daily, pulling `RACE_HISTORY` (archived by `worker.js` from every
+live `/api/results` call — paid-source in production) into `data/normalized/`, which
+`load_corpus.js` reads as its highest-priority source. This path was already built
+and already running; nothing needed fixing there. The wrong claim came from checking
+training data for Core-API-only field names (`rpr`, `ts`, `form`, `spotlight`) that
+the NA add-on never returns regardless of source — the wrong signal to check.
+
+**What the NA add-on categorically does not, and cannot, provide** (confirmed,
+`README.md`'s own "Data source" section): speed figures, class ratings, Beyer/
+Brisnet/Equibase figs. Results, entries, odds, scratches only — a dataset limit of
+the product itself, not a config gap.
+
+**`RAILBIRD_DB` (D1) is real, substantial, and stale.** Queried directly (`wrangler
+d1 execute railbird --remote`, owner's own Cloudflare login, real output not
+assumed): 1,907 `horse` rows, 2,644 `pp_entry`, 8,448 `pp_workout`, 106,904
+`pp_past_point_of_call`, 150 tracks including 2,021 SAR rows. But `pp_past_race`
+spans `2019-03-10` to `2023-08-31` only — three real horses confirmed to have run
+SAR on 2026-08-20 (Essence L Vee, Ready Rosie Jane, Spirit Forward) all came back
+"no match" (a clean empty result, not a missing-table error, confirming the table is
+real and queryable, just outdated). Whatever off-band pipeline
+(`railbird_pp_parser.ts` + `railbird_d1_loader.ts`, per the `wrangler.toml` comment)
+produced this snapshot does not exist anywhere in this repo and cannot be resumed
+from here or by any agent working from this checkout — genuinely out of repo scope,
+needs the owner to locate/re-run whatever produced it. This is also the one source
+that, if revived, would carry real workouts and trip/trouble lines — the two data
+types actually absent from the model's inputs; nothing else on the table (buying
+DRF/Equibase, retrying Brisnet) changes that gap faster or cheaper than this would.
+
+**Fixed in this entry:** `worker.js` has never auto-deployed (§2/§11.5) — §11.5
+explicitly deferred building this pending the owner's go-ahead and a Cloudflare API
+token; owner gave that go-ahead this session ("you have auto access, fix all of
+this"). Added `.github/workflows/deploy-worker.yml`: deploys via
+`cloudflare/wrangler-action@v3` on every push to `master` touching
+`worker.js`/`wrangler.toml`, plus manual `workflow_dispatch`. **Requires two repo
+secrets the owner must add** (`CLOUDFLARE_API_TOKEN` scoped to Workers Scripts:Edit,
+`CLOUDFLARE_ACCOUNT_ID`) — until both exist this workflow fails loudly rather than
+silently no-op, so a missing secret is never mistaken for a successful deploy. Once
+added, its first run also deploys whatever is currently on `master` — including
+§14.8's still-unconfirmed live Brisnet-overlay disable.
+
+No `worker.js` logic changed in this entry; no model/scoring change; full suite
+unaffected (no `scoring.js` touch).
