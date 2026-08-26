@@ -350,6 +350,123 @@ function marketSubScore(horse) {
   return { score, n: 1 };
 }
 
+// ── Independent PP-feed sub-scores (workouts, trip trouble, data-driven bias) ──
+//
+// v2.49.78 (unfitted, opt-in): tools/parse_pp_feed.js reads a real, independent
+// (confirmed non-Brisnet) PP source that carries two things nothing else in
+// this pipeline has: a workout tab (up to 12 works/horse) and full trip
+// comments + running-line points of call for up to 10 past races/horse. These
+// three functions are NEW -- not a replacement for any existing sub-score --
+// and are deliberately NOT wired into compositeForHorse()'s default weight set
+// (DEFAULT_V2_WEIGHTS has no keys for them, and no fitted-weights payload can
+// yet, since only one day's data exists as of this writing). scoreRace() only
+// computes and attaches them when `horse.ppFeed` is present (opts.ppFeed data
+// merged onto the horse by the caller) -- existing production behavior for
+// every horse without this data is completely unchanged.
+//
+// Each returns a 0-100 score, 50 = neutral/no-signal, same convention as every
+// other sub-score in this file. Do NOT fold these into DEFAULT_V2_WEIGHTS or
+// treat their current hand-picked shape as validated -- that requires a real
+// chronological holdout backtest once enough days of this feed accumulate to
+// have known outcomes to fit against (a single pre-race card has no results
+// yet). See docs/DATA_WISHLIST.md's decision log (2026-08-26 entry).
+
+function parsePpDate(yyyymmdd) {
+  if (!yyyymmdd || yyyymmdd.length !== 8) return null;
+  const iso = `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}T12:00:00`;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Recency of the most recent workout, bumped for a tight recent cluster of
+// works and for the most recent work being a bullet (fastest of the day at
+// that distance) -- both standard, well-established handicapping signals for
+// physical readiness. Knots: a work too recent (<3d) is discounted slightly
+// (no time to absorb it); the sweet spot is ~5-10 days out; stale (>35d with
+// no intervening race) is a real fitness concern.
+const WORKOUT_RECENCY_KNOTS = [[2, 55], [6, 68], [10, 62], [21, 50], [35, 38], [60, 25]];
+function workoutSubScore(horse, today) {
+  const workouts = (horse.ppFeed && horse.ppFeed.workouts) || [];
+  if (!workouts.length) return 50;
+  const ref = today ? new Date(today + 'T12:00:00') : new Date();
+  const dated = workouts
+    .map(w => ({ w, d: parsePpDate(w.date) }))
+    .filter(x => x.d)
+    .sort((a, b) => b.d - a.d);
+  if (!dated.length) return 50;
+
+  const mostRecent = dated[0];
+  const daysSince = Math.floor((ref - mostRecent.d) / 86400000);
+  let score = piecewiseLinear(daysSince, WORKOUT_RECENCY_KNOTS);
+
+  const within45 = dated.filter(x => (ref - x.d) / 86400000 <= 45).length;
+  if (within45 >= 4) score += 8;
+  else if (within45 <= 1) score -= 8;
+
+  if (mostRecent.w.bullet) score += 10;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+// Free-text trip comment from the single most recent past race, checked for
+// established trouble-in-running language. A troubled trip that still
+// finished close to the winner is a real, well-established "improve next out"
+// signal (the horse ran into traffic/bad luck, not a lack of ability); a
+// clean, trouble-free trip is left neutral (absence of trouble is not itself
+// positive evidence -- it's the default, most-common case).
+const TRIP_TROUBLE_RE = /steadi|block|check|bump|forced|in tight|altered course|stumbl|broke slow|broke in a tangle|no room|taken up|clipped heels|shuffled back/i;
+function tripTroubleSubScore(horse) {
+  const past = (horse.ppFeed && horse.ppFeed.pastRaces) || [];
+  if (!past.length) return 50;
+  const last = past[0];
+  const text = `${last.tripComment || ''} ${last.extendedStartComment || ''}`.toLowerCase();
+  if (!TRIP_TROUBLE_RE.test(text)) return 50;
+  const margin = last.finishMargin;
+  if (margin == null) return 55;
+  if (margin <= 2) return 70;
+  if (margin <= 5) return 60;
+  return 45;
+}
+
+// Cross-references this meet's REAL, quantified post-position and
+// running-style win% (from tools/parse_pp_feed.js's biasStats block) against
+// this horse's own post position and running style. Distinct from the
+// existing biasSubScore_v1/v2 (which apply a coarse hand-entered {style,rail}
+// classification with no numbers behind it) -- this is the data-driven
+// version of the same concept, computed only when real meet stats are present.
+function dataDrivenBiasSubScore(horse) {
+  const stats = horse.ppFeed && horse.ppFeed.biasStats;
+  if (!stats) return 50;
+  // Prefer the ppFeed's own parsed post position (F4 Post Position) over
+  // horse.pp -- pp is the program number, not the starting gate position,
+  // and the two are not guaranteed to match.
+  const pp = (horse.ppFeed && horse.ppFeed.postPosition != null)
+    ? horse.ppFeed.postPosition
+    : (horse.postPosition || horse.pp || 0);
+  const style = horse.runningStyle || '';
+
+  let postWinPct = null;
+  const post = stats.postBiasMeet || {};
+  if (pp >= 1 && pp <= 1 && post.rail != null) postWinPct = post.rail;
+  else if (pp >= 1 && pp <= 3 && post.oneToThree != null) postWinPct = post.oneToThree;
+  else if (pp >= 4 && pp <= 7 && post.fourToSeven != null) postWinPct = post.fourToSeven;
+  else if (pp >= 8 && post.eightPlus != null) postWinPct = post.eightPlus;
+
+  let styleWinPct = null;
+  const paceStats = stats.paceStyleWinPctMeet || {};
+  if (isFrontRunning(style)) styleWinPct = style === 'P' ? paceStats.P : (paceStats.EP != null ? paceStats.EP : paceStats.E);
+  else if (isCloserStyle(style)) styleWinPct = paceStats.S;
+
+  const pcts = [postWinPct, styleWinPct].filter(v => v != null);
+  if (!pcts.length) return 50;
+  const avgPct = pcts.reduce((a, b) => a + b, 0) / pcts.length;
+  // A single-style/single-post-zone meet-average win% would be ~(100/fieldSize)
+  // in a bias-free world; real fields run ~6-10 horses, so ~12-16% is neutral.
+  // Map 0%->20, 14%->50, 40%+->85, roughly linear between.
+  const score = 20 + (avgPct / 40) * 65;
+  return Math.max(0, Math.min(100, score));
+}
+
 function dataCompleteness(horse) {
   let n = 0;
   const figs = (horse.speedFigs || []).filter(f => f != null);
@@ -552,11 +669,22 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
     else if (expertCount === 1) composite = Math.min(100, composite + 3);
   }
 
+  // v2.49.78: independent PP-feed sub-scores. Computed and attached whenever
+  // horse.ppFeed is present, purely as new diagnostic fields -- deliberately
+  // NOT added into `composite` above (no fitted weight exists for them; see
+  // the comment above workoutSubScore()). A horse with no ppFeed data behaves
+  // completely unchanged.
+  const hasPpFeed = !!horse.ppFeed;
+  const workoutScore = hasPpFeed ? workoutSubScore(horse, opts.today) : null;
+  const tripScore = hasPpFeed ? tripTroubleSubScore(horse) : null;
+  const dataBiasScore = hasPpFeed ? dataDrivenBiasSubScore(horse) : null;
+
   return {
     horse,
     score: composite,
     speedScore, classScore, paceScore, tjScore, biasScore, freshnessScore: freshScore,
     marketScore,
+    workoutScore, tripScore, dataBiasScore,
     completeness,
     expertMatchCount: expertCount,
     modelProb: 0, impliedProb: 0, overlay: 0,
@@ -720,6 +848,9 @@ function confidenceFor(scored) {
     freshnessSubScore: freshnessSubScore,
     freshnessSubScore_v2: freshnessSubScore_v2,
     marketSubScore: marketSubScore,
+    workoutSubScore: workoutSubScore,
+    tripTroubleSubScore: tripTroubleSubScore,
+    dataDrivenBiasSubScore: dataDrivenBiasSubScore,
     piecewiseLinear: piecewiseLinear,
     dataCompleteness: dataCompleteness,
     buildPaceContext: buildPaceContext,

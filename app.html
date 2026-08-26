@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260821-v2.49.76-brisnet';
+var NE_APP_VERSION = '20260826-v2.49.78-ppfeed';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260821-v2.49.76-brisnet';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.76-brisnet';
+var RAILBIRD_VERSION = 'v2.49.78-ppfeed';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -520,6 +520,84 @@ function marketSubScore(horse) {
   return { score, n: 1 };
 }
 
+// ── Independent PP-feed sub-scores (workouts, trip trouble, data-driven bias) ──
+// v2.49.78 (unfitted, opt-in) -- see the matching comment in
+// scripts/lib/scoring.js above workoutSubScore() for the full rationale.
+// Only computed/attached when horse.ppFeed is present; existing behavior for
+// every horse without it is unchanged. NOT folded into the composite formula.
+
+function parsePpDate(yyyymmdd) {
+  if (!yyyymmdd || yyyymmdd.length !== 8) return null;
+  const iso = `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}T12:00:00`;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+const WORKOUT_RECENCY_KNOTS = [[2, 55], [6, 68], [10, 62], [21, 50], [35, 38], [60, 25]];
+function workoutSubScore(horse, today) {
+  const workouts = (horse.ppFeed && horse.ppFeed.workouts) || [];
+  if (!workouts.length) return 50;
+  const ref = today ? new Date(today + 'T12:00:00') : new Date();
+  const dated = workouts
+    .map(w => ({ w, d: parsePpDate(w.date) }))
+    .filter(x => x.d)
+    .sort((a, b) => b.d - a.d);
+  if (!dated.length) return 50;
+
+  const mostRecent = dated[0];
+  const daysSince = Math.floor((ref - mostRecent.d) / 86400000);
+  let score = piecewiseLinear(daysSince, WORKOUT_RECENCY_KNOTS);
+
+  const within45 = dated.filter(x => (ref - x.d) / 86400000 <= 45).length;
+  if (within45 >= 4) score += 8;
+  else if (within45 <= 1) score -= 8;
+
+  if (mostRecent.w.bullet) score += 10;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+const TRIP_TROUBLE_RE = /steadi|block|check|bump|forced|in tight|altered course|stumbl|broke slow|broke in a tangle|no room|taken up|clipped heels|shuffled back/i;
+function tripTroubleSubScore(horse) {
+  const past = (horse.ppFeed && horse.ppFeed.pastRaces) || [];
+  if (!past.length) return 50;
+  const last = past[0];
+  const text = `${last.tripComment || ''} ${last.extendedStartComment || ''}`.toLowerCase();
+  if (!TRIP_TROUBLE_RE.test(text)) return 50;
+  const margin = last.finishMargin;
+  if (margin == null) return 55;
+  if (margin <= 2) return 70;
+  if (margin <= 5) return 60;
+  return 45;
+}
+
+function dataDrivenBiasSubScore(horse) {
+  const stats = horse.ppFeed && horse.ppFeed.biasStats;
+  if (!stats) return 50;
+  const pp = (horse.ppFeed && horse.ppFeed.postPosition != null)
+    ? horse.ppFeed.postPosition
+    : (horse.postPosition || horse.pp || 0);
+  const style = horse.runningStyle || '';
+
+  let postWinPct = null;
+  const post = stats.postBiasMeet || {};
+  if (pp >= 1 && pp <= 1 && post.rail != null) postWinPct = post.rail;
+  else if (pp >= 1 && pp <= 3 && post.oneToThree != null) postWinPct = post.oneToThree;
+  else if (pp >= 4 && pp <= 7 && post.fourToSeven != null) postWinPct = post.fourToSeven;
+  else if (pp >= 8 && post.eightPlus != null) postWinPct = post.eightPlus;
+
+  let styleWinPct = null;
+  const paceStats = stats.paceStyleWinPctMeet || {};
+  if (isFrontRunning(style)) styleWinPct = style === 'P' ? paceStats.P : (paceStats.EP != null ? paceStats.EP : paceStats.E);
+  else if (isCloserStyle(style)) styleWinPct = paceStats.S;
+
+  const pcts = [postWinPct, styleWinPct].filter(v => v != null);
+  if (!pcts.length) return 50;
+  const avgPct = pcts.reduce((a, b) => a + b, 0) / pcts.length;
+  const score = 20 + (avgPct / 40) * 65;
+  return Math.max(0, Math.min(100, score));
+}
+
 function dataCompleteness(horse) {
   let n = 0;
   const figs = (horse.speedFigs || []).filter(f => f != null);
@@ -711,11 +789,19 @@ function compositeForHorse(horse, race, paceCtx, bias, opts) {
     else if (expertCount === 1) composite = Math.min(100, composite + 3);
   }
 
+  // v2.49.78: independent PP-feed sub-scores -- diagnostic only, not folded
+  // into `composite` (see the block comment above workoutSubScore() above).
+  const hasPpFeed = !!horse.ppFeed;
+  const workoutScore = hasPpFeed ? workoutSubScore(horse, opts.today) : null;
+  const tripScore = hasPpFeed ? tripTroubleSubScore(horse) : null;
+  const dataBiasScore = hasPpFeed ? dataDrivenBiasSubScore(horse) : null;
+
   return {
     horse,
     score: composite,
     speedScore, classScore, paceScore, tjScore, biasScore, freshnessScore: freshScore,
     marketScore,
+    workoutScore, tripScore, dataBiasScore,
     completeness,
     expertMatchCount: expertCount,
     modelProb: 0, impliedProb: 0, overlay: 0,
@@ -883,6 +969,9 @@ function confidenceFor(scored) {
     biasSubScore_v1: biasSubScore_v1,
     biasSubScore_v2: biasSubScore_v2,
     freshnessSubScore: freshnessSubScore,
+    workoutSubScore: workoutSubScore,
+    tripTroubleSubScore: tripTroubleSubScore,
+    dataDrivenBiasSubScore: dataDrivenBiasSubScore,
     dataCompleteness: dataCompleteness,
     buildPaceContext: buildPaceContext,
     fieldStrengthMultiplier: fieldStrengthMultiplier,

@@ -1816,5 +1816,77 @@ silently no-op, so a missing secret is never mistaken for a successful deploy. O
 added, its first run also deploys whatever is currently on `master` — including
 §14.8's still-unconfirmed live Brisnet-overlay disable.
 
+**Confirmed working end-to-end same day:** owner added both secrets, hit one real
+snag (secret saved as `CLOUDFALRE_API_TOKEN`, a typo — GitHub secret names can't be
+renamed, had to delete and re-add correctly), then a successful manual
+`workflow_dispatch` run showed green. `worker.js` is now confirmed auto-deploying on
+every push to `master`, closing out §14.8's "requires a manual wrangler deploy"
+caveat for good going forward.
+
+### 14.10 v2.49.78 — independent PP-feed parser + three new opt-in sub-scores (workouts, trip trouble, data-driven bias) — UNFITTED, not yet validated
+
+Owner supplied a real, full past-performance markdown export for the 2026-08-26 SAR
+card (`Saratoga_8_26_2026 — Full Race Data SAR0826.ALL.md`, 49,307 lines) from a
+source explicitly confirmed **not Brisnet** (asked directly before touching it,
+given this session's own Brisnet compliance history — see §14.7/14.8). Exhaustive
+field-label survey (not assumed) confirms: no speed figures or class ratings
+anywhere in the file, but a genuine workout tab (up to 12 works/horse: date, time,
+track, distance, condition, description, bullet indicator, works-at-distance rank)
+and full running-line points of call + free-text trip comments for up to 10 past
+races/horse, plus real per-meet post-position and pace-style win% (an actual
+quantified track-bias signal, not a guess). This is the first real data covering
+the two gaps (workouts, trip lines) identified throughout this session's earlier
+richer-data audit (§14.9) — `RAILBIRD_DB`'s equivalent data is frozen at 2023 and
+The Racing API's NA add-on doesn't carry it at all.
+
+**Shipped, in order:**
+
+1. `tools/parse_pp_feed.js` — new parser, verified field-by-field against the real
+   file (not assumed): `- F<N> <Label>: <value>` per PP block, `- **<Label>**
+   (F<N>): <value>` for the race-level preamble. Handles a real quirk found via
+   direct inspection: workouts #5-#12 use DIFFERENT label wording than #1-#4 for
+   several fields (e.g. "Track Condition of Workout" vs. bare "Track Condition
+   #5 - #12", "Bullet indicator Workout" vs. "Bullet work indicator #5-#12") — an
+   earlier fuzzy-substring-matching version silently produced `condition: null`
+   for every group-2 workout; fixed with exact regexes per confirmed real label.
+   Output written to `data/pp-feed/{TRACK}-{DATE}.json` (new directory, distinct
+   from `data/normalized/` and `data/brisnet-*.json`). Verified against the real
+   file: all 8 races, all 74 runners parsed; spot-checked multiple horses'
+   workouts/past-races/bias-stats field-by-field against the raw source text.
+2. Three new sub-scores in `scripts/lib/scoring.js` (`workoutSubScore`,
+   `tripTroubleSubScore`, `dataDrivenBiasSubScore`), hand-ported identically into
+   `index.html`/`app.html`'s inline block (their own `parsePpDate`/knots/regex
+   included) — same discipline as every other hand-edit this session per §8/§11.2's
+   warning about the unsafe full `inline_scoring.js` regen tool. **Deliberately
+   NOT folded into `compositeForHorse`'s weighted formula or `DEFAULT_V2_WEIGHTS`**
+   — only computed/attached (as `workoutScore`/`tripScore`/`dataBiasScore`) when
+   `horse.ppFeed` is present, with zero effect on any horse without it and zero
+   effect on `composite`/`modelProb` for ANY horse yet. This is intentional, not an
+   oversight: a single pre-race card has no known outcomes to fit weights against
+   (races haven't run), and this project's own established discipline (every prior
+   weight change this session was chronological-holdout-backtested first — §11.6,
+   §14.4-14.6) does not get suspended just because the data is new and real.
+3. `tests/parse-pp-feed.test.js` (9 tests, using a fixture reproducing the exact
+   label-wording quirk above) and `tests/scoring-pp-feed.test.js` (15 tests,
+   including one asserting a horse WITHOUT `ppFeed` gets an identical `composite`
+   score to before this change). Regenerated `scripts/build/_inlined_scoring.js`
+   via the safe standalone method (replicating `generate()` directly, never
+   calling the unsafe full `inline_scoring.js` which would have overwritten
+   `index.html`'s block wholesale and clobbered its own pre-existing drift) to
+   keep the export-surface parity test green.
+4. Ran the real parser against the real 2026-08-26 file end-to-end and scored two
+   real races with it — confirmed genuinely differentiated per-horse output (e.g.
+   Race 2's HEATHGUARD: workout 39.4 — stale/thin work pattern — vs. trip 60.0 —
+   real "Bump after st" trouble language + a close-enough finish to count as a
+   positive signal), not just a function that returns without erroring.
+
+Full suite: 425 total, 424 pass, 1 pre-existing failure (§8/§11.6, unchanged).
+
+**Explicitly NOT done, and should not be assumed done:** no refit, no backtest, no
+claim that these three sub-scores improve anything. `docs/DATA_WISHLIST.md`'s
+decision log carries the same caveat. This becomes fittable once enough days of
+this feed accumulate real outcomes to validate against — until then this is
+plumbing + a live diagnostic, not a validated model change.
+
 No `worker.js` logic changed in this entry; no model/scoring change; full suite
 unaffected (no `scoring.js` touch).

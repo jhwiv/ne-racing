@@ -1,5 +1,37 @@
 # NE Racing — Changelog
 
+## v2.49.78-ppfeed — Independent (non-Brisnet) PP-feed parser + 3 new opt-in, UNFITTED sub-scores (2026-08-26)
+
+Owner supplied a real, full past-performance export for the 2026-08-26 SAR card
+from a source explicitly confirmed independent of Brisnet (asked directly before
+touching it, given this project's Brisnet compliance history — v2.49.76/77).
+Field survey found no speed figures/class ratings at all, but a real workout tab
+(up to 12 works/horse) and full trip comments + running-line points of call for
+up to 10 past races/horse, plus real per-meet post-position and pace-style win% —
+the first real data covering the workout/trip-line gap this project's
+`docs/DATA_WISHLIST.md` has tracked as missing all along.
+
+**Added:**
+- `tools/parse_pp_feed.js` — new parser, verified field-by-field against the real
+  file. Output: `data/pp-feed/{TRACK}-{DATE}.json`.
+- Three new sub-scores in `scripts/lib/scoring.js` (hand-ported identically into
+  `index.html`/`app.html`'s inline block): `workoutSubScore`,
+  `tripTroubleSubScore`, `dataDrivenBiasSubScore`.
+- `tests/parse-pp-feed.test.js` (9 tests), `tests/scoring-pp-feed.test.js` (15 tests).
+
+**Deliberately NOT done:** these three sub-scores are NOT folded into
+`compositeForHorse`'s weighted formula, `DEFAULT_V2_WEIGHTS`, or any fitted-weight
+schema — they're computed and attached only when `horse.ppFeed` is present, with
+zero effect on `composite`/`modelProb` for any horse, including ones that have this
+data. A single pre-race card has no known outcomes yet to fit weights against;
+this ships as plumbing + a live diagnostic, pending enough accumulated days to
+backtest properly — the same discipline every other weight change this project has
+shipped under. See `docs/HANDOFF.md` §14.10 and `docs/DATA_WISHLIST.md`'s decision
+log for the full writeup.
+
+Full suite: 425 total, 424 pass, 1 pre-existing failure (unchanged, documented in
+§8 of `docs/HANDOFF.md`). No `worker.js` change — auto-deploys via Pages.
+
 ## v2.49.77-brisnet — Disabled the live Brisnet overlay pending a signed agreement (2026-08-21, worker.js — REQUIRES `wrangler deploy`)
 
 Follow-up to v2.49.76, which only stopped Brisnet-derived data from reaching the

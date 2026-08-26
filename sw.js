@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260821-v2.49.76-brisnet'; // v2.49.76: excluded Brisnet-contaminated dates from the training corpus, refit data/weights/v2.json clean (compliance fix, docs/DATA_WISHLIST.md) // bump on every ship
+const CACHE_VERSION = '20260826-v2.49.78-ppfeed'; // v2.49.78: independent (non-Brisnet) PP-feed parser + 3 new opt-in, unfitted sub-scores (workouts, trip trouble, data-driven bias) // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 
