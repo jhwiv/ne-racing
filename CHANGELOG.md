@@ -1,5 +1,36 @@
 # NE Racing — Changelog
 
+## v2.49.79-storagefix — Fixed a real "Storage error: quota exceeded" breaking bet saves live in production (2026-08-29)
+
+Reported live with a screenshot: today's ticket (Saratoga, Aug 29) showed "Storage
+error: The quota has been exceeded." at the top of the app. Traced to `saveStore()`
+(index.html/app.html) — the function that persists the user's actual bets/barn
+data under `localStorage['racing2026']` — failing because the browser's shared
+per-origin localStorage quota was exhausted.
+
+**Root cause:** `RESULTS_CACHE_KEY` (`localStorage['ne-racing-results-cache']`),
+keyed `"{track}_{date}"` — one entry per track+date the app has ever fetched
+results for — had **no eviction logic anywhere**. After ~7 weeks of the Saratoga
+meet running continuously, it had grown large enough to help exhaust the shared
+quota, causing the unrelated, much more important `saveStore()` write to fail
+silently except for this toast.
+
+**Fixed:**
+- `saveResultsCache()` now prunes entries older than 30 days on every write
+  (`pruneResultsCache()`, new) — it's pure server-refetchable cache, safe to
+  bound automatically.
+- `saveStore()` now recovers from a quota error instead of just reporting it:
+  clears the entire results cache (safe to sacrifice first — it's cache, not
+  user data) and retries the real save once before surfacing the toast.
+
+New `tests/results-cache-prune.test.js` (7 tests) — extracts `pruneResultsCache`
+straight out of `index.html` (not a copy) so the test exercises the actual
+shipped function, plus a drift-lock test confirming `app.html` has the identical
+logic.
+
+Full suite: 432 total, 431 pass, 1 pre-existing failure (unchanged, §8 of
+`docs/HANDOFF.md`). No `worker.js` change — auto-deploys via Pages.
+
 ## v2.49.78-ppfeed — Independent (non-Brisnet) PP-feed parser + 3 new opt-in, UNFITTED sub-scores (2026-08-26)
 
 Owner supplied a real, full past-performance export for the 2026-08-26 SAR card

@@ -24,7 +24,7 @@
 // message to the page. The page's controllerchange handler swaps in the
 // fresh HTML without a hard reload.
 
-const CACHE_VERSION = '20260826-v2.49.78-ppfeed'; // v2.49.78: independent (non-Brisnet) PP-feed parser + 3 new opt-in, unfitted sub-scores (workouts, trip trouble, data-driven bias) // bump on every ship
+const CACHE_VERSION = '20260829-v2.49.79-storagefix'; // v2.49.79: fixed unbounded RESULTS_CACHE_KEY growth exhausting localStorage quota and breaking real bet saves // bump on every ship
 const CACHE_NAME    = 'railbird-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline.html';
 

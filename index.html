@@ -18,7 +18,7 @@ html,body{background:#F8F4EA;margin:0;color:#1E2A36}
 </style>
 <script>
 // App version — bump on every deploy (must match version.json)
-var NE_APP_VERSION = '20260826-v2.49.78-ppfeed';
+var NE_APP_VERSION = '20260829-v2.49.79-storagefix';
 // v2.38.6: tag <html> with data-ios for status-bar safe-area handling.
 (function(){
   try {
@@ -32,7 +32,7 @@ var NE_APP_VERSION = '20260826-v2.49.78-ppfeed';
   } catch(e){}
 })();
 // Human-readable release tag surfaced in Settings > App Info and Export label
-var RAILBIRD_VERSION = 'v2.49.78-ppfeed';
+var RAILBIRD_VERSION = 'v2.49.79-storagefix';
 
 /* ===========================================================
  * RailbirdEngine (PR #2) — A/B engine toggle
@@ -13316,7 +13316,24 @@ function getStore() {
 }
 
 function saveStore(data) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) { showToast('Storage error: ' + e.message, 'danger'); }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch(e) {
+    // v2.49.79: RESULTS_CACHE_KEY (see "RESULTS CACHE" section below) grows
+    // unboundedly -- one entry per track+date ever viewed, never evicted --
+    // and after ~7 weeks of a running meet can alone consume enough of the
+    // shared per-origin localStorage quota to make THIS write (the user's
+    // actual bets/barn data) fail. It's pure re-fetchable server cache, so
+    // it's safe to sacrifice first: clear it and retry once before
+    // surfacing the error to the user.
+    try {
+      if (typeof saveResultsCache === 'function') saveResultsCache({});
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      return;
+    } catch (e2) {
+      showToast('Storage error: ' + e.message, 'danger');
+    }
+  }
 }
 
 var DEFAULT_WORKER_URL = 'https://cloudflare-worker.jhwiv-online.workers.dev';
@@ -22760,8 +22777,27 @@ function getResultsCache() {
   } catch(e) { return {}; }
 }
 
+// v2.49.79: keyed by "{track}_{date}" (see setCachedResults below), one entry
+// per track+date ever viewed, with no eviction anywhere -- after ~7 weeks of
+// a running meet this had grown large enough to help exhaust the shared
+// per-origin localStorage quota, causing saveStore()'s real data write (the
+// user's actual bets) to fail (see the "Storage error" recovery there).
+// Pure server-refetchable cache, so pruning entries older than this is safe.
+var RESULTS_CACHE_MAX_AGE_DAYS = 30;
+function pruneResultsCache(cache, maxAgeDays) {
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (maxAgeDays == null ? RESULTS_CACHE_MAX_AGE_DAYS : maxAgeDays));
+  var cutoffStr = cutoff.toISOString().slice(0, 10);
+  Object.keys(cache).forEach(function(key) {
+    var us = key.indexOf('_');
+    var date = us >= 0 ? key.slice(us + 1) : '';
+    if (!date || date < cutoffStr) delete cache[key];
+  });
+  return cache;
+}
+
 function saveResultsCache(cache) {
-  try { localStorage.setItem(RESULTS_CACHE_KEY, JSON.stringify(cache)); } catch(e) {}
+  try { localStorage.setItem(RESULTS_CACHE_KEY, JSON.stringify(pruneResultsCache(cache))); } catch(e) {}
 }
 
 function getCachedResults(track, date) {

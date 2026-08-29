@@ -1890,3 +1890,55 @@ plumbing + a live diagnostic, not a validated model change.
 
 No `worker.js` logic changed in this entry; no model/scoring change; full suite
 unaffected (no `scoring.js` touch).
+
+### 14.11 v2.49.79 — real production bug: unbounded RESULTS_CACHE_KEY exhausted localStorage, breaking bet saves
+
+Reported live with a screenshot, not a bug report in words: today's ticket (SAR,
+2026-08-29) showed **"Storage error: The quota has been exceeded."** across the top
+of the app.
+
+Traced directly (not guessed): that exact string is thrown from exactly one place,
+`saveStore()`'s catch block — the function that persists the user's real data (bets,
+barn, everything under `localStorage['racing2026']`) — meaning `localStorage.setItem`
+was genuinely throwing `QuotaExceededError`. Browsers share one storage quota per
+origin across every key, so the cause didn't have to be `saveStore`'s own key.
+Audited every `localStorage.setItem` call site in `index.html`; found one real
+culprit: `RESULTS_CACHE_KEY` (`'ne-racing-results-cache'`), keyed
+`"{track}_{date}"` — one entry per track+date the app has EVER fetched results
+for, via `setCachedResults()` — had no eviction logic anywhere, ever, since it was
+added. Contrast: a nearby unrelated cache (`_engineAccuracyMarkSent`'s sent-picks
+map) already has a 500-key cap; this one was simply missed. Per §9, the Saratoga
+meet has been running continuously since 2026-07-09 — by Aug 29 that's ~7 weeks of
+never-evicted per-day results payloads sharing the same quota as the user's actual
+bet history.
+
+**Fixed**, `scripts` untouched (this lives only in the two HTML shells):
+- New `pruneResultsCache(cache, maxAgeDays=30)` — called from `saveResultsCache()`
+  on every write, so the cache self-bounds going forward instead of growing
+  forever. Safe to prune automatically: it's pure server-refetchable cache, never
+  user-authored data.
+- `saveStore()`'s catch block no longer just reports the error — it clears the
+  entire results cache (`saveResultsCache({})`, safe to sacrifice first) and
+  retries the real save once before surfacing the toast. Turns a hard failure into
+  a self-healing one for exactly this cause.
+
+Both fixes hand-ported identically into `index.html` and `app.html`, matching
+every other hand-edit this session (§8/§11.2's warning about the unsafe full
+`inline_scoring.js` regen doesn't apply here — this isn't part of the
+`RailbirdScoring` inlined block at all, it's regular app code).
+
+New `tests/results-cache-prune.test.js` (7 tests) — extracts `pruneResultsCache`
+directly out of `index.html` via brace-matching (not a hand-copied stand-in that
+could drift from the shipped function), verifies prune-by-age behavior including
+the default-30-days path and a malformed-key edge case, and locks `app.html`'s copy
+byte-identical to `index.html`'s.
+
+Full suite: 432 total, 431 pass, 1 pre-existing failure (§8, unchanged). No
+`worker.js` change — auto-deploys via Pages on push to `master`.
+
+**Not otherwise investigated in this entry:** the second banner visible in the
+same screenshot, "Checked — no new results yet," is normal/expected copy (already
+covered by an existing regression test, `tests/grading-and-accuracy-regressions.test.js`)
+— it means a results-poll ran and found nothing new yet, not a bug. Flagged here
+only so a future session doesn't waste time re-diagnosing it from the same
+screenshot.
