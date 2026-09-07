@@ -8,13 +8,11 @@
  *   ────────────────────────────────────────────────────────────────────
  *   • Entries  — Static JSON files + local fixtures bundled with the app
  *                https://jhwiv.github.io/ne-racing/data/entries-{TRACK}-{DATE}.json
- *   • Scratches — Returns empty list (no unauthorized scraping).
+ *   • Scratches — Equibase late-change XML (live; short TTL). Static
+ *                 entries files keep scratched:false so scratches stay
+ *                 dynamic without republishing the card.
  *   • Odds      — Returns empty list; app falls back to morning-line odds.
  *   • Results   — Returns empty list (no unauthorized scraping).
- *
- *   NOTE: The Equibase/NYRA fetch helpers below (fetchFreeScratches,
- *   fetchFreeOdds, fetchFreeResults) are retained as ARCHITECTURE ONLY
- *   for a future licensed adapter. They are NOT called by the free path.
  *
  *   DATA_SOURCE = "theracingapi"  (requires API_USER + API_KEY secrets)
  *   ────────────────────────────────────────────────────────────────────
@@ -22,6 +20,9 @@
  *     (https://api.theracingapi.com/v1/north-america/...)
  *   • Auth: HTTP Basic (username + password)
  *   • Full entries, scratches, morning-line odds and results data available
+ *   • If TRA returns 401 / "Subscription inactive" / upstream_unavailable,
+ *     entries fall back to GitHub Pages static JSON and scratches fall
+ *     back to Equibase XML. Do not permanently disable theracingapi.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * wrangler.toml example
@@ -1021,33 +1022,70 @@ function formatDistance(distanceF, distanceRaw) {
  * @param {string} venue — Human-readable venue name (e.g. "Aqueduct")
  */
 async function fetchFreeEntries(track, date, venue) {
-  const fileUrl = `${STATIC_ENTRIES_BASE}/entries-${track}-${date}.json`;
+  // GitHub Pages can lag a fresh master push; raw.githubusercontent.com is
+  // the same committed file and is used as a second hop when Pages is a
+  // PLACEHOLDER, 404, or empty card.
+  const urls = [
+    `${STATIC_ENTRIES_BASE}/entries-${track}-${date}.json`,
+    `https://raw.githubusercontent.com/jhwiv/ne-racing/master/data/entries-${track}-${date}.json`,
+  ];
 
-  const res = await fetch(fileUrl, {
-    headers: {
-      Accept: "application/json",
-      // GitHub Pages serves static files; no auth needed
-    },
-    // Bypass Cloudflare's own cache for this outbound fetch so we control TTL
-    cf: { cacheTtl: CACHE_TTL.entries },
-  });
+  let lastErr = null;
+  for (const fileUrl of urls) {
+    try {
+      const res = await fetch(fileUrl, {
+        headers: { Accept: "application/json" },
+        cf: { cacheTtl: CACHE_TTL.entries },
+      });
 
-  if (res.status === 404) {
-    throw new NotFoundError(
-      `No entries file found for ${track} on ${date}. ` +
-      `Entries are updated daily on race days.`
-    );
+      if (res.status === 404) {
+        lastErr = new NotFoundError(
+          `No entries file found for ${track} on ${date}. ` +
+          `Entries are updated daily on race days.`
+        );
+        continue;
+      }
+      if (!res.ok) {
+        lastErr = new Error(
+          `Failed to fetch static entries: ${res.status} ${res.statusText} for ${fileUrl}`
+        );
+        continue;
+      }
+
+      const text = await res.text();
+      if (!text || text.trim() === "PLACEHOLDER") {
+        lastErr = new NotFoundError(
+          `Static entries file for ${track} on ${date} is a placeholder.`
+        );
+        continue;
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        lastErr = new Error(`Invalid static entries JSON at ${fileUrl}: ${parseErr.message}`);
+        continue;
+      }
+
+      const races = data.races || [];
+      const runners = races.reduce((n, r) => n + ((r.entries || []).length), 0);
+      if (!races.length || runners === 0) {
+        lastErr = new NotFoundError(
+          `Static entries file for ${track} on ${date} has no runners.`
+        );
+        continue;
+      }
+
+      return transformStaticEntries(data, track, venue, date);
+    } catch (err) {
+      lastErr = err;
+    }
   }
 
-  if (!res.ok) {
-    throw new Error(
-      `Failed to fetch static entries from GitHub Pages: ` +
-      `${res.status} ${res.statusText} for ${fileUrl}`
-    );
-  }
-
-  const data = await res.json();
-  return transformStaticEntries(data, track, venue, date);
+  throw lastErr || new NotFoundError(
+    `No entries file found for ${track} on ${date}.`
+  );
 }
 
 /**
@@ -2746,6 +2784,43 @@ function usePaidSource(env) {
   );
 }
 
+/**
+ * True when The Racing API is configured but cannot serve data — the case
+ * that previously 503'd entries/scratches with
+ *   Upstream 401 Unauthorized … {"detail":"Subscription inactive"}
+ * and error: "upstream_unavailable".
+ *
+ * Callers fall back to fetchFreeEntries / fetchFreeScratches. This is a
+ * fallback, not a permanent disable of DATA_SOURCE=theracingapi.
+ */
+function isPaidSourceUnavailable(err) {
+  if (!err) return false;
+  const status = Number(err.upstreamStatus) || 0;
+  if (status === 401 || status === 402 || status === 403) return true;
+  const msg = String(err.message || err);
+  return /subscription inactive/i.test(msg) || /upstream_unavailable/i.test(msg);
+}
+
+/**
+ * Run the paid TRA path; on 401 / inactive subscription / upstream_unavailable
+ * run `freeFn` and stamp paidFallback onto the body.
+ */
+async function paidOrFree(paidFn, freeFn) {
+  try {
+    return await paidFn();
+  } catch (err) {
+    if (!isPaidSourceUnavailable(err)) throw err;
+    const body = await freeFn();
+    if (body && typeof body === "object") {
+      body.paidFallback = {
+        from: "theracingapi",
+        reason: String(err.message || err),
+      };
+    }
+    return body;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/entries?track=AQU&date=2026-04-16
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2777,6 +2852,7 @@ async function handleEntries(request, env, origin, ctx) {
     let body;
 
     if (usePaidSource(env)) {
+      try {
       // ── The Racing API path ───────────────────────────────────────────────
       const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
       if (!meet) {
@@ -2811,6 +2887,14 @@ async function handleEntries(request, env, origin, ctx) {
       // own not-yet-authorized source.
       if (String(env.ENABLE_BRISNET_OVERLAY || "").toLowerCase() === "true") {
         try { await mergeBrisnetIntoEntries(body, track, date); } catch (e) { body.brisnetOverlayError = e.message; }
+      }
+      } catch (paidErr) {
+        if (!isPaidSourceUnavailable(paidErr)) throw paidErr;
+        body = await fetchFreeEntries(track, date, venue);
+        body.paidFallback = {
+          from: "theracingapi",
+          reason: String(paidErr.message || paidErr),
+        };
       }
     } else {
       // ── Free / GitHub Pages path ──────────────────────────────────────────
@@ -2861,34 +2945,35 @@ async function handleScratches(request, env, origin, ctx) {
     let body;
 
     if (usePaidSource(env)) {
-      // ── The Racing API path ───────────────────────────────────────────────
-      const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
-      if (!meet) {
-        body = {
-          track, date, venue,
-          lastUpdated: new Date().toISOString(),
-          source: "theracingapi-na",
-          message: `No NA meet for ${track} on ${date}`,
-          scratches: [],
+      try {
+        // ── The Racing API path ───────────────────────────────────────────────
+        const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
+        if (!meet) {
+          // No TRA meet — still try Equibase so late scratches stay live.
+          body = await fetchFreeScratches(track, date, venue);
+          body.paidFallback = {
+            from: "theracingapi",
+            reason: `No NA meet for ${track} on ${date}`,
+          };
+        } else {
+          const data = await fetchUpstream(
+            `/north-america/meets/${encodeURIComponent(meet.meet_id)}/entries`,
+            env.API_USER, env.API_KEY
+          );
+          body = normaliseNaScratches(data, track, venue, date);
+        }
+      } catch (paidErr) {
+        if (!isPaidSourceUnavailable(paidErr)) throw paidErr;
+        body = await fetchFreeScratches(track, date, venue);
+        body.paidFallback = {
+          from: "theracingapi",
+          reason: String(paidErr.message || paidErr),
         };
-      } else {
-        const data = await fetchUpstream(
-          `/north-america/meets/${encodeURIComponent(meet.meet_id)}/entries`,
-          env.API_USER, env.API_KEY
-        );
-        body = normaliseNaScratches(data, track, venue, date);
       }
     } else {
-      // ── Free mode: no unauthorized scraping. Return empty list. ───────────
-      // The Equibase XML feed fetch (fetchFreeScratches) is preserved below
-      // for licensed/permitted future use but is intentionally NOT called here.
-      body = {
-        track, date, venue,
-        lastUpdated: new Date().toISOString(),
-        source: "unavailable",
-        message: "Free mode: scratches require a licensed data source.",
-        scratches: [],
-      };
+      // Free mode: Equibase late-change XML is the live scratch feed.
+      // Static entries keep scratched:false so this list stays dynamic.
+      body = await fetchFreeScratches(track, date, venue);
     }
 
     const response = jsonOk(body, origin, CACHE_TTL.scratches);
@@ -2963,6 +3048,16 @@ async function handleOdds(request, env, origin, ctx) {
     return response;
 
   } catch (err) {
+    if (isPaidSourceUnavailable(err)) {
+      return jsonOk({
+        track, date, venue, raceNumber,
+        lastUpdated: new Date().toISOString(),
+        source: "unavailable",
+        paidFallback: { from: "theracingapi", reason: String(err.message || err) },
+        message: "Live odds unavailable (paid source inactive). Using morning line.",
+        odds: [],
+      }, origin, 0);
+    }
     return jsonError(`Odds fetch failed: ${err.message}`, 503, origin);
   }
 }
@@ -3157,6 +3252,16 @@ async function handleResults(request, env, origin, ctx) {
     return response;
 
   } catch (err) {
+    if (isPaidSourceUnavailable(err)) {
+      return jsonOk({
+        track, date, venue,
+        lastUpdated: new Date().toISOString(),
+        source: "unavailable",
+        paidFallback: { from: "theracingapi", reason: String(err.message || err) },
+        message: "Official results unavailable (paid source inactive).",
+        results: [],
+      }, origin, 0);
+    }
     return jsonError(`Results fetch failed: ${err.message}`, 503, origin);
   }
 }
