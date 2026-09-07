@@ -13463,10 +13463,14 @@ function getSarStatus(today) {
 // that fix only short-circuits when PERPLEXITY_API_KEY is configured --
 // this one has zero network dependency and works unconditionally.
 // Date.getDay(): 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat.
-var SAR_WEEKLY_DARK_DAYS = [1, 2]; // Monday, Tuesday
+var SAR_WEEKLY_DARK_DAYS = [1, 2]; // Monday, Tuesday (typical)
+var SAR_WEEKLY_DARK_DAY_EXCEPTIONS = {
+  '2026-09-07': true // Summer Meet closing day (Monday) — Chip confirmed OPEN
+};
 function isKnownWeeklyDarkDay(track, dateStr) {
   if (track !== 'SAR') return false;
   try {
+    if (SAR_WEEKLY_DARK_DAY_EXCEPTIONS[dateStr]) return false;
     var d = new Date(dateStr + 'T12:00:00');
     return SAR_WEEKLY_DARK_DAYS.indexOf(d.getDay()) !== -1;
   } catch(_) { return false; }

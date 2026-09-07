@@ -58,16 +58,40 @@ async function callTrackStatus(env, query) {
   return res.json();
 }
 
-test('no PERPLEXITY_API_KEY configured -> status unknown, never calls fetch', async () => {
+test('no PERPLEXITY_API_KEY and no static card -> status unknown / not_configured', async () => {
   const mock = mockPerplexity('irrelevant');
   try {
     const kv = makeFakeKv();
     const body = await callTrackStatus({ RACE_HISTORY: kv }, '?track=SAR&date=2026-07-29');
     assert.equal(body.status, 'unknown');
     assert.equal(body.reason, 'not_configured');
-    assert.equal(mock.calls.length, 0);
+    // May probe GitHub Pages for a static card; must not call Perplexity.
+    assert.ok(mock.calls.every((c) => !/api\.perplexity\.ai/.test(String(c.url))));
   } finally {
     mock.restore();
+  }
+});
+
+test('no PERPLEXITY_API_KEY but static entries have runners -> confirmed_live / static_card_present', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    assert.match(String(url), /entries-SAR-2026-09-07\.json/);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        track: 'SAR',
+        date: '2026-09-07',
+        races: [{ race_number: 1, entries: [{ pp: 1, name: 'Test Horse' }] }],
+      }),
+    };
+  };
+  try {
+    const body = await callTrackStatus({}, '?track=SAR&date=2026-09-07');
+    assert.equal(body.status, 'confirmed_live');
+    assert.equal(body.reason, 'static_card_present');
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 });
 

@@ -3,7 +3,11 @@ main = "worker.js"
 compatibility_date = "2024-09-23"
 
 [vars]
-DATA_SOURCE = "theracingapi"
+# TheRacingAPI subscription is inactive (401 / "Subscription inactive").
+# Worker also auto-falls back to free sources if DATA_SOURCE=theracingapi
+# and upstream returns 401 (see isPaidUpstreamAuthFailure in worker.js).
+# Chip: if Cloudflare dashboard deploy vars don't flip, set DATA_SOURCE=free there too.
+DATA_SOURCE = "free"
 DEFAULT_TRACK = "SAR"
 ALLOWED_ORIGIN = "https://railbirdai.com"
 # v2.32.3 — SendGrid feedback email delivery (FEEDBACK_EMAIL_TO, FEEDBACK_EMAIL_FROM,

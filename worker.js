@@ -8,13 +8,11 @@
  *   ────────────────────────────────────────────────────────────────────
  *   • Entries  — Static JSON files + local fixtures bundled with the app
  *                https://jhwiv.github.io/ne-racing/data/entries-{TRACK}-{DATE}.json
- *   • Scratches — Returns empty list (no unauthorized scraping).
+ *   • Scratches — Equibase late-change XML (live; CACHE_TTL.scratches = 60s).
+ *                 Static entries keep scratched:false so this list stays
+ *                 dynamic without republishing the card.
  *   • Odds      — Returns empty list; app falls back to morning-line odds.
  *   • Results   — Returns empty list (no unauthorized scraping).
- *
- *   NOTE: The Equibase/NYRA fetch helpers below (fetchFreeScratches,
- *   fetchFreeOdds, fetchFreeResults) are retained as ARCHITECTURE ONLY
- *   for a future licensed adapter. They are NOT called by the free path.
  *
  *   DATA_SOURCE = "theracingapi"  (requires API_USER + API_KEY secrets)
  *   ────────────────────────────────────────────────────────────────────
@@ -22,6 +20,9 @@
  *     (https://api.theracingapi.com/v1/north-america/...)
  *   • Auth: HTTP Basic (username + password)
  *   • Full entries, scratches, morning-line odds and results data available
+ *   • If TRA returns 401 / "Subscription inactive", entries fall back to
+ *     GitHub Pages static JSON, scratches fall back to Equibase XML, and
+ *     odds/results degrade to empty 200 stubs (isPaidUpstreamAuthFailure).
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * wrangler.toml example
@@ -1237,6 +1238,11 @@ function parseEquibaseScratches(xml, track, date, venue) {
         const description = descMatch ? unescapeXml(descMatch[1].trim()) : "Change";
         const changedAt   = dateMatch ? dateMatch[1].trim() : new Date().toISOString();
 
+        // Only keep actual scratch events. Equibase also emits jockey
+        // changes, gelding notes, and a follow-on "Scratch Reason: ..."
+        // row for each scratch — those are not scratches.
+        if (!/^scratched$/i.test(description)) continue;
+
         // Normalise the Equibase timestamp "2026-04-16 09:30:00.0" → ISO
         const timestamp = normaliseEquibaseTimestamp(changedAt);
 
@@ -1251,6 +1257,16 @@ function parseEquibaseScratches(xml, track, date, venue) {
     }
   }
 
+  // Dedupe by race|pp|horse (duplicate Scratched rows / feed repeats).
+  const seen = new Set();
+  const deduped = [];
+  for (const s of scratches) {
+    const key = `${s.raceNumber}|${s.pp}|${String(s.horseName || "").toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(s);
+  }
+
   return {
     track,
     date,
@@ -1258,7 +1274,7 @@ function parseEquibaseScratches(xml, track, date, venue) {
     lastUpdated: new Date().toISOString(),
     source:      "equibase-live",
     feedDate:    extractFeedDate(xml),
-    scratches,
+    scratches:   deduped,
   };
 }
 
@@ -2746,6 +2762,22 @@ function usePaidSource(env) {
   );
 }
 
+/**
+ * True when The Racing API is configured but rejected the request —
+ * typically HTTP 401 with body `{"detail":"Subscription inactive"}`.
+ * Callers fall back to fetchFreeEntries / fetchFreeScratches, or return
+ * graceful unavailable stubs for odds/results.
+ *
+ * @param {Error} err
+ */
+function isPaidUpstreamAuthFailure(err) {
+  if (!err) return false;
+  const status = Number(err.upstreamStatus) || 0;
+  if (status === 401 || status === 402 || status === 403) return true;
+  const msg = String(err.message || err);
+  return /subscription inactive/i.test(msg);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/entries?track=AQU&date=2026-04-16
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2777,40 +2809,49 @@ async function handleEntries(request, env, origin, ctx) {
     let body;
 
     if (usePaidSource(env)) {
-      // ── The Racing API path ───────────────────────────────────────────────
-      const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
-      if (!meet) {
-        throw new NotFoundError(`No NA meet for ${track} on ${date}`);
-      }
-      const data = await fetchUpstream(
-        `/north-america/meets/${encodeURIComponent(meet.meet_id)}/entries`,
-        env.API_USER, env.API_KEY
-      );
-      body = normaliseNaEntries(data, track, venue, date);
-      // v2.40.0: enrich each runner with last-N race history from D1
-      try { await enrichEntriesWithPP(body, env); } catch (e) { body.ppEnrichmentError = e.message; }
-      // v2.41.0: overlay Core API /racecards/standard fields (rpr, ts, form,
-      // last_run, spotlight, trainer_14_days) for runners present in both feeds.
-      try { await enrichEntriesWithCoreRacecards(body, env, date, ctx); } catch (e) { body.coreEnrichmentError = e.message; }
-      // v2.41.0: scoring-field shim — inject speedFigs/runningStyle/jockeyPct/
-      // trainerPct/lastClass/lastRaceDate/dataCompleteness so the v2.40.3 client
-      // scoring engine has the same inputs the legacy static JSON provided.
-      // Runs AFTER PP enrichment so it can use ppHistory/ppSummary when present.
-      try { enrichEntriesWithScoringFields(body); } catch (e) { body.scoringFieldEnrichmentError = e.message; }
-      // v2.49.76: DISABLED pending a signed Brisnet enterprise agreement.
-      // docs/DATA_WISHLIST.md's own Rules: Brisnet is "BLOCKED BY TOS ...
-      // regardless of subscription... Reuse of this data is expressly
-      // prohibited. Do not reopen unless Churchill Downs Inc. issues a
-      // separate enterprise agreement." This overlay (v2.46.0) re-serves
-      // committed data/brisnet-{TRACK}-{DATE}.json content into live entries
-      // -- exactly the "reuse" the ToS bars, and the same data that leaked
-      // into the training corpus via RACE_HISTORY archival (see
-      // docs/HANDOFF.md §14.7). Gated off by an explicit opt-in flag, not
-      // deleted, so it can come back the moment that agreement exists --
-      // matching how theracingapi_adapter.js is reserved default-off for its
-      // own not-yet-authorized source.
-      if (String(env.ENABLE_BRISNET_OVERLAY || "").toLowerCase() === "true") {
-        try { await mergeBrisnetIntoEntries(body, track, date); } catch (e) { body.brisnetOverlayError = e.message; }
+      try {
+        // ── The Racing API path ───────────────────────────────────────────────
+        const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
+        if (!meet) {
+          throw new NotFoundError(`No NA meet for ${track} on ${date}`);
+        }
+        const data = await fetchUpstream(
+          `/north-america/meets/${encodeURIComponent(meet.meet_id)}/entries`,
+          env.API_USER, env.API_KEY
+        );
+        body = normaliseNaEntries(data, track, venue, date);
+        // v2.40.0: enrich each runner with last-N race history from D1
+        try { await enrichEntriesWithPP(body, env); } catch (e) { body.ppEnrichmentError = e.message; }
+        // v2.41.0: overlay Core API /racecards/standard fields (rpr, ts, form,
+        // last_run, spotlight, trainer_14_days) for runners present in both feeds.
+        try { await enrichEntriesWithCoreRacecards(body, env, date, ctx); } catch (e) { body.coreEnrichmentError = e.message; }
+        // v2.41.0: scoring-field shim — inject speedFigs/runningStyle/jockeyPct/
+        // trainerPct/lastClass/lastRaceDate/dataCompleteness so the v2.40.3 client
+        // scoring engine has the same inputs the legacy static JSON provided.
+        // Runs AFTER PP enrichment so it can use ppHistory/ppSummary when present.
+        try { enrichEntriesWithScoringFields(body); } catch (e) { body.scoringFieldEnrichmentError = e.message; }
+        // v2.49.76: DISABLED pending a signed Brisnet enterprise agreement.
+        // docs/DATA_WISHLIST.md's own Rules: Brisnet is "BLOCKED BY TOS ...
+        // regardless of subscription... Reuse of this data is expressly
+        // prohibited. Do not reopen unless Churchill Downs Inc. issues a
+        // separate enterprise agreement." This overlay (v2.46.0) re-serves
+        // committed data/brisnet-{TRACK}-{DATE}.json content into live entries
+        // -- exactly the "reuse" the ToS bars, and the same data that leaked
+        // into the training corpus via RACE_HISTORY archival (see
+        // docs/HANDOFF.md §14.7). Gated off by an explicit opt-in flag, not
+        // deleted, so it can come back the moment that agreement exists --
+        // matching how theracingapi_adapter.js is reserved default-off for its
+        // own not-yet-authorized source.
+        if (String(env.ENABLE_BRISNET_OVERLAY || "").toLowerCase() === "true") {
+          try { await mergeBrisnetIntoEntries(body, track, date); } catch (e) { body.brisnetOverlayError = e.message; }
+        }
+      } catch (paidErr) {
+        if (!isPaidUpstreamAuthFailure(paidErr)) throw paidErr;
+        body = await fetchFreeEntries(track, date, venue);
+        body.paidFallback = {
+          from: "theracingapi",
+          reason: String(paidErr.message || paidErr),
+        };
       }
     } else {
       // ── Free / GitHub Pages path ──────────────────────────────────────────
@@ -2861,34 +2902,37 @@ async function handleScratches(request, env, origin, ctx) {
     let body;
 
     if (usePaidSource(env)) {
-      // ── The Racing API path ───────────────────────────────────────────────
-      const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
-      if (!meet) {
-        body = {
-          track, date, venue,
-          lastUpdated: new Date().toISOString(),
-          source: "theracingapi-na",
-          message: `No NA meet for ${track} on ${date}`,
-          scratches: [],
+      try {
+        // ── The Racing API path ───────────────────────────────────────────────
+        const meet = await findMeetId(track, date, env.API_USER, env.API_KEY, ctx);
+        if (!meet) {
+          // No TRA meet — still try Equibase so late scratches stay live.
+          body = await fetchFreeScratches(track, date, venue);
+          body.paidFallback = {
+            from: "theracingapi",
+            reason: `No NA meet for ${track} on ${date}`,
+          };
+        } else {
+          const data = await fetchUpstream(
+            `/north-america/meets/${encodeURIComponent(meet.meet_id)}/entries`,
+            env.API_USER, env.API_KEY
+          );
+          body = normaliseNaScratches(data, track, venue, date);
+        }
+      } catch (paidErr) {
+        if (!isPaidUpstreamAuthFailure(paidErr)) throw paidErr;
+        body = await fetchFreeScratches(track, date, venue);
+        body.paidFallback = {
+          from: "theracingapi",
+          reason: String(paidErr.message || paidErr),
         };
-      } else {
-        const data = await fetchUpstream(
-          `/north-america/meets/${encodeURIComponent(meet.meet_id)}/entries`,
-          env.API_USER, env.API_KEY
-        );
-        body = normaliseNaScratches(data, track, venue, date);
       }
     } else {
-      // ── Free mode: no unauthorized scraping. Return empty list. ───────────
-      // The Equibase XML feed fetch (fetchFreeScratches) is preserved below
-      // for licensed/permitted future use but is intentionally NOT called here.
-      body = {
-        track, date, venue,
-        lastUpdated: new Date().toISOString(),
-        source: "unavailable",
-        message: "Free mode: scratches require a licensed data source.",
-        scratches: [],
-      };
+      // Free mode: Equibase late-change XML is the live scratch feed.
+      // Static entries keep scratched:false so this list stays dynamic
+      // (CACHE_TTL.scratches = 60s). Do not treat baked scratched:true
+      // as the sole source.
+      body = await fetchFreeScratches(track, date, venue);
     }
 
     const response = jsonOk(body, origin, CACHE_TTL.scratches);
@@ -2963,6 +3007,16 @@ async function handleOdds(request, env, origin, ctx) {
     return response;
 
   } catch (err) {
+    if (isPaidUpstreamAuthFailure(err)) {
+      return jsonOk({
+        track, date, venue, raceNumber,
+        lastUpdated: new Date().toISOString(),
+        source: "unavailable",
+        paidFallback: { from: "theracingapi", reason: String(err.message || err) },
+        message: "Live odds unavailable (paid source inactive). Using morning line.",
+        odds: [],
+      }, origin, 0);
+    }
     return jsonError(`Odds fetch failed: ${err.message}`, 503, origin);
   }
 }
@@ -3050,6 +3104,26 @@ async function handleTrackStatus(request, env, origin) {
   const kvKey = `trackstatus:${track}:${date}`;
 
   if (!env.PERPLEXITY_API_KEY) {
+    try {
+      const fileUrl = `${STATIC_ENTRIES_BASE}/entries-${track}-${date}.json`;
+      const res = await fetch(fileUrl, {
+        headers: { Accept: "application/json" },
+        cf: { cacheTtl: CACHE_TTL.entries },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const races = data && Array.isArray(data.races) ? data.races : [];
+        const hasRunners = races.some((r) => Array.isArray(r.entries) && r.entries.length > 0);
+        if (hasRunners) {
+          return jsonOk({
+            track,
+            date,
+            status: "confirmed_live",
+            reason: "static_card_present",
+          }, origin, 0);
+        }
+      }
+    } catch (_) { /* fall through to not_configured */ }
     return jsonOk({ track, date, status: "unknown", reason: "not_configured" }, origin, 0);
   }
 
@@ -3157,6 +3231,16 @@ async function handleResults(request, env, origin, ctx) {
     return response;
 
   } catch (err) {
+    if (isPaidUpstreamAuthFailure(err)) {
+      return jsonOk({
+        track, date, venue,
+        lastUpdated: new Date().toISOString(),
+        source: "unavailable",
+        paidFallback: { from: "theracingapi", reason: String(err.message || err) },
+        message: "Official results unavailable (paid source inactive).",
+        results: [],
+      }, origin, 0);
+    }
     return jsonError(`Results fetch failed: ${err.message}`, 503, origin);
   }
 }
